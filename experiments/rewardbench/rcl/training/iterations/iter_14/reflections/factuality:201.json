@@ -1,0 +1,537 @@
+{
+  "task_id": "factuality:201",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:201\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Outcome & Variance\n\nBoth rollouts are byte-identical (ratings [5.4, 1.8, 4.2, 6.1], best=[4]), confirming a systematic failure with zero execution variance. The correct candidate was [1] (scored 5.4); the agent top-ranked incorrect [4] (scored 6.1). Pairwise accuracy was 66.7% (2/3 correct pairs).\n\n## Root Cause: Three-Step Breakdown\n\nThe failure follows a clear causal chain:\n\n1. **Undetected Cross-Candidate Quote Contradictions.** Candidates [1] and [4] both cite the same six named authors (Mitchell, Goodfellow et al., Domingos, Bishop, Murphy) but attribute *different specific quoted text* to each. For example, Mitchell is quoted differently in [1] vs [4]. At most one version can be accurate. Entry [29e534bd] explicitly mandates a DIFF TABLE for this scenario ('at least one must be wrong. Flag all contradicted items as UNVERIFIED') \u2014 but the agent never built the table. Had the DIFF TABLE been constructed, the agent would have seen that [1] and [4] are mutually contradictory on nearly every quote, making both equally suspect on those items.\n\n2. **All-Unverifiable Gap.** The agent correctly noted all quotes were 'paraphrased, not verifiable,' but treated this as a resolved finding rather than a gate that blocks further quality comparison. Entry [005004a4]'s VERIFICATION GATE handles individual claims (ISOLATE\u2192COUNTER\u2192CLASSIFY) and the binary case (some verified, some not), but has no explicit protocol for what happens when ALL candidates' primary differentiating content is classified as unverifiable. The agent fell into the procedural gap.\n\n3. **Presentation Bias as Prohibited Tiebreaker.** Lacking factual differentiation, the agent used 'cleaner, more consistently quoted-definition presentation' to rank [4] above [1]. Entry [8e0d9579] says formatting 'never overrides factual correctness.' Entry [005004a4] says 'Accuracy assessment must complete BEFORE responsiveness, directness, or engagement quality can be credited.' The agent violated both.\n\n## Entry Impact Assessment\n\nEntries [93b0e8f9], [4abe1be4], [61b87a5f], and [c8698dee] were helpful: the perception scan, enumeration, and constraint checklist correctly identified all four candidates and drove 2 of 3 correct pairwise comparisons (correctly penalizing [2] for no quotes and [3] for partial quotes vs. [1]).\n\nEntries [29e534bd], [005004a4], and [8e0d9579] are tagged neutral \u2014 not harmful \u2014 because their content is correct and following them would have prevented the error. The agent simply did not apply them. The distinction matters: an entry whose advice is right but unenforced needs strengthening, not penalty. Tagging them harmful would conflate 'not applied' with 'caused harm when applied.'\n\n## Mutation Recommendations\n\n**Primary (high confidence): UPDATE [29e534bd]** \u2014 The DIFF TABLE is currently framed as a recommendation ('produce a DIFF TABLE'). It needs mandatory trigger language: when candidates cite the same named sources with different specific content, the DIFF TABLE must be constructed BEFORE any relative scoring. Add: (a) explicit trigger condition ('When 2+ candidates attribute specific content to the same named source'), (b) mandatory artifact requirement ('Build a table: rows = shared sources, columns = candidates, cells = specific content attributed. Mark each row AGREE or CONTRADICT.'), (c) scoring constraint ('For CONTRADICT rows: all versions are UNVERIFIED. Neither version may serve as a scoring advantage. If remaining uncontradicted claims are insufficient to differentiate, score candidates within a narrow band \u2014 do NOT fall back to subjective presentation quality.').\n\n**Secondary (medium-high confidence): UPDATE [005004a4]** \u2014 Add an ALL-UNVERIFIABLE CEILING clause: 'When the VERIFICATION GATE classifies ALL candidates' primary differentiating content as UNVERIFIABLE-CONFIDENT, no candidate may receive a factuality-based advantage from that content. Differentiation must come from secondary verifiable signals: (a) format compliance with the prompt's explicit requirements, (b) internal consistency, (c) appropriate hedging about confidence level. Subjective presentation quality (\"cleaner,\" \"more professional\") alone cannot separate candidates by more than 0.3 points.'\n\nA third lesson \u2014 explicit tiebreaker self-audit ('name your tiebreaker, confirm it is not prohibited by your own rules') \u2014 is already substantially covered by the combination of [8e0d9579], [005004a4]'s sequencing rule, and [93b0e8f9]'s re-read step. No new entry is needed for this; the existing entries already say the right things but the agent failed to apply them. The two updates above should create the mandatory gates that force compliance in exactly this scenario.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent failed to build the mandatory DIFF TABLE for cross-candidate attribution contradictions ([29e534bd] not applied), had no protocol for when all candidates' key content is unverifiable (gap in [005004a4]), and defaulted to presentation quality as a tiebreaker in violation of multiple existing rules.\",\n  \"important_disagreements\": [\n    \"Whether [29e534bd] is 'harmful' or 'neutral': Anchor and credit_attribution tagged harmful because the entry was available but unapplied, arguing soft framing contributed to the skip. Principle_extraction tagged neutral because the entry's content is correct and following it would have prevented the error. Resolved in favor of neutral \u2014 an entry that is correct but unenforced needs stronger trigger language (an update mutation), not a harmful tag that suggests the advice itself was wrong. The distinction between 'bad advice' and 'good advice with weak enforcement' matters for choosing the right mutation.\",\n    \"Whether [005004a4], [8e0d9579], [71f11566], [295257e2] are 'harmful': Credit_attribution tagged all four harmful because their rules were violated. Anchor and principle_extraction tagged neutral. Resolved as neutral \u2014 violation of a correct rule is evidence the rule needs stronger enforcement or a mandatory gate, not that the rule itself causes harm. The mutations should strengthen enforcement rather than penalize the content.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Two existing entries ([29e534bd] and [005004a4]) already contain the right principles but lack (a) mandatory trigger language for the DIFF TABLE and (b) a protocol for the all-unverifiable case. Both gaps are well-evidenced by all three reflections. Updating these entries is the smallest change that addresses the root cause. No genuinely new entry is needed \u2014 the all-unverifiable ceiling fits naturally as an addendum to [005004a4], and the mandatory trigger fits naturally in [29e534bd].\",\n  \"conservatism_rationale\": \"This is a single trace with two identical rollouts (effectively one observation). The failure pattern is clear and the fix is well-scoped within existing entries. A third possible mutation (tiebreaker self-audit) is already substantially covered by existing entries ([8e0d9579], [005004a4], [93b0e8f9]) and adding it would risk playbook bloat for a principle that is already stated but not enforced \u2014 the same problem the two updates aim to solve by adding mandatory gates. Two focused updates are preferable to three or more diffuse changes.\",\n  \"max_operations\": 2\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\nWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning? \n\n## Candidate Responses\n\n[1]\nIn the context of machine learning, several prominent definitions of \"model\" are frequently cited in literature and academic works. Here are some of the most notable ones:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data and can be used to make predictions or decisions about new data.\"\n\n2. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a mathematical representation of a process, typically expressed as a set of equations or a probabilistic framework, that can be used to make predictions or inferences about data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a specific mathematical form for representing a set of assumptions about how data is generated. It includes parameters that can be adjusted to fit the data.\"\n\n4. **Andrew Ng**:\n   - From his popular online courses:\n     > \"A model is a simplified representation of reality, designed to capture the essential features of a problem and make predictions based on input data.\"\n\n5. **Chris Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, usually expressed in terms of a set of parameters. The goal of learning is to determine the values of these parameters that best explain the observed data.\"\n\n6. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between inputs and outputs, which is derived from the training data and used to make predictions on new data.\"\n\nThese definitions collectively emphasize the role of a model in capturing patterns in data, making predictions, and being adjustable through parameters. They also highlight the importance of the model's ability to generalize to new, unseen data.\n\n[2]\nIn the context of machine learning, the term \"model\" has several prominent definitions. Here are some of the most commonly quoted ones:\n\n1. **Mathematical model**: A mathematical model is a representation of a real-world system or phenomenon using mathematical equations, functions, and algorithms. In machine learning, this model is typically a set of equations that describe the relationships between inputs and outputs, such as a linear regression model or a neural network.\n\n2. **Statistical model**: A statistical model is a probability distribution over a set of possible outcomes or predictions. In machine learning, statistical models are used to quantify uncertainty and make predictions based on observed data. Examples include Bayesian networks, Gaussian mixture models, and random forests.\n\n3. **Algebraic model**: An algebraic model represents a system or process using algebraic equations and variables. In machine learning, algebraic models are used to describe the relationships between inputs and outputs, such as linear algebra-based models or matrix factorization techniques.\n\n4. **Abstraction model**: An abstraction model is a simplified representation of a complex system or process. In machine learning, abstraction models are used to capture the essential characteristics of a system or process, such as a decision tree or a clustering model.\n\n5. **Conceptual model**: A conceptual model is a high-level representation of a system or process. In machine learning, conceptual models are used to describe the underlying relationships and structures of a system, such as a graph or a semantic network.\n\n6. **Computational model**: A computational model is a software implementation of a mathematical or statistical model. In machine learning, computational models are used to train and deploy models on real-world data, such as deep learning models or decision tree ensembles.\n\n7. **Statistical pattern recognition model**: A statistical pattern recognition model is a type of model that recognizes patterns in data and makes predictions based on those patterns. In machine learning, statistical pattern recognition models are used for tasks such as image classification, speech recognition, and natural language processing.\n\n8. **Dynamical system model**: A dynamical system model represents the behavior of a system over time. In machine learning, dynamical system models are used to forecast future behavior or simulate the effects of different scenarios, such as Markov chain models or time-series forecasting models.\n\nThese definitions are not mutually exclusive, and many machine learning models blend elements from multiple categories.\n\n[3]\nIn the context of machine learning, the term \"model\" is often used to refer to a mathematical representation or computational system that learns from and makes predictions on data. Here are some of the most prominent quoted definitions of \"model\" in machine learning:\n\n1. **Tom M. Mitchell (1997)**:\n   - **Definition**: A computer program is considered a model for a concept C if, for any inputs in the input domain of C, the program returns a result that accurately reflects the concept's intended behavior.\n   - **Context**: This definition emphasizes the accuracy and behavior of the model relative to the concept it is modeling.\n\n2. **Pedro Domingos (2012)**:\n   - **Definition**: In machine learning, a model is a computational system that takes as input some data and produces as output a prediction, decision, or value. It is a mapping from inputs to outputs based on learned patterns in the training data.\n   - **Context**: This definition highlights the functional aspect of models, focusing on their predictive capability and how they learn from data.\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville (2016)**:\n   - **Definition**: A model is an abstraction that describes a set of possible relationships between inputs and outputs.\n   - **Context**: This definition emphasizes the abstract nature of models and their role in representing complex relationships in data.\n\n4. **Scott Cheng-Hsin Chen (2018)**:\n   - **Definition**: A machine learning model is a computational representation of a set of learned functions that map from inputs to outputs, typically optimized to minimize error on a given task.\n   - **Context**: This definition underscores the optimization process and the specific goal of reducing prediction errors.\n\n5. **David Barber (2012)**:\n   - **Definition**: A model is a representation of a phenomenon or a system that can be used to make predictions about future observations.\n   - **Context**: This definition focuses on the predictive power of models and their application in making future predictions.\n\n6. **Michael I. Jordan (2014)**:\n   - **Definition**: A model is a formalization of assumptions about a system or problem, encapsulated in a set of equations, rules, or parameters that enable the computation of predictions or decisions.\n   - **Context**: This definition highlights the formalization and the computational aspect of models.\n\nThese definitions capture different aspects of what constitutes a model in machine learning, such as its predictive power, learning mechanism, and representational capabilities.\n\n[4]\nIn the context of machine learning, the term \"model\" is often defined in various ways by different experts and researchers. Here are some of the most prominent and widely quoted definitions:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data. It is a mathematical representation of the relationships among variables in the data.\"\n\n2. **Christopher M. Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, typically expressed in the form of a probabilistic model, which can be used to make predictions or inferences about new data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a system that takes as input one or more variables and produces an output. In machine learning, models are trained on data to learn the parameters that best map inputs to outputs.\"\n\n4. **Andrew Ng**:\n   - From his course \"Machine Learning\" on Coursera:\n     > \"A model is a simplified representation of the real world, typically in the form of a mathematical function that maps inputs to outputs. In machine learning, this function is learned from data.\"\n\n5. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between the inputs and the outputs, expressed in a form that can be used to make predictions.\"\n\n6. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a formal description of how the data is generated, usually involving a set of parameters. The goal of machine learning is to estimate these parameters from the data.\"\n\nThese definitions collectively emphasize that a model in machine learning is a mathematical or computational representation that captures the relationships between input features and output targets, learned from data, and used for making predictions or inferences.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (1) Give prominent definitions of \u201cmodel\u201d in ML; (2) present them as quoted definitions with attributed sources; (3) keep content relevant to ML. Compliance (Pass/Partial/Fail): Candidate1 = (1)P (2)P/Partial (quotes may be paraphrased, not verifiable) (3)P; Candidate2 = (1)Partial (2)Fail (no quotes/attribution) (3)P; Candidate3 = (1)Partial (2)Partial (definitions but not clearly presented as direct quotes) (3)P; Candidate4 = (1)P (2)P/Partial (direct quotes with sources, but exact wording unverifiable) (3)P. Main quality differences: [2] does not meet the \u201cquoted definitions\u201d requirement, and [3] does not clearly provide quotes. Between [1] and [4], both supply attributed quotations, but [4] is more directly aligned with the prompt via a cleaner, more consistently \u201cquoted-definition\u201d presentation and stronger coverage of commonly cited authors.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (1) Give prominent definitions of \u201cmodel\u201d in ML; (2) present them as quoted definitions with attributed sources; (3) keep content relevant to ML. Compliance (Pass/Partial/Fail): Candidate1 = (1)P (2)P/Partial (quotes may be paraphrased, not verifiable) (3)P; Candidate2 = (1)Partial (2)Fail (no quotes/attribution) (3)P; Candidate3 = (1)Partial (2)Partial (definitions but not clearly presented as direct quotes) (3)P; Candidate4 = (1)P (2)P/Partial (direct quotes with sources, but exact wording unverifiable) (3)P. Main quality differences: [2] does not meet the \u201cquoted definitions\u201d requirement, and [3] does not clearly provide quotes. Between [1] and [4], both supply attributed quotations, but [4] is more directly aligned with the prompt via a cleaner, more consistently \u201cquoted-definition\u201d presentation and stronger coverage of commonly cited authors.\",\n  \"ratings\": [\n    5.4,\n    1.8,\n    4.2,\n    6.1\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\nWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning? \n\n## Candidate Responses\n\n[1]\nIn the context of machine learning, several prominent definitions of \"model\" are frequently cited in literature and academic works. Here are some of the most notable ones:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data and can be used to make predictions or decisions about new data.\"\n\n2. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a mathematical representation of a process, typically expressed as a set of equations or a probabilistic framework, that can be used to make predictions or inferences about data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a specific mathematical form for representing a set of assumptions about how data is generated. It includes parameters that can be adjusted to fit the data.\"\n\n4. **Andrew Ng**:\n   - From his popular online courses:\n     > \"A model is a simplified representation of reality, designed to capture the essential features of a problem and make predictions based on input data.\"\n\n5. **Chris Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, usually expressed in terms of a set of parameters. The goal of learning is to determine the values of these parameters that best explain the observed data.\"\n\n6. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between inputs and outputs, which is derived from the training data and used to make predictions on new data.\"\n\nThese definitions collectively emphasize the role of a model in capturing patterns in data, making predictions, and being adjustable through parameters. They also highlight the importance of the model's ability to generalize to new, unseen data.\n\n[2]\nIn the context of machine learning, the term \"model\" has several prominent definitions. Here are some of the most commonly quoted ones:\n\n1. **Mathematical model**: A mathematical model is a representation of a real-world system or phenomenon using mathematical equations, functions, and algorithms. In machine learning, this model is typically a set of equations that describe the relationships between inputs and outputs, such as a linear regression model or a neural network.\n\n2. **Statistical model**: A statistical model is a probability distribution over a set of possible outcomes or predictions. In machine learning, statistical models are used to quantify uncertainty and make predictions based on observed data. Examples include Bayesian networks, Gaussian mixture models, and random forests.\n\n3. **Algebraic model**: An algebraic model represents a system or process using algebraic equations and variables. In machine learning, algebraic models are used to describe the relationships between inputs and outputs, such as linear algebra-based models or matrix factorization techniques.\n\n4. **Abstraction model**: An abstraction model is a simplified representation of a complex system or process. In machine learning, abstraction models are used to capture the essential characteristics of a system or process, such as a decision tree or a clustering model.\n\n5. **Conceptual model**: A conceptual model is a high-level representation of a system or process. In machine learning, conceptual models are used to describe the underlying relationships and structures of a system, such as a graph or a semantic network.\n\n6. **Computational model**: A computational model is a software implementation of a mathematical or statistical model. In machine learning, computational models are used to train and deploy models on real-world data, such as deep learning models or decision tree ensembles.\n\n7. **Statistical pattern recognition model**: A statistical pattern recognition model is a type of model that recognizes patterns in data and makes predictions based on those patterns. In machine learning, statistical pattern recognition models are used for tasks such as image classification, speech recognition, and natural language processing.\n\n8. **Dynamical system model**: A dynamical system model represents the behavior of a system over time. In machine learning, dynamical system models are used to forecast future behavior or simulate the effects of different scenarios, such as Markov chain models or time-series forecasting models.\n\nThese definitions are not mutually exclusive, and many machine learning models blend elements from multiple categories.\n\n[3]\nIn the context of machine learning, the term \"model\" is often used to refer to a mathematical representation or computational system that learns from and makes predictions on data. Here are some of the most prominent quoted definitions of \"model\" in machine learning:\n\n1. **Tom M. Mitchell (1997)**:\n   - **Definition**: A computer program is considered a model for a concept C if, for any inputs in the input domain of C, the program returns a result that accurately reflects the concept's intended behavior.\n   - **Context**: This definition emphasizes the accuracy and behavior of the model relative to the concept it is modeling.\n\n2. **Pedro Domingos (2012)**:\n   - **Definition**: In machine learning, a model is a computational system that takes as input some data and produces as output a prediction, decision, or value. It is a mapping from inputs to outputs based on learned patterns in the training data.\n   - **Context**: This definition highlights the functional aspect of models, focusing on their predictive capability and how they learn from data.\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville (2016)**:\n   - **Definition**: A model is an abstraction that describes a set of possible relationships between inputs and outputs.\n   - **Context**: This definition emphasizes the abstract nature of models and their role in representing complex relationships in data.\n\n4. **Scott Cheng-Hsin Chen (2018)**:\n   - **Definition**: A machine learning model is a computational representation of a set of learned functions that map from inputs to outputs, typically optimized to minimize error on a given task.\n   - **Context**: This definition underscores the optimization process and the specific goal of reducing prediction errors.\n\n5. **David Barber (2012)**:\n   - **Definition**: A model is a representation of a phenomenon or a system that can be used to make predictions about future observations.\n   - **Context**: This definition focuses on the predictive power of models and their application in making future predictions.\n\n6. **Michael I. Jordan (2014)**:\n   - **Definition**: A model is a formalization of assumptions about a system or problem, encapsulated in a set of equations, rules, or parameters that enable the computation of predictions or decisions.\n   - **Context**: This definition highlights the formalization and the computational aspect of models.\n\nThese definitions capture different aspects of what constitutes a model in machine learning, such as its predictive power, learning mechanism, and representational capabilities.\n\n[4]\nIn the context of machine learning, the term \"model\" is often defined in various ways by different experts and researchers. Here are some of the most prominent and widely quoted definitions:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data. It is a mathematical representation of the relationships among variables in the data.\"\n\n2. **Christopher M. Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, typically expressed in the form of a probabilistic model, which can be used to make predictions or inferences about new data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a system that takes as input one or more variables and produces an output. In machine learning, models are trained on data to learn the parameters that best map inputs to outputs.\"\n\n4. **Andrew Ng**:\n   - From his course \"Machine Learning\" on Coursera:\n     > \"A model is a simplified representation of the real world, typically in the form of a mathematical function that maps inputs to outputs. In machine learning, this function is learned from data.\"\n\n5. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between the inputs and the outputs, expressed in a form that can be used to make predictions.\"\n\n6. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a formal description of how the data is generated, usually involving a set of parameters. The goal of machine learning is to estimate these parameters from the data.\"\n\nThese definitions collectively emphasize that a model in machine learning is a mathematical or computational representation that captures the relationships between input features and output targets, learned from data, and used for making predictions or inferences.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (1) Give prominent definitions of \u201cmodel\u201d in ML; (2) present them as quoted definitions with attributed sources; (3) keep content relevant to ML. Compliance (Pass/Partial/Fail): Candidate1 = (1)P (2)P/Partial (quotes may be paraphrased, not verifiable) (3)P; Candidate2 = (1)Partial (2)Fail (no quotes/attribution) (3)P; Candidate3 = (1)Partial (2)Partial (definitions but not clearly presented as direct quotes) (3)P; Candidate4 = (1)P (2)P/Partial (direct quotes with sources, but exact wording unverifiable) (3)P. Main quality differences: [2] does not meet the \u201cquoted definitions\u201d requirement, and [3] does not clearly provide quotes. Between [1] and [4], both supply attributed quotations, but [4] is more directly aligned with the prompt via a cleaner, more consistently \u201cquoted-definition\u201d presentation and stronger coverage of commonly cited authors.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (1) Give prominent definitions of \u201cmodel\u201d in ML; (2) present them as quoted definitions with attributed sources; (3) keep content relevant to ML. Compliance (Pass/Partial/Fail): Candidate1 = (1)P (2)P/Partial (quotes may be paraphrased, not verifiable) (3)P; Candidate2 = (1)Partial (2)Fail (no quotes/attribution) (3)P; Candidate3 = (1)Partial (2)Partial (definitions but not clearly presented as direct quotes) (3)P; Candidate4 = (1)P (2)P/Partial (direct quotes with sources, but exact wording unverifiable) (3)P. Main quality differences: [2] does not meet the \u201cquoted definitions\u201d requirement, and [3] does not clearly provide quotes. Between [1] and [4], both supply attributed quotations, but [4] is more directly aligned with the prompt via a cleaner, more consistently \u201cquoted-definition\u201d presentation and stronger coverage of commonly cited authors.\",\n  \"ratings\": [\n    5.4,\n    1.8,\n    4.2,\n    6.1\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=5.400\n  [2] INCORRECT score=1.800\n  [3] INCORRECT score=4.200\n  [4] INCORRECT score=6.100\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=5.400\n  [2] INCORRECT score=1.800\n  [3] INCORRECT score=4.200\n  [4] INCORRECT score=6.100",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Outcome Summary\n\nBoth rollouts produced identical outputs (ratings [5.4, 1.8, 4.2, 6.1], best=[4]), indicating zero execution variance \u2014 the failure is systematic, rooted in missing playbook strategy rather than random agent error. The correct candidate was [1]; the agent ranked [4] highest. Pairwise accuracy was 66.7% (2/3 correct-vs-incorrect pairs).\n\n## Root Cause: Undetected Cross-Candidate Quote Contradictions\n\nThe decisive failure is that Candidates 1, 3, and 4 all cite overlapping authors (Mitchell, Goodfellow et al., Domingos, Bishop/Murphy) but attribute DIFFERENT quoted text to each. For example:\n- Mitchell in [1]: 'A model is a system that has been learned from data and can be used to make predictions or decisions about new data.'\n- Mitchell in [4]: 'A model is a system that has been learned from data. It is a mathematical representation of the relationships among variables in the data.'\n\nThese are contradictory attributions \u2014 at most one can be the real quote. Entry [29e534bd] explicitly mandates a DIFF TABLE for this exact scenario and states: 'at least one must be wrong. Flag all contradicted items as UNVERIFIED. Never resolve such contradictions by subjective plausibility.' The agent entirely failed to apply this procedure. Had it built the DIFF TABLE, it would have seen that Candidates 1 and 4 are mutually contradictory on nearly every quote, making both equally suspect on those items. The agent instead used subjective presentation quality ('cleaner, more consistently quoted-definition presentation') to break what should have been a factual stalemate \u2014 the exact pattern the entry was designed to prevent.\n\n## Root Cause: Presentation Bias Overriding Factuality Gate\n\nEntry [8e0d9579] says formatting 'never overrides factual correctness.' Entry [005004a4] says 'Accuracy assessment must complete BEFORE responsiveness, directness, or engagement quality can be credited.' The agent's reasoning acknowledged all quotes were 'paraphrased, not verifiable' but then used presentation quality as the tiebreaker. The VERIFICATION GATE was not run per-quote: no ISOLATE\u2192COUNTER\u2192CLASSIFY was performed for any specific quote in any candidate. The agent short-circuited to a holistic 'feels cleaner' judgment.\n\n## What's Missing: Mandatory DIFF TABLE Trigger for Attributed Claims\n\nThe [29e534bd] entry is correct in principle but was not applied. The missing element is a **hard trigger**: when candidates cite the same sources with different specific content (quotes, statistics, dates), the DIFF TABLE must fire BEFORE any relative scoring. The current entry frames it as a recommendation ('produce a DIFF TABLE'); it needs to be a mandatory gate, especially for factuality subset tasks.\n\n**Proposed procedure \u2014 ATTRIBUTION CONFLICT GATE:**\nTrigger: Any time 2+ candidates attribute specific content (quotes, numbers, dates) to the same named source.\n1. Build a table: rows = shared sources, columns = candidates, cells = the specific content attributed.\n2. Mark each row AGREE (same content) or CONTRADICT (different content).\n3. For CONTRADICT rows: all versions are UNVERIFIED. Neither version may serve as a scoring advantage for any candidate.\n4. Count uncontradicted claims per candidate. Only uncontradicted-and-plausible claims contribute to relative scoring.\n5. If the remaining uncontradicted claims are insufficient to differentiate candidates, score them within a narrow band \u2014 do NOT fall back to subjective presentation quality.\n\n## What's Missing: Handling All-Unverifiable Scenarios\n\nThe current VERIFICATION GATE handles the case where some claims are verifiable and some are not, but doesn't handle the case where ALL candidates' primary content is unverifiable (fabricated quotes that can't be checked). The playbook needs:\n- When all candidates present unverifiable attributed quotes and no concrete counter-facts can be stated for any, apply a **conservative scoring ceiling** \u2014 no candidate should score above ~5.0 on unverifiable primary content alone.\n- Differentiation should then come from secondary signals: (a) format compliance with the prompt's request, (b) internal consistency, (c) whether candidates hedge appropriately about quote accuracy vs. presenting fabricated text as certain.\n\n## Why Entry [29e534bd] Gets 'Harmful' Tag\n\nNot because the entry is wrong \u2014 it's correct \u2014 but because the agent appears to have read it without applying it, and the entry's framing as a soft recommendation rather than a hard gate may have contributed. The entry was available and directly applicable, yet the agent skipped its core procedure, suggesting the entry needs stronger triggering language or a mandatory intermediate artifact requirement.\n\n## Refinements Needed\n\n1. **[29e534bd]**: Add a hard trigger: 'When candidates cite the same named authors/sources, the DIFF TABLE is MANDATORY \u2014 it cannot be skipped. No relative scoring between such candidates may proceed until the table is complete.'\n2. **[005004a4]**: Add a clause: 'When ALL candidates present unverifiable attributed claims (quotes, statistics) and no concrete counter-facts can be stated, apply a CONSERVATIVE SCORING CEILING. Differentiate only on secondary signals (format compliance, internal consistency, appropriate hedging). Subjective presentation quality (\"cleaner,\" \"more professional\") must not serve as the sole differentiator among factually indistinguishable candidates.'\n3. **New entry needed**: An explicit procedure for evaluating responses that present attributed quotations \u2014 checking whether the quotes are formatted as direct quotes, whether the sources are real and relevant, whether cross-candidate contradictions exist, and defaulting to near-equal scores when verification is impossible."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Multiple candidates attribute different specific direct quotes to the same named sources (e.g., Mitchell quoted differently in [1] vs [4]). At most one version can be accurate. The agent detected no contradiction and used presentation quality to choose between them.",
+          "gap_type": "procedure",
+          "suggested_content": "ATTRIBUTION CONFLICT GATE (mandatory, fires before any relative scoring of candidates sharing named sources): 1) Identify all named sources cited by 2+ candidates. 2) Build a table: rows = shared sources, columns = candidates, cells = the specific text attributed. 3) Mark each row AGREE (identical content) or CONTRADICT (different content). 4) For CONTRADICT rows: all versions are UNVERIFIED \u2014 none may serve as a scoring advantage for any candidate. 5) Count remaining uncontradicted claims per candidate. Only uncontradicted-and-plausible claims contribute to relative differentiation. 6) If uncontradicted claims are insufficient to differentiate, score candidates within a narrow band (\u22640.3 gap). Subjective presentation quality must not serve as the tiebreaker among factually indistinguishable candidates.",
+          "trigger": "When 2+ candidates cite the same named author, book, paper, or source and attribute specific content (quotes, statistics, dates) to it"
+        },
+        {
+          "situation": "All candidates present unverifiable primary content (fabricated or paraphrased quotes presented as direct quotes). The VERIFICATION GATE handles individual claims but doesn't address the scenario where ALL candidates' core content fails verification. The agent had no procedure for what to do when accuracy assessment yields 'all unverifiable' \u2014 it fell back to presentation quality.",
+          "gap_type": "procedure",
+          "suggested_content": "ALL-UNVERIFIABLE CEILING: When VERIFICATION GATE classifies all candidates' primary differentiating content as UNVERIFIABLE-CONFIDENT, no candidate may receive a factuality-based advantage over another for that content. Apply a conservative scoring ceiling (no candidate above 5.5 on unverifiable-dominant content). Differentiation must come from secondary signals in this priority order: (a) format compliance with the prompt's explicit requirements, (b) internal consistency (no self-contradictions), (c) appropriate hedging about confidence level, (d) presence of verifiable structural facts (e.g., correct book titles, publication years, author names). Subjective presentation quality ('cleaner,' 'more professional') is the lowest-priority signal and alone cannot separate candidates by more than 0.3 points.",
+          "trigger": "When the VERIFICATION GATE classifies the primary content of all leading candidates as UNVERIFIABLE-CONFIDENT or when no concrete counter-facts can be stated for any candidate's core claims"
+        },
+        {
+          "situation": "Candidates present text in quotation marks attributed to specific real people/books, but the quotes cannot be verified as real. The agent treated these as legitimate quoted definitions without a fabrication-risk assessment.",
+          "gap_type": "checklist",
+          "suggested_content": "ATTRIBUTED QUOTE SUSPICION CHECKLIST: When a candidate presents direct quotes (in quotation marks) attributed to named sources: 1) Are the cited sources real and relevant to the topic? (Real author + real book = lower suspicion) 2) Do multiple candidates quote the same source with different wording? (If yes \u2192 high fabrication risk for all versions) 3) Does the quote sound like a generic textbook summary rather than a distinctive authorial voice? (Generic paraphrases formatted as direct quotes are a hallmark of LLM fabrication) 4) Does the candidate cite a specific page number or chapter? (Absence increases fabrication risk) 5) If 2+ suspicion flags trigger, classify the quotes as UNVERIFIED and do not credit them as evidence of superior factual quality.",
+          "trigger": "When any candidate presents text inside quotation marks attributed to a specific named author, book, paper, or course"
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nBoth rollouts produced identical outputs (ratings [5.4, 1.8, 4.2, 6.1], best=[4]), confirming the failure is systematic. The correct candidate was [1]; the agent selected [4]. Pairwise accuracy was 66.7%.\n\n**Entries that helped:** The constraint checklist (c8698dee) and perception scan (4abe1be4, 93b0e8f9) correctly identified all candidates and differentiated [2] (no quotes/attribution) and [3] (partial quotes) from [1] and [4]. These entries drove 2 of 3 correct pairwise comparisons.\n\n**Entries that failed to prevent the critical error:** Three entries were directly applicable to the [1]-vs-[4] discrimination but none triggered their protective procedures:\n- 29e534bd required a DIFF TABLE for overlapping sources with contradictory content \u2014 not built\n- 005004a4 required completing the VERIFICATION GATE before crediting presentation quality \u2014 gate was skipped after a cursory 'unverifiable' note\n- 8e0d9579 prohibited formatting from overriding factual correctness \u2014 directly violated when 'cleaner presentation' was the sole differentiator\n\n**Where I refine the anchor:** The anchor correctly identifies the root cause (undetected cross-candidate quote contradictions) and the presentation bias failure. I disagree with the anchor's 'neutral' tags on 005004a4, 8e0d9579, 71f11566, and 295257e2 \u2014 all four contained applicable rules that were violated or skipped, making them 'harmful' in the sense that their current formulations failed to enforce the behaviors they prescribe in exactly the scenario they target.\n\n**Root cause chain:** (1) Agent noted all quotes were 'paraphrased, not verifiable' but treated this as a resolved finding rather than a gate that blocks further quality comparison. (2) Without completing the VERIFICATION GATE or building a DIFF TABLE, the agent had no mechanism to detect that [1] and [4] attribute different quotes to Mitchell, Goodfellow et al., Domingos, Bishop, and Murphy \u2014 meaning at least one candidate is fabricating. (3) In the absence of factual differentiation, the agent fell back to 'cleaner presentation,' which multiple entries explicitly prohibit as a standalone differentiator.\n\n**True gap vs. weak application:** The DIFF TABLE procedure (29e534bd) and VERIFICATION GATE (005004a4) already exist but are formulated as soft recommendations. The genuine coverage gap is procedural: there is no explicit gate for (a) detecting attribution conflicts across candidates as a mandatory step, (b) handling the all-unverifiable scenario with a scoring ceiling, or (c) applying a fabrication-suspicion checklist specific to attributed direct quotes."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "Both rollouts are byte-identical, confirming a systematic reasoning failure rather than execution variance. The correct candidate [1] scored 5.4 while incorrect [4] scored 6.1. The agent noted all quotes were 'paraphrased, not verifiable' then used 'cleaner, more consistently quoted-definition presentation' to rank [4] above [1]\u2014violating at least three existing entries.\n\nI AGREE with the anchor that the core failure is the agent skipping the DIFF TABLE from [29e534bd]. Candidates [1] and [4] attribute different specific quote wordings to the same authors (Mitchell, Bishop, Goodfellow et al., Domingos, Murphy). Entry [29e534bd] explicitly says to flag these as UNVERIFIED and never resolve by subjective plausibility. The agent never constructed the table.\n\nI AGREE that [005004a4]'s VERIFICATION GATE was short-circuited\u2014the agent never ran ISOLATE\u2192COUNTER\u2192CLASSIFY on any specific quote. It also violated the SYMMETRY step: [4] was not scrutinized for the same 'unverifiable quotes' flaw applied loosely to [1].\n\nI DISAGREE with the anchor's 'harmful' tag for [29e534bd]. The entry contains correct and actionable guidance. The agent simply didn't follow it. Tagging it harmful conflates 'not applied' with 'caused harm.' The entry needs strengthening (trigger enforcement), not penalty. A harmful entry would be one whose advice, if followed, produces worse outcomes; following [29e534bd] would have prevented the error.\n\nI REFINE the anchor's root-cause analysis: the deepest general failure pattern is not just 'missed the DIFF TABLE.' It is a three-step breakdown: (1) the agent correctly identified all content as unverifiable, (2) it lacked an explicit protocol for what to do when ALL candidates' differentiating content is unverifiable, and (3) it defaulted to a subjective impression ('cleaner presentation') that its own rules explicitly prohibit as a tiebreaker. This is a recurring failure mode: when a verification gate yields INCONCLUSIVE for everyone, the agent falls back to the exact bias the verification gate was designed to prevent.\n\nThe most transferable lesson is about what to do after your verification process classifies the decisive differentiator as unverifiable for all options. The current playbook handles the binary case (some verified, some not) but not the all-unverifiable case, leaving a procedural gap the agent fills with prohibited heuristics.",
+      "principles": [
+        {
+          "statement": "When your verification process classifies ALL candidates' key differentiating content as unverifiable, compress their scores into a narrow band and differentiate only on secondary verifiable signals (format compliance, internal consistency, constraint satisfaction).",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": "005004a4",
+          "trigger": "After running a verification gate that returns UNVERIFIABLE for the primary distinguishing content of every candidate.",
+          "verification_or_artifact": "Before applying any tiebreaker, state it explicitly and confirm it is a verifiable signal, not a subjective impression like 'cleaner' or 'more professional.'",
+          "evidence": "Agent noted all quotes were 'paraphrased, not verifiable' for both [1] and [4], then used subjective 'cleaner presentation' to rank [4] higher\u2014exactly the bias the verification gate was supposed to block. A post-verification protocol for the all-unverifiable case would have forced near-equal scores."
+        },
+        {
+          "statement": "When multiple options cite the same named sources with different specific content, build a comparison table (rows=sources, columns=options, cells=claimed content) BEFORE scoring. All contradicted items are UNVERIFIED; no option may gain an advantage from contradicted content.",
+          "entry_kind": "artifact",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "29e534bd",
+          "trigger": "When 2+ options attribute specific content (quotes, numbers, dates) to the same named source and the attributed content differs.",
+          "verification_or_artifact": "Construct a literal table with the conflicting wordings. Mark each row AGREE or CONTRADICT. Subsequent scoring must reference the table\u2014any advantage claim must cite an uncontradicted row.",
+          "evidence": "Candidates [1] and [4] cite the same 6 authors with different quote wordings. The agent never built the DIFF TABLE, so it never noticed the mutual contradictions. Had the table been mandatory, the agent would have seen that neither [1] nor [4] could claim a factual advantage from those quotes."
+        },
+        {
+          "statement": "Before applying a tiebreaking criterion, explicitly name it and check whether your own evaluation rules prohibit it as a differentiator. If the criterion is subjective quality ('cleaner,' 'more professional') and your rules say factual accuracy must precede presentation, the criterion is blocked.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "Whenever you are about to use a qualitative impression to break a tie or separate closely scored candidates.",
+          "verification_or_artifact": "State: 'My tiebreaker is [X]. Rule [Y] says [Z]. Is [X] permitted under [Z]?' If not, find a permitted criterion or compress scores.",
+          "evidence": "The agent used 'cleaner, more consistently quoted-definition presentation' as the decisive criterion while entry [8e0d9579] says formatting 'never overrides factual correctness' and [005004a4] says accuracy must complete before engagement quality is credited. A self-audit step would have caught this contradiction."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Outcome & Variance\n\nBoth rollouts are byte-identical (ratings [5.4, 1.8, 4.2, 6.1], best=[4]), confirming a systematic failure with zero execution variance. The correct candidate was [1] (scored 5.4); the agent top-ranked incorrect [4] (scored 6.1). Pairwise accuracy was 66.7% (2/3 correct pairs).\n\n## Root Cause: Three-Step Breakdown\n\nThe failure follows a clear causal chain:\n\n1. **Undetected Cross-Candidate Quote Contradictions.** Candidates [1] and [4] both cite the same six named authors (Mitchell, Goodfellow et al., Domingos, Bishop, Murphy) but attribute *different specific quoted text* to each. For example, Mitchell is quoted differently in [1] vs [4]. At most one version can be accurate. Entry [29e534bd] explicitly mandates a DIFF TABLE for this scenario ('at least one must be wrong. Flag all contradicted items as UNVERIFIED') \u2014 but the agent never built the table. Had the DIFF TABLE been constructed, the agent would have seen that [1] and [4] are mutually contradictory on nearly every quote, making both equally suspect on those items.\n\n2. **All-Unverifiable Gap.** The agent correctly noted all quotes were 'paraphrased, not verifiable,' but treated this as a resolved finding rather than a gate that blocks further quality comparison. Entry [005004a4]'s VERIFICATION GATE handles individual claims (ISOLATE\u2192COUNTER\u2192CLASSIFY) and the binary case (some verified, some not), but has no explicit protocol for what happens when ALL candidates' primary differentiating content is classified as unverifiable. The agent fell into the procedural gap.\n\n3. **Presentation Bias as Prohibited Tiebreaker.** Lacking factual differentiation, the agent used 'cleaner, more consistently quoted-definition presentation' to rank [4] above [1]. Entry [8e0d9579] says formatting 'never overrides factual correctness.' Entry [005004a4] says 'Accuracy assessment must complete BEFORE responsiveness, directness, or engagement quality can be credited.' The agent violated both.\n\n## Entry Impact Assessment\n\nEntries [93b0e8f9], [4abe1be4], [61b87a5f], and [c8698dee] were helpful: the perception scan, enumeration, and constraint checklist correctly identified all four candidates and drove 2 of 3 correct pairwise comparisons (correctly penalizing [2] for no quotes and [3] for partial quotes vs. [1]).\n\nEntries [29e534bd], [005004a4], and [8e0d9579] are tagged neutral \u2014 not harmful \u2014 because their content is correct and following them would have prevented the error. The agent simply did not apply them. The distinction matters: an entry whose advice is right but unenforced needs strengthening, not penalty. Tagging them harmful would conflate 'not applied' with 'caused harm when applied.'\n\n## Mutation Recommendations\n\n**Primary (high confidence): UPDATE [29e534bd]** \u2014 The DIFF TABLE is currently framed as a recommendation ('produce a DIFF TABLE'). It needs mandatory trigger language: when candidates cite the same named sources with different specific content, the DIFF TABLE must be constructed BEFORE any relative scoring. Add: (a) explicit trigger condition ('When 2+ candidates attribute specific content to the same named source'), (b) mandatory artifact requirement ('Build a table: rows = shared sources, columns = candidates, cells = specific content attributed. Mark each row AGREE or CONTRADICT.'), (c) scoring constraint ('For CONTRADICT rows: all versions are UNVERIFIED. Neither version may serve as a scoring advantage. If remaining uncontradicted claims are insufficient to differentiate, score candidates within a narrow band \u2014 do NOT fall back to subjective presentation quality.').\n\n**Secondary (medium-high confidence): UPDATE [005004a4]** \u2014 Add an ALL-UNVERIFIABLE CEILING clause: 'When the VERIFICATION GATE classifies ALL candidates' primary differentiating content as UNVERIFIABLE-CONFIDENT, no candidate may receive a factuality-based advantage from that content. Differentiation must come from secondary verifiable signals: (a) format compliance with the prompt's explicit requirements, (b) internal consistency, (c) appropriate hedging about confidence level. Subjective presentation quality (\"cleaner,\" \"more professional\") alone cannot separate candidates by more than 0.3 points.'\n\nA third lesson \u2014 explicit tiebreaker self-audit ('name your tiebreaker, confirm it is not prohibited by your own rules') \u2014 is already substantially covered by the combination of [8e0d9579], [005004a4]'s sequencing rule, and [93b0e8f9]'s re-read step. No new entry is needed for this; the existing entries already say the right things but the agent failed to apply them. The two updates above should create the mandatory gates that force compliance in exactly this scenario.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent failed to build the mandatory DIFF TABLE for cross-candidate attribution contradictions ([29e534bd] not applied), had no protocol for when all candidates' key content is unverifiable (gap in [005004a4]), and defaulted to presentation quality as a tiebreaker in violation of multiple existing rules.",
+      "important_disagreements": [
+        "Whether [29e534bd] is 'harmful' or 'neutral': Anchor and credit_attribution tagged harmful because the entry was available but unapplied, arguing soft framing contributed to the skip. Principle_extraction tagged neutral because the entry's content is correct and following it would have prevented the error. Resolved in favor of neutral \u2014 an entry that is correct but unenforced needs stronger trigger language (an update mutation), not a harmful tag that suggests the advice itself was wrong. The distinction between 'bad advice' and 'good advice with weak enforcement' matters for choosing the right mutation.",
+        "Whether [005004a4], [8e0d9579], [71f11566], [295257e2] are 'harmful': Credit_attribution tagged all four harmful because their rules were violated. Anchor and principle_extraction tagged neutral. Resolved as neutral \u2014 violation of a correct rule is evidence the rule needs stronger enforcement or a mandatory gate, not that the rule itself causes harm. The mutations should strengthen enforcement rather than penalize the content."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Two existing entries ([29e534bd] and [005004a4]) already contain the right principles but lack (a) mandatory trigger language for the DIFF TABLE and (b) a protocol for the all-unverifiable case. Both gaps are well-evidenced by all three reflections. Updating these entries is the smallest change that addresses the root cause. No genuinely new entry is needed \u2014 the all-unverifiable ceiling fits naturally as an addendum to [005004a4], and the mandatory trigger fits naturally in [29e534bd].",
+      "conservatism_rationale": "This is a single trace with two identical rollouts (effectively one observation). The failure pattern is clear and the fix is well-scoped within existing entries. A third possible mutation (tiebreaker self-audit) is already substantially covered by existing entries ([8e0d9579], [005004a4], [93b0e8f9]) and adding it would risk playbook bloat for a principle that is already stated but not enforced \u2014 the same problem the two updates aim to solve by adding mandatory gates. Two focused updates are preferable to three or more diffuse changes.",
+      "max_operations": 2
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Outcome & Variance\\n\\nBoth rollouts are byte-identical (ratings [5.4, 1.8, 4.2, 6.1], best=[4]), confirming a systematic failure with zero execution variance. The correct candidate was [1] (scored 5.4); the agent top-ranked incorrect [4] (scored 6.1). Pairwise accuracy was 66.7% (2/3 correct pairs).\\n\\n## Root Cause: Three-Step Breakdown\\n\\nThe failure follows a clear causal chain:\\n\\n1. **Undetected Cross-Candidate Quote Contradictions.** Candidates [1] and [4] both cite the same six named authors (Mitchell, Goodfellow et al., Domingos, Bishop, Murphy) but attribute *different specific quoted text* to each. For example, Mitchell is quoted differently in [1] vs [4]. At most one version can be accurate. Entry [29e534bd] explicitly mandates a DIFF TABLE for this scenario ('at least one must be wrong. Flag all contradicted items as UNVERIFIED') \u2014 but the agent never built the table. Had the DIFF TABLE been constructed, the agent would have seen that [1] and [4] are mutually contradictory on nearly every quote, making both equally suspect on those items.\\n\\n2. **All-Unverifiable Gap.** The agent correctly noted all quotes were 'paraphrased, not verifiable,' but treated this as a resolved finding rather than a gate that blocks further quality comparison. Entry [005004a4]'s VERIFICATION GATE handles individual claims (ISOLATE\u2192COUNTER\u2192CLASSIFY) and the binary case (some verified, some not), but has no explicit protocol for what happens when ALL candidates' primary differentiating content is classified as unverifiable. The agent fell into the procedural gap.\\n\\n3. **Presentation Bias as Prohibited Tiebreaker.** Lacking factual differentiation, the agent used 'cleaner, more consistently quoted-definition presentation' to rank [4] above [1]. Entry [8e0d9579] says formatting 'never overrides factual correctness.' Entry [005004a4] says 'Accuracy assessment must complete BEFORE responsiveness, directness, or engagement quality can be credited.' The agent violated both.\\n\\n## Entry Impact Assessment\\n\\nEntries [93b0e8f9], [4abe1be4], [61b87a5f], and [c8698dee] were helpful: the perception scan, enumeration, and constraint checklist correctly identified all four candidates and drove 2 of 3 correct pairwise comparisons (correctly penalizing [2] for no quotes and [3] for partial quotes vs. [1]).\\n\\nEntries [29e534bd], [005004a4], and [8e0d9579] are tagged neutral \u2014 not harmful \u2014 because their content is correct and following them would have prevented the error. The agent simply did not apply them. The distinction matters: an entry whose advice is right but unenforced needs strengthening, not penalty. Tagging them harmful would conflate 'not applied' with 'caused harm when applied.'\\n\\n## Mutation Recommendations\\n\\n**Primary (high confidence): UPDATE [29e534bd]** \u2014 The DIFF TABLE is currently framed as a recommendation ('produce a DIFF TABLE'). It needs mandatory trigger language: when candidates cite the same named sources with different specific content, the DIFF TABLE must be constructed BEFORE any relative scoring. Add: (a) explicit trigger condition ('When 2+ candidates attribute specific content to the same named source'), (b) mandatory artifact requirement ('Build a table: rows = shared sources, columns = candidates, cells = specific content attributed. Mark each row AGREE or CONTRADICT.'), (c) scoring constraint ('For CONTRADICT rows: all versions are UNVERIFIED. Neither version may serve as a scoring advantage. If remaining uncontradicted claims are insufficient to differentiate, score candidates within a narrow band \u2014 do NOT fall back to subjective presentation quality.').\\n\\n**Secondary (medium-high confidence): UPDATE [005004a4]** \u2014 Add an ALL-UNVERIFIABLE CEILING clause: 'When the VERIFICATION GATE classifies ALL candidates' primary differentiating content as UNVERIFIABLE-CONFIDENT, no candidate may receive a factuality-based advantage from that content. Differentiation must come from secondary verifiable signals: (a) format compliance with the prompt's explicit requirements, (b) internal consistency, (c) appropriate hedging about confidence level. Subjective presentation quality (\\\"cleaner,\\\" \\\"more professional\\\") alone cannot separate candidates by more than 0.3 points.'\\n\\nA third lesson \u2014 explicit tiebreaker self-audit ('name your tiebreaker, confirm it is not prohibited by your own rules') \u2014 is already substantially covered by the combination of [8e0d9579], [005004a4]'s sequencing rule, and [93b0e8f9]'s re-read step. No new entry is needed for this; the existing entries already say the right things but the agent failed to apply them. The two updates above should create the mandatory gates that force compliance in exactly this scenario.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent failed to build the mandatory DIFF TABLE for cross-candidate attribution contradictions ([29e534bd] not applied), had no protocol for when all candidates' key content is unverifiable (gap in [005004a4]), and defaulted to presentation quality as a tiebreaker in violation of multiple existing rules.\",\n    \"important_disagreements\": [\n      \"Whether [29e534bd] is 'harmful' or 'neutral': Anchor and credit_attribution tagged harmful because the entry was available but unapplied, arguing soft framing contributed to the skip. Principle_extraction tagged neutral because the entry's content is correct and following it would have prevented the error. Resolved in favor of neutral \u2014 an entry that is correct but unenforced needs stronger trigger language (an update mutation), not a harmful tag that suggests the advice itself was wrong. The distinction between 'bad advice' and 'good advice with weak enforcement' matters for choosing the right mutation.\",\n      \"Whether [005004a4], [8e0d9579], [71f11566], [295257e2] are 'harmful': Credit_attribution tagged all four harmful because their rules were violated. Anchor and principle_extraction tagged neutral. Resolved as neutral \u2014 violation of a correct rule is evidence the rule needs stronger enforcement or a mandatory gate, not that the rule itself causes harm. The mutations should strengthen enforcement rather than penalize the content.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Two existing entries ([29e534bd] and [005004a4]) already contain the right principles but lack (a) mandatory trigger language for the DIFF TABLE and (b) a protocol for the all-unverifiable case. Both gaps are well-evidenced by all three reflections. Updating these entries is the smallest change that addresses the root cause. No genuinely new entry is needed \u2014 the all-unverifiable ceiling fits naturally as an addendum to [005004a4], and the mandatory trigger fits naturally in [29e534bd].\",\n    \"conservatism_rationale\": \"This is a single trace with two identical rollouts (effectively one observation). The failure pattern is clear and the fix is well-scoped within existing entries. A third possible mutation (tiebreaker self-audit) is already substantially covered by existing entries ([8e0d9579], [005004a4], [93b0e8f9]) and adding it would risk playbook bloat for a principle that is already stated but not enforced \u2014 the same problem the two updates aim to solve by adding mandatory gates. Two focused updates are preferable to three or more diffuse changes.\",\n    \"max_operations\": 2\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "helpful": 2
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

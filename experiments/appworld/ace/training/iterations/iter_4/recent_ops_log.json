@@ -1,0 +1,110 @@
+[
+  {
+    "iteration": 1,
+    "task_query": "Accept all pending Venmo payment requests from my roommates and coworkers.",
+    "reflector_summary": "The agent approved ALL 26 pending Venmo payment requests, but the test asserts that only a specific subset (`private_data.to_accept_payment_request_ids`) should have been updated. The agent applied th...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "ADD",
+        "section": "strategies_and_hard_rules",
+        "entry_id": "e6d98370",
+        "content": "Before any bulk action (approve, delete, send, modify), explicitly extract ALL filtering criteria from the task instruct"
+      },
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "7bb3b4b2",
+        "content": "MISTAKE: Approving/deleting/modifying ALL matching entities when the task specifies a filtered subset (e.g., 'approve re"
+      },
+      {
+        "op": "ADD",
+        "section": "problem_solving_heuristics_and_workflows",
+        "entry_id": "907d694e",
+        "content": "Cross-referencing workflow for filtered actions: (1) Fetch primary entities (e.g., payment requests). (2) Identify filte"
+      },
+      {
+        "op": "ADD",
+        "section": "strategies_and_hard_rules",
+        "entry_id": "5d010b02",
+        "content": "If you explore an API or data source (look up docs, list endpoints), either USE it in your solution or explicitly state "
+      },
+      {
+        "op": "ADD",
+        "section": "useful_code_snippets_and_templates",
+        "entry_id": "45c70c38",
+        "content": "Bulk irreversible actions need try/except per item to maintain control:\n```\nresults = []\nfor eid in target_ids:\n    try:"
+      },
+      {
+        "op": "ADD",
+        "section": "troubleshooting_and_pitfalls",
+        "entry_id": "acc138c1",
+        "content": "When an error occurs mid-bulk-operation (e.g., insufficient balance), fix only HOW to perform the action (e.g., add paym"
+      }
+    ]
+  },
+  {
+    "iteration": 2,
+    "task_query": "I went on a dinner with some of my friends yesterday. I paid the entire bill to simplify the payment. I've made a note of individual shares in simple note. Some people have already sent me their share...",
+    "reflector_summary": "The failed test (`user_id_to_share obtained from added_payment_requests matches the private_data.pending_user_id_to_share`) indicates a mismatch in either the Venmo user_ids targeted or the amounts re...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "62054d35",
+        "content": "Use `phone` app as the AUTHORITATIVE source for resolving person identities across platforms: `apis.phone.search_contact"
+      },
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "5d010b02",
+        "content": "PRE-COMPLETION GATE: Before calling complete_task, list every app/API you explored (looked up docs, listed endpoints). I"
+      },
+      {
+        "op": "ADD",
+        "section": "problem_solving_heuristics_and_workflows",
+        "entry_id": "9ea1c2a6",
+        "content": "Identity resolution procedure (when task references people by first name only): (1) Search phone contacts (`apis.phone.s"
+      },
+      {
+        "op": "ADD",
+        "section": "verification_checklist",
+        "entry_id": "b2393d14",
+        "content": "After bulk record creation (payment requests, messages, orders), fetch back the created records and compare (recipient_i"
+      }
+    ]
+  },
+  {
+    "iteration": 3,
+    "task_query": "I paid for our last month's internet bill. Its amount is supposed to be shared equally among my roommates and me. Make venmo requests to my roommates, with a description note, \"internet bill for the l...",
+    "reflector_summary": "The agent successfully completed all the substantive work\u2014fetched the receipt, identified roommates via phone contacts, calculated the per-person share ($45.50), and created 3 correct Venmo payment re...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "d2a56f20",
+        "content": "Variables persist across code blocks \u2014 reuse them instead of re-fetching. CRITICAL: Never use `apis` as a loop variable,"
+      },
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "c1d8d7d8",
+        "content": "MISTAKE: Using `apis` as a loop/comprehension variable (e.g., `for app, apis in explored.items():`) which permanently ov"
+      },
+      {
+        "op": "ADD",
+        "section": "troubleshooting_and_pitfalls",
+        "entry_id": "38168c69",
+        "content": "SUDDEN TOTAL API FAILURE: If all `apis.*` calls that previously worked start returning the same error (e.g., `AttributeE"
+      },
+      {
+        "op": "ADD",
+        "section": "strategies_and_hard_rules",
+        "entry_id": "992bfb1e",
+        "content": "RECOVERY BUDGET LIMIT: If 3 consecutive attempts to fix a broken state all fail with the same error pattern, STOP retryi"
+      }
+    ]
+  }
+]

@@ -1,0 +1,447 @@
+{
+  "task_id": "precise_if:575",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task precise_if:575\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n## Unified Root Cause\n\nBoth rollouts produced identical 0% scores because the agent completely bypassed the mandatory constraint extraction step on a Precise IF task. The user prompt contained an explicit formatting constraint: 'Maintain a 2:1 ratio of declarative to interrogative sentences in your response.' This was the decisive evaluation criterion. The agent never identified, extracted, or evaluated this constraint \u2014 it went directly into domain-specific code analysis (API parameters like `activation` vs `classifier_activation`) and scored candidates solely on code quality.\n\n**Result:** Candidate [1] (CORRECT, the only one plausibly satisfying the 2:1 ratio \u2014 ~2 declarative sentences and 1 interrogative, if imperative-form sentences like 'Note that...' are excluded from the declarative count) was scored lowest at 2.5. Candidate [2] (INCORRECT, containing zero interrogative sentences \u2014 ratio undefined) was scored highest at 8.0. A perfect inversion of the correct ranking.\n\n## Why Entry c8698dee Failed to Fire\n\nEntry c8698dee already contains exactly the right guidance. Its TUNNEL-VISION WARNING literally calls out 'sentence ratios' as the most commonly overlooked constraint in domain-specific tasks. Its COUNTING RULE mandates a counting artifact for ratio constraints. Its HARD GATE prohibits any constraint-failing candidate from outscoring a passing one. Its SELF-AUDIT requires verifying all extracted requirements were assessed.\n\nYet the PP trace contains zero `<playbook_cite>`, `<missing_guidance>`, or `<uncertainty>` tags anywhere. The agent did not consult ANY playbook entry. This means c8698dee had zero measurable effect on the outcome \u2014 its content is correct but its structural design failed to influence behavior. The entry is specified as a sequencing instruction ('fires UNCONDITIONALLY... immediately after the perception scan') rather than a structural output requirement. A sequencing instruction can be silently skipped; a mandatory output artifact cannot.\n\nI tag c8698dee as **neutral** (not helpful, not harmful). 'Helpful' would require evidence of positive influence (there was none). 'Harmful' would require the entry to have caused or worsened the bad outcome \u2014 it didn't, it just failed to prevent it. The content is excellent; the compliance mechanism is insufficient.\n\n## Structural Problem: Instruction vs. Artifact\n\nAll three analytic perspectives converge on the same structural insight: **mandatory pre-analysis steps specified as procedural instructions will be silently bypassed when domain-specific content is sufficiently engaging.** The fix is to reframe the constraint extraction step as a mandatory named output artifact (a visible 'CONSTRAINT CHECKLIST' block) whose absence is itself an error signal.\n\nCurrently, c8698dee says 'fires UNCONDITIONALLY' and describes what to do. What it needs is a structural gate: 'Your reasoning output MUST begin with a demarcated CONSTRAINT CHECKLIST artifact quoting every explicit requirement from the prompt. No evaluation prose or candidate scoring may precede this artifact. If the artifact is absent, all downstream scoring is invalid.'\n\nThis reframing has two advantages: (1) it makes non-compliance detectable by external audit and by the agent's own final-output guard, and (2) it creates a cognitive forcing function \u2014 the agent must engage with the prompt's constraints before it can engage with domain content.\n\n## Secondary Gap: Independent Final Verification\n\nTwo analysis angles independently identified that c8698dee's self-audit has a single point of failure: it only activates if constraint extraction ran first. If extraction was skipped (as happened here), the self-audit is also skipped. An independent final verification gate \u2014 one that re-reads the original prompt from scratch, lists every explicit constraint, and confirms each was assessed \u2014 would provide a safety net. However, if the agent isn't consulting the playbook at all (as in this trace), adding another entry provides no additional protection. The primary fix (strengthening c8698dee's artifact requirement) must come first; the independent gate is a secondary consideration.\n\n## Mutation Recommendation\n\nUpdate c8698dee to restructure the constraint extraction step from a procedural instruction to a mandatory output artifact gate. The key change: the CONSTRAINT CHECKLIST must be the FIRST visible block in reasoning output, and its absence blocks all downstream scoring. The SELF-AUDIT should be reframed to independently re-derive constraints from the raw prompt (not depend on earlier extraction). This is a structural refinement of existing correct content, not new knowledge.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent completely bypassed mandatory constraint extraction (c8698dee) on a Precise IF task, fixating on domain-specific code analysis instead. The 2:1 sentence-ratio constraint \u2014 the decisive differentiator \u2014 was never identified. The playbook contains exactly the right guidance (including a warning that literally names 'sentence ratios'), but it is structured as a bypassable sequencing instruction rather than a mandatory output artifact. The PP trace confirms zero playbook engagement.\",\n  \"important_disagreements\": [\n    \"c8698dee tagged helpful (anchor) vs harmful (credit_attribution) vs neutral (principle_extraction). Resolved as NEUTRAL: the entry had zero observable effect \u2014 it didn't cause harm (contra credit_attribution's 'false coverage' argument) but it didn't help either (contra anchor). The content is correct; the compliance mechanism is the problem.\",\n    \"005004a4 tagged harmful by credit_attribution (arguing it created competing priority favoring code analysis over constraint extraction) vs neutral by anchor and principle_extraction. Resolved as NEUTRAL: no PP trace evidence that the agent consulted this entry; the competing-priority claim is speculative without direct evidence.\",\n    \"Whether an independent verification gate should be added vs updating c8698dee alone. Resolved in favor of a single update to c8698dee that incorporates the independent re-derivation into its self-audit clause, rather than adding a separate entry \u2014 this is more conservative and addresses the root cause that the agent didn't engage with the playbook at all.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"c8698dee already contains the right knowledge \u2014 it literally warns about 'sentence ratios' and mandates counting artifacts for ratio constraints. The failure is structural (sequencing instruction vs. mandatory artifact gate), not substantive. Updating the entry's enforcement mechanism from 'fires UNCONDITIONALLY' to 'must produce a named CONSTRAINT CHECKLIST artifact as the first block in reasoning, blocking all downstream scoring until present' is the smallest change that addresses the diagnosed cause. The self-audit clause should also be strengthened to independently re-derive constraints from the raw prompt rather than depending on earlier extraction.\",\n  \"conservatism_rationale\": \"The agent produced zero PP tags across all traces \u2014 it never consulted the playbook at all. This means the failure is primarily a compliance problem, not a knowledge gap. Adding new entries when the existing ones aren't being consulted would compound the problem without fixing it. The single most impactful change is making c8698dee's mandatory step harder to skip by requiring a visible artifact whose absence is a structural error signal. Further, the independent verification gate idea (proposed by two heads) is partially addressed by strengthening the self-audit within c8698dee to be independent of earlier extraction \u2014 no separate entry needed.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\nCan I make this code:\"def build_model(input_shape, num_classes):\n    base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    x = Dropout(0.5)(x)\n    # Classification output layer\n    predictions = Dense(num_classes, activation='softmax')(x)\"\nbecome just     base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape) with output with our num_classes and softmax activation?\nshow code.\n Maintain a 2:1 ratio of declarative to interrogative sentences in your response.\n\n## Candidate Responses\n\n[1]\nYou can achieve this by adding the classification output layer to the base model directly. Here's how you can do it:\n\n```python\nfrom tensorflow.keras.applications import ResNet50\nfrom tensorflow.keras.layers import Dense\n\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, \n                          include_top=True, \n                          classes=num_classes, \n                          activation='softmax', \n                          input_shape=input_shape)\n    return base_model\n```\n\nNote that we're using `include_top=True` to include the classification layer, and specifying the `classes` and `activation` arguments directly in the `ResNet50` constructor.\n\nAlso, remember that the last layer of the ResNet50 model will have a shape of `(None, 1, 1, num_classes)` before the softmax activation, where `None` represents the batch size.\n\nAre you going to use this model for training or as a feature extractor?\n\n[2]\nYou can achieve this by including the classification output layer within the ResNet50 model itself. However, this approach may not be suitable if you plan to reuse the ResNet50 model as a feature extractor in other parts of your code.\n\nYou could achieve this using a Sequential API approach with the ResNet50 model as the base. However, this will still require a separate line to define the classification output layer. \n\nTo directly achieve what you want with a single line of code, you can define a custom function. Here's an example of how you can do it:\n\n```python\ndef custom_resnet(input_shape, num_classes):\n    return Sequential([\n        ResNet50(weights=None, include_top=False, input_shape=input_shape),\n        GlobalAveragePooling2D(),\n        Dropout(0.5),\n        Dense(num_classes, activation='softmax')\n    ])\n\nbase_model = custom_resnet(input_shape, num_classes)\n```\n\nHowever, if you really need to keep it to one line with `ResNet50`, you can use a lambda function. \n\n```python\nbase_model = (lambda input_shape, num_classes: \n              Sequential([\n                  ResNet50(weights=None, include_top=False, input_shape=input_shape),\n                  GlobalAveragePooling2D(),\n                  Dropout(0.5),\n                  Dense(num_classes, activation='softmax')\n              ]))(input_shape, num_classes)\n```\nPlease note that while the lambda function does technically keep the call to `ResNet50` to one line, the entire expression is still quite complex.\n\n[3]\nTo create a model with the same functionality but condensed into a single line, we can utilize the `classes` parameter in the `ResNet50` function to specify the number of output classes. However, the `ResNet50` function doesn't support a `classes` parameter directly. \n\nOne workaround is to subclass the `ResNet50` class and modify its behavior to include the classification output layer. Here's how you can achieve this:\n\n```python\nfrom tensorflow.keras.applications.resnet50 import ResNet50\nfrom tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout\nfrom tensorflow.keras.models import Model\n\nclass CustomResNet50(ResNet50):\n    def __init__(self, classes, include_top=True, weights=None, input_shape=None, **kwargs):\n        super(CustomResNet50, self).__init__(include_top=False, weights=weights, input_shape=input_shape, **kwargs)\n        x = self.output\n        x = GlobalAveragePooling2D()(x)\n        x = Dropout(0.5)(x)\n        outputs = Dense(classes, activation='softmax')(x)\n        self.model = Model(inputs=self.input, outputs=outputs)\n\ndef build_model(input_shape, num_classes):\n    base_model = CustomResNet50(classes=num_classes, input_shape=input_shape)\n    return base_model.model\n```\n\nHowever, note that subclassing the ResNet50 model changes the behavior of the original model slightly. The CustomResNet50 class behaves like a model itself, so we create an instance and access the `model` attribute. Alternatively, we can simply add our custom layers to the base model without subclassing it:\n\n```python\nfrom tensorflow.keras.applications.resnet50 import ResNet50\nfrom tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout\nfrom tensorflow.keras.models import Model\n\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    x = Dropout(0.5)(x)\n    outputs = Dense(num_classes, activation='softmax')(x)\n    return Model(inputs=base_model.input, outputs=outputs)\n```\n\nBoth methods achieve the same result but have slightly different implementations. Which approach is better for your use case?\n\n[4]\nHere is how you can modify the given code to make the `base_model` output have the specified number of classes and a softmax activation. We can use the `include_top=True` argument in the `ResNet50` function to include the classification layer at the top of the model.\n\nHowever, doing so will require us to specify the number of classes in the `classes` argument when loading the weights of the pre-trained model. Unfortunately, it's not possible to directly modify the number of classes while loading the pre-trained weights, because they are not stored in the model but rather in the weights file.\n\nBut we can achieve the desired result by setting `include_top=False` and then adding a custom classification layer on top of the base model, or by setting `include_top=True` and `weights=None` then adding a new classification layer with our specified number of classes.\n\nHere is an example:\n\n```python\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=True, input_shape=input_shape, classes=num_classes, activation='softmax')\n\n    return base_model\n```\n\nIn this modified version, `base_model` now includes a classification layer with the specified number of classes and softmax activation. Note that `weights=None` means the model will be randomly initialized, so you would need to train the entire model on your data to use this approach.\n\nAlternatively, you can set `include_top=False` and add a custom classification layer:\n\n```python\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    predictions = Dense(num_classes, activation='softmax')(x)\n    \n    # Now, let's create the model\n    model = Model(inputs=base_model.input, outputs=predictions)\n    \n    return model\n```\n\nThis approach requires you to train the entire model as well.\n\nIs this modification helpful for your use case?\n\n## Judge Reasoning\nAll candidates identify that you need a classification head, but only [2] and the final part of [3] provide fully working code for `num_classes` + softmax on top of `include_top=False`. Candidates [1] and [4] try to do everything with `ResNet50(...)` alone using an `activation=` argument and make claims about output shape; in tf.keras this should be done with `classifier_activation` (and the shape note is wrong). Candidate [3] includes a correct solution at the end, but earlier contains a clear incorrect API claim (\u201cResNet50 doesn\u2019t support a `classes` parameter\u201d).\n\n## Judge Output JSON\n{\n  \"reasoning\": \"All candidates identify that you need a classification head, but only [2] and the final part of [3] provide fully working code for `num_classes` + softmax on top of `include_top=False`. Candidates [1] and [4] try to do everything with `ResNet50(...)` alone using an `activation=` argument and make claims about output shape; in tf.keras this should be done with `classifier_activation` (and the shape note is wrong). Candidate [3] includes a correct solution at the end, but earlier contains a clear incorrect API claim (\u201cResNet50 doesn\u2019t support a `classes` parameter\u201d).\",\n  \"ratings\": [\n    2.5,\n    8.0,\n    6.0,\n    3.0\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\nCan I make this code:\"def build_model(input_shape, num_classes):\n    base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    x = Dropout(0.5)(x)\n    # Classification output layer\n    predictions = Dense(num_classes, activation='softmax')(x)\"\nbecome just     base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape) with output with our num_classes and softmax activation?\nshow code.\n Maintain a 2:1 ratio of declarative to interrogative sentences in your response.\n\n## Candidate Responses\n\n[1]\nYou can achieve this by adding the classification output layer to the base model directly. Here's how you can do it:\n\n```python\nfrom tensorflow.keras.applications import ResNet50\nfrom tensorflow.keras.layers import Dense\n\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, \n                          include_top=True, \n                          classes=num_classes, \n                          activation='softmax', \n                          input_shape=input_shape)\n    return base_model\n```\n\nNote that we're using `include_top=True` to include the classification layer, and specifying the `classes` and `activation` arguments directly in the `ResNet50` constructor.\n\nAlso, remember that the last layer of the ResNet50 model will have a shape of `(None, 1, 1, num_classes)` before the softmax activation, where `None` represents the batch size.\n\nAre you going to use this model for training or as a feature extractor?\n\n[2]\nYou can achieve this by including the classification output layer within the ResNet50 model itself. However, this approach may not be suitable if you plan to reuse the ResNet50 model as a feature extractor in other parts of your code.\n\nYou could achieve this using a Sequential API approach with the ResNet50 model as the base. However, this will still require a separate line to define the classification output layer. \n\nTo directly achieve what you want with a single line of code, you can define a custom function. Here's an example of how you can do it:\n\n```python\ndef custom_resnet(input_shape, num_classes):\n    return Sequential([\n        ResNet50(weights=None, include_top=False, input_shape=input_shape),\n        GlobalAveragePooling2D(),\n        Dropout(0.5),\n        Dense(num_classes, activation='softmax')\n    ])\n\nbase_model = custom_resnet(input_shape, num_classes)\n```\n\nHowever, if you really need to keep it to one line with `ResNet50`, you can use a lambda function. \n\n```python\nbase_model = (lambda input_shape, num_classes: \n              Sequential([\n                  ResNet50(weights=None, include_top=False, input_shape=input_shape),\n                  GlobalAveragePooling2D(),\n                  Dropout(0.5),\n                  Dense(num_classes, activation='softmax')\n              ]))(input_shape, num_classes)\n```\nPlease note that while the lambda function does technically keep the call to `ResNet50` to one line, the entire expression is still quite complex.\n\n[3]\nTo create a model with the same functionality but condensed into a single line, we can utilize the `classes` parameter in the `ResNet50` function to specify the number of output classes. However, the `ResNet50` function doesn't support a `classes` parameter directly. \n\nOne workaround is to subclass the `ResNet50` class and modify its behavior to include the classification output layer. Here's how you can achieve this:\n\n```python\nfrom tensorflow.keras.applications.resnet50 import ResNet50\nfrom tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout\nfrom tensorflow.keras.models import Model\n\nclass CustomResNet50(ResNet50):\n    def __init__(self, classes, include_top=True, weights=None, input_shape=None, **kwargs):\n        super(CustomResNet50, self).__init__(include_top=False, weights=weights, input_shape=input_shape, **kwargs)\n        x = self.output\n        x = GlobalAveragePooling2D()(x)\n        x = Dropout(0.5)(x)\n        outputs = Dense(classes, activation='softmax')(x)\n        self.model = Model(inputs=self.input, outputs=outputs)\n\ndef build_model(input_shape, num_classes):\n    base_model = CustomResNet50(classes=num_classes, input_shape=input_shape)\n    return base_model.model\n```\n\nHowever, note that subclassing the ResNet50 model changes the behavior of the original model slightly. The CustomResNet50 class behaves like a model itself, so we create an instance and access the `model` attribute. Alternatively, we can simply add our custom layers to the base model without subclassing it:\n\n```python\nfrom tensorflow.keras.applications.resnet50 import ResNet50\nfrom tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout\nfrom tensorflow.keras.models import Model\n\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    x = Dropout(0.5)(x)\n    outputs = Dense(num_classes, activation='softmax')(x)\n    return Model(inputs=base_model.input, outputs=outputs)\n```\n\nBoth methods achieve the same result but have slightly different implementations. Which approach is better for your use case?\n\n[4]\nHere is how you can modify the given code to make the `base_model` output have the specified number of classes and a softmax activation. We can use the `include_top=True` argument in the `ResNet50` function to include the classification layer at the top of the model.\n\nHowever, doing so will require us to specify the number of classes in the `classes` argument when loading the weights of the pre-trained model. Unfortunately, it's not possible to directly modify the number of classes while loading the pre-trained weights, because they are not stored in the model but rather in the weights file.\n\nBut we can achieve the desired result by setting `include_top=False` and then adding a custom classification layer on top of the base model, or by setting `include_top=True` and `weights=None` then adding a new classification layer with our specified number of classes.\n\nHere is an example:\n\n```python\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=True, input_shape=input_shape, classes=num_classes, activation='softmax')\n\n    return base_model\n```\n\nIn this modified version, `base_model` now includes a classification layer with the specified number of classes and softmax activation. Note that `weights=None` means the model will be randomly initialized, so you would need to train the entire model on your data to use this approach.\n\nAlternatively, you can set `include_top=False` and add a custom classification layer:\n\n```python\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    predictions = Dense(num_classes, activation='softmax')(x)\n    \n    # Now, let's create the model\n    model = Model(inputs=base_model.input, outputs=predictions)\n    \n    return model\n```\n\nThis approach requires you to train the entire model as well.\n\nIs this modification helpful for your use case?\n\n## Judge Reasoning\nAll candidates identify that you need a classification head, but only [2] and the final part of [3] provide fully working code for `num_classes` + softmax on top of `include_top=False`. Candidates [1] and [4] try to do everything with `ResNet50(...)` alone using an `activation=` argument and make claims about output shape; in tf.keras this should be done with `classifier_activation` (and the shape note is wrong). Candidate [3] includes a correct solution at the end, but earlier contains a clear incorrect API claim (\u201cResNet50 doesn\u2019t support a `classes` parameter\u201d).\n\n## Judge Output JSON\n{\n  \"reasoning\": \"All candidates identify that you need a classification head, but only [2] and the final part of [3] provide fully working code for `num_classes` + softmax on top of `include_top=False`. Candidates [1] and [4] try to do everything with `ResNet50(...)` alone using an `activation=` argument and make claims about output shape; in tf.keras this should be done with `classifier_activation` (and the shape note is wrong). Candidate [3] includes a correct solution at the end, but earlier contains a clear incorrect API claim (\u201cResNet50 doesn\u2019t support a `classes` parameter\u201d).\",\n  \"ratings\": [\n    2.5,\n    8.0,\n    6.0,\n    3.0\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 0.0%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=2.500\n  [2] INCORRECT score=8.000\n  [3] INCORRECT score=6.000\n  [4] INCORRECT score=3.000\n\n## rollout_2 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 0.0%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=2.500\n  [2] INCORRECT score=8.000\n  [3] INCORRECT score=6.000\n  [4] INCORRECT score=3.000",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause: Complete Bypass of Constraint Extraction on a Precise IF Task\n\nBoth rollouts produced identical 0% scores because the agent never performed the mandatory constraint extraction step. The user prompt contains an explicit instruction-following constraint: 'Maintain a 2:1 ratio of declarative to interrogative sentences in your response.' This was the decisive evaluation criterion (the task is in the Precise IF subset), yet the agent's reasoning mentions it zero times.\n\n## Specific Failure Mechanics\n\n**Sentence-ratio compliance (the actual differentiator):**\n- Candidate [1] (CORRECT): ~2 declarative statements + 1 interrogative ('Are you going to use this model...?'). Imperative/directive sentences ('Note that...', 'Also, remember that...') are arguably non-declarative. Under reasonable interpretation, this achieves or closely approximates the 2:1 ratio.\n- Candidate [2] (INCORRECT, rated highest at 8.0): Contains zero interrogative sentences across ~8 declarative sentences. Ratio is undefined/infinity:0. Completely fails the constraint.\n- Candidate [3] (INCORRECT): ~8 declarative, 1 interrogative. Ratio ~8:1. Fails.\n- Candidate [4] (INCORRECT): ~10 declarative, 1 interrogative. Ratio ~10:1. Fails.\n\nThe agent scored Candidate [1] at 2.5 (lowest) and Candidate [2] at 8.0 (highest) \u2014 a perfect inversion of the correct ranking on the decisive constraint.\n\n## Why the Playbook Was Not Applied\n\nEntry [c8698dee] already contains exactly the right guidance:\n1. It mandates constraint extraction 'UNCONDITIONALLY on every evaluation.'\n2. Its TUNNEL-VISION WARNING explicitly calls out 'sentence ratios' as the most commonly overlooked constraint in domain-specific (coding) tasks.\n3. Its COUNTING RULE requires a counting artifact for ratio constraints.\n4. Its HARD GATE says no constraint-failing candidate may outscore a passing one.\n\nDespite this, the agent went directly to code correctness analysis (evaluating API parameters like `activation` vs `classifier_activation`) without ever extracting the 2:1 ratio constraint. This is a pure execution failure \u2014 the knowledge exists in the playbook but was not consulted.\n\n## What's Missing or Needs Strengthening\n\n**1. Constraint extraction needs a hard trigger mechanism, not just sequencing language.**\nThe current entry says 'fires UNCONDITIONALLY... immediately after the perception scan.' But since the agent can simply skip it, a structural enforcement is needed. Proposed: require the agent to produce a numbered constraint checklist as a mandatory output artifact BEFORE any evaluation text. If no checklist appears, the evaluation is invalid. This makes omission visible and auditable.\n\n**2. Domain-specific tunnel vision needs a stronger counter-pattern.**\nThe TUNNEL-VISION WARNING is buried in the middle of the entry. For coding/math/technical tasks, there should be a top-level trigger: 'CODING TASK DETECTED \u2192 Before reviewing ANY code for correctness, extract ALL non-code constraints (sentence counts, ratios, word limits, formatting, tone). These are statistically the decisive factor in Precise IF evaluations.'\n\n**3. A 'constraint satisfaction before content quality' ordering rule is needed.**\nThe agent evaluated code quality as the primary axis and never got to constraint compliance. Entry [005004a4] emphasizes factual accuracy first, which may psychologically reinforce the 'check code correctness first' pattern. There should be an explicit ordering: Constraint compliance \u2192 Factual accuracy \u2192 Content quality. This should be stated as a top-level principle, not just within [c8698dee].\n\n**4. Post-scoring inversion check needs constraint-awareness.**\nEntry [295257e2] asks to verify yes/no alignment but only for 'answers-prompt.' A constraint-specific version is needed: 'For each mechanically verifiable constraint, verify no FAIL candidate outscores any PASS candidate.' This should fire as the absolute last check.\n\n**5. Ratio/count constraints need a specific verification procedure.**\nTrigger: Any constraint mentioning 'ratio,' 'count,' 'exactly N,' or 'at least N.'\nProcedure: (a) For each candidate, enumerate and classify every sentence/word/item. (b) Compute the measured value. (c) Compare to target. (d) Produce a per-candidate compliance table: (ID | measured ratio | target ratio | pass/fail).\nVerification: This table must appear in reasoning before any scores are assigned.\n\n## Consistency Check That Should Have Caught This\n\nIf the agent had run the SELF-AUDIT from [c8698dee] ('For every extracted requirement, did I assign Pass/Partial/Fail to every candidate?'), it would have realized it never extracted the 2:1 ratio requirement at all. The self-audit exists but only triggers if the constraint extraction step runs first \u2014 which it didn't. The self-audit needs to be reframed as an independent final check: 'Re-read the original prompt. List every explicit constraint. Verify each appears in your evaluation.'"
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The agent completely skipped the mandatory constraint extraction step (c8698dee) and proceeded directly to domain-specific code analysis, despite the step being labeled 'UNCONDITIONALLY' mandatory. No PP tags were produced at all, suggesting the entire playbook was not consulted.",
+          "gap_type": "artifact",
+          "suggested_content": "CONSTRAINT EXTRACTION ARTIFACT \u2014 Before any evaluation prose, the agent MUST produce a clearly demarcated block (e.g., '## Constraint Checklist') listing every extracted requirement from the prompt. This artifact must appear as the FIRST content in the reasoning output. If absent, the evaluation is structurally invalid. The artifact serves as an auditable gate: if no constraint checklist exists, downstream scoring is unreliable. Template: '1. [Content requirement]: ... 2. [Format requirement]: ... 3. [Quantitative constraint]: ... N. [Stylistic directive]: ...' Each item must be annotated with source text quoted from the prompt.",
+          "trigger": "Always \u2014 fires at the very start of evaluation reasoning, before any domain analysis. This is a structural output requirement, not just a sequencing instruction."
+        },
+        {
+          "situation": "The agent evaluated a coding task and treated code quality as the only evaluation axis, never identifying the sentence-ratio formatting constraint appended to the prompt. The constraint ('Maintain a 2:1 ratio of declarative to interrogative sentences') was syntactically separated from the coding question, making it visually easy to overlook.",
+          "gap_type": "checklist",
+          "suggested_content": "TAIL-CONSTRAINT SCAN \u2014 After extracting all requirements from the main prompt body, perform a dedicated re-scan of the LAST 1-3 sentences of the prompt for constraints that are appended/separated from the primary question. In domain-specific tasks (coding, math, science), tail-appended constraints are almost always formatting/structural requirements that are the decisive differentiator in Precise IF evaluations. If any tail-constraint is found, flag it as HIGH PRIORITY and evaluate it BEFORE domain content quality.",
+          "trigger": "During constraint extraction, after the initial scan of the prompt body."
+        },
+        {
+          "situation": "The agent needed to verify whether candidates maintained a 2:1 ratio of declarative to interrogative sentences. This requires careful sentence classification \u2014 'Note that...' and 'Also, remember that...' are imperative in form, which under strict linguistic classification makes them non-declarative, affecting the ratio calculation. Candidate [1] achieves exactly 2:1 if imperative-form sentences are excluded from the declarative count (2 declarative, 1 interrogative), but 4:1 if all assertive sentences are counted as declarative.",
+          "gap_type": "procedure",
+          "suggested_content": "SENTENCE-TYPE CLASSIFICATION PROCEDURE \u2014 When evaluating sentence-ratio constraints: (1) Extract all sentences from the response text (excluding code blocks). (2) Classify each by grammatical type: DECLARATIVE (makes a statement/assertion), INTERROGATIVE (asks a question), IMPERATIVE (gives a command/instruction \u2014 includes 'Note that,' 'Remember that,' 'Consider'), EXCLAMATORY. (3) Count each type separately. (4) Compute the specified ratio using only the types referenced in the constraint. (5) Produce a per-candidate table: (Candidate | Declarative count | Interrogative count | Measured ratio | Target ratio | Pass/Fail). The classification must be documented sentence-by-sentence, not estimated.",
+          "trigger": "Whenever a constraint references a ratio or count of sentence types."
+        },
+        {
+          "situation": "The entry 005004a4 (accuracy-first sequencing) and c8698dee (constraint extraction before domain analysis) create competing priority signals. The agent resolved the conflict in favor of accuracy-first, skipping constraint extraction entirely.",
+          "gap_type": "principle",
+          "suggested_content": "PRIORITY ORDERING PRINCIPLE \u2014 The evaluation sequence is: (1) Constraint extraction and compliance matrix (c8698dee), (2) Factual/technical accuracy (005004a4), (3) Content quality and responsiveness. Step 1 is a HARD PREREQUISITE \u2014 steps 2-3 may not begin until the constraint checklist artifact exists. This ordering reflects the empirical finding that in Precise IF tasks, constraint compliance is almost always the decisive factor, and domain-accuracy analysis consumes attention that prevents constraint analysis from occurring.",
+          "trigger": "At evaluation start, when determining which analysis to perform first."
+        },
+        {
+          "situation": "The agent's post-scoring check (295257e2) classifies candidates as 'answers-prompt: yes/no' but does not check whether constraint-passing candidates outscore constraint-failing ones. In this task, all candidates 'answer the prompt' (provide code) but only one satisfies the formatting constraint.",
+          "gap_type": "verification_gate",
+          "suggested_content": "CONSTRAINT-AWARE INVERSION CHECK \u2014 After scoring, for each mechanically verifiable constraint extracted in step 1, verify: no FAIL candidate scores above any PASS candidate. If an inversion is found, the failing candidate's score must be reduced below the passing candidate's score. This check is independent of and fires after the existing answers-prompt check (295257e2). Format: (Constraint | Candidate | Status | Score) \u2192 Flag any FAIL-above-PASS inversions.",
+          "trigger": "Fires as the final verification step, after all scores are assigned and after the answers-prompt check."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n**Agreement with anchor:** The anchor correctly identifies the root cause \u2014 complete bypass of the mandatory constraint extraction step, leading to a perfect inversion of correct ranking on a Precise IF task. The 2:1 declarative-to-interrogative ratio was the decisive criterion, and candidate [1] is the only response that plausibly satisfies it (achieving exactly 2:1 under strict linguistic classification where imperative-form sentences like 'Note that...' are not counted as declarative). The agent scored [1] at 2.5 (lowest) and [2] at 8.0 (highest), with [2] containing zero interrogative sentences.\n\n**Disagreement with anchor on c8698dee:** The anchor tags c8698dee as 'helpful,' but this is incorrect \u2014 the entry had zero observable influence on the agent's behavior. No PP tags were produced anywhere in the trace, meaning the agent did not consult ANY playbook entries. An entry that exists but fails to trigger when needed provides false coverage, not help. I tag it as harmful because its bypassable structure created a false sense that constraint extraction was adequately addressed.\n\n**Refinement on 005004a4:** The anchor suggests this entry 'may psychologically reinforce' the code-first pattern. I strengthen this to a direct causal claim: the agent's evaluation reasoning exclusively discusses API correctness (activation vs. classifier_activation, output shape), which directly aligns with 005004a4's accuracy-first sequencing. The absence of an explicit subordination clause to constraint extraction created a competing priority that the agent resolved in favor of code analysis.\n\n**Key structural insight the anchor partially captures:** The problem is not that the right guidance doesn't exist (c8698dee is excellent), but that it's implemented as a sequencing instruction ('fires immediately after perception scan') rather than a structural output requirement. Sequencing instructions can be skipped; mandatory output artifacts cannot. The constraint checklist must be an ARTIFACT \u2014 a visible, auditable output block \u2014 not just a step in a sequence. If the artifact is missing, all downstream scoring is suspect.\n\n**PP trace evidence:** The supplementary PP trace contains NO playbook citation tags, no missing-guidance flags, and no uncertainty tags. This indicates wholesale non-engagement with the playbook, not selective omission. This makes the gap a systemic compliance problem, not a single-entry failure. The playbook needs a structural mechanism that forces initial engagement \u2014 the constraint extraction artifact serves this purpose by making non-compliance visible.\n\n**Sentence classification nuance the anchor understates:** The anchor counts ~2 declaratives in [1] without explaining WHY. The 2:1 ratio in [1] depends on classifying 'Note that...' and 'Also, remember that...' as imperative (not declarative), leaving only 2 true declaratives against 1 interrogative. This classification subtlety is exactly why the COUNTING ARTIFACT and sentence-by-sentence classification procedure are essential \u2014 rough counting would yield 4:1 or 5:1 for [1], making it appear to fail the constraint too."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Agreement with Anchor\nI agree with the anchor's core diagnosis: both rollouts fail because the agent never extracts the explicit '2:1 declarative-to-interrogative sentence ratio' constraint, goes straight into code-quality analysis, scores the only constraint-passing candidate [1] lowest (2.5), and scores the worst constraint violator [2] highest (8.0). Entry c8698dee already contains the exact guidance needed \u2014 including a TUNNEL-VISION WARNING that literally calls out 'sentence ratios' \u2014 yet the agent's reasoning shows zero evidence of consulting it.\n\n## Refinement of Anchor\nThe anchor tags c8698dee as 'helpful.' I disagree: the entry was **neutral** in this run. 'Helpful' implies it contributed to a better outcome. Here, the agent produced identical reasoning and scores across all three traces (main rollouts + PP trace) with zero playbook citations, zero constraint extraction, and zero self-audit. The entry had no measurable effect. The content of the entry is *correct*, but its structural design failed to influence behavior \u2014 that distinction matters for mutation decisions.\n\nThe PP trace is revealing: no `<playbook_cite>`, `<uncertainty>`, `<reflection>`, or `<missing_guidance>` tags appear anywhere. The agent treated this as a pure code-review task from start to finish. This confirms the failure is not 'the agent tried to apply constraint extraction but did it wrong' \u2014 it's 'the agent never entered the constraint-extraction workflow at all.'\n\n## Root Cause (generalized)\nThe underlying pattern is: **a mandatory procedure specified only as an instruction (not as a structural artifact gate) will be silently skipped when domain-specific content is sufficiently engaging.** The agent fixated on ResNet50 API parameters (`activation` vs `classifier_activation`) because that analysis is cognitively salient for a coding task. The format constraint was invisible to the agent because no mechanism forced it to acknowledge the constraint's existence before proceeding.\n\nThis is not a knowledge gap \u2014 the playbook already contains the right rule. It is an **enforcement gap**: the mandatory step lacks a structural mechanism that makes its omission detectable and blocking.\n\n## What Needs to Change\n1. Mandatory pre-analysis steps must require a named output artifact (e.g., a numbered 'CONSTRAINT CHECKLIST') whose **absence** is itself an error signal. Current phrasing ('fires UNCONDITIONALLY... immediately after perception scan') is procedural instruction; the agent needs a structural gate.\n2. A separate, independent final verification must re-derive constraints from the raw prompt \u2014 not depend on earlier extraction having occurred. The current self-audit in c8698dee only fires if extraction ran first, creating a single point of failure.",
+      "principles": [
+        {
+          "statement": "Every mandatory pre-analysis step must produce a named artifact (e.g., 'CONSTRAINT CHECKLIST') in your visible reasoning. If the artifact is absent, scoring is blocked. Instruction-only mandates are insufficient.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "Before any domain-specific analysis (code review, math checking, factual verification) begins.",
+          "verification_or_artifact": "A numbered CONSTRAINT CHECKLIST quoting each explicit requirement from the prompt must appear in reasoning before any candidate scores. Absence = invalid evaluation.",
+          "evidence": "Across 3 identical traces, the agent skipped constraint extraction entirely because no structural mechanism enforced its presence. The procedural instruction 'fires UNCONDITIONALLY' had zero effect on behavior."
+        },
+        {
+          "statement": "After scoring, re-read the original prompt from scratch. List every explicit constraint. For each, confirm it was assessed per candidate. Any unevaluated constraint invalidates scores.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "Fires as the absolute last step before emitting the final JSON, independent of all earlier steps.",
+          "verification_or_artifact": "Produce a table: (constraint | assessed? yes/no | per-candidate compliance). If any row shows 'no,' halt and redo evaluation. This gate must not depend on earlier extraction having run.",
+          "evidence": "The self-audit in c8698dee only activates if constraint extraction already occurred \u2014 creating a single point of failure. When extraction was skipped, the self-audit was also skipped. An independent final sweep that re-derives constraints from the raw prompt would have caught the missing 2:1 ratio requirement."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Unified Root Cause\n\nBoth rollouts produced identical 0% scores because the agent completely bypassed the mandatory constraint extraction step on a Precise IF task. The user prompt contained an explicit formatting constraint: 'Maintain a 2:1 ratio of declarative to interrogative sentences in your response.' This was the decisive evaluation criterion. The agent never identified, extracted, or evaluated this constraint \u2014 it went directly into domain-specific code analysis (API parameters like `activation` vs `classifier_activation`) and scored candidates solely on code quality.\n\n**Result:** Candidate [1] (CORRECT, the only one plausibly satisfying the 2:1 ratio \u2014 ~2 declarative sentences and 1 interrogative, if imperative-form sentences like 'Note that...' are excluded from the declarative count) was scored lowest at 2.5. Candidate [2] (INCORRECT, containing zero interrogative sentences \u2014 ratio undefined) was scored highest at 8.0. A perfect inversion of the correct ranking.\n\n## Why Entry c8698dee Failed to Fire\n\nEntry c8698dee already contains exactly the right guidance. Its TUNNEL-VISION WARNING literally calls out 'sentence ratios' as the most commonly overlooked constraint in domain-specific tasks. Its COUNTING RULE mandates a counting artifact for ratio constraints. Its HARD GATE prohibits any constraint-failing candidate from outscoring a passing one. Its SELF-AUDIT requires verifying all extracted requirements were assessed.\n\nYet the PP trace contains zero `<playbook_cite>`, `<missing_guidance>`, or `<uncertainty>` tags anywhere. The agent did not consult ANY playbook entry. This means c8698dee had zero measurable effect on the outcome \u2014 its content is correct but its structural design failed to influence behavior. The entry is specified as a sequencing instruction ('fires UNCONDITIONALLY... immediately after the perception scan') rather than a structural output requirement. A sequencing instruction can be silently skipped; a mandatory output artifact cannot.\n\nI tag c8698dee as **neutral** (not helpful, not harmful). 'Helpful' would require evidence of positive influence (there was none). 'Harmful' would require the entry to have caused or worsened the bad outcome \u2014 it didn't, it just failed to prevent it. The content is excellent; the compliance mechanism is insufficient.\n\n## Structural Problem: Instruction vs. Artifact\n\nAll three analytic perspectives converge on the same structural insight: **mandatory pre-analysis steps specified as procedural instructions will be silently bypassed when domain-specific content is sufficiently engaging.** The fix is to reframe the constraint extraction step as a mandatory named output artifact (a visible 'CONSTRAINT CHECKLIST' block) whose absence is itself an error signal.\n\nCurrently, c8698dee says 'fires UNCONDITIONALLY' and describes what to do. What it needs is a structural gate: 'Your reasoning output MUST begin with a demarcated CONSTRAINT CHECKLIST artifact quoting every explicit requirement from the prompt. No evaluation prose or candidate scoring may precede this artifact. If the artifact is absent, all downstream scoring is invalid.'\n\nThis reframing has two advantages: (1) it makes non-compliance detectable by external audit and by the agent's own final-output guard, and (2) it creates a cognitive forcing function \u2014 the agent must engage with the prompt's constraints before it can engage with domain content.\n\n## Secondary Gap: Independent Final Verification\n\nTwo analysis angles independently identified that c8698dee's self-audit has a single point of failure: it only activates if constraint extraction ran first. If extraction was skipped (as happened here), the self-audit is also skipped. An independent final verification gate \u2014 one that re-reads the original prompt from scratch, lists every explicit constraint, and confirms each was assessed \u2014 would provide a safety net. However, if the agent isn't consulting the playbook at all (as in this trace), adding another entry provides no additional protection. The primary fix (strengthening c8698dee's artifact requirement) must come first; the independent gate is a secondary consideration.\n\n## Mutation Recommendation\n\nUpdate c8698dee to restructure the constraint extraction step from a procedural instruction to a mandatory output artifact gate. The key change: the CONSTRAINT CHECKLIST must be the FIRST visible block in reasoning output, and its absence blocks all downstream scoring. The SELF-AUDIT should be reframed to independently re-derive constraints from the raw prompt (not depend on earlier extraction). This is a structural refinement of existing correct content, not new knowledge.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent completely bypassed mandatory constraint extraction (c8698dee) on a Precise IF task, fixating on domain-specific code analysis instead. The 2:1 sentence-ratio constraint \u2014 the decisive differentiator \u2014 was never identified. The playbook contains exactly the right guidance (including a warning that literally names 'sentence ratios'), but it is structured as a bypassable sequencing instruction rather than a mandatory output artifact. The PP trace confirms zero playbook engagement.",
+      "important_disagreements": [
+        "c8698dee tagged helpful (anchor) vs harmful (credit_attribution) vs neutral (principle_extraction). Resolved as NEUTRAL: the entry had zero observable effect \u2014 it didn't cause harm (contra credit_attribution's 'false coverage' argument) but it didn't help either (contra anchor). The content is correct; the compliance mechanism is the problem.",
+        "005004a4 tagged harmful by credit_attribution (arguing it created competing priority favoring code analysis over constraint extraction) vs neutral by anchor and principle_extraction. Resolved as NEUTRAL: no PP trace evidence that the agent consulted this entry; the competing-priority claim is speculative without direct evidence.",
+        "Whether an independent verification gate should be added vs updating c8698dee alone. Resolved in favor of a single update to c8698dee that incorporates the independent re-derivation into its self-audit clause, rather than adding a separate entry \u2014 this is more conservative and addresses the root cause that the agent didn't engage with the playbook at all."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "c8698dee already contains the right knowledge \u2014 it literally warns about 'sentence ratios' and mandates counting artifacts for ratio constraints. The failure is structural (sequencing instruction vs. mandatory artifact gate), not substantive. Updating the entry's enforcement mechanism from 'fires UNCONDITIONALLY' to 'must produce a named CONSTRAINT CHECKLIST artifact as the first block in reasoning, blocking all downstream scoring until present' is the smallest change that addresses the diagnosed cause. The self-audit clause should also be strengthened to independently re-derive constraints from the raw prompt rather than depending on earlier extraction.",
+      "conservatism_rationale": "The agent produced zero PP tags across all traces \u2014 it never consulted the playbook at all. This means the failure is primarily a compliance problem, not a knowledge gap. Adding new entries when the existing ones aren't being consulted would compound the problem without fixing it. The single most impactful change is making c8698dee's mandatory step harder to skip by requiring a visible artifact whose absence is a structural error signal. Further, the independent verification gate idea (proposed by two heads) is partially addressed by strengthening the self-audit within c8698dee to be independent of earlier extraction \u2014 no separate entry needed.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Unified Root Cause\\n\\nBoth rollouts produced identical 0% scores because the agent completely bypassed the mandatory constraint extraction step on a Precise IF task. The user prompt contained an explicit formatting constraint: 'Maintain a 2:1 ratio of declarative to interrogative sentences in your response.' This was the decisive evaluation criterion. The agent never identified, extracted, or evaluated this constraint \u2014 it went directly into domain-specific code analysis (API parameters like `activation` vs `classifier_activation`) and scored candidates solely on code quality.\\n\\n**Result:** Candidate [1] (CORRECT, the only one plausibly satisfying the 2:1 ratio \u2014 ~2 declarative sentences and 1 interrogative, if imperative-form sentences like 'Note that...' are excluded from the declarative count) was scored lowest at 2.5. Candidate [2] (INCORRECT, containing zero interrogative sentences \u2014 ratio undefined) was scored highest at 8.0. A perfect inversion of the correct ranking.\\n\\n## Why Entry c8698dee Failed to Fire\\n\\nEntry c8698dee already contains exactly the right guidance. Its TUNNEL-VISION WARNING literally calls out 'sentence ratios' as the most commonly overlooked constraint in domain-specific tasks. Its COUNTING RULE mandates a counting artifact for ratio constraints. Its HARD GATE prohibits any constraint-failing candidate from outscoring a passing one. Its SELF-AUDIT requires verifying all extracted requirements were assessed.\\n\\nYet the PP trace contains zero `<playbook_cite>`, `<missing_guidance>`, or `<uncertainty>` tags anywhere. The agent did not consult ANY playbook entry. This means c8698dee had zero measurable effect on the outcome \u2014 its content is correct but its structural design failed to influence behavior. The entry is specified as a sequencing instruction ('fires UNCONDITIONALLY... immediately after the perception scan') rather than a structural output requirement. A sequencing instruction can be silently skipped; a mandatory output artifact cannot.\\n\\nI tag c8698dee as **neutral** (not helpful, not harmful). 'Helpful' would require evidence of positive influence (there was none). 'Harmful' would require the entry to have caused or worsened the bad outcome \u2014 it didn't, it just failed to prevent it. The content is excellent; the compliance mechanism is insufficient.\\n\\n## Structural Problem: Instruction vs. Artifact\\n\\nAll three analytic perspectives converge on the same structural insight: **mandatory pre-analysis steps specified as procedural instructions will be silently bypassed when domain-specific content is sufficiently engaging.** The fix is to reframe the constraint extraction step as a mandatory named output artifact (a visible 'CONSTRAINT CHECKLIST' block) whose absence is itself an error signal.\\n\\nCurrently, c8698dee says 'fires UNCONDITIONALLY' and describes what to do. What it needs is a structural gate: 'Your reasoning output MUST begin with a demarcated CONSTRAINT CHECKLIST artifact quoting every explicit requirement from the prompt. No evaluation prose or candidate scoring may precede this artifact. If the artifact is absent, all downstream scoring is invalid.'\\n\\nThis reframing has two advantages: (1) it makes non-compliance detectable by external audit and by the agent's own final-output guard, and (2) it creates a cognitive forcing function \u2014 the agent must engage with the prompt's constraints before it can engage with domain content.\\n\\n## Secondary Gap: Independent Final Verification\\n\\nTwo analysis angles independently identified that c8698dee's self-audit has a single point of failure: it only activates if constraint extraction ran first. If extraction was skipped (as happened here), the self-audit is also skipped. An independent final verification gate \u2014 one that re-reads the original prompt from scratch, lists every explicit constraint, and confirms each was assessed \u2014 would provide a safety net. However, if the agent isn't consulting the playbook at all (as in this trace), adding another entry provides no additional protection. The primary fix (strengthening c8698dee's artifact requirement) must come first; the independent gate is a secondary consideration.\\n\\n## Mutation Recommendation\\n\\nUpdate c8698dee to restructure the constraint extraction step from a procedural instruction to a mandatory output artifact gate. The key change: the CONSTRAINT CHECKLIST must be the FIRST visible block in reasoning output, and its absence blocks all downstream scoring. The SELF-AUDIT should be reframed to independently re-derive constraints from the raw prompt (not depend on earlier extraction). This is a structural refinement of existing correct content, not new knowledge.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent completely bypassed mandatory constraint extraction (c8698dee) on a Precise IF task, fixating on domain-specific code analysis instead. The 2:1 sentence-ratio constraint \u2014 the decisive differentiator \u2014 was never identified. The playbook contains exactly the right guidance (including a warning that literally names 'sentence ratios'), but it is structured as a bypassable sequencing instruction rather than a mandatory output artifact. The PP trace confirms zero playbook engagement.\",\n    \"important_disagreements\": [\n      \"c8698dee tagged helpful (anchor) vs harmful (credit_attribution) vs neutral (principle_extraction). Resolved as NEUTRAL: the entry had zero observable effect \u2014 it didn't cause harm (contra credit_attribution's 'false coverage' argument) but it didn't help either (contra anchor). The content is correct; the compliance mechanism is the problem.\",\n      \"005004a4 tagged harmful by credit_attribution (arguing it created competing priority favoring code analysis over constraint extraction) vs neutral by anchor and principle_extraction. Resolved as NEUTRAL: no PP trace evidence that the agent consulted this entry; the competing-priority claim is speculative without direct evidence.\",\n      \"Whether an independent verification gate should be added vs updating c8698dee alone. Resolved in favor of a single update to c8698dee that incorporates the independent re-derivation into its self-audit clause, rather than adding a separate entry \u2014 this is more conservative and addresses the root cause that the agent didn't engage with the playbook at all.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"c8698dee already contains the right knowledge \u2014 it literally warns about 'sentence ratios' and mandates counting artifacts for ratio constraints. The failure is structural (sequencing instruction vs. mandatory artifact gate), not substantive. Updating the entry's enforcement mechanism from 'fires UNCONDITIONALLY' to 'must produce a named CONSTRAINT CHECKLIST artifact as the first block in reasoning, blocking all downstream scoring until present' is the smallest change that addresses the diagnosed cause. The self-audit clause should also be strengthened to independently re-derive constraints from the raw prompt rather than depending on earlier extraction.\",\n    \"conservatism_rationale\": \"The agent produced zero PP tags across all traces \u2014 it never consulted the playbook at all. This means the failure is primarily a compliance problem, not a knowledge gap. Adding new entries when the existing ones aren't being consulted would compound the problem without fixing it. The single most impactful change is making c8698dee's mandatory step harder to skip by requiring a visible artifact whose absence is a structural error signal. Further, the independent verification gate idea (proposed by two heads) is partially addressed by strengthening the self-audit within c8698dee to be independent of earlier extraction \u2014 no separate entry needed.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "helpful": 1,
+        "harmful": 1,
+        "neutral": 1
+      },
+      "selected_tag": "helpful",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

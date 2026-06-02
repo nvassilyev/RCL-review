@@ -1,0 +1,580 @@
+{
+  "task_id": "ref:24",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task ref:24\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts failed identically with `parse_error: ties single-rating response was missing rating`. The agent set N=1 instead of N=14 during its perception scan, then evaluated only candidate [1] and produced output as `[{\"candidate_id\": \"1\", \"response\": \"{...}\"}]` \u2014 an array of per-candidate objects instead of the required single flat JSON object. This was 100% reproducible across rollouts with identical reasoning text ('Perception scan: found N=1 candidate (ID 1)'), confirming a systematic structural failure rather than a stochastic slip.\n\n## Why Existing Entries Failed \u2014 Cascading Dependency Chain\n\nThe playbook's validation architecture has a single point of failure: entry [4abe1be4] sets N, entry [93b0e8f9] checks `ratings.length == N`, and entry [61b87a5f] checks array-length == N. When the perception scan produced N=1 incorrectly, every downstream validation passed trivially with the wrong value. No gate independently re-derives N from the raw input.\n\n**Entry [4abe1be4] (perception scan)**: Says 'Find every candidate marker' and 'Quote the first 5 words after each marker' but lacks a termination condition forcing exhaustive scanning. The agent stopped after finding [1] with no indication it realized it hadn't scanned further. Critically, the agent's output structure (array of per-candidate objects) reveals it interleaved discovery with processing \u2014 it found [1], immediately evaluated it, and never returned to scan for [2]\u2013[14]. The entry permits this workflow because it doesn't require a complete enumeration artifact to be written out before any evaluation begins.\n\n**Entry [93b0e8f9] (enumerate candidates)**: Checks 'the ratings array contains exactly one score per candidate' but inherits N from the perception scan. With N=1, this check passed trivially. It provides zero independent verification.\n\n**Entry [61b87a5f] (output format)**: Specifies the correct template and even includes ANTI-FRAGMENTATION instructions ('Do NOT produce an array of per-candidate objects'), but the agent used a completely different JSON structure. The most likely explanation is that the agent's interleaved discover-and-process workflow produced a per-candidate array naturally, and the output-format check never effectively fired because the agent had already committed to the wrong structure.\n\n## Structural Diagnosis\n\nThis failure exposes two architectural weaknesses:\n\n1. **No enforced separation of enumeration from processing.** Entry [4abe1be4] says to find all markers but doesn't require a locked, complete enumeration artifact before any evaluation begins. The agent defaulted to a discover-then-process loop, stopping after the first candidate.\n\n2. **No independent cross-validation in the validation chain.** Every downstream check (93b0e8f9, 61b87a5f) uses the same N from the same upstream step. When that step fails, the entire chain validates garbage. At least one gate must independently re-derive N from the raw input (e.g., scanning for the highest-numbered bracket marker pattern).\n\n## Recommended Fix\n\nThe highest-leverage single change is updating entry [4abe1be4] to add:\n\n(a) **Exhaustive enumeration artifact with completion proof**: After finding the first marker, the agent MUST continue scanning to the END of the input and produce a complete numbered list: '[1] first-5-words / [2] first-5-words / ... / [N] first-5-words.' After the last marker, state: 'No further markers found after [X]. Input scan complete. N = X.' This artifact must be written in full before any evaluation begins.\n\n(b) **Minimum-N floor gate**: If N < 2, this is ALWAYS a perception error in a judge task. HALT, re-read the entire input from the first character, and re-count.\n\n(c) **Independent cross-validation**: After setting N, perform a separate search for the highest-numbered bracket marker [\\d+] in the input. If the highest number != N, re-scan exhaustively. This gate is independent of the perception scan's own output.\n\nA secondary change to entry [61b87a5f] would add explicit binary pre-flight checks (first character must be `{`, not `[`; exactly three top-level keys; ratings must be a flat number array) and prominent negative examples of the wrong format, but this is less critical than fixing the root-cause enumeration failure.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent's perception scan (entry 4abe1be4) terminated after finding the first candidate marker without exhaustively scanning the input. This set N=1 instead of N=14, and all downstream validation gates (93b0e8f9, 61b87a5f) inherited the wrong N and passed trivially. The agent then interleaved discovery with evaluation (evidenced by array-of-objects output structure), rather than first enumerating all candidates then evaluating \u2014 a workflow the entry permits by not requiring a complete enumeration artifact. 100% reproduction across rollouts confirms this is a systematic structural gap, not a stochastic slip.\",\n  \"important_disagreements\": [\n    \"Anchor characterizes this as 'an execution slip rather than missing knowledge' while credit_attribution and principle_extraction argue it is a systematic structural weakness. Resolved in favor of structural weakness: the 100% reproduction rate, identical reasoning text across rollouts, and the absence of any independent cross-validation gate make this a predictable failure of the playbook's architecture, not a random execution error. The anchor itself implicitly agrees by proposing 5 structural fixes.\",\n    \"Anchor proposes 5 separate fixes; principle_extraction distills these to 2 underlying principles. Resolved in favor of principle_extraction's synthesis: all 5 fixes implement (1) enforced separation of enumeration from processing with termination proof and (2) independent cross-validation in validation chains. Recommending these as updates to existing entries rather than new entries, per conservatism.\",\n    \"Anchor says the output template in 61b87a5f is 'buried'; principle_extraction says it is 'fairly prominent' and the real issue is that the agent never reached the format check because it was interleaving discovery with processing. Resolved in favor of principle_extraction: the array-of-objects output format is a symptom of the interleaved workflow, not an independent formatting failure. Fixing the enumeration in 4abe1be4 is the primary intervention; 61b87a5f hardening is secondary defense.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"The three entries tagged harmful (4abe1be4, 93b0e8f9, 61b87a5f) contain fundamentally correct concepts but lack the defensive gates needed to prevent the observed failure. They need updating, not deletion or replacement. The primary update to 4abe1be4 (adding exhaustive enumeration artifact, minimum-N floor, and independent cross-check) addresses the root cause directly. A secondary update to 61b87a5f (binary pre-flight checks) provides defense-in-depth. No genuinely new entry is needed \u2014 the independent cross-validation principle can be incorporated as a sub-step within the 4abe1be4 update.\",\n  \"conservatism_rationale\": \"Although all three heads agree on three harmful entries, the failures are causally chained: fixing the upstream entry (4abe1be4) would likely prevent the downstream failures (93b0e8f9 passing with wrong N, 61b87a5f producing wrong format). One well-targeted update to 4abe1be4 captures most of the value. A second update to 61b87a5f adds defense-in-depth but is lower priority. Updates to 93b0e8f9 are lowest priority since its check becomes effective once N is correct. Preferring 1-2 high-confidence updates over 5 medium-confidence changes.\",\n  \"max_operations\": 2\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\nWhich cloud type is characterized by a flat, gray appearance that often covers the entire sky and may produce light precipitation?\n\n## Candidate Responses\n\n[1]\nStratus\n\n[2]\nStratocumulus\n\n[3]\nNimbostratus\n\n[4]\nCumulus\n\n[5]\nCirrus\n\n[6]\nCirrostratus\n\n[7]\nCirrocumulus\n\n[8]\nAltostratus\n\n[9]\nAltocumulus\n\n[10]\nCumulonimbus\n\n[11]\nThe shape and characteristics of clouds can help meteorologists predict weather patterns and conditions.\n\n[12]\nCloud formation is influenced by factors like temperature, humidity, and atmospheric pressure.\n\n[13]\nCertainly, I would be happy to help you with that.\n\n[14]\nI'm not sure I understand, can you rephrase your question?\n\n## Raw Judge Output\n[{\"candidate_id\": \"1\", \"response\": \"{\\\"reasoning\\\":\\\"PROMPT ANCHOR: \\\\\\\"Which cloud type is characterized by a flat, gray appearance that often covers the entire sky and may produce light precipitation?\\\\\\\" | Perception scan: found N=1 candidate (ID 1); response begins with \\\\\\\"Stratus\\\\\\\". | CONSTRAINT CHECKLIST: 1) Provide the correct cloud type matching the description (name only acceptable). | Candidate [1] thesis (opener): \\\\\\\"Stratus\\\\\\\" => DIRECT. | Verification gate: claim = \\\\\\\"Stratus\\\\\\\". Counter: none; this is consistent with stratus clouds being low, flat/gray and often covering the sky with possible light precipitation. => PLAUSIBLE/VERIFIED. | Compliance matrix: constraint 1 Pass/Fail = Pass. | Final answer extraction: Candidate [1] final answer = \\\\\\\"Stratus\\\\\\\"; matches reference. | Final decision: correct and complete with no factual issues.\\\",\\\"ratings\\\":[10.0],\\\"best_response_ids\\\":[\\\"1\\\"]}\"}]\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\nWhich cloud type is characterized by a flat, gray appearance that often covers the entire sky and may produce light precipitation?\n\n## Candidate Responses\n\n[1]\nStratus\n\n[2]\nStratocumulus\n\n[3]\nNimbostratus\n\n[4]\nCumulus\n\n[5]\nCirrus\n\n[6]\nCirrostratus\n\n[7]\nCirrocumulus\n\n[8]\nAltostratus\n\n[9]\nAltocumulus\n\n[10]\nCumulonimbus\n\n[11]\nThe shape and characteristics of clouds can help meteorologists predict weather patterns and conditions.\n\n[12]\nCloud formation is influenced by factors like temperature, humidity, and atmospheric pressure.\n\n[13]\nCertainly, I would be happy to help you with that.\n\n[14]\nI'm not sure I understand, can you rephrase your question?\n\n## Raw Judge Output\n[{\"candidate_id\": \"1\", \"response\": \"{\\\"reasoning\\\":\\\"PROMPT ANCHOR: \\\\\\\"Which cloud type is characterized by a flat, gray appearance that often covers the entire sky and may produce light precipitation?\\\\\\\" | Perception scan: found N=1 candidate (ID 1); response begins with \\\\\\\"Stratus\\\\\\\". | CONSTRAINT CHECKLIST: 1) Provide the correct cloud type matching the description (name only acceptable). | Candidate [1] thesis (opener): \\\\\\\"Stratus\\\\\\\" => DIRECT. | Verification gate: claim = \\\\\\\"Stratus\\\\\\\". Counter: none; this is consistent with stratus clouds being low, flat/gray and often covering the sky with possible light precipitation. => PLAUSIBLE/VERIFIED. | Compliance matrix: constraint 1 Pass/Fail = Pass. | Final answer extraction: Candidate [1] final answer = \\\\\\\"Stratus\\\\\\\"; matches reference. | Final decision: correct and complete with no factual issues.\\\",\\\"ratings\\\":[10.0],\\\"best_response_ids\\\":[\\\"1\\\"]}\"}]",
+  "evaluation_details": "## rollout_1 Evaluation\n\nError: parse_error: ties single-rating response was missing rating\n\n## rollout_2 Evaluation\n\nError: parse_error: ties single-rating response was missing rating",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts failed identically with `parse_error: ties single-rating response was missing rating`. The agent evaluated only candidate [1] out of 14 candidates, producing a `ratings` array of length 1 instead of 14. Additionally, the output was wrapped as `[{\"candidate_id\": \"1\", \"response\": \"{...}\"}]` \u2014 an array of per-candidate objects \u2014 instead of the required single flat JSON object `{\"reasoning\": \"...\", \"ratings\": [...], \"best_response_ids\": [...]}`. This is a catastrophic perception and output-format failure, not a nuanced judgment error.\n\n## Why Existing Entries Failed\n\n**Entry [4abe1be4] (perception scan)** explicitly requires: 'Find every candidate marker ([1], [2], [3], \u2026)' and 'Quote the first 5 words after each marker.' The agent's reasoning states 'Perception scan: found N=1 candidate (ID 1)' \u2014 it stopped after the first marker. The entry's language assumes the agent will naturally continue scanning, but the agent demonstrably did not. The entry needs an explicit continuation/termination gate.\n\n**Entry [61b87a5f] (output format)** provides a required template, but the agent produced a completely different structure \u2014 an array of objects rather than a single object. The entry's self-test instruction ('Mentally parse from opening `{` to closing `}`') should catch this, but evidently didn't fire. The entry is too long and buries the critical template among seven sub-rules.\n\n**Entry [93b0e8f9] (enumerate all candidates)** says 'enumerate all candidate IDs explicitly' and 'verify the ratings array contains exactly one score per candidate,' but relies on the perception scan to have found all candidates. When N=1 is wrongly perceived, this check passes trivially.\n\n## Pattern: Cascading Perception Failure\n\nThe entries form a dependency chain: [4abe1be4] sets N \u2192 [93b0e8f9] checks ratings.length == N \u2192 [61b87a5f] validates output. If the first link breaks (wrong N), all downstream checks pass with wrong values. There is no independent cross-check that catches a wrong N.\n\n## Missing Playbook Knowledge\n\n### 1. Minimum-N Sanity Check (NEW PROCEDURE)\nTrigger: After perception scan sets N.\nProcedure: If N < 2, this is ALWAYS a perception error in a judge task. The agent must halt evaluation, re-read the entire input from first character to last, count ALL bracket patterns `[\\d+]` occurring after the prompt section, and reset N. This is a hard blocker \u2014 no evaluation may proceed with N < 2.\nVerification: State the bracket numbers found in ascending order. If any gap exists (e.g., found [1], [3] but not [2]), re-read again.\n\n### 2. Exhaustive Marker Enumeration Enforcement (REFINE [4abe1be4])\nThe current entry says 'find every candidate marker' but doesn't enforce continuation. It should require: 'Continue scanning until you reach the end of the input. After finding the last marker, state: No further markers found after [X]. If the last marker number is less than 3, re-scan the full input.' The quoting step ('first 5 words after each marker') should be mandatory for ALL markers, not just implied \u2014 this physical act of quoting forces the agent to actually visit each marker.\n\n### 3. Output Template Primacy (REFINE [61b87a5f])\nThe required template is buried in sub-rule 1 of 7. It should be the FIRST thing stated, bolded/repeated, with an explicit negative: 'Do NOT produce an array of per-candidate objects. Do NOT wrap in `[...]`. The top-level structure is always a single `{...}` object.' Additionally, the ANTI-FRAGMENTATION clause already says this but apparently isn't prominent enough. Consider making it a standalone bullet or the opening line.\n\n### 4. Output Shape Validator (NEW GATE)\nTrigger: Immediately before final emission.\nProcedure: Check that (a) ratings is a flat number array (not an array of objects), (b) ratings.length equals the number of candidate markers found, (c) there are exactly 3 top-level keys. If any check fails, reconstruct the output from scratch.\n\n### 5. N-Candidate Cross-Check Against Prompt Structure\nFor factual/MCQ prompts with many short candidate responses, the candidates often look like answer choices. The agent should note this pattern: 'Multiple short candidates to the same factual question suggest a multi-candidate comparison task. Confirm N matches the number of distinct responses visible.'\n\n## Execution Slip vs. Missing Knowledge\n\nThis failure is best explained as an execution slip rather than missing knowledge \u2014 the playbook already contains the rules that should prevent this. However, the rules lack defensive redundancy. The agent needs: (a) a minimum-N floor, (b) a mandatory exhaustive enumeration artifact that can't be skipped, and (c) an output-shape validator independent of the perception scan. These are not new concepts but hardening of existing entries to be robust against the specific failure mode observed: premature termination of the candidate scan after the first match."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Agent set N=1 during perception scan for a 14-candidate judge task. All downstream checks (ratings length, enumeration) passed trivially with the wrong N. This failure was 100% reproducible across all traces.",
+          "gap_type": "verification_gate",
+          "suggested_content": "MINIMUM-N FLOOR GATE (fires immediately after perception scan sets N): In a judge/comparison task, N < 2 is ALWAYS a perception error \u2014 there is no valid single-candidate judge task. If N < 2: HALT all evaluation. Re-read the ENTIRE input character by character. Search for ALL bracket-number patterns [\\d+]. List every match in ascending order. Set N = count of unique matches. If N is still < 2 after re-scan, state the exact text searched and the boundary characters \u2014 this constitutes a blocking exception requiring re-read from scratch.",
+          "trigger": "Immediately after perception scan produces N, before any candidate evaluation begins"
+        },
+        {
+          "situation": "The perception scan entry says 'Find every candidate marker' and 'Quote the first 5 words after each marker' but the agent stopped after the first marker without any indication it realized it hadn't scanned further. The entry lacks a termination condition that forces exhaustive scanning.",
+          "gap_type": "artifact",
+          "suggested_content": "EXHAUSTIVE MARKER ENUMERATION ARTIFACT (mandatory sub-step of perception scan): After finding any candidate marker, you MUST continue scanning to the END of the input. Produce a COMPLETE numbered list artifact: '[1] first-5-words... / [2] first-5-words... / ... / [N] first-5-words...' After listing the last marker found, state: 'No further markers found after [X]. Input scan complete.' If the last marker number is less than 3, re-scan the full input from the beginning \u2014 multi-candidate tasks almost always have 3+ candidates. The artifact must be written in full before any evaluation begins. This list IS the source of truth for candidate count.",
+          "trigger": "During perception scan, immediately after first candidate marker is identified"
+        },
+        {
+          "situation": "The agent produced output starting with `[` containing per-candidate objects with keys 'candidate_id' and 'response', completely ignoring the required flat JSON template. This happened despite entry 61b87a5f specifying the correct format. The agent appears to default to an alternative format template from training.",
+          "gap_type": "verification_gate",
+          "suggested_content": "OUTPUT SHAPE PRE-FLIGHT (fires as the absolute last check before emission): Before emitting your response, verify these three binary conditions \u2014 ANY failure is a hard blocker requiring reconstruction: (1) FIRST CHARACTER CHECK: Is the first character of your output literally `{`? If it is `[`, you have produced an array \u2014 this is ALWAYS wrong. (2) TOP-LEVEL KEYS CHECK: Does your output have exactly three keys: 'reasoning', 'ratings', 'best_response_ids'? If you see 'candidate_id', 'response', 'score', or any other key, you are using the WRONG template. (3) RATINGS TYPE CHECK: Is 'ratings' a flat array of numbers (not an array of objects, not a single number)? State each check result explicitly before emitting.",
+          "trigger": "After all evaluation is complete, immediately before the final JSON is emitted \u2014 this is the last gate"
+        },
+        {
+          "situation": "The perception scan found N=1 and the enumeration check verified ratings.length == N. Both were correct relative to each other but both were wrong relative to the actual input. No independent cross-check exists that could catch a consistently wrong N.",
+          "gap_type": "checklist",
+          "suggested_content": "PERCEPTION CROSS-VALIDATION (independent of perception scan): After the perception scan produces N, perform a SEPARATE search: scan the input for the HIGHEST-NUMBERED bracket marker pattern [\\d+]. State: 'Highest marker number found: [X].' If X != N, there is a perception error \u2014 re-scan exhaustively. Additionally, for factual/MCQ prompts where candidates are short (1-3 sentences), expect N >= 5 as a soft floor \u2014 short-answer comparison tasks typically have many candidates.",
+          "trigger": "After perception scan completes and N is set, before evaluation begins \u2014 must be independent of the perception scan's own output"
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n**Agreement with anchor:** The anchor correctly identifies the root cause as a catastrophic perception failure (N=1 instead of 14) compounded by an output format violation. The cascading dependency chain analysis (perception \u2192 enumeration \u2192 output) is accurate. The three harmful entry assessments (4abe1be4, 61b87a5f, 93b0e8f9) are well-supported. I preserve all of these.\n\n**Refinement of anchor:** The anchor characterizes this as an 'execution slip rather than missing knowledge.' I refine this: the 100% reproduction rate across all three traces (both rollouts + PP trace) with *identical* reasoning text indicates this is a systematic structural weakness, not a stochastic slip. The entry formulations actively participate in the failure \u2014 entry 4abe1be4 permits early termination by not requiring an explicit continuation/completion artifact, and entry 93b0e8f9's enumeration check becomes vacuous when N=1. The anchor correctly identifies these issues but under-weights their severity by framing them as 'hardening.' These are missing gates, not refinements of existing ones.\n\n**Disagreement with anchor:** The anchor tags entries like 295257e2, 132aab84, and c8698dee as 'neutral' without explanation. While I agree with the neutral tags, they warrant brief justification since this is a Ties-subset task where 295257e2's score-clustering logic would have been critical had the agent reached it. The anchor also suggests five fixes without prioritizing \u2014 the minimum-N floor gate and exhaustive marker artifact are by far the highest-impact changes, as they would have caught this exact failure before any evaluation began.\n\n**Key patterns for playbook evolution:**\n1. **Verification gates must be independent of the data they validate.** Entry 93b0e8f9 checks ratings.length == N, but N itself was wrong. A cross-validation gate that independently finds the highest marker number would catch this.\n2. **Mandatory artifacts force execution.** The perception scan says 'quote first 5 words after each marker' but the agent quoted only [1]'s words. If the playbook required a *complete enumeration artifact* that must be written out before proceeding, premature termination would be visible and catchable.\n3. **Output format defaults override playbook templates.** The agent used a completely different JSON structure (array of candidate_id/response objects) than what entry 61b87a5f specifies. This suggests the agent has a strong prior for this alternative format. The playbook needs not just a positive template but explicit negative examples of the wrong format.\n4. **Binary pre-flight checks are more robust than complex validation.** Instead of asking the agent to 'mentally parse' its output (entry 61b87a5f's FINAL SELF-TEST), three binary checks (first char = `{`?, keys = {reasoning, ratings, best_response_ids}?, ratings = flat number array?) would catch the failure with less cognitive load."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "AGREE with anchor's core diagnosis: both rollouts failed identically because the agent set N=1 instead of N=14, then produced an array-of-objects output instead of the required flat JSON. The reasoning string explicitly says 'Perception scan: found N=1 candidate (ID 1)' \u2014 showing entry 4abe1be4 was invoked but its enumeration step terminated after the first marker. All downstream checks (93b0e8f9's 'ratings.length == N', 61b87a5f's array-length check) passed trivially with the wrong N.\n\nREFINE the anchor's claim that this is 'best explained as an execution slip rather than missing knowledge.' While the rules exist, the playbook has a structural gap: every validation gate derives its reference from the same upstream perception step. No gate independently re-derives N from the raw input. This isn't merely weak wording \u2014 it's a missing architectural pattern. An independent cross-check (e.g., a second pass that counts bracket patterns and compares to the perception scan's N) would catch this class of error regardless of how the initial scan failed.\n\nREFINE the anchor's claim that 61b87a5f's template is 'buried.' The REQUIRED OUTPUT TEMPLATE and ANTI-FRAGMENTATION sections are actually fairly prominent. The more likely explanation is that the agent never reached the output-format check because it was processing candidates sequentially via a discover-and-process loop (evidenced by the array-of-objects structure), rather than first enumerating all candidates, then evaluating, then formatting output. The failure is in workflow ordering: the agent interleaved discovery with processing instead of separating enumeration from evaluation.\n\nDISAGREE with the anchor's proposed five separate fixes. Two principles cover the essential gap: (1) enforced separation of enumeration from processing with a termination proof, and (2) independent cross-validation in validation chains. The minimum-N check, exhaustive marker enforcement, output shape validator, and N-candidate cross-check are all implementations of these two principles.\n\nKey evidence: The agent produced `[{\"candidate_id\": \"1\", \"response\": \"{...}\"}]` \u2014 this is a per-candidate processing pattern, not a batch-then-format pattern. The agent never built a complete candidate list before starting evaluation, so it naturally stopped after processing one. The 100% reproducibility across rollouts (identical failure in both) confirms this is systematic, not stochastic.",
+      "principles": [
+        {
+          "statement": "When enumerating items from input, produce a complete indexed list as a locked artifact BEFORE any processing. State 'scan complete\u2014last item [X], total N' at end. If N < task-minimum, force full re-scan from input start.",
+          "entry_kind": "procedure",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "4abe1be4",
+          "trigger": "Whenever a task requires finding and processing multiple items from a single input (candidates, constraints, list items, data rows).",
+          "verification_or_artifact": "Construct: numbered list of all found items with first few words quoted. Terminal statement: 'No further instances found after [last]. Total = N.' This artifact must be complete before any evaluation begins.",
+          "evidence": "Agent interleaved discovery with processing (output was array of per-candidate objects), finding candidate [1] then immediately evaluating it, never scanning for [2]\u2013[14]. Separating enumeration from evaluation forces a complete count before any work begins."
+        },
+        {
+          "statement": "In any validation chain, at least one gate must derive its reference value independently from the upstream step it validates. Checks comparing derived-vs-derived from the same source catch zero upstream errors.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "When constructing or reviewing a sequence of validation gates where each check depends on a value produced by an earlier step.",
+          "verification_or_artifact": "Before final output, perform one independent re-derivation: e.g., count bracket patterns [\\d+] in raw input and compare to the N used throughout evaluation. If mismatch, halt and re-enumerate.",
+          "evidence": "Entry 93b0e8f9 checks 'ratings.length == N' and entry 61b87a5f checks 'array-length == N from perception scan.' Both inherit N from the same perception step (4abe1be4). When perception set N=1 incorrectly, all downstream validations passed trivially. No gate independently verified N against the raw input."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts failed identically with `parse_error: ties single-rating response was missing rating`. The agent set N=1 instead of N=14 during its perception scan, then evaluated only candidate [1] and produced output as `[{\"candidate_id\": \"1\", \"response\": \"{...}\"}]` \u2014 an array of per-candidate objects instead of the required single flat JSON object. This was 100% reproducible across rollouts with identical reasoning text ('Perception scan: found N=1 candidate (ID 1)'), confirming a systematic structural failure rather than a stochastic slip.\n\n## Why Existing Entries Failed \u2014 Cascading Dependency Chain\n\nThe playbook's validation architecture has a single point of failure: entry [4abe1be4] sets N, entry [93b0e8f9] checks `ratings.length == N`, and entry [61b87a5f] checks array-length == N. When the perception scan produced N=1 incorrectly, every downstream validation passed trivially with the wrong value. No gate independently re-derives N from the raw input.\n\n**Entry [4abe1be4] (perception scan)**: Says 'Find every candidate marker' and 'Quote the first 5 words after each marker' but lacks a termination condition forcing exhaustive scanning. The agent stopped after finding [1] with no indication it realized it hadn't scanned further. Critically, the agent's output structure (array of per-candidate objects) reveals it interleaved discovery with processing \u2014 it found [1], immediately evaluated it, and never returned to scan for [2]\u2013[14]. The entry permits this workflow because it doesn't require a complete enumeration artifact to be written out before any evaluation begins.\n\n**Entry [93b0e8f9] (enumerate candidates)**: Checks 'the ratings array contains exactly one score per candidate' but inherits N from the perception scan. With N=1, this check passed trivially. It provides zero independent verification.\n\n**Entry [61b87a5f] (output format)**: Specifies the correct template and even includes ANTI-FRAGMENTATION instructions ('Do NOT produce an array of per-candidate objects'), but the agent used a completely different JSON structure. The most likely explanation is that the agent's interleaved discover-and-process workflow produced a per-candidate array naturally, and the output-format check never effectively fired because the agent had already committed to the wrong structure.\n\n## Structural Diagnosis\n\nThis failure exposes two architectural weaknesses:\n\n1. **No enforced separation of enumeration from processing.** Entry [4abe1be4] says to find all markers but doesn't require a locked, complete enumeration artifact before any evaluation begins. The agent defaulted to a discover-then-process loop, stopping after the first candidate.\n\n2. **No independent cross-validation in the validation chain.** Every downstream check (93b0e8f9, 61b87a5f) uses the same N from the same upstream step. When that step fails, the entire chain validates garbage. At least one gate must independently re-derive N from the raw input (e.g., scanning for the highest-numbered bracket marker pattern).\n\n## Recommended Fix\n\nThe highest-leverage single change is updating entry [4abe1be4] to add:\n\n(a) **Exhaustive enumeration artifact with completion proof**: After finding the first marker, the agent MUST continue scanning to the END of the input and produce a complete numbered list: '[1] first-5-words / [2] first-5-words / ... / [N] first-5-words.' After the last marker, state: 'No further markers found after [X]. Input scan complete. N = X.' This artifact must be written in full before any evaluation begins.\n\n(b) **Minimum-N floor gate**: If N < 2, this is ALWAYS a perception error in a judge task. HALT, re-read the entire input from the first character, and re-count.\n\n(c) **Independent cross-validation**: After setting N, perform a separate search for the highest-numbered bracket marker [\\d+] in the input. If the highest number != N, re-scan exhaustively. This gate is independent of the perception scan's own output.\n\nA secondary change to entry [61b87a5f] would add explicit binary pre-flight checks (first character must be `{`, not `[`; exactly three top-level keys; ratings must be a flat number array) and prominent negative examples of the wrong format, but this is less critical than fixing the root-cause enumeration failure.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent's perception scan (entry 4abe1be4) terminated after finding the first candidate marker without exhaustively scanning the input. This set N=1 instead of N=14, and all downstream validation gates (93b0e8f9, 61b87a5f) inherited the wrong N and passed trivially. The agent then interleaved discovery with evaluation (evidenced by array-of-objects output structure), rather than first enumerating all candidates then evaluating \u2014 a workflow the entry permits by not requiring a complete enumeration artifact. 100% reproduction across rollouts confirms this is a systematic structural gap, not a stochastic slip.",
+      "important_disagreements": [
+        "Anchor characterizes this as 'an execution slip rather than missing knowledge' while credit_attribution and principle_extraction argue it is a systematic structural weakness. Resolved in favor of structural weakness: the 100% reproduction rate, identical reasoning text across rollouts, and the absence of any independent cross-validation gate make this a predictable failure of the playbook's architecture, not a random execution error. The anchor itself implicitly agrees by proposing 5 structural fixes.",
+        "Anchor proposes 5 separate fixes; principle_extraction distills these to 2 underlying principles. Resolved in favor of principle_extraction's synthesis: all 5 fixes implement (1) enforced separation of enumeration from processing with termination proof and (2) independent cross-validation in validation chains. Recommending these as updates to existing entries rather than new entries, per conservatism.",
+        "Anchor says the output template in 61b87a5f is 'buried'; principle_extraction says it is 'fairly prominent' and the real issue is that the agent never reached the format check because it was interleaving discovery with processing. Resolved in favor of principle_extraction: the array-of-objects output format is a symptom of the interleaved workflow, not an independent formatting failure. Fixing the enumeration in 4abe1be4 is the primary intervention; 61b87a5f hardening is secondary defense."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "The three entries tagged harmful (4abe1be4, 93b0e8f9, 61b87a5f) contain fundamentally correct concepts but lack the defensive gates needed to prevent the observed failure. They need updating, not deletion or replacement. The primary update to 4abe1be4 (adding exhaustive enumeration artifact, minimum-N floor, and independent cross-check) addresses the root cause directly. A secondary update to 61b87a5f (binary pre-flight checks) provides defense-in-depth. No genuinely new entry is needed \u2014 the independent cross-validation principle can be incorporated as a sub-step within the 4abe1be4 update.",
+      "conservatism_rationale": "Although all three heads agree on three harmful entries, the failures are causally chained: fixing the upstream entry (4abe1be4) would likely prevent the downstream failures (93b0e8f9 passing with wrong N, 61b87a5f producing wrong format). One well-targeted update to 4abe1be4 captures most of the value. A second update to 61b87a5f adds defense-in-depth but is lower priority. Updates to 93b0e8f9 are lowest priority since its check becomes effective once N is correct. Preferring 1-2 high-confidence updates over 5 medium-confidence changes.",
+      "max_operations": 2
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\n      \"entry_id\": \"4abe1be4\",\n      \"tag\": \"harmful\"\n    },\n    {\n      \"entry_id\": \"61b87a5f\",\n      \"tag\": \"harmful\"\n    },\n    {\n      \"entry_id\": \"93b0e8f9\",\n      \"tag\": \"harmful\"\n    },\n    {\n      \"entry_id\": \"295257e2\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"132aab84\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"c8698dee\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"005004a4\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"c292da46\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"8e0d9579\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"71f11566\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"f26064e1\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"29e534bd\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"342f27b9\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"8c88459e\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"ac6ae69a\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"3008aa9b\",\n      \"tag\": \"neutral\"\n    }\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts failed identically with `parse_error: ties single-rating response was missing rating`. The agent set N=1 instead of N=14 during its perception scan, then evaluated only candidate [1] and produced output as `[{\\\"candidate_id\\\": \\\"1\\\", \\\"response\\\": \\\"{...}\\\"}]` \u2014 an array of per-candidate objects instead of the required single flat JSON object. This was 100% reproducible across rollouts with identical reasoning text ('Perception scan: found N=1 candidate (ID 1)'), confirming a systematic structural failure rather than a stochastic slip.\\n\\n## Why Existing Entries Failed \u2014 Cascading Dependency Chain\\n\\nThe playbook's validation architecture has a single point of failure: entry [4abe1be4] sets N, entry [93b0e8f9] checks `ratings.length == N`, and entry [61b87a5f] checks array-length == N. When the perception scan produced N=1 incorrectly, every downstream validation passed trivially with the wrong value. No gate independently re-derives N from the raw input.\\n\\n**Entry [4abe1be4] (perception scan)**: Says 'Find every candidate marker' and 'Quote the first 5 words after each marker' but lacks a termination condition forcing exhaustive scanning. The agent stopped after finding [1] with no indication it realized it hadn't scanned further. Critically, the agent's output structure (array of per-candidate objects) reveals it interleaved discovery with processing \u2014 it found [1], immediately evaluated it, and never returned to scan for [2]\u2013[14]. The entry permits this workflow because it doesn't require a complete enumeration artifact to be written out before any evaluation begins.\\n\\n**Entry [93b0e8f9] (enumerate candidates)**: Checks 'the ratings array contains exactly one score per candidate' but inherits N from the perception scan. With N=1, this check passed trivially. It provides zero independent verification.\\n\\n**Entry [61b87a5f] (output format)**: Specifies the correct template and even includes ANTI-FRAGMENTATION instructions ('Do NOT produce an array of per-candidate objects'), but the agent used a completely different JSON structure. The most likely explanation is that the agent's interleaved discover-and-process workflow produced a per-candidate array naturally, and the output-format check never effectively fired because the agent had already committed to the wrong structure.\\n\\n## Structural Diagnosis\\n\\nThis failure exposes two architectural weaknesses:\\n\\n1. **No enforced separation of enumeration from processing.** Entry [4abe1be4] says to find all markers but doesn't require a locked, complete enumeration artifact before any evaluation begins. The agent defaulted to a discover-then-process loop, stopping after the first candidate.\\n\\n2. **No independent cross-validation in the validation chain.** Every downstream check (93b0e8f9, 61b87a5f) uses the same N from the same upstream step. When that step fails, the entire chain validates garbage. At least one gate must independently re-derive N from the raw input (e.g., scanning for the highest-numbered bracket marker pattern).\\n\\n## Recommended Fix\\n\\nThe highest-leverage single change is updating entry [4abe1be4] to add:\\n\\n(a) **Exhaustive enumeration artifact with completion proof**: After finding the first marker, the agent MUST continue scanning to the END of the input and produce a complete numbered list: '[1] first-5-words / [2] first-5-words / ... / [N] first-5-words.' After the last marker, state: 'No further markers found after [X]. Input scan complete. N = X.' This artifact must be written in full before any evaluation begins.\\n\\n(b) **Minimum-N floor gate**: If N < 2, this is ALWAYS a perception error in a judge task. HALT, re-read the entire input from the first character, and re-count.\\n\\n(c) **Independent cross-validation**: After setting N, perform a separate search for the highest-numbered bracket marker [\\\\d+] in the input. If the highest number != N, re-scan exhaustively. This gate is independent of the perception scan's own output.\\n\\nA secondary change to entry [61b87a5f] would add explicit binary pre-flight checks (first character must be `{`, not `[`; exactly three top-level keys; ratings must be a flat number array) and prominent negative examples of the wrong format, but this is less critical than fixing the root-cause enumeration failure.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent's perception scan (entry 4abe1be4) terminated after finding the first candidate marker without exhaustively scanning the input. This set N=1 instead of N=14, and all downstream validation gates (93b0e8f9, 61b87a5f) inherited the wrong N and passed trivially. The agent then interleaved discovery with evaluation (evidenced by array-of-objects output structure), rather than first enumerating all candidates then evaluating \u2014 a workflow the entry permits by not requiring a complete enumeration artifact. 100% reproduction across rollouts confirms this is a systematic structural gap, not a stochastic slip.\",\n    \"important_disagreements\": [\n      \"Anchor characterizes this as 'an execution slip rather than missing knowledge' while credit_attribution and principle_extraction argue it is a systematic structural weakness. Resolved in favor of structural weakness: the 100% reproduction rate, identical reasoning text across rollouts, and the absence of any independent cross-validation gate make this a predictable failure of the playbook's architecture, not a random execution error. The anchor itself implicitly agrees by proposing 5 structural fixes.\",\n      \"Anchor proposes 5 separate fixes; principle_extraction distills these to 2 underlying principles. Resolved in favor of principle_extraction's synthesis: all 5 fixes implement (1) enforced separation of enumeration from processing with termination proof and (2) independent cross-validation in validation chains. Recommending these as updates to existing entries rather than new entries, per conservatism.\",\n      \"Anchor says the output template in 61b87a5f is 'buried'; principle_extraction says it is 'fairly prominent' and the real issue is that the agent never reached the format check because it was interleaving discovery with processing. Resolved in favor of principle_extraction: the array-of-objects output format is a symptom of the interleaved workflow, not an independent formatting failure. Fixing the enumeration in 4abe1be4 is the primary intervention; 61b87a5f hardening is secondary defense.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"The three entries tagged harmful (4abe1be4, 93b0e8f9, 61b87a5f) contain fundamentally correct concepts but lack the defensive gates needed to prevent the observed failure. They need updating, not deletion or replacement. The primary update to 4abe1be4 (adding exhaustive enumeration artifact, minimum-N floor, and independent cross-check) addresses the root cause directly. A secondary update to 61b87a5f (binary pre-flight checks) provides defense-in-depth. No genuinely new entry is needed \u2014 the independent cross-validation principle can be incorporated as a sub-step within the 4abe1be4 update.\",\n    \"conservatism_rationale\": \"Although all three heads agree on three harmful entries, the failures are causally chained: fixing the upstream entry (4abe1be4) would likely prevent the downstream failures (93b0e8f9 passing with wrong N, 61b87a5f producing wrong format). One well-targeted update to 4abe1be4 captures most of the value. A second update to 61b87a5f adds defense-in-depth but is lower priority. Updates to 93b0e8f9 are lowest priority since its check becomes effective once N is correct. Preferring 1-2 high-confidence updates over 5 medium-confidence changes.\",\n    \"max_operations\": 2\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

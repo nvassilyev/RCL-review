@@ -1,0 +1,524 @@
+{
+  "task_id": "math:725",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "harmful"
+    }
+  ],
+  "analysis": "## Task math:725\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts are deterministic and identical. The judge correctly verified the math (131, 132, 131), correctly identified candidates [2] and [4] as incorrect, and derived the correct reference answer. The failure is entirely in the calibration/selection layer.\n\nCandidates [1] and [3] both produce the same committed final answer ('1000 0100 binary'). The judge scored [3] at 9.5 vs [1] at 9.0 and selected only [3] for best_response_ids. Ground truth marks only [1] as correct, yielding winner fraction = 0.0. The pairwise accuracy loss is precisely the [1]-vs-[3] pair; all other pairs are correctly ordered.\n\n## Why Entry 295257e2 Is Harmful\n\nThe SAME-ANSWER CALIBRATION GATE in entry 295257e2 constrains score separation within same-answer groups to \u22640.5 points (satisfied by the 0.5-point gap) but has **no mandate about best_response_ids inclusion**. The judge followed the letter of the rule while missing the spirit: it created a narrow score gap but then exclusively selected the higher-scored candidate for best_response_ids, which is the metric that actually determines pass/fail.\n\nAdditionally, the entry already lists 'silent rewriting of problem input' as a reasoning-path defect and instructs the judge to 'compare reasoning paths for substantive interpretation differences (e.g., how ambiguous input was parsed or reformulated).' Candidate [3] silently changed the original input notation '8316' to '83' before computing \u2014 exactly the pattern the entry warns about. Yet the judge *rewarded* this reformulation as 'more detailed and cleaner' while noting 'minor notation quirks in [1]' (which merely preserved the original ambiguous notation). The entry's language was adequate in principle but failed to trigger recognition in practice. The existing defect category needs a concrete example or stronger wording to prevent this inversion.\n\n## Specific Update Needed for 295257e2\n\n1. **Add best_response_ids mandate**: When 2+ candidates share the same committed final answer, ALL must appear in best_response_ids unless a documented reasoning-path defect (not presentation quality) justifies exclusion. Require an explicit artifact: [Same-answer group members | All included in best_response_ids? | If excluded, cite specific reasoning-path defect]. Exclusion without a documented defect is a finalization blocker.\n\n2. **Tighten presentation-only score separation**: Reduce the maximum presentation-based score separation within same-answer groups from 0.5 to 0.3 points. The 0.5-point allowance created enough room for a ranking inversion with no correctness benefit.\n\n3. **Strengthen input-reformulation recognition**: Add a concrete example to the 'silent rewriting of problem input' defect category: e.g., 'a candidate that changes a notational element like 8316 to 83 without acknowledging the change.' Clarify that faithful preservation of original (even ambiguous) notation is neutral-to-positive, while undocumented reformulation is the defect.\n\n## Why Not Add New Entries\n\nThe credit attribution reflection proposes separate entries for INPUT FIDELITY CHECK and AMBIGUOUS INPUT INTERPRETATION. However: (a) the input-reformulation concept already exists within 295257e2 \u2014 it's a triggering weakness, not a missing concept; (b) the ambiguous-notation principle comes from a single trace and is somewhat task-specific; (c) adding multiple new entries from one observation violates conservative mutation principles. Strengthening the existing entry's language and adding the best_response_ids mandate is the minimal targeted fix.\n\nThe principle extraction reflection proposes a universal (L3) rule about inclusive vs. exclusive selection among equivalent options. While abstractly sound, this is better captured as a domain-specific update to 295257e2 than as a free-standing universal rule based on one trace.\n\n## Evidence Quality\n\nNo PP tags were found in the trace \u2014 credit attribution is narrative-inferred across all three reflections. Despite this, all three heads independently converge on the same root cause, the same harmful entry, and the same primary mutation (update 295257e2). The deterministic reproduction across rollouts makes the causal link between the playbook gap and the failure especially clear.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Entry 295257e2's SAME-ANSWER CALIBRATION GATE constrains score separation but has no mandate about best_response_ids inclusion. The judge complied with the score-gap rule while exclusively selecting the wrong candidate for best_response_ids. Secondary: the entry's 'silent rewriting of problem input' defect category failed to trigger on candidate [3]'s undocumented input reformulation.\",\n  \"important_disagreements\": [\n    \"Credit attribution tagged f26064e1 as helpful (arguing the FINAL ANSWER EXTRACTION artifact would have naturally triggered same-answer handling); anchor and principle extraction tagged it neutral. Resolved as neutral: the argument is counterfactual ('would have triggered') rather than evidence of actual influence, and the entry's procedure was not executed in the trace.\",\n    \"Credit attribution proposed a separate INPUT FIDELITY CHECK entry and AMBIGUOUS INPUT INTERPRETATION entry. Principle extraction proposed a universal inclusive-selection rule. Resolved by noting that 295257e2 already contains the 'silent rewriting of problem input' concept \u2014 the gap is in triggering and completeness, not in a missing concept. One targeted update to the existing entry is preferred over multiple new entries from a single trace.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"All three reflections unanimously identify 295257e2 as the harmful entry and agree on the same fix: add a best_response_ids mandate for same-answer groups, tighten presentation-only score separation, and strengthen the input-reformulation detection language. The entry already partially covers the needed behavior \u2014 its gaps are specific and addressable via update rather than replacement or new additions.\",\n  \"conservatism_rationale\": \"The failure traces to a single, well-understood procedural gap in one existing entry. The fix (adding best_response_ids mandate + tightening score separation + strengthening example language) is the smallest change that addresses the root cause. Adding separate new entries for input fidelity, ambiguous notation, or universal inclusive selection would be over-engineering from a single trace. The existing entry's conceptual framework is sound \u2014 it just needs the best_response_ids dimension and better triggering.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"harmful\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\n\ufeff\n\nA\nTwo of the three following numbers are equal. Which of the following numbers is not equal to the other two numbers?\nB\n131 (decimal - base 10)\n1000 0100 binary\n8316\n(Hexadecimal - base 16)\n\n## Candidate Responses\n\n[1]\nLet me help you solve this step by step.\n\n1) Let's convert all numbers to decimal (base 10) for easy comparison.\n\n2) First number: 131 (decimal)\n   * Already in decimal, so = 131\n\n3) Second number: 1000 0100 (binary)\n   * Converting binary to decimal:\n   * 1000 0100 = 27 + 22 = 128 + 4 = 132\n\n4) Third number: 8316 (hexadecimal)\n   * Converting hex to decimal:\n   * 8316 = (8 \u00d7 161) + (3 \u00d7 160)\n   * = (8 \u00d7 16) + (3 \u00d7 1)\n   * = 128 + 3\n   * = 131\n\n5) Comparing all three numbers:\n   * 131 (decimal)\n   * 132 (from binary)\n   * 131 (from hex)\n\nTherefore, 1000 0100 (binary), which equals 132, is the number that is not equal to the other two numbers.\n\nThe answer is: 1000 0100 (binary)\n\n[2]\nFirst, let's convert the three numbers to the same base to compare them easily.\n\n1. 131 (decimal - base 10) is already in base 10.\n2. Binary 1000 0100 is equivalent to $1*(2^7) + 0*(2^6) + 0*(2^5) + 0*(2^4) + 0*(2^3) + 1*(2^2) + 0*(2^1) + 0*(2^0) = 128 + 4 = 132 (decimal - base 10).\n3. Hexadecimal 8316 in base 16 is equivalent to $8*(16^2) + 3*(16^1) + 1*(16^0) = 8*256 + 3*16 + 1 = 2048 + 48 + 1 = 2097 (decimal - base 10).\n\nSo, among the three numbers, only 131 (decimal - base 10) and 132 (decimal - base 10) are equal. Therefore, the number 2097 (decimal - base 10) is not equal to the other two numbers.\nThe answer is: 2097 (decimal - base 10)\n\n[3]\nTo determine which of the three numbers is not equal to the others, we will convert each number to the same base (preferably decimal, base 10) and compare them.\n\n1. **Convert 131 (decimal - base 10) to base 10:**\n   - This number is already in base 10, so it remains 131.\n\n2. **Convert 1000 0100 (binary) to base 10:**\n   - To convert a binary number to decimal, we evaluate each bit's contribution based on its position:\n     - Starting from the rightmost bit and moving left:\n       - \\(2^7 \\times 1 = 128\\)\n       - \\(2^6 \\times 0 = 0\\)\n       - \\(2^5 \\times 0 = 0\\)\n       - \\(2^4 \\times 0 = 0\\)\n       - \\(2^3 \\times 0 = 0\\)\n       - \\(2^2 \\times 1 = 4\\)\n       - \\(2^1 \\times 0 = 0\\)\n       - \\(2^0 \\times 0 = 0\\)\n   - Add these values together:\n     - \\(128 + 0 + 0 + 0 + 0 + 4 + 0 + 0 = 132\\)\n   - Therefore, 1000 0100 in binary is 132 in decimal.\n\n3. **Convert 83 (Hexadecimal - base 16) to base 10:**\n   - In hexadecimal, the digits represent powers of 16:\n     - \\(8 \\times 16^1 = 128\\)\n     - \\(3 \\times 16^0 = 3\\)\n   - Add these values together:\n     - \\(128 + 3 = 131\\)\n   - Therefore, 83 in hexadecimal is 131 in decimal.\n\nNow, let's compare the values in decimal:\n- 131 (decimal) = 131\n- 1000 0100 (binary) = 132\n- 83 (hexadecimal) = 131\n\nTwo of the numbers are 131, and one number is 132. The number that is not equal to the other two is 132.\n\nTherefore, the answer is: 1000 0100 (binary)\n\n[4]\nAll three numbers are equal.\n131 in decimal is equal to 1000 0100 in binary and 83 in hexadecimal.\nThus, the number that is not equal to the other two numbers is the number written in base 10. \nThe answer is: 131 (decimal - base 10)\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (1) Identify which of the three provided numbers is NOT equal to the other two; (2) Correctly convert between decimal/binary/hex and state the final non-matching number. PROMPT ANCHOR: \"Two of the three following numbers are equal. Which of the following numbers is not equal to the other two numbers?\" Perception scan shows last marker [4], N=4. Reference: 131(decimal)=83(hex)=131, while 1000 0100(binary)=132, so the non-matching number is 1000 0100 (binary). Candidates [1] and [3] both reach 132 for the binary value and 131 for the hex/decimal values (minor notation quirks in [1]); [2] misreads the hex input and outputs 2097; [4] incorrectly asserts all three are equal by treating 1000 0100 (binary) as 131.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (1) Identify which of the three provided numbers is NOT equal to the other two; (2) Correctly convert between decimal/binary/hex and state the final non-matching number. PROMPT ANCHOR: \\\"Two of the three following numbers are equal. Which of the following numbers is not equal to the other two numbers?\\\" Perception scan shows last marker [4], N=4. Reference: 131(decimal)=83(hex)=131, while 1000 0100(binary)=132, so the non-matching number is 1000 0100 (binary). Candidates [1] and [3] both reach 132 for the binary value and 131 for the hex/decimal values (minor notation quirks in [1]); [2] misreads the hex input and outputs 2097; [4] incorrectly asserts all three are equal by treating 1000 0100 (binary) as 131.\",\n  \"ratings\": [\n    9.0,\n    2.0,\n    9.5,\n    1.0\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\n\ufeff\n\nA\nTwo of the three following numbers are equal. Which of the following numbers is not equal to the other two numbers?\nB\n131 (decimal - base 10)\n1000 0100 binary\n8316\n(Hexadecimal - base 16)\n\n## Candidate Responses\n\n[1]\nLet me help you solve this step by step.\n\n1) Let's convert all numbers to decimal (base 10) for easy comparison.\n\n2) First number: 131 (decimal)\n   * Already in decimal, so = 131\n\n3) Second number: 1000 0100 (binary)\n   * Converting binary to decimal:\n   * 1000 0100 = 27 + 22 = 128 + 4 = 132\n\n4) Third number: 8316 (hexadecimal)\n   * Converting hex to decimal:\n   * 8316 = (8 \u00d7 161) + (3 \u00d7 160)\n   * = (8 \u00d7 16) + (3 \u00d7 1)\n   * = 128 + 3\n   * = 131\n\n5) Comparing all three numbers:\n   * 131 (decimal)\n   * 132 (from binary)\n   * 131 (from hex)\n\nTherefore, 1000 0100 (binary), which equals 132, is the number that is not equal to the other two numbers.\n\nThe answer is: 1000 0100 (binary)\n\n[2]\nFirst, let's convert the three numbers to the same base to compare them easily.\n\n1. 131 (decimal - base 10) is already in base 10.\n2. Binary 1000 0100 is equivalent to $1*(2^7) + 0*(2^6) + 0*(2^5) + 0*(2^4) + 0*(2^3) + 1*(2^2) + 0*(2^1) + 0*(2^0) = 128 + 4 = 132 (decimal - base 10).\n3. Hexadecimal 8316 in base 16 is equivalent to $8*(16^2) + 3*(16^1) + 1*(16^0) = 8*256 + 3*16 + 1 = 2048 + 48 + 1 = 2097 (decimal - base 10).\n\nSo, among the three numbers, only 131 (decimal - base 10) and 132 (decimal - base 10) are equal. Therefore, the number 2097 (decimal - base 10) is not equal to the other two numbers.\nThe answer is: 2097 (decimal - base 10)\n\n[3]\nTo determine which of the three numbers is not equal to the others, we will convert each number to the same base (preferably decimal, base 10) and compare them.\n\n1. **Convert 131 (decimal - base 10) to base 10:**\n   - This number is already in base 10, so it remains 131.\n\n2. **Convert 1000 0100 (binary) to base 10:**\n   - To convert a binary number to decimal, we evaluate each bit's contribution based on its position:\n     - Starting from the rightmost bit and moving left:\n       - \\(2^7 \\times 1 = 128\\)\n       - \\(2^6 \\times 0 = 0\\)\n       - \\(2^5 \\times 0 = 0\\)\n       - \\(2^4 \\times 0 = 0\\)\n       - \\(2^3 \\times 0 = 0\\)\n       - \\(2^2 \\times 1 = 4\\)\n       - \\(2^1 \\times 0 = 0\\)\n       - \\(2^0 \\times 0 = 0\\)\n   - Add these values together:\n     - \\(128 + 0 + 0 + 0 + 0 + 4 + 0 + 0 = 132\\)\n   - Therefore, 1000 0100 in binary is 132 in decimal.\n\n3. **Convert 83 (Hexadecimal - base 16) to base 10:**\n   - In hexadecimal, the digits represent powers of 16:\n     - \\(8 \\times 16^1 = 128\\)\n     - \\(3 \\times 16^0 = 3\\)\n   - Add these values together:\n     - \\(128 + 3 = 131\\)\n   - Therefore, 83 in hexadecimal is 131 in decimal.\n\nNow, let's compare the values in decimal:\n- 131 (decimal) = 131\n- 1000 0100 (binary) = 132\n- 83 (hexadecimal) = 131\n\nTwo of the numbers are 131, and one number is 132. The number that is not equal to the other two is 132.\n\nTherefore, the answer is: 1000 0100 (binary)\n\n[4]\nAll three numbers are equal.\n131 in decimal is equal to 1000 0100 in binary and 83 in hexadecimal.\nThus, the number that is not equal to the other two numbers is the number written in base 10. \nThe answer is: 131 (decimal - base 10)\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (1) Identify which of the three provided numbers is NOT equal to the other two; (2) Correctly convert between decimal/binary/hex and state the final non-matching number. PROMPT ANCHOR: \"Two of the three following numbers are equal. Which of the following numbers is not equal to the other two numbers?\" Perception scan shows last marker [4], N=4. Reference: 131(decimal)=83(hex)=131, while 1000 0100(binary)=132, so the non-matching number is 1000 0100 (binary). Candidates [1] and [3] both reach 132 for the binary value and 131 for the hex/decimal values (minor notation quirks in [1]); [2] misreads the hex input and outputs 2097; [4] incorrectly asserts all three are equal by treating 1000 0100 (binary) as 131.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (1) Identify which of the three provided numbers is NOT equal to the other two; (2) Correctly convert between decimal/binary/hex and state the final non-matching number. PROMPT ANCHOR: \\\"Two of the three following numbers are equal. Which of the following numbers is not equal to the other two numbers?\\\" Perception scan shows last marker [4], N=4. Reference: 131(decimal)=83(hex)=131, while 1000 0100(binary)=132, so the non-matching number is 1000 0100 (binary). Candidates [1] and [3] both reach 132 for the binary value and 131 for the hex/decimal values (minor notation quirks in [1]); [2] misreads the hex input and outputs 2097; [4] incorrectly asserts all three are equal by treating 1000 0100 (binary) as 131.\",\n  \"ratings\": [\n    9.0,\n    2.0,\n    9.5,\n    1.0\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Math\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=9.000\n  [2] INCORRECT score=2.000\n  [3] INCORRECT score=9.500\n  [4] INCORRECT score=1.000\n\n## rollout_2 Evaluation\n\nSubset: Math\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=9.000\n  [2] INCORRECT score=2.000\n  [3] INCORRECT score=9.500\n  [4] INCORRECT score=1.000",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts produce identical outputs (deterministic behavior), achieving 66.7% pairwise accuracy. The failure is the same in both: candidates [1] and [3] both arrive at the same correct final answer ('1000 0100 (binary)' is the non-equal number), but the judge rated [3] at 9.5 vs [1] at 9.0 and selected only [3] as best_response_ids. The ground truth marks only [1] as correct, so the judge chose the wrong candidate from a same-answer pair.\n\n## Why the Ground Truth Distinguishes [1] from [3]\n\nThe prompt contains ambiguous notation: '8316' followed by '(Hexadecimal - base 16)'. This likely represents subscript notation '83\u2081\u2086' (83 in hex). Candidate [1] preserves the original notation '8316' in its calculation and implicitly parses it as 83\u2081\u2086. Candidate [3] explicitly rewrites '8316' to '83 (Hexadecimal - base 16)' before computing. Both arrive at 131 and the same final answer. The ground truth apparently considers [3]'s silent reformulation of the input as a reasoning-path defect\u2014or there is a narrow ground-truth labeling edge case. Either way, the judge should not have preferentially ranked [3] over [1] since the differentiating factor was presentation, not correctness.\n\n## Playbook Gap: Same-Answer Best-Response Inclusion\n\nThe SAME-ANSWER CALIBRATION GATE [295257e2] limits score separation within same-answer groups to \u22640.5 points, and the judge's 0.5-point gap technically complied with the boundary. However, the gate has two critical weaknesses:\n\n1. **No best_response_ids mandate**: The gate constrains score separation but says nothing about including all same-answer candidates in best_response_ids. The judge felt free to select only one of two candidates with the same answer. If both [1] and [3] had been in best_response_ids, the winner fraction would have been 1.0 instead of 0.0.\n\n2. **Presentation shouldn't determine sole best within same-answer groups**: The judge gave [3] the edge because its explanation was 'more detailed and cleaner.' But presentation quality is exactly the wrong tiebreaker when the answers are identical\u2014it creates ranking risk with no correctness signal.\n\n## Recommended Procedure: Same-Answer Group Handling\n\n**Trigger**: When FINAL ANSWER EXTRACTION identifies 2+ candidates with the same committed final answer.\n\n**Procedure**:\n1. Group all same-answer candidates together.\n2. Check if the answer matches the reference. If YES: all candidates in the group are co-equal contenders for best.\n3. Within the group, score separation must not exceed 0.3 points based on presentation alone. Only a verified reasoning-path defect (wrong method, acceptance of false premise, silent rewriting of problem input) justifies wider separation.\n4. **Critical**: ALL candidates in a correct same-answer group must be included in best_response_ids unless a specific reasoning-path defect is documented. Never select a single 'best' from a same-answer group based on formatting, verbosity, or notation style.\n5. If a same-answer group's answer does NOT match the reference, all members of the group are equally incorrect\u2014differentiate only by severity of the error methodology.\n\n## Secondary Insight: Input Notation Fidelity\n\nThe judge noted 'minor notation quirks in [1]' and docked it 0.5 points for preserving the ambiguous '8316' notation. This is backwards\u2014faithful preservation of the original input should be neutral-to-positive, while silent reformulation (as [3] did, rewriting '8316' to '83') is the reasoning-path concern. The playbook's SAME-ANSWER CALIBRATION GATE already lists 'silent rewriting of problem input' as a defect category, but the judge failed to apply it. This suggests the entry needs a concrete example or stronger triggering language so the judge recognizes input reformulation as a defect rather than rewarding it as clarity.\n\n## No Missing Domain Knowledge\n\nThe judge's math verification was correct (131, 132, 131). The reference solution was correct. The constraint extraction was correct. The failure is entirely in the calibration/selection layer\u2014specifically, differentiating same-answer candidates on presentation and selecting only one for best_response_ids. This is a procedural/control-flow gap, not a domain knowledge gap.\n\n## Summary of Actionable Changes\n\n1. **Strengthen [295257e2]**: Add mandatory rule that ALL candidates in a correct same-answer group must appear in best_response_ids. Tighten presentation-only separation to \u22640.3 points.\n2. **Add input-fidelity awareness**: When evaluating how candidates handle ambiguous input notation, flag reformulation as a potential defect (per 'silent rewriting of problem input'), not as improved clarity.\n3. **Best_response_ids risk rule**: When the judge cannot identify a clear substantive quality difference between same-answer candidates, err on the side of including more candidates in best_response_ids rather than fewer."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Two candidates ([1] and [3]) produced the same committed final answer ('1000 0100 binary'), but the judge selected only one ([3]) for best_response_ids based on presentation quality ('minor notation quirks in [1]'). Ground truth considers only [1] correct.",
+          "gap_type": "procedure",
+          "suggested_content": "SAME-ANSWER BEST_RESPONSE_IDS MANDATE: When two or more candidates produce the same committed final answer and that answer matches the reference, ALL such candidates must be included in best_response_ids UNLESS a specific, documented reasoning-path defect (not presentation quality) disqualifies one. Produce artifact: [Candidate ID | Same-answer group | Reasoning-path defect? | Include in best_response_ids?]. Presentation-only differences (notation style, formatting, verbosity, level of detail) may never be the sole basis for excluding a same-answer candidate from best_response_ids. Within same-answer groups, tighten maximum presentation-based score separation to 0.3 points.",
+          "trigger": "Fires after FINAL ANSWER EXTRACTION identifies 2+ candidates with the same committed final answer, immediately before best_response_ids selection."
+        },
+        {
+          "situation": "Candidate [3] silently changed the original input notation '8316' to '83' before performing the conversion. The judge treated this as improved clarity rather than a potential reasoning-path defect. The SAME-ANSWER CALIBRATION GATE lists 'silent rewriting of problem input' as a defect category, but the judge failed to recognize [3]'s reformulation as an instance of this.",
+          "gap_type": "verification_gate",
+          "suggested_content": "INPUT FIDELITY CHECK: For each candidate, compare how it represents the original problem input against the verbatim prompt text. Produce artifact: [Candidate ID | Original input element | Candidate's representation | Changed? | Change documented?]. Any silent modification of input values, notation, or labels without acknowledgment is a reasoning-path concern \u2014 classify as INPUT REFORMULATION. In same-answer groups, an INPUT REFORMULATION is a substantive defect that justifies score separation and exclusion from best_response_ids, while faithful preservation of original notation (even if ambiguous) is neutral-to-positive. Never penalize a candidate for preserving the original input notation, and never reward a candidate for silently simplifying it.",
+          "trigger": "Fires during math/logic evaluation after reference derivation, when comparing how each candidate interprets the original problem statement."
+        },
+        {
+          "situation": "The prompt contained ambiguous notation ('8316' on one line, '(Hexadecimal - base 16)' on the next), where '16' could be a subscript indicating base or part of a multi-digit hex number. The judge needed to evaluate candidates' interpretation of this ambiguity but had no guidance for doing so.",
+          "gap_type": "principle",
+          "suggested_content": "AMBIGUOUS INPUT INTERPRETATION: When the original prompt contains notation that admits multiple valid interpretations (subscript-style base indicators, missing delimiters, unclear groupings), evaluate candidates symmetrically on interpretation quality. A candidate that makes its interpretation explicit (even if it reformulates the input) is not inherently better or worse than one that preserves the original notation. The key criterion is: does the interpretation lead to an internally consistent and correct solution? If multiple candidates adopt the same interpretation and arrive at the same answer, treat them as same-answer candidates regardless of how explicitly they stated their interpretation.",
+          "trigger": "Fires when the judge identifies ambiguous notation in math/logic prompts during reference derivation."
+        }
+      ],
+      "analysis": "## Agreement with Anchor\n\nI agree with the anchor's core diagnosis: the failure is entirely procedural, occurring in the calibration/selection layer. The judge correctly verified the math (131, 132, 131), correctly identified [2] and [4] as wrong, and correctly derived the reference answer. The 66.7% pairwise accuracy and 0.0% winner fraction are caused by [3] (INCORRECT per ground truth) outscoring [1] (CORRECT) by 0.5 points and being the sole best_response_id.\n\nI also agree that entry [295257e2] is the primary harmful entry: its 0.5-point gap allowance was technically satisfied but failed to prevent the wrong ranking, and its silence on best_response_ids is the direct cause of the 0.0 winner fraction.\n\n## Refinements to Anchor\n\n1. **Ground truth distinction is more substantive than the anchor suggests.** The anchor frames the [1]-vs-[3] distinction as a 'narrow ground-truth labeling edge case' and says both arrive at the 'same correct final answer.' But the ground truth explicitly marks [3] as INCORRECT. The likely reason: [3] silently changed '8316' to '83' \u2014 an input reformulation that, while arriving at the same numerical result, constitutes a reasoning-path modification. The anchor correctly identifies this reformulation but underweights its significance by calling both answers 'correct.' The judge should have recognized [3]'s reformulation as the defect, not [1]'s faithful notation preservation as a 'quirk.'\n\n2. **Entry [f26064e1] deserves a 'helpful' tag, not 'neutral.'** The FINAL ANSWER EXTRACTION procedure, if actually executed with its required artifact, would have produced a table showing both [1] and [3] matching the reference. This artifact would have been the natural trigger for same-answer handling. Its non-application was a missed opportunity \u2014 the entry's procedure was adequate, but the judge skipped it.\n\n3. **The anchor's recommendation for INPUT FIDELITY needs a triggering mechanism.** The anchor mentions that 'faithful preservation of the original input should be neutral-to-positive' but doesn't specify when or how the judge should check this. I've proposed a concrete INPUT FIDELITY CHECK verification gate with an artifact requirement.\n\n## Disagreement with Anchor\n\n1. The anchor's recommended procedure mandates 'ALL candidates in a correct same-answer group must be included in best_response_ids unless a specific reasoning-path defect is documented.' This is directionally correct but needs nuance: the judge may not always know which candidates are 'correct' in the ground-truth sense. The more robust rule is: within any same-answer group, the judge should include all members in best_response_ids unless a documented reasoning-path defect (not presentation quality) justifies exclusion. This shifts the burden from 'determine correctness' to 'document defects.'\n\n## PP Trace Note\n\nThe supplementary PP trace contained no visible `<playbook_cite>`, `<missing_guidance>`, `<uncertainty>`, or `<reflection>` tags \u2014 all three rollouts produced identical reasoning and output. Credit attribution is therefore inferred from behavioral alignment with playbook entries rather than direct citation evidence.\n\n## Generalizable Lessons\n\n1. **Same-answer groups need best_response_ids rules, not just score-gap rules.** Score separation constraints alone are insufficient when the binary best_response_ids decision is what the evaluation actually measures.\n\n2. **Input reformulation is a reasoning-path concern, not a presentation improvement.** When a candidate silently changes the problem input, this should be flagged as a potential defect even if the final answer is unaffected. The playbook's existing language about 'silent rewriting of problem input' exists but lacks a concrete detection procedure.\n\n3. **Faithful input preservation should never be penalized.** The judge treated [1]'s preservation of '8316' as a 'notation quirk' worthy of a score penalty, while [3]'s reformulation to '83' was treated as clarity. This value inversion is a systematic risk in math evaluations with ambiguous notation."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "I AGREE with the anchor's root cause: both deterministic rollouts fail identically. Candidates [1] and [3] reach the same final answer ('1000 0100 binary'), but the judge scored [3] at 9.5 vs [1] at 9.0 and selected only [3] for best_response_ids. Ground truth marks only [1] as correct, so winner fraction = 0.0.\n\nI AGREE with the anchor that the critical gap is in entry 295257e2: the Same-Answer Calibration Gate constrains score separation (\u22640.5 pts) but has no mandate about best_response_ids inclusion. The judge's 0.5-point gap technically complied, yet the exclusion of [1] from best_response_ids caused the failure. I further AGREE that 295257e2 is weakly harmful here: it created a 'compliance comfort zone' \u2014 the judge followed the letter of the rule while missing the spirit. Without the best_response_ids mandate, the score-gap constraint is largely cosmetic.\n\nI REFINE the anchor's input-fidelity analysis. The anchor claims the ground truth distinguishes [1] from [3] because [3] 'silently reformulates' the hex input (rewriting '8316' to '83'). This is plausible but somewhat speculative \u2014 we cannot fully verify the ground truth's reasoning. What IS clear is that the judge actually *rewarded* [3]'s reformulation as 'more detailed and cleaner' presentation, while noting 'minor notation quirks in [1]' \u2014 exactly inverting the proper assessment. Entry 295257e2 already lists 'silent rewriting of problem input' as a reasoning-path defect, but the judge failed to recognize [3]'s reformulation as such. This is a triggering-language weakness in the entry, not a missing concept.\n\nI REFINE the anchor's recommendation by abstracting the lesson further. The failure is not unique to same-answer math candidates \u2014 it reflects a general risk pattern: exclusive selection among substantively equivalent options based on marginal non-decisive differences. When the decisive criterion (correctness) doesn't separate candidates, and non-decisive criteria (presentation) are used to pick a single winner, the risk of selecting the wrong one is substantial with zero correctness benefit. The safe strategy is inclusive selection: include all substantively equivalent candidates rather than picking one.\n\nThe judge's reasoning shows no evidence of deliberating whether to include both [1] and [3] in best_response_ids \u2014 there's no decision gate or artifact that would have surfaced this choice. A mandatory artifact (same-answer group \u2192 best_response_ids inclusion check) would have forced the judge to explicitly confront this decision.\n\nThe pairwise accuracy loss is precisely the [1] vs [3] pair: [1] (CORRECT) scored lower than [3] (INCORRECT). All other pairs are correctly ordered. This confirms the failure is entirely in the same-answer differentiation layer, not in domain knowledge, constraint extraction, or math verification.",
+      "principles": [
+        {
+          "statement": "When 2+ candidates share the same committed final answer, ALL must appear in best_response_ids unless a documented reasoning-path defect (not presentation quality) justifies exclusion. Presentation-only differences never justify excluding a same-answer candidate.",
+          "entry_kind": "rule",
+          "generality": "L2",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "295257e2",
+          "trigger": "After Final Answer Extraction identifies 2+ candidates with the same committed answer, before finalizing best_response_ids.",
+          "verification_or_artifact": "Construct artifact: [Same-answer group members | All included in best_response_ids? | If excluded, cite specific documented reasoning-path defect]. Exclusion without a documented defect is a finalization blocker.",
+          "evidence": "Candidates [1] and [3] both answered '1000 0100 (binary)' but the judge selected only [3] for best_response_ids based on presentation quality ('cleaner explanation'). This caused winner fraction = 0.0. Including both would have yielded 1.0."
+        },
+        {
+          "statement": "When selecting among options equivalent on the decisive criterion, prefer inclusive selection (all equivalent items) over exclusive (one 'best'). Tiebreaking on non-decisive marginal differences introduces selection risk with zero correctness benefit.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "Whenever a selection/ranking decision must choose among items that are equivalent on the primary evaluation axis.",
+          "verification_or_artifact": "Before narrowing a selection set, verify the narrowing criterion is the decisive one. If narrowing is based on a non-decisive dimension (formatting, verbosity, style), include all equivalent items instead.",
+          "evidence": "The judge used presentation quality to exclusively select [3] over [1] when both had the same correct answer. The decisive criterion was correctness, which didn't differentiate them. Inclusive selection would have avoided the failure."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "harmful"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts are deterministic and identical. The judge correctly verified the math (131, 132, 131), correctly identified candidates [2] and [4] as incorrect, and derived the correct reference answer. The failure is entirely in the calibration/selection layer.\n\nCandidates [1] and [3] both produce the same committed final answer ('1000 0100 binary'). The judge scored [3] at 9.5 vs [1] at 9.0 and selected only [3] for best_response_ids. Ground truth marks only [1] as correct, yielding winner fraction = 0.0. The pairwise accuracy loss is precisely the [1]-vs-[3] pair; all other pairs are correctly ordered.\n\n## Why Entry 295257e2 Is Harmful\n\nThe SAME-ANSWER CALIBRATION GATE in entry 295257e2 constrains score separation within same-answer groups to \u22640.5 points (satisfied by the 0.5-point gap) but has **no mandate about best_response_ids inclusion**. The judge followed the letter of the rule while missing the spirit: it created a narrow score gap but then exclusively selected the higher-scored candidate for best_response_ids, which is the metric that actually determines pass/fail.\n\nAdditionally, the entry already lists 'silent rewriting of problem input' as a reasoning-path defect and instructs the judge to 'compare reasoning paths for substantive interpretation differences (e.g., how ambiguous input was parsed or reformulated).' Candidate [3] silently changed the original input notation '8316' to '83' before computing \u2014 exactly the pattern the entry warns about. Yet the judge *rewarded* this reformulation as 'more detailed and cleaner' while noting 'minor notation quirks in [1]' (which merely preserved the original ambiguous notation). The entry's language was adequate in principle but failed to trigger recognition in practice. The existing defect category needs a concrete example or stronger wording to prevent this inversion.\n\n## Specific Update Needed for 295257e2\n\n1. **Add best_response_ids mandate**: When 2+ candidates share the same committed final answer, ALL must appear in best_response_ids unless a documented reasoning-path defect (not presentation quality) justifies exclusion. Require an explicit artifact: [Same-answer group members | All included in best_response_ids? | If excluded, cite specific reasoning-path defect]. Exclusion without a documented defect is a finalization blocker.\n\n2. **Tighten presentation-only score separation**: Reduce the maximum presentation-based score separation within same-answer groups from 0.5 to 0.3 points. The 0.5-point allowance created enough room for a ranking inversion with no correctness benefit.\n\n3. **Strengthen input-reformulation recognition**: Add a concrete example to the 'silent rewriting of problem input' defect category: e.g., 'a candidate that changes a notational element like 8316 to 83 without acknowledging the change.' Clarify that faithful preservation of original (even ambiguous) notation is neutral-to-positive, while undocumented reformulation is the defect.\n\n## Why Not Add New Entries\n\nThe credit attribution reflection proposes separate entries for INPUT FIDELITY CHECK and AMBIGUOUS INPUT INTERPRETATION. However: (a) the input-reformulation concept already exists within 295257e2 \u2014 it's a triggering weakness, not a missing concept; (b) the ambiguous-notation principle comes from a single trace and is somewhat task-specific; (c) adding multiple new entries from one observation violates conservative mutation principles. Strengthening the existing entry's language and adding the best_response_ids mandate is the minimal targeted fix.\n\nThe principle extraction reflection proposes a universal (L3) rule about inclusive vs. exclusive selection among equivalent options. While abstractly sound, this is better captured as a domain-specific update to 295257e2 than as a free-standing universal rule based on one trace.\n\n## Evidence Quality\n\nNo PP tags were found in the trace \u2014 credit attribution is narrative-inferred across all three reflections. Despite this, all three heads independently converge on the same root cause, the same harmful entry, and the same primary mutation (update 295257e2). The deterministic reproduction across rollouts makes the causal link between the playbook gap and the failure especially clear.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Entry 295257e2's SAME-ANSWER CALIBRATION GATE constrains score separation but has no mandate about best_response_ids inclusion. The judge complied with the score-gap rule while exclusively selecting the wrong candidate for best_response_ids. Secondary: the entry's 'silent rewriting of problem input' defect category failed to trigger on candidate [3]'s undocumented input reformulation.",
+      "important_disagreements": [
+        "Credit attribution tagged f26064e1 as helpful (arguing the FINAL ANSWER EXTRACTION artifact would have naturally triggered same-answer handling); anchor and principle extraction tagged it neutral. Resolved as neutral: the argument is counterfactual ('would have triggered') rather than evidence of actual influence, and the entry's procedure was not executed in the trace.",
+        "Credit attribution proposed a separate INPUT FIDELITY CHECK entry and AMBIGUOUS INPUT INTERPRETATION entry. Principle extraction proposed a universal inclusive-selection rule. Resolved by noting that 295257e2 already contains the 'silent rewriting of problem input' concept \u2014 the gap is in triggering and completeness, not in a missing concept. One targeted update to the existing entry is preferred over multiple new entries from a single trace."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "All three reflections unanimously identify 295257e2 as the harmful entry and agree on the same fix: add a best_response_ids mandate for same-answer groups, tighten presentation-only score separation, and strengthen the input-reformulation detection language. The entry already partially covers the needed behavior \u2014 its gaps are specific and addressable via update rather than replacement or new additions.",
+      "conservatism_rationale": "The failure traces to a single, well-understood procedural gap in one existing entry. The fix (adding best_response_ids mandate + tightening score separation + strengthening example language) is the smallest change that addresses the root cause. Adding separate new entries for input fidelity, ambiguous notation, or universal inclusive selection would be over-engineering from a single trace. The existing entry's conceptual framework is sound \u2014 it just needs the best_response_ids dimension and better triggering.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"harmful\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts are deterministic and identical. The judge correctly verified the math (131, 132, 131), correctly identified candidates [2] and [4] as incorrect, and derived the correct reference answer. The failure is entirely in the calibration/selection layer.\\n\\nCandidates [1] and [3] both produce the same committed final answer ('1000 0100 binary'). The judge scored [3] at 9.5 vs [1] at 9.0 and selected only [3] for best_response_ids. Ground truth marks only [1] as correct, yielding winner fraction = 0.0. The pairwise accuracy loss is precisely the [1]-vs-[3] pair; all other pairs are correctly ordered.\\n\\n## Why Entry 295257e2 Is Harmful\\n\\nThe SAME-ANSWER CALIBRATION GATE in entry 295257e2 constrains score separation within same-answer groups to \u22640.5 points (satisfied by the 0.5-point gap) but has **no mandate about best_response_ids inclusion**. The judge followed the letter of the rule while missing the spirit: it created a narrow score gap but then exclusively selected the higher-scored candidate for best_response_ids, which is the metric that actually determines pass/fail.\\n\\nAdditionally, the entry already lists 'silent rewriting of problem input' as a reasoning-path defect and instructs the judge to 'compare reasoning paths for substantive interpretation differences (e.g., how ambiguous input was parsed or reformulated).' Candidate [3] silently changed the original input notation '8316' to '83' before computing \u2014 exactly the pattern the entry warns about. Yet the judge *rewarded* this reformulation as 'more detailed and cleaner' while noting 'minor notation quirks in [1]' (which merely preserved the original ambiguous notation). The entry's language was adequate in principle but failed to trigger recognition in practice. The existing defect category needs a concrete example or stronger wording to prevent this inversion.\\n\\n## Specific Update Needed for 295257e2\\n\\n1. **Add best_response_ids mandate**: When 2+ candidates share the same committed final answer, ALL must appear in best_response_ids unless a documented reasoning-path defect (not presentation quality) justifies exclusion. Require an explicit artifact: [Same-answer group members | All included in best_response_ids? | If excluded, cite specific reasoning-path defect]. Exclusion without a documented defect is a finalization blocker.\\n\\n2. **Tighten presentation-only score separation**: Reduce the maximum presentation-based score separation within same-answer groups from 0.5 to 0.3 points. The 0.5-point allowance created enough room for a ranking inversion with no correctness benefit.\\n\\n3. **Strengthen input-reformulation recognition**: Add a concrete example to the 'silent rewriting of problem input' defect category: e.g., 'a candidate that changes a notational element like 8316 to 83 without acknowledging the change.' Clarify that faithful preservation of original (even ambiguous) notation is neutral-to-positive, while undocumented reformulation is the defect.\\n\\n## Why Not Add New Entries\\n\\nThe credit attribution reflection proposes separate entries for INPUT FIDELITY CHECK and AMBIGUOUS INPUT INTERPRETATION. However: (a) the input-reformulation concept already exists within 295257e2 \u2014 it's a triggering weakness, not a missing concept; (b) the ambiguous-notation principle comes from a single trace and is somewhat task-specific; (c) adding multiple new entries from one observation violates conservative mutation principles. Strengthening the existing entry's language and adding the best_response_ids mandate is the minimal targeted fix.\\n\\nThe principle extraction reflection proposes a universal (L3) rule about inclusive vs. exclusive selection among equivalent options. While abstractly sound, this is better captured as a domain-specific update to 295257e2 than as a free-standing universal rule based on one trace.\\n\\n## Evidence Quality\\n\\nNo PP tags were found in the trace \u2014 credit attribution is narrative-inferred across all three reflections. Despite this, all three heads independently converge on the same root cause, the same harmful entry, and the same primary mutation (update 295257e2). The deterministic reproduction across rollouts makes the causal link between the playbook gap and the failure especially clear.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Entry 295257e2's SAME-ANSWER CALIBRATION GATE constrains score separation but has no mandate about best_response_ids inclusion. The judge complied with the score-gap rule while exclusively selecting the wrong candidate for best_response_ids. Secondary: the entry's 'silent rewriting of problem input' defect category failed to trigger on candidate [3]'s undocumented input reformulation.\",\n    \"important_disagreements\": [\n      \"Credit attribution tagged f26064e1 as helpful (arguing the FINAL ANSWER EXTRACTION artifact would have naturally triggered same-answer handling); anchor and principle extraction tagged it neutral. Resolved as neutral: the argument is counterfactual ('would have triggered') rather than evidence of actual influence, and the entry's procedure was not executed in the trace.\",\n      \"Credit attribution proposed a separate INPUT FIDELITY CHECK entry and AMBIGUOUS INPUT INTERPRETATION entry. Principle extraction proposed a universal inclusive-selection rule. Resolved by noting that 295257e2 already contains the 'silent rewriting of problem input' concept \u2014 the gap is in triggering and completeness, not in a missing concept. One targeted update to the existing entry is preferred over multiple new entries from a single trace.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"All three reflections unanimously identify 295257e2 as the harmful entry and agree on the same fix: add a best_response_ids mandate for same-answer groups, tighten presentation-only score separation, and strengthen the input-reformulation detection language. The entry already partially covers the needed behavior \u2014 its gaps are specific and addressable via update rather than replacement or new additions.\",\n    \"conservatism_rationale\": \"The failure traces to a single, well-understood procedural gap in one existing entry. The fix (adding best_response_ids mandate + tightening score separation + strengthening example language) is the smallest change that addresses the root cause. Adding separate new entries for input fidelity, ambiguous notation, or universal inclusive selection would be over-engineering from a single trace. The existing entry's conceptual framework is sound \u2014 it just needs the best_response_ids dimension and better triggering.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

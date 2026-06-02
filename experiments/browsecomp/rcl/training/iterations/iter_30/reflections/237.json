@@ -1,0 +1,34 @@
+{
+  "task_id": "237",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "06920986",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "1f931f4e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "056f0a9e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "66f87cbc",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c67e6085",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "7ca56b8b",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "All rollouts \u2014 including the supplementary PP trace \u2014 timed out with zero output. No execution trace, no behavioral tags, and no evaluation feedback are available. This makes precise attribution impossible, but the universal timeout pattern itself is the critical signal.\n\n**Root cause analysis:**\n\n1. **Systematic timeout, not variance.** Both baseline rollouts AND the PP trace timed out identically. This rules out simple execution variance \u2014 something structural prevented completion.\n\n2. **Existing timeout-prevention entries failed to fire or were insufficient.** Entry [06920986] (Fast-Start and Lean Execution) explicitly says 'NEVER TIME OUT' and mandates first-search-in-first-response. Entry [1f931f4e] (Graduated Commitment Countdown) provides response-count and search-count checkpoints. Neither prevented the timeout. Possible explanations:\n   - **Playbook processing overhead**: The playbook is now very large (~20 entries, many with multi-step procedures). If the agent spends its first response reading and internalizing all entries before searching, that alone could consume significant budget. The fast-start entry competes with the agent's instinct to 'understand all rules first.'\n   - **Verbose reasoning despite brevity rules**: The countdown entry says 'MAX 5 sentences between searches,' but compliance is hard to enforce, especially when many other entries demand multi-step checklists (name completeness gate, part-vs-whole verification, cross-clue scanning, etc.) that encourage long reasoning.\n   - **Task complexity**: Some tasks may genuinely require many search hops. But universal timeout suggests the agent never even reached submission range.\n\n3. **Missing: a hard time-based safety net.** The countdown entry uses response count and search count as proxies for time, but these proxies can fail if the agent produces long responses or gets stuck in reasoning loops between searches. There is no entry that says 'if you sense you have been working for a long time regardless of search count, SUBMIT IMMEDIATELY.' The fast-start entry has a vague version ('if at any point you feel you have been working for an extended period'), but it's not a hard procedural gate.\n\n4. **Missing: a running best-guess artifact.** No entry requires the agent to maintain a 'current best guess' from the very first search result onward. If the agent always had a tentative answer ready, timeout would produce a wrong-but-nonzero answer instead of 0%. The countdown entry asks for a candidate at response 8, but if the agent times out before response 8, there's nothing to submit.\n\n5. **Playbook bulk may be counterproductive.** With ~20 entries, many containing multi-step procedures, the agent faces a meta-cost: reading, matching triggers, and deciding which entries apply. This meta-reasoning consumes time budget. An entry explicitly telling the agent to NOT re-read the full playbook between searches exists in [06920986], but the sheer volume may still cause front-loaded overhead.\n\n**Generalizable insight:** Timeout prevention needs to be a STRUCTURAL GUARANTEE, not a behavioral suggestion. The agent needs (a) a running best-guess artifact maintained from search 1, and (b) a hard time-awareness gate that fires independently of search/response counting.",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\nError: timeout\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\nError: timeout",
+  "evaluation_details": "## rollout_1 Evaluation\n\nError: timeout\n\n## rollout_2 Evaluation\n\nError: timeout"
+}

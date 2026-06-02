@@ -1,0 +1,471 @@
+{
+  "task_id": "factuality:78",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:78\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n## Root Cause: Verification Gate Bypassed + Missing Cross-Candidate Corroboration\n\nBoth rollouts produced byte-identical outputs with 0.0% accuracy. The sole correct candidate ([1], score 0.8) was rated lowest while three incorrect candidates scored higher, with the most incorrect ([3], score 4.6, with 20% list duplication) rated highest. The failure is deterministic, not stochastic.\n\nThe agent described Candidate [1]'s claims as 'appear highly likely to be fabricated or mistaken' and 'largely unsourced' but never produced a single concrete counter-fact for any challenged claim. Many of [1]'s specific claims \u2014 @TEN_GOP, Blacktivist, Being Patriotic, Heart of Texas, Secured Borders, Army of Jesus \u2014 are well-documented in the Mueller indictment and Senate Intelligence Committee reports. The agent applied no comparable scrutiny to Candidate [3], violating the SYMMETRY requirement in entry [005004a4].\n\n## Two Interacting Failures\n\n**1. Verification gate bypassed (execution failure against existing guidance).** Entry [005004a4] explicitly prohibits gut-level suspicion as evidence and requires a written ISOLATE\u2192COUNTER\u2192CLASSIFY procedure. The agent skipped the COUNTER step entirely \u2014 no concrete counter-facts were stated for any claim. The entry's guidance is correct; the agent simply did not follow it. Critically, Candidate [3]'s heavy duplication (items 3&13, 4&20, 8&18, 5&19 \u2014 four duplicate pairs in 20 items, ~20% padding) should have triggered entry [3008aa9b] but the agent noted only 'some duplication' without producing the required unique/total count.\n\n**2. Cross-candidate corroboration ignored (genuine knowledge gap).** Candidates [1] and [3] independently name many of the same groups: Blacktivist, Being Patriotic, Secured Borders, Army of Jesus, Heart of Texas, United Muslims of America. The agent simultaneously called [1]'s versions of these claims 'likely fabricated' while treating [3]'s identical claims as trustworthy and rating [3] highest. This is a logical inconsistency that a cross-candidate corroboration check would have surfaced directly. No existing playbook entry instructs the agent to use convergent claims across candidates as a positive verification signal.\n\nA secondary bias pattern reinforced the error: the agent treated Candidate [1]'s higher specificity (exact handles, multi-platform breakdown) as evidence of fabrication, while [3]'s vaguer descriptions were treated as more trustworthy. This inverts correct epistemic reasoning \u2014 specificity makes claims more verifiable, not less trustworthy.\n\n## Why Existing Entries Are Tagged Neutral, Not Harmful\n\nTwo reflections tagged [005004a4], [71f11566], and [3008aa9b] as 'harmful,' arguing they gave the agent false confidence by being partially activated (the agent's language mirrors the entries' vocabulary) without the procedural steps being followed. A third reflection tagged them 'neutral' because the entries' content is correct and there is no direct evidence the entries caused misdirection \u2014 the agent simply skipped required steps. I adopt the 'neutral' position because: (a) there are no PP tags in the trace to confirm active consultation; (b) the narrative evidence for 'false confidence' is speculative; (c) tagging entries as 'harmful' when their content is correct risks removing good guidance instead of adding missing capabilities; (d) the entry [005004a4] already has -10 cumulative score, and further penalties based on non-execution rather than misdirection would be unjust.\n\n## Recommended Mutation: ADD Cross-Candidate Corroboration Procedure\n\nAll three reflections independently identify the same genuinely missing capability: a procedure for using cross-candidate factual convergence as a verification signal. This is not covered by any existing entry. The SYMMETRY step in [005004a4] is related but different \u2014 it checks for asymmetric scrutiny of the same flaw type, not for convergent claims serving as positive evidence.\n\nProposed entry (procedure/artifact):\n- **Trigger:** When evaluating multiple candidates that contain specific factual claims, especially before penalizing any candidate's claims as fabricated.\n- **Procedure:** Produce a CORROBORATION TABLE: for each claim you plan to penalize as fabricated, check whether other candidates independently assert the same or closely matching claim. If 2+ candidates converge on a specific factual claim, classify it as 'corroborated' and do not apply any fabrication penalty unless you can complete the ISOLATE\u2192COUNTER procedure with a concrete counter-fact.\n- **Rationale:** Cross-candidate convergence is a verification signal. You cannot logically rate Candidate X's version of a claim as fabricated while simultaneously rating Candidate Y highest when Y asserts the same claim.\n\nThis is the single most impactful change because it would have: (a) forced recognition of the [1]-[3] claim overlap, (b) surfaced the logical inconsistency in the agent's reasoning, and (c) provided an independent verification signal that does not depend on the agent's domain knowledge.\n\nA secondary consideration for future runs: strengthening [005004a4]'s enforcement by requiring the agent to write 'I cannot refute this claim' explicitly when the COUNTER step fails, making silent bypass visible. This is deferred because the existing entry already contains the correct guidance \u2014 it is an enforcement problem rather than a knowledge gap.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent bypassed the ISOLATE\u2192COUNTER verification gate (existing guidance in [005004a4]) to apply gut-level fabrication penalties to the correct candidate, while a genuinely missing capability \u2014 cross-candidate corroboration \u2014 would have independently surfaced the logical inconsistency of dismissing claims in [1] that the top-rated [3] also asserts. The failure is deterministic (identical across both rollouts), indicating systematic bias rather than random execution variance.\",\n  \"important_disagreements\": [\n    \"Entry harm tags: Anchor and credit_attribution tagged [005004a4], [71f11566], [3008aa9b] as 'harmful' (false-confidence theory); principle_extraction tagged them 'neutral' (correct content, skipped execution). Resolved as 'neutral' because: no PP tags confirm consultation-then-bypass, the entries' content is correct, and tagging correct guidance as harmful risks removing it instead of adding missing capabilities.\",\n    \"Execution slip vs. systematic bias: Anchor called it 'primarily execution slip'; credit_attribution called it 'deterministic systematic bias'; principle_extraction called it 'hybrid.' Resolved as hybrid \u2014 the verification gate bypass is an execution failure against existing guidance, but the missing corroboration procedure is a genuine knowledge gap that would have independently prevented the error.\"\n  ],\n  \"mutation_posture\": \"add\",\n  \"why_this_posture\": \"All three reflections independently converge on the same genuinely missing capability: cross-candidate corroboration as a verification signal. No existing entry covers this. It directly addresses the specific failure (agent dismissed [1]'s claims as fabricated while rating [3] highest for asserting the same claims). The concept is L3-general (applies to any multi-candidate factual evaluation) and has a clear trigger, procedure, and artifact. The existing entries' enforcement weakness is a secondary concern better addressed by an update in a future run if the corroboration procedure alone proves insufficient.\",\n  \"conservatism_rationale\": \"One ADD is preferred over bundling multiple changes because: (1) the corroboration procedure is the single most impactful change with highest cross-reflection agreement; (2) the existing entries [005004a4] and [3008aa9b] contain correct guidance \u2014 their execution failure may resolve once the corroboration procedure forces the agent to compare candidates' claims before judging accuracy; (3) the 005004a4 enforcement strengthening, while reasonable, addresses an execution failure against already-correct guidance and is better treated as a separate potential update if the corroboration ADD alone proves insufficient.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\ngive me all the social media groups that were discovered to be ran by the Russia IRA \n\n## Candidate Responses\n\n[1]\nThe Internet Research Agency (IRA) is a Russian troll farm that has been accused of interfering in various elections and political processes around the world. According to various reports and investigations, here are some of the social media groups that were discovered to be run by the Russia IRA:\n\n**Facebook Groups:**\n\n1. **\"Blacktivist\"**: A Facebook group that targeted African Americans and promoted the Black Lives Matter movement.\n2. **\"Being Patriotic\"**: A group that promoted conservative and patriotic views.\n3. **\"Secured Borders\"**: A group that promoted anti-immigrant views.\n4. **\"LGBT United\"**: A group that targeted LGBTQ+ individuals.\n5. **\"United Muslims of America\"**: A group that targeted Muslims in the United States.\n6. **\"Army of Jesus\"**: A group that promoted Christian views.\n7. **\"Defend the 2nd\"**: A group that promoted gun rights.\n8. **\"Don't Shoot Us\"**: A group that targeted African Americans.\n9. **\"South United\"**: A group that promoted Southern American culture.\n10. **\"Tea Party News\"**: A group that promoted Tea Party views.\n\n**Twitter Accounts:**\n\n1. **@TEN_GOP**: A Twitter account that impersonated the Tennessee Republican Party.\n2. **@Blacktivist**: A Twitter account that targeted African Americans.\n3. **@LGBTUnited**: A Twitter account that targeted LGBTQ+ individuals.\n4. **@PatriotSpy**: A Twitter account that promoted patriotic views.\n5. **@March_for_Life**: A Twitter account that promoted anti-abortion views.\n\n**Instagram Accounts:**\n\n1. **@Blacktivist**: An Instagram account that targeted African Americans.\n2. **@LGBTUnited**: An Instagram account that targeted LGBTQ+ individuals.\n3. **@PatriotFront**: An Instagram account that promoted patriotic views.\n\n**YouTube Channels:**\n\n1. **\" Williams and Kalvin\"**: A YouTube channel that targeted African Americans.\n2. **\"Black Fist\"**: A YouTube channel that targeted African Americans.\n3. **\"Don't Shoot\"**: A YouTube channel that targeted African Americans.\n4. **\"Heart of Texas\"**: A YouTube channel that promoted conservative views.\n\n**TikTok Accounts:**\n\n(Note: TikTok has not publicly disclosed a comprehensive list of IRA-operated accounts. However, some reports suggest that the IRA may have operated accounts on the platform.)\n\n**Other Platforms:**\n\n1. **Reddit**: The IRA operated multiple subreddits, including r/The_Donald and r/Blacktivist.\n2. **Tumblr**: The IRA operated multiple Tumblr blogs, including blacktivist.tumblr.com.\n3. **Pinterest**: The IRA operated multiple Pinterest accounts, including \"Blacktivist\" and \"LGBT United\".\n\nPlease note that this list is not exhaustive, and the IRA may have operated additional social media groups and accounts that have not been publicly disclosed.\n\n[2]\nThe term \"Russia IRA\" is often used in reference to allegations of Russian interference in U.S. elections through social media operations, but it's important to clarify that there isn't an official entity called \"Russia IRA.\" Instead, the Federal Bureau of Investigation (FBI) and other intelligence agencies have identified specific Russian groups and individuals involved in these operations.\n\nHere are some notable examples of social media groups and accounts that have been linked to Russian disinformation campaigns:\n\n1. **Internet Research Agency (IRA)**:\n   - The IRA was a Russian company that operated a network of fake social media accounts and websites to spread disinformation.\n   - Key figures included Internet Research Agency (IRA) operatives such as Olga Surkova, Alexander Pichugin, and others.\n\n2. **Sputnik News**:\n   - Sputnik is a state-funded news agency with a significant presence on social media platforms.\n   - They have been involved in spreading pro-Russian narratives and disinformation.\n\n3. **VKontakte (VK)**:\n   - VK is a popular Russian social networking site where Russian groups and individuals have created numerous accounts and pages.\n   - Notable accounts include those supporting various political candidates or issues.\n\n4. **Facebook Pages and Groups**:\n   - Facebook has removed numerous pages and groups linked to Russian propaganda efforts.\n   - Examples include pages promoting conspiracy theories, anti-establishment narratives, and divisive content.\n\n5. **Twitter Accounts**:\n   - Twitter has suspended or removed numerous accounts associated with Russian disinformation campaigns.\n   - These accounts often targeted U.S. politicians, media outlets, and other public figures.\n\n6. **YouTube Channels**:\n   - YouTube has taken down several channels suspected of being part of Russian disinformation efforts.\n   - These channels often featured content promoting conspiracy theories and political narratives.\n\n7. **Telegram Channels**:\n   - Telegram is another platform where Russian groups have disseminated information.\n   - Channels and bots have been used to spread disinformation and engage in online activism.\n\n### Notable Examples of Specific Groups:\n\n- **Troll Factory**: A group within the IRA known for creating and managing social media accounts.\n- **Russian Trolls**: Various accounts and pages that were part of broader Russian disinformation efforts.\n- **Kremlin-backed Propaganda Accounts**: Accounts that promoted Russian government narratives and propaganda.\n\n### Official Reports:\n\n- **FBI Report**: The FBI has released reports detailing the activities of the Internet Research Agency and its impact on U.S. elections.\n- **Special Counsel Report**: The report by Robert Mueller during the Trump-Ukraine investigation also detailed Russian interference efforts, including social media operations.\n\nFor the most accurate and up-to-date information, it's recommended to refer to official reports from governmental bodies and reputable news sources.\n\n[3]\nThe Russian Internet Research Agency (IRA), also known as the Internet Research Agency (IRA), has been linked to several social media groups. Here are some of the notable ones:\n\n1.  **Facebook and Instagram \"Be YourselfSouls\":** A network of over 3,000 Facebook and Instagram accounts, which were used to spread pro-Russian content and propaganda, particularly in the US.\n2.  **\"Blacktivist\":** A group of Facebook and Instagram accounts that used hashtags like #BlackLivesMatter to push anti-police and anti-US content.\n3.  **\"Secured Borders\":** A group that aimed to create controversy around immigration policies in the US.\n4.  **\"United Muslims of America\":** A Facebook group that used inflammatory rhetoric to create divisions between Muslim and Christian communities in the US.\n5.  **\"Woke Blacks\":** A network of Facebook and Instagram accounts that used inflammatory language and misinformation to push anti-police and anti-US content, targeting African Americans.\n6.  **\"Texas Gun Rights\":** A Facebook group that aimed to create controversy around gun control policies in the US.\n7.  **\"Heart of Texas\":** A Facebook group that spread anti-Hillary Clinton content and promoted conspiracy theories.\n8.  **\"Army of Jesus\":** A network of Facebook and Instagram accounts that spread anti-Muslim and anti-Hillary Clinton content.\n9.  **\"Being Patriotic\":** A group that spread anti-Hillary Clinton content and promoted conspiracy theories.\n10. **\"Stop All Immigrants\":** A Facebook group that aimed to create controversy around immigration policies in the US.\n11.  **\"Make Alberta Great Again\" (MAGA Alberta):** A Facebook group that aimed to promote a pro-Trump and anti-Justin Trudeau agenda in Canada.\n12.  **\"Heart of Texas\" (supporting Ted Cruz for Senate):** A Facebook group that spread pro-Ted Cruz content and promoted conspiracy theories.\n13.  **\"Secured Borders\":** A Facebook group that aimed to create controversy around immigration policies in the US.\n14.  **\"United Muslim Americans for Trump\":** A Facebook group that aimed to create divisions between Muslim and non-Muslim communities in the US.\n15.  **\"Black Matters US\":** A Facebook group that used hashtags like #BlackLivesMatter to push anti-police and anti-US content.\n16.  **\"South Texas Operations\":** A Facebook group that aimed to create controversy around immigration policies in the US.\n17.  **\"Alt-right activist group\":** A Facebook group that aimed to promote alt-right ideology and create controversy around immigration policies in the US.\n18.  **\"Army of Jesus\":** A Facebook group that spread anti-Muslim and anti-Hillary Clinton content.\n19.  **\"Woke Blacks\" and \"Black Matters US\":** These groups used hashtags like #BlackLivesMatter to push anti-police and anti-US content.\n20.  **\"United Muslims of America\":** A Facebook group that used inflammatory rhetoric to create divisions between Muslim and Christian communities in the US.\n\nThese groups were identified by the Mueller Investigation, as well as other investigations and reports from Facebook and other social media platforms.\n\n[4]\nThe term \"Russia IRA\" is not standard or widely recognized in the context of social media operations. However, it's possible you might be referring to Russian interference in elections and social media operations, often linked to state-sponsored hacking and disinformation campaigns. Notable examples include operations attributed to the Russian military intelligence agency, the GRU, or other Russian state actors.\n\nHere are some well-known cases and social media groups that have been linked to Russian interference:\n\n1. **Internet Research Agency (IRA)**: A company established in 2015 that was allegedly used for Russian political influence operations, particularly in the United States during the 2016 presidential election. It operated various social media accounts and online forums.\n\n2. **Facebook Pages and Groups**:\n   - **Pages**: \"The Insider,\" \"Free Thought,\" \"For Truth,\" etc.\n   - **Groups**: \"Stop Hillary,\" \"Resistance,\" \"The Real Truth,\" etc.\n\n3. **Twitter Accounts**: Russian operatives created and managed a large number of Twitter accounts to spread propaganda and misinformation.\n\n4. **Instagram Accounts**: Similar to Twitter, Russian operatives created numerous Instagram accounts to spread false information.\n\n5. **YouTube Channels**: Some channels were also found to be associated with Russian disinformation campaigns.\n\n6. **TikTok**: While less publicized, some TikTok accounts have also been linked to Russian interference.\n\n7. **Telegram Channels**: Russian operatives used Telegram extensively for coordination and dissemination of content.\n\n8. **VKontakte (Russian Facebook)**: Many fake pages and groups were found on VKontakte, which is popular in Russia.\n\n9. **LiveJournal**: Another platform where Russian operatives posted content and engaged in disinformation campaigns.\n\nIt's important to note that while these groups were linked to Russian operations, attributing specific activities to them requires careful analysis and evidence. The full extent of Russian social media influence and the specific groups involved can be complex and evolving.\n\nFor more detailed information, you may want to refer to reports from organizations like the FBI, the Department of Homeland Security, or academic studies on the topic.\n\n## Judge Reasoning\nCandidate [3] is the most relevant to the prompt because it lists specific IRA-linked Facebook/Instagram page/group names that broadly align with commonly reported Mueller/Facebook takedown findings, despite some duplication and likely unverifiable entries. Candidate [1] provides many very specific multi-platform group/account names but they are largely unsourced and appear highly likely to be fabricated or mistaken. Candidate [4] is also largely unsourced and includes dubious/possibly incorrect factual claims while giving little that clearly matches an \u201call discovered IRA-run groups\u201d request. Candidate [2] is cautious but mostly stays at the level of broad categories and other entities rather than providing the concrete IRA-run social media groups the user asked for.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Candidate [3] is the most relevant to the prompt because it lists specific IRA-linked Facebook/Instagram page/group names that broadly align with commonly reported Mueller/Facebook takedown findings, despite some duplication and likely unverifiable entries. Candidate [1] provides many very specific multi-platform group/account names but they are largely unsourced and appear highly likely to be fabricated or mistaken. Candidate [4] is also largely unsourced and includes dubious/possibly incorrect factual claims while giving little that clearly matches an \u201call discovered IRA-run groups\u201d request. Candidate [2] is cautious but mostly stays at the level of broad categories and other entities rather than providing the concrete IRA-run social media groups the user asked for.\",\n  \"ratings\": [\n    0.8,\n    2.6,\n    4.6,\n    1.9\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\ngive me all the social media groups that were discovered to be ran by the Russia IRA \n\n## Candidate Responses\n\n[1]\nThe Internet Research Agency (IRA) is a Russian troll farm that has been accused of interfering in various elections and political processes around the world. According to various reports and investigations, here are some of the social media groups that were discovered to be run by the Russia IRA:\n\n**Facebook Groups:**\n\n1. **\"Blacktivist\"**: A Facebook group that targeted African Americans and promoted the Black Lives Matter movement.\n2. **\"Being Patriotic\"**: A group that promoted conservative and patriotic views.\n3. **\"Secured Borders\"**: A group that promoted anti-immigrant views.\n4. **\"LGBT United\"**: A group that targeted LGBTQ+ individuals.\n5. **\"United Muslims of America\"**: A group that targeted Muslims in the United States.\n6. **\"Army of Jesus\"**: A group that promoted Christian views.\n7. **\"Defend the 2nd\"**: A group that promoted gun rights.\n8. **\"Don't Shoot Us\"**: A group that targeted African Americans.\n9. **\"South United\"**: A group that promoted Southern American culture.\n10. **\"Tea Party News\"**: A group that promoted Tea Party views.\n\n**Twitter Accounts:**\n\n1. **@TEN_GOP**: A Twitter account that impersonated the Tennessee Republican Party.\n2. **@Blacktivist**: A Twitter account that targeted African Americans.\n3. **@LGBTUnited**: A Twitter account that targeted LGBTQ+ individuals.\n4. **@PatriotSpy**: A Twitter account that promoted patriotic views.\n5. **@March_for_Life**: A Twitter account that promoted anti-abortion views.\n\n**Instagram Accounts:**\n\n1. **@Blacktivist**: An Instagram account that targeted African Americans.\n2. **@LGBTUnited**: An Instagram account that targeted LGBTQ+ individuals.\n3. **@PatriotFront**: An Instagram account that promoted patriotic views.\n\n**YouTube Channels:**\n\n1. **\" Williams and Kalvin\"**: A YouTube channel that targeted African Americans.\n2. **\"Black Fist\"**: A YouTube channel that targeted African Americans.\n3. **\"Don't Shoot\"**: A YouTube channel that targeted African Americans.\n4. **\"Heart of Texas\"**: A YouTube channel that promoted conservative views.\n\n**TikTok Accounts:**\n\n(Note: TikTok has not publicly disclosed a comprehensive list of IRA-operated accounts. However, some reports suggest that the IRA may have operated accounts on the platform.)\n\n**Other Platforms:**\n\n1. **Reddit**: The IRA operated multiple subreddits, including r/The_Donald and r/Blacktivist.\n2. **Tumblr**: The IRA operated multiple Tumblr blogs, including blacktivist.tumblr.com.\n3. **Pinterest**: The IRA operated multiple Pinterest accounts, including \"Blacktivist\" and \"LGBT United\".\n\nPlease note that this list is not exhaustive, and the IRA may have operated additional social media groups and accounts that have not been publicly disclosed.\n\n[2]\nThe term \"Russia IRA\" is often used in reference to allegations of Russian interference in U.S. elections through social media operations, but it's important to clarify that there isn't an official entity called \"Russia IRA.\" Instead, the Federal Bureau of Investigation (FBI) and other intelligence agencies have identified specific Russian groups and individuals involved in these operations.\n\nHere are some notable examples of social media groups and accounts that have been linked to Russian disinformation campaigns:\n\n1. **Internet Research Agency (IRA)**:\n   - The IRA was a Russian company that operated a network of fake social media accounts and websites to spread disinformation.\n   - Key figures included Internet Research Agency (IRA) operatives such as Olga Surkova, Alexander Pichugin, and others.\n\n2. **Sputnik News**:\n   - Sputnik is a state-funded news agency with a significant presence on social media platforms.\n   - They have been involved in spreading pro-Russian narratives and disinformation.\n\n3. **VKontakte (VK)**:\n   - VK is a popular Russian social networking site where Russian groups and individuals have created numerous accounts and pages.\n   - Notable accounts include those supporting various political candidates or issues.\n\n4. **Facebook Pages and Groups**:\n   - Facebook has removed numerous pages and groups linked to Russian propaganda efforts.\n   - Examples include pages promoting conspiracy theories, anti-establishment narratives, and divisive content.\n\n5. **Twitter Accounts**:\n   - Twitter has suspended or removed numerous accounts associated with Russian disinformation campaigns.\n   - These accounts often targeted U.S. politicians, media outlets, and other public figures.\n\n6. **YouTube Channels**:\n   - YouTube has taken down several channels suspected of being part of Russian disinformation efforts.\n   - These channels often featured content promoting conspiracy theories and political narratives.\n\n7. **Telegram Channels**:\n   - Telegram is another platform where Russian groups have disseminated information.\n   - Channels and bots have been used to spread disinformation and engage in online activism.\n\n### Notable Examples of Specific Groups:\n\n- **Troll Factory**: A group within the IRA known for creating and managing social media accounts.\n- **Russian Trolls**: Various accounts and pages that were part of broader Russian disinformation efforts.\n- **Kremlin-backed Propaganda Accounts**: Accounts that promoted Russian government narratives and propaganda.\n\n### Official Reports:\n\n- **FBI Report**: The FBI has released reports detailing the activities of the Internet Research Agency and its impact on U.S. elections.\n- **Special Counsel Report**: The report by Robert Mueller during the Trump-Ukraine investigation also detailed Russian interference efforts, including social media operations.\n\nFor the most accurate and up-to-date information, it's recommended to refer to official reports from governmental bodies and reputable news sources.\n\n[3]\nThe Russian Internet Research Agency (IRA), also known as the Internet Research Agency (IRA), has been linked to several social media groups. Here are some of the notable ones:\n\n1.  **Facebook and Instagram \"Be YourselfSouls\":** A network of over 3,000 Facebook and Instagram accounts, which were used to spread pro-Russian content and propaganda, particularly in the US.\n2.  **\"Blacktivist\":** A group of Facebook and Instagram accounts that used hashtags like #BlackLivesMatter to push anti-police and anti-US content.\n3.  **\"Secured Borders\":** A group that aimed to create controversy around immigration policies in the US.\n4.  **\"United Muslims of America\":** A Facebook group that used inflammatory rhetoric to create divisions between Muslim and Christian communities in the US.\n5.  **\"Woke Blacks\":** A network of Facebook and Instagram accounts that used inflammatory language and misinformation to push anti-police and anti-US content, targeting African Americans.\n6.  **\"Texas Gun Rights\":** A Facebook group that aimed to create controversy around gun control policies in the US.\n7.  **\"Heart of Texas\":** A Facebook group that spread anti-Hillary Clinton content and promoted conspiracy theories.\n8.  **\"Army of Jesus\":** A network of Facebook and Instagram accounts that spread anti-Muslim and anti-Hillary Clinton content.\n9.  **\"Being Patriotic\":** A group that spread anti-Hillary Clinton content and promoted conspiracy theories.\n10. **\"Stop All Immigrants\":** A Facebook group that aimed to create controversy around immigration policies in the US.\n11.  **\"Make Alberta Great Again\" (MAGA Alberta):** A Facebook group that aimed to promote a pro-Trump and anti-Justin Trudeau agenda in Canada.\n12.  **\"Heart of Texas\" (supporting Ted Cruz for Senate):** A Facebook group that spread pro-Ted Cruz content and promoted conspiracy theories.\n13.  **\"Secured Borders\":** A Facebook group that aimed to create controversy around immigration policies in the US.\n14.  **\"United Muslim Americans for Trump\":** A Facebook group that aimed to create divisions between Muslim and non-Muslim communities in the US.\n15.  **\"Black Matters US\":** A Facebook group that used hashtags like #BlackLivesMatter to push anti-police and anti-US content.\n16.  **\"South Texas Operations\":** A Facebook group that aimed to create controversy around immigration policies in the US.\n17.  **\"Alt-right activist group\":** A Facebook group that aimed to promote alt-right ideology and create controversy around immigration policies in the US.\n18.  **\"Army of Jesus\":** A Facebook group that spread anti-Muslim and anti-Hillary Clinton content.\n19.  **\"Woke Blacks\" and \"Black Matters US\":** These groups used hashtags like #BlackLivesMatter to push anti-police and anti-US content.\n20.  **\"United Muslims of America\":** A Facebook group that used inflammatory rhetoric to create divisions between Muslim and Christian communities in the US.\n\nThese groups were identified by the Mueller Investigation, as well as other investigations and reports from Facebook and other social media platforms.\n\n[4]\nThe term \"Russia IRA\" is not standard or widely recognized in the context of social media operations. However, it's possible you might be referring to Russian interference in elections and social media operations, often linked to state-sponsored hacking and disinformation campaigns. Notable examples include operations attributed to the Russian military intelligence agency, the GRU, or other Russian state actors.\n\nHere are some well-known cases and social media groups that have been linked to Russian interference:\n\n1. **Internet Research Agency (IRA)**: A company established in 2015 that was allegedly used for Russian political influence operations, particularly in the United States during the 2016 presidential election. It operated various social media accounts and online forums.\n\n2. **Facebook Pages and Groups**:\n   - **Pages**: \"The Insider,\" \"Free Thought,\" \"For Truth,\" etc.\n   - **Groups**: \"Stop Hillary,\" \"Resistance,\" \"The Real Truth,\" etc.\n\n3. **Twitter Accounts**: Russian operatives created and managed a large number of Twitter accounts to spread propaganda and misinformation.\n\n4. **Instagram Accounts**: Similar to Twitter, Russian operatives created numerous Instagram accounts to spread false information.\n\n5. **YouTube Channels**: Some channels were also found to be associated with Russian disinformation campaigns.\n\n6. **TikTok**: While less publicized, some TikTok accounts have also been linked to Russian interference.\n\n7. **Telegram Channels**: Russian operatives used Telegram extensively for coordination and dissemination of content.\n\n8. **VKontakte (Russian Facebook)**: Many fake pages and groups were found on VKontakte, which is popular in Russia.\n\n9. **LiveJournal**: Another platform where Russian operatives posted content and engaged in disinformation campaigns.\n\nIt's important to note that while these groups were linked to Russian operations, attributing specific activities to them requires careful analysis and evidence. The full extent of Russian social media influence and the specific groups involved can be complex and evolving.\n\nFor more detailed information, you may want to refer to reports from organizations like the FBI, the Department of Homeland Security, or academic studies on the topic.\n\n## Judge Reasoning\nCandidate [3] is the most relevant to the prompt because it lists specific IRA-linked Facebook/Instagram page/group names that broadly align with commonly reported Mueller/Facebook takedown findings, despite some duplication and likely unverifiable entries. Candidate [1] provides many very specific multi-platform group/account names but they are largely unsourced and appear highly likely to be fabricated or mistaken. Candidate [4] is also largely unsourced and includes dubious/possibly incorrect factual claims while giving little that clearly matches an \u201call discovered IRA-run groups\u201d request. Candidate [2] is cautious but mostly stays at the level of broad categories and other entities rather than providing the concrete IRA-run social media groups the user asked for.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Candidate [3] is the most relevant to the prompt because it lists specific IRA-linked Facebook/Instagram page/group names that broadly align with commonly reported Mueller/Facebook takedown findings, despite some duplication and likely unverifiable entries. Candidate [1] provides many very specific multi-platform group/account names but they are largely unsourced and appear highly likely to be fabricated or mistaken. Candidate [4] is also largely unsourced and includes dubious/possibly incorrect factual claims while giving little that clearly matches an \u201call discovered IRA-run groups\u201d request. Candidate [2] is cautious but mostly stays at the level of broad categories and other entities rather than providing the concrete IRA-run social media groups the user asked for.\",\n  \"ratings\": [\n    0.8,\n    2.6,\n    4.6,\n    1.9\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 0.0%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=0.800\n  [2] INCORRECT score=2.600\n  [3] INCORRECT score=4.600\n  [4] INCORRECT score=1.900\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 0.0%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=0.800\n  [2] INCORRECT score=2.600\n  [3] INCORRECT score=4.600\n  [4] INCORRECT score=1.900",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause: Gut-Level Suspicion Used as Evidence, Asymmetric Scrutiny\n\nBoth rollouts produced identical 0.0% results because the agent committed the exact failure mode that entry [005004a4] prohibits. The agent stated Candidate [1]'s claims 'appear highly likely to be fabricated or mistaken' and 'are largely unsourced' \u2014 but never provided a single concrete counter-fact for any claim. Meanwhile, Candidate [3] (rated highest) received no comparable scrutiny despite having significant quality problems. The CORRECT candidate ([1]) was scored lowest (0.8); all three INCORRECT candidates scored higher.\n\n## Specific Failures\n\n### 1. Verification Gate Completely Bypassed\nEntry [005004a4] explicitly states: 'Gut-level suspicion (\"looks unsupported,\" \"likely fabricated\") is NOT valid evidence.' The agent's reasoning for penalizing Candidate [1] is essentially 'they are largely unsourced and appear highly likely to be fabricated' \u2014 pure gut-level suspicion with zero counter-evidence. Many of [1]'s claims are well-documented in the Mueller indictment and Senate Intelligence Committee reports (e.g., @TEN_GOP, Blacktivist, Being Patriotic, Secured Borders, Heart of Texas, Army of Jesus). The agent treated documented facts as probable fabrications.\n\n### 2. Symmetry Requirement Violated\nThe agent penalized [1] for being 'unsourced' but didn't apply this criterion to [3], which is equally unsourced (its closing line 'identified by the Mueller Investigation' is a vague attribution, not a citation). The SYMMETRY check in [005004a4] requires: 'After penalizing candidate X for flaw F, explicitly search your top-ranked candidate for the same flaw F.' This never happened.\n\n### 3. Duplication Detection Ignored\nCandidate [3] has massive duplication: items 3&13 (Secured Borders), 4&20 (United Muslims of America), 8&18 (Army of Jesus), 5&19 (Woke Blacks/Black Matters US). That's 4 duplicate pairs in a 20-item list \u2014 20% padding. Entry [3008aa9b] requires counting unique vs. total items and penalizing >15% duplication. The agent mentioned 'some duplication' but applied no meaningful penalty.\n\n### 4. Cross-Candidate Corroboration Ignored\nMultiple candidates independently mention the same groups (Blacktivist, Being Patriotic, Secured Borders, Army of Jesus, Heart of Texas). When multiple independently-generated responses converge on the same factual claims, this is corroborating evidence of accuracy \u2014 not a reason to dismiss them. The agent completely failed to use cross-candidate agreement as a factual verification signal.\n\n### 5. Specificity Penalty Bias\nThe agent exhibited a pattern where MORE specific = MORE suspicious. Candidate [1]'s multi-platform listing with specific account handles (@TEN_GOP, @Blacktivist, etc.) was treated as evidence of fabrication, while [3]'s longer but vaguer list was treated as more trustworthy. This is backwards: specific, verifiable claims (especially ones that can be checked against known records) are higher quality than vague claims, provided they're accurate.\n\n## Why Existing Entries Failed\n\nEntries [005004a4], [71f11566], and [3008aa9b] all contain guidance that SHOULD have prevented this failure. I tag them 'harmful' not because their content is wrong, but because they were present in the playbook and apparently gave the agent a false sense of having done verification when it hadn't. The entries need stronger enforcement mechanisms \u2014 they currently read as checklists that the agent can skip past.\n\n## Missing Playbook Knowledge\n\n### Missing: Cross-Candidate Factual Corroboration Procedure\nTrigger: Multiple candidates mention the same specific factual claims.\nProcedure: Before penalizing any candidate's factual claims as fabricated, check whether other candidates independently make the same claims. List the overlapping claims explicitly. If 3+ candidates agree on a specific fact, treat it as likely accurate unless you can provide a concrete counter-fact. Cross-candidate convergence is a verification signal.\nVerification: Write the overlap list before assigning any fabrication penalty.\n\n### Missing: Specificity Is Not Evidence of Fabrication\nThe playbook needs an explicit rule: 'Specificity (exact names, handles, numbers) is NOT negative evidence. When a candidate provides concrete, verifiable specifics while competitors stay vague, the specific answer is potentially HIGHER quality \u2014 verify the specifics rather than penalizing their existence. A specific correct answer always outranks a vague correct answer.'\n\n### Refinement Needed: [005004a4] Enforcement\nThe verification gate exists but is routinely bypassed. It needs a harder procedural lock: the agent should be required to produce a written ISOLATE\u2192COUNTER artifact for EACH claim it suspects of fabrication, and if it cannot complete the COUNTER step, it must explicitly state 'I cannot refute this claim' and NOT apply a fabrication penalty. The current rule permits the agent to skip COUNTER silently.\n\n### Refinement Needed: [3008aa9b] Integration with Scoring\nThe duplicate detection rule exists but has no teeth. It should be integrated into scoring: 'If a candidate has >15% duplication in a list, the effective item count is the UNIQUE count. Do not rate a padded list higher than a shorter, non-duplicated list that covers the same unique content.'\n\n### Refinement Needed: [71f11566] Volume Verification Enforcement\nThe VOLUME \u2260 ACCURACY warning exists but the agent didn't execute the required sampling. The rule should require: 'For the candidate you are about to rate highest, sample at least 3 specific claims and write explicit ISOLATE\u2192COUNTER\u2192CLASSIFY for each BEFORE finalizing its score. If you skip this step, your rating is invalid.'\n\n## Execution Slip vs. Missing Knowledge\n\nThis is primarily an execution slip \u2014 the playbook contains adequate guidance ([005004a4] especially) but the agent skipped the required verification steps. However, the missing cross-candidate corroboration procedure and the missing anti-specificity-bias rule represent genuine knowledge gaps that would have provided additional guardrails. The existing entries need stronger procedural locks (mandatory written artifacts) rather than just conceptual guidance."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Multiple candidates independently cited the same specific factual claims (Blacktivist, Being Patriotic, Secured Borders, Army of Jesus, Heart of Texas, United Muslims of America) across Candidates [1], [3], and partially [2]. The agent dismissed Candidate [1]'s versions as 'likely fabricated' without noticing that [3] (rated highest) lists many of the same groups, constituting cross-candidate corroboration.",
+          "gap_type": "procedure",
+          "suggested_content": "CROSS-CANDIDATE CORROBORATION CHECK \u2014 Before penalizing any candidate's factual claims as fabricated or unsourced, produce a CORROBORATION TABLE: for each claim you suspect, check whether other candidates independently make the same or a closely matching claim. If 2+ candidates converge on a specific factual claim, treat it as likely accurate unless you can provide a concrete counter-fact via the ISOLATE\u2192COUNTER procedure. Write the corroboration table explicitly. Cross-candidate convergence is a verification signal that overrides gut-level suspicion.",
+          "trigger": "When evaluating factual accuracy across candidates that contain enumerated specific claims, especially when any candidate's claims are being flagged as potentially fabricated."
+        },
+        {
+          "situation": "Candidate [1] provided specific platform-spanning account handles (@TEN_GOP, @Blacktivist, etc.) and organized information by platform type. The agent treated this specificity as evidence of fabrication ('largely unsourced and appear highly likely to be fabricated'). Meanwhile, Candidate [3]'s vaguer descriptions were treated as more trustworthy. This represents a systematic bias where more detail = more suspicious.",
+          "gap_type": "principle",
+          "suggested_content": "SPECIFICITY IS A QUALITY SIGNAL, NOT A FABRICATION SIGNAL \u2014 When a candidate provides concrete, verifiable specifics (exact names, handles, numbers, platform breakdowns), this is potentially HIGHER quality than vague alternatives \u2014 never treat specificity itself as evidence of fabrication. Apply the ISOLATE\u2192COUNTER verification procedure to specific claims. If you cannot produce a counter-fact, specificity is a positive quality signal. A specific correct answer always outranks a vague correct answer covering the same ground.",
+          "trigger": "When evaluating candidates where one provides significantly more specific/granular claims than others, and the initial instinct is to view the specificity with suspicion."
+        },
+        {
+          "situation": "The ISOLATE\u2192COUNTER\u2192CLASSIFY verification gate in entry 005004a4 was completely bypassed \u2014 no artifacts were produced. The agent applied fabrication penalties based on impressionistic language alone. This same bypass occurred identically across both rollouts, suggesting a deterministic failure mode rather than random variance.",
+          "gap_type": "verification_gate",
+          "suggested_content": "HARD LOCK ON FABRICATION PENALTIES \u2014 You may NOT apply any fabrication or 'likely fabricated' penalty to a candidate's claims unless you have completed, IN WRITING, the following for each challenged claim: (1) ISOLATE: Quote the exact claim. (2) COUNTER: State a specific counter-fact or contradiction. (3) If you cannot complete step 2, write 'I cannot refute this claim' and assign NO fabrication penalty. Impressionistic labels ('largely unsourced,' 'appear fabricated,' 'likely mistaken') without completed artifacts are BANNED. Any rating influenced by an uncompleted fabrication check is invalid and must be recalculated.",
+          "trigger": "Whenever the agent's reasoning draft contains language suggesting claims are fabricated, unsourced, mistaken, or suspicious \u2014 before any score is assigned."
+        },
+        {
+          "situation": "Entry 3008aa9b's duplication check was partially noticed ('some duplication') but the required counting artifact (unique/total count) was never produced, allowing a 20%-padded list to score highest. The entry's procedure needs a harder integration with scoring.",
+          "gap_type": "artifact",
+          "suggested_content": "DUPLICATION COUNT ARTIFACT \u2014 When a candidate presents a list of 5+ items: (1) Produce a DEDUP TABLE listing each item and flagging exact or near-duplicates. (2) Calculate: unique_count / total_count. (3) If the ratio is below 85%, record the effective item count as unique_count only. (4) A padded list must NOT outscore a shorter non-duplicated list covering the same unique content. Write the dedup table before scoring.",
+          "trigger": "When evaluating any candidate with a numbered/bulleted list of 5+ items, especially when comparing candidates of different list lengths."
+        },
+        {
+          "situation": "Both rollouts produced identical outputs (same reasoning text, same scores, same winner). This deterministic failure suggests a deep systematic bias pattern rather than random execution variance. The playbook has no mechanism for the agent to flag its own confidence level in factual domains where it may have limited knowledge.",
+          "gap_type": "checklist",
+          "suggested_content": "DOMAIN KNOWLEDGE SELF-ASSESSMENT \u2014 Before evaluating factual accuracy in a specialized domain, state your confidence level in that domain (high/medium/low). If medium or low: (1) Rely MORE on cross-candidate corroboration and structural quality signals (specificity, consistency, sourcing). (2) Rely LESS on impressionistic 'this seems fabricated' judgments. (3) Apply the verification gate with extra rigor \u2014 complete all ISOLATE\u2192COUNTER artifacts. (4) When uncertain, favor candidates with more specific, verifiable claims over those with vague assertions.",
+          "trigger": "When the task involves verifying factual claims in a domain where the agent's knowledge may be partial or uncertain."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nI AGREE with the anchor's core diagnosis: the agent used gut-level suspicion as evidence of fabrication against the CORRECT candidate ([1]) while applying no comparable scrutiny to the INCORRECT top-rated candidate ([3]). The correct candidate was scored 0.8 (lowest) while all three incorrect candidates scored higher, producing 0.0% accuracy across both rollouts.\n\nI REFINE the anchor's 'harmful' tags on entries 005004a4, 71f11566, and 3008aa9b. The anchor argues these entries are harmful because they 'gave the agent a false sense of having done verification.' The PP trace lacks behavioral annotation tags, so we cannot confirm active consultation. However, the agent's language pattern ('appear highly likely to be fabricated,' 'largely unsourced') directly mirrors the warned-against vocabulary in 005004a4, and the agent's partial awareness of duplication ('some duplication') aligns with partial 3008aa9b activation. I maintain 'harmful' tags based on this narrative evidence: these entries were likely partially activated \u2014 enough to give the agent conceptual framework for dismissal \u2014 but their procedural requirements (ISOLATE\u2192COUNTER artifacts, unique/total counts, sampling verification) were entirely skipped, removing the enforcement mechanisms that would have prevented the error.\n\nI DISAGREE with the anchor's characterization of this as 'primarily an execution slip.' The identical outputs across both rollouts reveal a deterministic systematic bias, not random step-skipping. The agent has a deep pattern of treating specificity as suspicious and vagueness as safe \u2014 Candidate [1]'s multi-platform handles and structured detail were penalized, while [3]'s longer but vaguer (and heavily duplicated) list was rewarded. This is both an execution gap (procedures not followed) and a missing principle (no guidance on how specificity relates to quality, no cross-candidate corroboration procedure).\n\nI ADD an observation the anchor missed: the agent's failure to notice that many of Candidate [1]'s claims overlap with Candidate [3]'s claims (Blacktivist, Being Patriotic, Secured Borders, Army of Jesus, Heart of Texas, United Muslims of America) represents not just a missed verification signal but a logical inconsistency in the agent's own reasoning \u2014 it cannot simultaneously believe [1]'s claims are fabricated and [3]'s identical claims are accurate. A cross-candidate corroboration procedure would have surfaced this contradiction directly.\n\nThe most impactful playbook changes would be: (1) a hard procedural lock on fabrication penalties requiring written artifacts before any penalty is applied, (2) a cross-candidate corroboration procedure that uses convergent claims as a positive verification signal, (3) an explicit principle that specificity is a quality signal rather than a fabrication signal, and (4) strengthening the duplication detection entry with a mandatory counting artifact integrated into scoring."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause: Specificity Treated as Suspicion + Verification Steps Skipped\n\nBoth rollouts (identical outputs, 0.0%) ranked the sole correct candidate [1] lowest (0.8) and the incorrect, duplicate-padded candidate [3] highest (4.6). The agent wrote 'appear highly likely to be fabricated or mistaken' and 'largely unsourced' for [1] but never produced a single concrete counter-fact for any of [1]'s claims. Many of [1]'s claims (e.g., @TEN_GOP, Blacktivist, Being Patriotic, Heart of Texas, Army of Jesus, Secured Borders) are well-documented in the Mueller indictment and Senate Intelligence Committee reports.\n\n## Agreement with Anchor\n- AGREE: The agent violated the COUNTER step in 005004a4's verification gate \u2014 gut suspicion was used as evidence.\n- AGREE: Asymmetric scrutiny \u2014 [1] penalized for being 'unsourced' while [3]'s equally unsourced claims went unchallenged.\n- AGREE: Candidate [3]'s duplication (4 duplicate pairs in 20 items = 20% padding) should have triggered 3008aa9b but didn't.\n- AGREE: Cross-candidate corroboration (Blacktivist, Being Patriotic, Secured Borders, Army of Jesus, Heart of Texas appear across multiple candidates) was ignored as a verification signal.\n- AGREE: Specificity was treated as negative evidence, inverting correct epistemic reasoning.\n\n## Refinement of Anchor\n- REFINE entry tags: The anchor tags 005004a4, 71f11566, 3008aa9b as 'harmful,' arguing they gave the agent false confidence. I tag them 'neutral' because the entries contain correct guidance \u2014 the agent simply skipped the required steps. The outputs are deterministic (identical across rollouts), suggesting a systematic bias in the agent's reasoning rather than the entries misdirecting it. There's no evidence in the trace that the agent consulted these entries and then felt licensed to bypass them. The fix is stronger enforcement and new complementary rules, not removing or weakening these entries.\n- REFINE root cause classification: The anchor calls this 'primarily execution slip.' I'd say it's a hybrid \u2014 the verification gate was bypassed (execution), but two genuine MISSING capabilities would have provided independent guardrails: (1) cross-candidate convergence as verification evidence, and (2) explicit rule that specificity is verifiable rather than suspicious. These aren't just additional safety nets; they address a systematic bias pattern where detailed, checkable claims are penalized relative to vague, uncheckable claims.\n\n## Why the Failure Was Systematic, Not Random\nBoth rollouts produced byte-identical output, indicating this isn't stochastic variance but a stable reasoning failure. The agent's heuristic 'more specific \u2192 more likely fabricated' consistently inverted correct epistemics. This heuristic may be reinforced by 71f11566's VOLUME \u2260 ACCURACY framing, which the agent may have read as 'volume is suspicious' rather than 'volume requires verification.' The entry isn't wrong, but it needs a complementary rule explicitly stating that specificity is checkable evidence, not negative evidence.\n\n## Key Missing Playbook Capabilities\n1. No rule instructs the agent to use cross-candidate agreement on specific factual claims as corroborating evidence.\n2. No rule addresses the cognitive bias of treating specificity/detail as inherently less trustworthy than vagueness.\n3. The 005004a4 verification gate has the right structure (ISOLATE\u2192COUNTER\u2192CLASSIFY) but lacks a hard enforcement mechanism \u2014 the agent can skip COUNTER silently. A mandatory 'I cannot refute this' written artifact would make the skip visible.",
+      "principles": [
+        {
+          "statement": "Before penalizing a claim as fabricated, check if other candidates independently state the same fact. Cross-candidate convergence on specifics is corroborating evidence \u2014 list overlaps explicitly before applying any fabrication penalty.",
+          "entry_kind": "artifact",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "When evaluating multiple candidates and considering penalizing factual claims in any one of them.",
+          "verification_or_artifact": "Construct an overlap table: for each specific claim you plan to penalize, list which other candidates independently assert the same or closely related fact. If 2+ candidates converge, classify as 'corroborated' and do not apply fabrication penalty without a concrete counter-fact.",
+          "evidence": "Candidates [1] and [3] both listed Blacktivist, Being Patriotic, Secured Borders, Army of Jesus, Heart of Texas. The agent dismissed [1]'s claims as 'likely fabricated' while rating [3] highest \u2014 ignoring that [3] itself corroborated [1]'s claims. An overlap table would have forced recognition of this convergence."
+        },
+        {
+          "statement": "Specificity (names, handles, numbers) is checkable evidence, not suspicious evidence. Verify concrete details rather than penalizing their existence. A specific correct claim always outranks a vague correct claim.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "When one candidate provides concrete verifiable specifics (exact names, handles, quantities) while competitors stay vague or generic.",
+          "verification_or_artifact": "Before penalizing specificity: attempt to verify at least 2-3 specific claims. If verified or unrefuted, specificity is a quality signal. If refuted, penalize the specific falsehoods, not specificity itself.",
+          "evidence": "The agent penalized [1] for listing specific handles (@TEN_GOP, @Blacktivist) and multi-platform coverage, calling them 'largely unsourced and likely fabricated.' Meanwhile [3]'s vaguer, more generic descriptions were treated as trustworthy. Many of [1]'s specific handles are documented in the Mueller indictment. Specificity made [1] more verifiable, not less trustworthy."
+        },
+        {
+          "statement": "When you suspect fabrication but cannot state a concrete counter-fact, write 'I cannot refute this claim' explicitly. Classify as UNVERIFIABLE, not FABRICATED. Suspicion without counter-evidence is bias, not analysis.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "005004a4",
+          "trigger": "During the COUNTER step of the verification gate, when you cannot produce a specific counter-fact.",
+          "verification_or_artifact": "Mandatory written artifact: for each claim suspected of fabrication, write either (a) a concrete counter-fact with source reasoning, or (b) 'I cannot refute this claim \u2014 classifying as UNVERIFIABLE.' If (b), no fabrication penalty applies. The written artifact makes silent skipping of the COUNTER step impossible.",
+          "evidence": "The agent wrote 'appear highly likely to be fabricated or mistaken' for Candidate [1]'s claims but never stated what any claim's correct alternative would be. Had the agent been forced to write 'I cannot refute that @TEN_GOP was an IRA-operated Twitter account,' it would have been unable to justify a fabrication penalty for documented facts."
+        }
+      ],
+      "mutation_implication": "add",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause: Verification Gate Bypassed + Missing Cross-Candidate Corroboration\n\nBoth rollouts produced byte-identical outputs with 0.0% accuracy. The sole correct candidate ([1], score 0.8) was rated lowest while three incorrect candidates scored higher, with the most incorrect ([3], score 4.6, with 20% list duplication) rated highest. The failure is deterministic, not stochastic.\n\nThe agent described Candidate [1]'s claims as 'appear highly likely to be fabricated or mistaken' and 'largely unsourced' but never produced a single concrete counter-fact for any challenged claim. Many of [1]'s specific claims \u2014 @TEN_GOP, Blacktivist, Being Patriotic, Heart of Texas, Secured Borders, Army of Jesus \u2014 are well-documented in the Mueller indictment and Senate Intelligence Committee reports. The agent applied no comparable scrutiny to Candidate [3], violating the SYMMETRY requirement in entry [005004a4].\n\n## Two Interacting Failures\n\n**1. Verification gate bypassed (execution failure against existing guidance).** Entry [005004a4] explicitly prohibits gut-level suspicion as evidence and requires a written ISOLATE\u2192COUNTER\u2192CLASSIFY procedure. The agent skipped the COUNTER step entirely \u2014 no concrete counter-facts were stated for any claim. The entry's guidance is correct; the agent simply did not follow it. Critically, Candidate [3]'s heavy duplication (items 3&13, 4&20, 8&18, 5&19 \u2014 four duplicate pairs in 20 items, ~20% padding) should have triggered entry [3008aa9b] but the agent noted only 'some duplication' without producing the required unique/total count.\n\n**2. Cross-candidate corroboration ignored (genuine knowledge gap).** Candidates [1] and [3] independently name many of the same groups: Blacktivist, Being Patriotic, Secured Borders, Army of Jesus, Heart of Texas, United Muslims of America. The agent simultaneously called [1]'s versions of these claims 'likely fabricated' while treating [3]'s identical claims as trustworthy and rating [3] highest. This is a logical inconsistency that a cross-candidate corroboration check would have surfaced directly. No existing playbook entry instructs the agent to use convergent claims across candidates as a positive verification signal.\n\nA secondary bias pattern reinforced the error: the agent treated Candidate [1]'s higher specificity (exact handles, multi-platform breakdown) as evidence of fabrication, while [3]'s vaguer descriptions were treated as more trustworthy. This inverts correct epistemic reasoning \u2014 specificity makes claims more verifiable, not less trustworthy.\n\n## Why Existing Entries Are Tagged Neutral, Not Harmful\n\nTwo reflections tagged [005004a4], [71f11566], and [3008aa9b] as 'harmful,' arguing they gave the agent false confidence by being partially activated (the agent's language mirrors the entries' vocabulary) without the procedural steps being followed. A third reflection tagged them 'neutral' because the entries' content is correct and there is no direct evidence the entries caused misdirection \u2014 the agent simply skipped required steps. I adopt the 'neutral' position because: (a) there are no PP tags in the trace to confirm active consultation; (b) the narrative evidence for 'false confidence' is speculative; (c) tagging entries as 'harmful' when their content is correct risks removing good guidance instead of adding missing capabilities; (d) the entry [005004a4] already has -10 cumulative score, and further penalties based on non-execution rather than misdirection would be unjust.\n\n## Recommended Mutation: ADD Cross-Candidate Corroboration Procedure\n\nAll three reflections independently identify the same genuinely missing capability: a procedure for using cross-candidate factual convergence as a verification signal. This is not covered by any existing entry. The SYMMETRY step in [005004a4] is related but different \u2014 it checks for asymmetric scrutiny of the same flaw type, not for convergent claims serving as positive evidence.\n\nProposed entry (procedure/artifact):\n- **Trigger:** When evaluating multiple candidates that contain specific factual claims, especially before penalizing any candidate's claims as fabricated.\n- **Procedure:** Produce a CORROBORATION TABLE: for each claim you plan to penalize as fabricated, check whether other candidates independently assert the same or closely matching claim. If 2+ candidates converge on a specific factual claim, classify it as 'corroborated' and do not apply any fabrication penalty unless you can complete the ISOLATE\u2192COUNTER procedure with a concrete counter-fact.\n- **Rationale:** Cross-candidate convergence is a verification signal. You cannot logically rate Candidate X's version of a claim as fabricated while simultaneously rating Candidate Y highest when Y asserts the same claim.\n\nThis is the single most impactful change because it would have: (a) forced recognition of the [1]-[3] claim overlap, (b) surfaced the logical inconsistency in the agent's reasoning, and (c) provided an independent verification signal that does not depend on the agent's domain knowledge.\n\nA secondary consideration for future runs: strengthening [005004a4]'s enforcement by requiring the agent to write 'I cannot refute this claim' explicitly when the COUNTER step fails, making silent bypass visible. This is deferred because the existing entry already contains the correct guidance \u2014 it is an enforcement problem rather than a knowledge gap.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent bypassed the ISOLATE\u2192COUNTER verification gate (existing guidance in [005004a4]) to apply gut-level fabrication penalties to the correct candidate, while a genuinely missing capability \u2014 cross-candidate corroboration \u2014 would have independently surfaced the logical inconsistency of dismissing claims in [1] that the top-rated [3] also asserts. The failure is deterministic (identical across both rollouts), indicating systematic bias rather than random execution variance.",
+      "important_disagreements": [
+        "Entry harm tags: Anchor and credit_attribution tagged [005004a4], [71f11566], [3008aa9b] as 'harmful' (false-confidence theory); principle_extraction tagged them 'neutral' (correct content, skipped execution). Resolved as 'neutral' because: no PP tags confirm consultation-then-bypass, the entries' content is correct, and tagging correct guidance as harmful risks removing it instead of adding missing capabilities.",
+        "Execution slip vs. systematic bias: Anchor called it 'primarily execution slip'; credit_attribution called it 'deterministic systematic bias'; principle_extraction called it 'hybrid.' Resolved as hybrid \u2014 the verification gate bypass is an execution failure against existing guidance, but the missing corroboration procedure is a genuine knowledge gap that would have independently prevented the error."
+      ],
+      "mutation_posture": "add",
+      "why_this_posture": "All three reflections independently converge on the same genuinely missing capability: cross-candidate corroboration as a verification signal. No existing entry covers this. It directly addresses the specific failure (agent dismissed [1]'s claims as fabricated while rating [3] highest for asserting the same claims). The concept is L3-general (applies to any multi-candidate factual evaluation) and has a clear trigger, procedure, and artifact. The existing entries' enforcement weakness is a secondary concern better addressed by an update in a future run if the corroboration procedure alone proves insufficient.",
+      "conservatism_rationale": "One ADD is preferred over bundling multiple changes because: (1) the corroboration procedure is the single most impactful change with highest cross-reflection agreement; (2) the existing entries [005004a4] and [3008aa9b] contain correct guidance \u2014 their execution failure may resolve once the corroboration procedure forces the agent to compare candidates' claims before judging accuracy; (3) the 005004a4 enforcement strengthening, while reasonable, addresses an execution failure against already-correct guidance and is better treated as a separate potential update if the corroboration ADD alone proves insufficient.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause: Verification Gate Bypassed + Missing Cross-Candidate Corroboration\\n\\nBoth rollouts produced byte-identical outputs with 0.0% accuracy. The sole correct candidate ([1], score 0.8) was rated lowest while three incorrect candidates scored higher, with the most incorrect ([3], score 4.6, with 20% list duplication) rated highest. The failure is deterministic, not stochastic.\\n\\nThe agent described Candidate [1]'s claims as 'appear highly likely to be fabricated or mistaken' and 'largely unsourced' but never produced a single concrete counter-fact for any challenged claim. Many of [1]'s specific claims \u2014 @TEN_GOP, Blacktivist, Being Patriotic, Heart of Texas, Secured Borders, Army of Jesus \u2014 are well-documented in the Mueller indictment and Senate Intelligence Committee reports. The agent applied no comparable scrutiny to Candidate [3], violating the SYMMETRY requirement in entry [005004a4].\\n\\n## Two Interacting Failures\\n\\n**1. Verification gate bypassed (execution failure against existing guidance).** Entry [005004a4] explicitly prohibits gut-level suspicion as evidence and requires a written ISOLATE\u2192COUNTER\u2192CLASSIFY procedure. The agent skipped the COUNTER step entirely \u2014 no concrete counter-facts were stated for any claim. The entry's guidance is correct; the agent simply did not follow it. Critically, Candidate [3]'s heavy duplication (items 3&13, 4&20, 8&18, 5&19 \u2014 four duplicate pairs in 20 items, ~20% padding) should have triggered entry [3008aa9b] but the agent noted only 'some duplication' without producing the required unique/total count.\\n\\n**2. Cross-candidate corroboration ignored (genuine knowledge gap).** Candidates [1] and [3] independently name many of the same groups: Blacktivist, Being Patriotic, Secured Borders, Army of Jesus, Heart of Texas, United Muslims of America. The agent simultaneously called [1]'s versions of these claims 'likely fabricated' while treating [3]'s identical claims as trustworthy and rating [3] highest. This is a logical inconsistency that a cross-candidate corroboration check would have surfaced directly. No existing playbook entry instructs the agent to use convergent claims across candidates as a positive verification signal.\\n\\nA secondary bias pattern reinforced the error: the agent treated Candidate [1]'s higher specificity (exact handles, multi-platform breakdown) as evidence of fabrication, while [3]'s vaguer descriptions were treated as more trustworthy. This inverts correct epistemic reasoning \u2014 specificity makes claims more verifiable, not less trustworthy.\\n\\n## Why Existing Entries Are Tagged Neutral, Not Harmful\\n\\nTwo reflections tagged [005004a4], [71f11566], and [3008aa9b] as 'harmful,' arguing they gave the agent false confidence by being partially activated (the agent's language mirrors the entries' vocabulary) without the procedural steps being followed. A third reflection tagged them 'neutral' because the entries' content is correct and there is no direct evidence the entries caused misdirection \u2014 the agent simply skipped required steps. I adopt the 'neutral' position because: (a) there are no PP tags in the trace to confirm active consultation; (b) the narrative evidence for 'false confidence' is speculative; (c) tagging entries as 'harmful' when their content is correct risks removing good guidance instead of adding missing capabilities; (d) the entry [005004a4] already has -10 cumulative score, and further penalties based on non-execution rather than misdirection would be unjust.\\n\\n## Recommended Mutation: ADD Cross-Candidate Corroboration Procedure\\n\\nAll three reflections independently identify the same genuinely missing capability: a procedure for using cross-candidate factual convergence as a verification signal. This is not covered by any existing entry. The SYMMETRY step in [005004a4] is related but different \u2014 it checks for asymmetric scrutiny of the same flaw type, not for convergent claims serving as positive evidence.\\n\\nProposed entry (procedure/artifact):\\n- **Trigger:** When evaluating multiple candidates that contain specific factual claims, especially before penalizing any candidate's claims as fabricated.\\n- **Procedure:** Produce a CORROBORATION TABLE: for each claim you plan to penalize as fabricated, check whether other candidates independently assert the same or closely matching claim. If 2+ candidates converge on a specific factual claim, classify it as 'corroborated' and do not apply any fabrication penalty unless you can complete the ISOLATE\u2192COUNTER procedure with a concrete counter-fact.\\n- **Rationale:** Cross-candidate convergence is a verification signal. You cannot logically rate Candidate X's version of a claim as fabricated while simultaneously rating Candidate Y highest when Y asserts the same claim.\\n\\nThis is the single most impactful change because it would have: (a) forced recognition of the [1]-[3] claim overlap, (b) surfaced the logical inconsistency in the agent's reasoning, and (c) provided an independent verification signal that does not depend on the agent's domain knowledge.\\n\\nA secondary consideration for future runs: strengthening [005004a4]'s enforcement by requiring the agent to write 'I cannot refute this claim' explicitly when the COUNTER step fails, making silent bypass visible. This is deferred because the existing entry already contains the correct guidance \u2014 it is an enforcement problem rather than a knowledge gap.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent bypassed the ISOLATE\u2192COUNTER verification gate (existing guidance in [005004a4]) to apply gut-level fabrication penalties to the correct candidate, while a genuinely missing capability \u2014 cross-candidate corroboration \u2014 would have independently surfaced the logical inconsistency of dismissing claims in [1] that the top-rated [3] also asserts. The failure is deterministic (identical across both rollouts), indicating systematic bias rather than random execution variance.\",\n    \"important_disagreements\": [\n      \"Entry harm tags: Anchor and credit_attribution tagged [005004a4], [71f11566], [3008aa9b] as 'harmful' (false-confidence theory); principle_extraction tagged them 'neutral' (correct content, skipped execution). Resolved as 'neutral' because: no PP tags confirm consultation-then-bypass, the entries' content is correct, and tagging correct guidance as harmful risks removing it instead of adding missing capabilities.\",\n      \"Execution slip vs. systematic bias: Anchor called it 'primarily execution slip'; credit_attribution called it 'deterministic systematic bias'; principle_extraction called it 'hybrid.' Resolved as hybrid \u2014 the verification gate bypass is an execution failure against existing guidance, but the missing corroboration procedure is a genuine knowledge gap that would have independently prevented the error.\"\n    ],\n    \"mutation_posture\": \"add\",\n    \"why_this_posture\": \"All three reflections independently converge on the same genuinely missing capability: cross-candidate corroboration as a verification signal. No existing entry covers this. It directly addresses the specific failure (agent dismissed [1]'s claims as fabricated while rating [3] highest for asserting the same claims). The concept is L3-general (applies to any multi-candidate factual evaluation) and has a clear trigger, procedure, and artifact. The existing entries' enforcement weakness is a secondary concern better addressed by an update in a future run if the corroboration procedure alone proves insufficient.\",\n    \"conservatism_rationale\": \"One ADD is preferred over bundling multiple changes because: (1) the corroboration procedure is the single most impactful change with highest cross-reflection agreement; (2) the existing entries [005004a4] and [3008aa9b] contain correct guidance \u2014 their execution failure may resolve once the corroboration procedure forces the agent to compare candidates' claims before judging accuracy; (3) the 005004a4 enforcement strengthening, while reasonable, addresses an execution failure against already-correct guidance and is better treated as a separate potential update if the corroboration ADD alone proves insufficient.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

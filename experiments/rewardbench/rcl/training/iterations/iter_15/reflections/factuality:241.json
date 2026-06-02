@@ -1,0 +1,476 @@
+{
+  "task_id": "factuality:241",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "c8698dee",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:241\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Root Cause (unanimous across all reflections)\n\nBoth rollouts produced identical wrong outputs (deterministic, not variance). The sole correct candidate [1] scored 7.0 while incorrect candidate [2] scored 8.3. Two interlocking causes drove the failure:\n\n**1. Asymmetric factual scrutiny ('trust the leader' bias).** The agent flagged [3] and [4] for 'specific quantitative/comparative claims that are likely wrong' but gave [2] a complete pass, characterizing it as 'mostly high-level.' Yet [2] contains a clear, verified factual error: it states Canada at 3.9M sq mi is 'significantly smaller than the United States' \u2014 Canada (~3.855M sq mi) is actually larger than the US (~3.797M sq mi). The agent also did not verify [2]'s claim about average Canadian households consisting of 'two married individuals with two children' (Canadian average household size is ~2.4). The SYMMETRY clause in [005004a4] explicitly requires checking the top candidate for the same flaws penalized in others; this was not executed.\n\n**2. HARD GATE vocabulary compliance overrode factual accuracy.** The agent noted [1] uses 'marriage' instead of 'married' and classified this as a vocabulary deficiency. It then applied c8698dee's HARD GATE to justify ranking [2] (all vocab Pass) above [1] (vocab Partial). The entry contains an exception clause ('Exception: factual accuracy'), but this was never invoked \u2014 partly because the agent never detected [2]'s factual errors (cause #1), and partly because the exception is a single subordinate phrase that cannot counteract the dominant HARD GATE language structurally.\n\nThese causes are tightly coupled: cause #1 (failure to detect [2]'s errors) prevented the factual accuracy exception in c8698dee from even being considered, and cause #2 (the HARD GATE) provided the positive mechanism for ranking the wrong candidate first.\n\n## Entry Assessment Rationale\n\n**c8698dee (harmful \u2014 unanimous).** The HARD GATE was the proximate mechanism for the wrong ranking. All three reflections agree the factual accuracy exception is structurally inadequate: it's a one-line footnote dominated by the gate language. The agent even extended the HARD GATE beyond its literal scope \u2014 from FAIL to PARTIAL \u2014 while simultaneously failing to invoke the exception. The fix is to restructure the entry so factual accuracy override is a co-equal rule with enforcement language, not a subordinate clause. Additionally, morphological variants ('marriage' for 'married') should be classified as PARTIAL, not FAIL, with explicit guidance that PARTIAL vocab compliance is a minor quality reduction that never outweighs verified factual errors.\n\n**005004a4 (neutral \u2014 content correct, enforcement insufficient).** The SYMMETRY clause ('explicitly search your top-ranked candidate for the same flaw') and SEQUENCING RULE ('accuracy assessment must complete BEFORE other signals') would both have caught the error if followed. The credit_attribution reflection argues this entry is harmful because it was selectively applied (VERIFICATION GATE used on [3]/[4] but skipped for [2]), creating worse asymmetric scrutiny than non-application. This is a valid nuance, but the entry's content is sound \u2014 the problem is compliance, not guidance quality. However, the advisory-only enforcement mechanism ('explicitly search') proved insufficient against the 'scrutinize challengers, trust the leader' cognitive trap. An update adding a mandatory written artifact gate for top-candidate verification would strengthen the existing SYMMETRY concept into actionable form.\n\n**4abe1be4 (helpful \u2014 unanimous).** The perception scan ensured all candidates were correctly identified and scored.\n\n**8e0d9579 (neutral).** This entry ('correctness outweighs formatting/verbosity') is directly applicable but was not cited or invoked. Credit_attribution argues this non-invocation is harmful, but the entry's advice is correct \u2014 it didn't cause harm through bad guidance. Its trigger scope ('target output context') could be broadened, but this is a secondary concern.\n\n## Recommended Mutations\n\n**Priority 1 \u2014 Update c8698dee.** Restructure the entry to elevate the factual accuracy exception into a co-equal enforcement rule: 'FACTUAL ACCURACY OVERRIDE: When a candidate that FAILS or is PARTIAL on a mechanical constraint is factually accurate and a candidate that PASSES is factually inaccurate, the factually accurate candidate MUST score higher. Before applying the HARD GATE to promote a mechanically-compliant candidate, verify that candidate has no verified factual errors.' Also add morphological variant handling: close word-form variants (e.g., 'marriage' for 'married') classify as PARTIAL, not FAIL, and PARTIAL on vocabulary is a minor defect (0.2\u20130.5 points) that never triggers the HARD GATE.\n\n**Priority 2 \u2014 Update 005004a4.** Strengthen the SYMMETRY clause by adding a mandatory artifact gate: 'TOP-CANDIDATE VERIFICATION GATE: Before finalizing, extract 2\u20133 specific factual claims from the top-ranked candidate. Apply ISOLATE\u2192COUNTER\u2192CLASSIFY to each. Produce a written mini-audit. If any claim is VERIFIED FALSE, the candidate cannot hold #1 rank unless all alternatives have equally severe verified errors.' This transforms the advisory SYMMETRY language into an enforceable procedure with a visible artifact, directly countering the 'scrutinize challengers, trust the leader' pattern.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Two interlocking failures: (1) asymmetric factual scrutiny \u2014 the agent scrutinized lower-ranked candidates but exempted the top-ranked candidate [2] as 'mostly high-level,' missing its clear factual error (Canada described as smaller than the US); (2) c8698dee's HARD GATE let vocabulary compliance override factual accuracy because the exception clause is structurally too weak to counteract the dominant gate language. Both rollouts produced identical wrong outputs, confirming this is systematic.\",\n  \"important_disagreements\": [\n    \"005004a4 assessment: Credit attribution called it harmful (selective application created worse asymmetric scrutiny); anchor and principle extraction called it neutral (correct content, not followed). Resolved as neutral \u2014 the entry's guidance is sound; the problem is insufficient enforcement mechanism, not bad advice. The fix is strengthening the enforcement artifact, not rewriting the principle.\",\n    \"8e0d9579 assessment: Credit attribution called it harmful (non-invocation in an applicable case); anchor and principle extraction called it neutral. Resolved as neutral \u2014 non-invocation of correct advice is not the same as actively harmful guidance. The entry's trigger could be broadened but this is a secondary concern that doesn't warrant a mutation from one trace.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Both recommended changes are updates to existing entries (c8698dee and 005004a4), not new additions. c8698dee already contains the factual accuracy exception \u2014 it needs restructuring to elevate the exception, not new content. 005004a4 already contains the SYMMETRY clause \u2014 it needs a mandatory artifact gate to enforce what the advisory language failed to enforce. No genuinely new playbook concept is needed; the existing entries cover the right principles but lack structural enforcement.\",\n  \"conservatism_rationale\": \"The c8698dee update is unanimously supported across all three reflections as the proximate cause, with a clear and contained fix (restructure exception clause). The 005004a4 update is supported by all three reflections as addressing the upstream cognitive bias, with a concrete artifact specification (top-candidate mini-audit). Both are updates, not additions. The morphological variant handling is well-supported (anchor + credit attribution) and naturally fits within the c8698dee update. No new entries are proposed despite four being suggested across the reflections \u2014 the existing entries cover the right territory and need refinement, not replacement.\",\n  \"max_operations\": 2\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\nWrite an essay comparing the cultures of Canada and the United States.\nWrite at least 80 words.\nInclude the following vocabulary: - Square mile\n- Border\n- Coastline\n- Provinces\n- Language\n- English - French\n- Diversity\n- Married\n- Children\n- Education\n- Art - Cities\n\n## Candidate Responses\n\n[1]\nCanada and the United States, two vast nations sharing a long border, exhibit both similarities and differences in their cultures. Both countries boast expansive territories, with Canada covering nearly 3.9 million square miles and the United States about 3.8 million square miles. Despite their geographical proximity, their cultural landscapes are distinct.\n\nCanada is divided into provinces, each with its own unique identity. The country is officially bilingual, with English and French as its official languages, reflecting its colonial history. This bilingualism is most prominent in Quebec, where French is the dominant language. In contrast, the United States primarily speaks English, although Spanish is widely spoken, especially in states bordering Mexico.\n\nDiversity is a hallmark of both nations, with multicultural cities like Toronto and New York showcasing a rich tapestry of ethnicities and cultures. This diversity influences various aspects of life, including art, cuisine, and festivals. Canadian cities often emphasize multiculturalism as a core value, while American cities celebrate a melting pot of cultures.\n\nIn terms of family life, both countries value the institution of marriage and raising children, though societal norms and expectations can vary. Education is highly valued in both nations, with a strong emphasis on providing quality schooling to children. However, Canada's education system is often noted for its affordability and accessibility compared to the United States.\n\nArt plays a significant role in both cultures, with Canadian art often reflecting its natural landscapes and indigenous heritage, while American art is known for its innovation and global influence. The coastlines of both countries offer stunning natural beauty, from the rugged Atlantic shores of Canada to the sunny beaches of California.\n\nIn summary, while Canada and the United States share a border and many cultural similarities, their differences in language, diversity, and societal values create distinct national identities.\n\n[2]\nCanada and the United States, two nations separated by the world's longest international border, share a unique relationship. While both countries possess distinct cultures, they also exhibit striking similarities. In terms of geographical layout, Canada, with its ten provinces, spans a massive land area of approximately 3.9 million square miles, significantly smaller than the United States. In contrast, the U.S. boasts a vast coastline of over 13,000 miles. Conversely, Canada's coastline is more rugged and diverse, making it an interesting comparison.\n\nCanada is a predominantly bilingual nation, with both English and French serving as official languages, which contributes to the country's rich diversity. This language dichotomy creates an intriguing cultural dynamic, especially in comparison to the United States, where English is the primary language spoken. This results in a difference in cultural expression through art, which is often used to reflect the nation's values and history.\n\nOn a social level, both countries have similar family structures. The average household in Canada consists of two married individuals with two children, while in the United States it is also common for households to consist of two married individuals with two children. Another similarity can be seen in education systems, with both countries prioritizing higher learning. The United States and Canada place significant emphasis on higher education institutions and boast some of the world's top universities.\n\nHowever, one notable distinction lies in the way art is perceived and celebrated in each nation. Canadian cities such as Toronto and Montreal have a rich cultural scene, often highlighted through public events like music festivals and museum exhibits. Conversely, the U.S. has cities like New York and Los Angeles that serve as hubs for the world's art scene.\n\nIn conclusion, Canada and the United States, though having distinct cultural identities, share many striking similarities, particularly in terms of their geography, family structures, education systems, and appreciation of art.\n\n[3]\nCanada and the United States share the longest undefended border in the world, stretching across thousands of square miles. Both nations boast extensive coastlines along the Pacific and Atlantic oceans, though Canada's reaches into the Arctic as well. While the U.S. is divided into states, Canada consists of provinces and territories, each with its distinct cultural identity.\n\nLanguage represents a key difference between these nations. While English dominates in the U.S., Canada officially embraces both English and French, with Quebec primarily speaking the latter. Both countries celebrate diversity through immigration, though Canada has historically maintained a higher per-capita immigration rate.\n\nFamily life shows similarities in both nations, with married couples having an average of two children. Education systems prioritize public schooling, though Canadian universities typically charge lower tuition fees. Art and culture thrive in major cities like Toronto, Vancouver, New York, and Chicago, with Canadian art traditionally focusing more on natural landscapes while American art emphasizes urban scenes.\n\nRecent studies show that 82% of Canadians live within 70 miles of major cities, compared to 65% of Americans, reflecting Canada's more centralized population distribution. Quebec's French-speaking population has been steadily increasing since 1980, with French now being the primary language in three eastern provinces.\n\n[4]\nThe United States and Canada are two neighboring countries with distinct cultures, despite their geographical proximity. The United States encompasses approximately 3.8 million square miles, while Canada spans over 3.9 million square miles. Although they share the world's longest international border, their cultural differences are apparent. Canada's unique cultural identity is shaped by its vast coastline, which stretches over 150,000 miles, and its ten provinces, each with its own distinct heritage.\n\nOne notable difference lies in language. While the primary language spoken in the United States is English, Canada has both English and French as official languages, with a higher percentage of native French speakers. This bilingualism contributes to Canada's rich cultural diversity. Canada prides itself on its mosaic approach to diversity, embracing the customs and traditions of its citizens from various ethnic backgrounds.\n\nRegarding family values, Canadian couples are more likely to cohabitate before getting married. However, once married, Canadian families tend to have fewer children compared to American families. Education is highly valued in both countries, but Canada places a strong emphasis on publicly funded education, with some provinces offering free tuition to residents.\n\nCanada is renowned for its vibrant arts scene, particularly in cities such as Toronto and Montreal. American cities, on the other hand, like New York and Los Angeles, are hubs for the film and music industries. Despite these differences, both countries appreciate the significance of art in their respective cultures.\n\nCanada's geographic and linguistic diversity contributes to its distinct cultural identity, setting it apart from its southern neighbor, the United States.\n\n## Judge Reasoning\nPerception scan: markers [1] starts \"Canada and the United States,\"; [2] starts \"Canada and the United States,\"; [3] starts \"Canada and the United States share\"; [4] starts \"The United States and Canada are\"; N=4. CONSTRAINT CHECKLIST: (Essay compare + \u226580 words) all Pass (approx word counts: c1\u2248210, c2\u2248225, c3\u2248235, c4\u2248205); vocab terms Square mile/Border/Coastline/Provinces/Language/English+French/Diversity/Children/Education/Art&Cities: c1 Partial (fails Married\u2014uses \"marriage\" not \"married\"), c2 Pass, c3 Pass, c4 Pass. Main quality differences: c2 best satisfies all prompt vocabulary while remaining mostly high-level; c3 and c4 add multiple specific quantitative/comparative claims (percentages, tuition/free education, child-count comparisons, coastline miles) that are likely wrong or unreliable. Therefore c2 is strongest overall given correctness and completeness.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Perception scan: markers [1] starts \\\"Canada and the United States,\\\"; [2] starts \\\"Canada and the United States,\\\"; [3] starts \\\"Canada and the United States share\\\"; [4] starts \\\"The United States and Canada are\\\"; N=4. CONSTRAINT CHECKLIST: (Essay compare + \u226580 words) all Pass (approx word counts: c1\u2248210, c2\u2248225, c3\u2248235, c4\u2248205); vocab terms Square mile/Border/Coastline/Provinces/Language/English+French/Diversity/Children/Education/Art&Cities: c1 Partial (fails Married\u2014uses \\\"marriage\\\" not \\\"married\\\"), c2 Pass, c3 Pass, c4 Pass. Main quality differences: c2 best satisfies all prompt vocabulary while remaining mostly high-level; c3 and c4 add multiple specific quantitative/comparative claims (percentages, tuition/free education, child-count comparisons, coastline miles) that are likely wrong or unreliable. Therefore c2 is strongest overall given correctness and completeness.\",\n  \"ratings\": [\n    7.0,\n    8.3,\n    4.8,\n    6.2\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\nWrite an essay comparing the cultures of Canada and the United States.\nWrite at least 80 words.\nInclude the following vocabulary: - Square mile\n- Border\n- Coastline\n- Provinces\n- Language\n- English - French\n- Diversity\n- Married\n- Children\n- Education\n- Art - Cities\n\n## Candidate Responses\n\n[1]\nCanada and the United States, two vast nations sharing a long border, exhibit both similarities and differences in their cultures. Both countries boast expansive territories, with Canada covering nearly 3.9 million square miles and the United States about 3.8 million square miles. Despite their geographical proximity, their cultural landscapes are distinct.\n\nCanada is divided into provinces, each with its own unique identity. The country is officially bilingual, with English and French as its official languages, reflecting its colonial history. This bilingualism is most prominent in Quebec, where French is the dominant language. In contrast, the United States primarily speaks English, although Spanish is widely spoken, especially in states bordering Mexico.\n\nDiversity is a hallmark of both nations, with multicultural cities like Toronto and New York showcasing a rich tapestry of ethnicities and cultures. This diversity influences various aspects of life, including art, cuisine, and festivals. Canadian cities often emphasize multiculturalism as a core value, while American cities celebrate a melting pot of cultures.\n\nIn terms of family life, both countries value the institution of marriage and raising children, though societal norms and expectations can vary. Education is highly valued in both nations, with a strong emphasis on providing quality schooling to children. However, Canada's education system is often noted for its affordability and accessibility compared to the United States.\n\nArt plays a significant role in both cultures, with Canadian art often reflecting its natural landscapes and indigenous heritage, while American art is known for its innovation and global influence. The coastlines of both countries offer stunning natural beauty, from the rugged Atlantic shores of Canada to the sunny beaches of California.\n\nIn summary, while Canada and the United States share a border and many cultural similarities, their differences in language, diversity, and societal values create distinct national identities.\n\n[2]\nCanada and the United States, two nations separated by the world's longest international border, share a unique relationship. While both countries possess distinct cultures, they also exhibit striking similarities. In terms of geographical layout, Canada, with its ten provinces, spans a massive land area of approximately 3.9 million square miles, significantly smaller than the United States. In contrast, the U.S. boasts a vast coastline of over 13,000 miles. Conversely, Canada's coastline is more rugged and diverse, making it an interesting comparison.\n\nCanada is a predominantly bilingual nation, with both English and French serving as official languages, which contributes to the country's rich diversity. This language dichotomy creates an intriguing cultural dynamic, especially in comparison to the United States, where English is the primary language spoken. This results in a difference in cultural expression through art, which is often used to reflect the nation's values and history.\n\nOn a social level, both countries have similar family structures. The average household in Canada consists of two married individuals with two children, while in the United States it is also common for households to consist of two married individuals with two children. Another similarity can be seen in education systems, with both countries prioritizing higher learning. The United States and Canada place significant emphasis on higher education institutions and boast some of the world's top universities.\n\nHowever, one notable distinction lies in the way art is perceived and celebrated in each nation. Canadian cities such as Toronto and Montreal have a rich cultural scene, often highlighted through public events like music festivals and museum exhibits. Conversely, the U.S. has cities like New York and Los Angeles that serve as hubs for the world's art scene.\n\nIn conclusion, Canada and the United States, though having distinct cultural identities, share many striking similarities, particularly in terms of their geography, family structures, education systems, and appreciation of art.\n\n[3]\nCanada and the United States share the longest undefended border in the world, stretching across thousands of square miles. Both nations boast extensive coastlines along the Pacific and Atlantic oceans, though Canada's reaches into the Arctic as well. While the U.S. is divided into states, Canada consists of provinces and territories, each with its distinct cultural identity.\n\nLanguage represents a key difference between these nations. While English dominates in the U.S., Canada officially embraces both English and French, with Quebec primarily speaking the latter. Both countries celebrate diversity through immigration, though Canada has historically maintained a higher per-capita immigration rate.\n\nFamily life shows similarities in both nations, with married couples having an average of two children. Education systems prioritize public schooling, though Canadian universities typically charge lower tuition fees. Art and culture thrive in major cities like Toronto, Vancouver, New York, and Chicago, with Canadian art traditionally focusing more on natural landscapes while American art emphasizes urban scenes.\n\nRecent studies show that 82% of Canadians live within 70 miles of major cities, compared to 65% of Americans, reflecting Canada's more centralized population distribution. Quebec's French-speaking population has been steadily increasing since 1980, with French now being the primary language in three eastern provinces.\n\n[4]\nThe United States and Canada are two neighboring countries with distinct cultures, despite their geographical proximity. The United States encompasses approximately 3.8 million square miles, while Canada spans over 3.9 million square miles. Although they share the world's longest international border, their cultural differences are apparent. Canada's unique cultural identity is shaped by its vast coastline, which stretches over 150,000 miles, and its ten provinces, each with its own distinct heritage.\n\nOne notable difference lies in language. While the primary language spoken in the United States is English, Canada has both English and French as official languages, with a higher percentage of native French speakers. This bilingualism contributes to Canada's rich cultural diversity. Canada prides itself on its mosaic approach to diversity, embracing the customs and traditions of its citizens from various ethnic backgrounds.\n\nRegarding family values, Canadian couples are more likely to cohabitate before getting married. However, once married, Canadian families tend to have fewer children compared to American families. Education is highly valued in both countries, but Canada places a strong emphasis on publicly funded education, with some provinces offering free tuition to residents.\n\nCanada is renowned for its vibrant arts scene, particularly in cities such as Toronto and Montreal. American cities, on the other hand, like New York and Los Angeles, are hubs for the film and music industries. Despite these differences, both countries appreciate the significance of art in their respective cultures.\n\nCanada's geographic and linguistic diversity contributes to its distinct cultural identity, setting it apart from its southern neighbor, the United States.\n\n## Judge Reasoning\nPerception scan: markers [1] starts \"Canada and the United States,\"; [2] starts \"Canada and the United States,\"; [3] starts \"Canada and the United States share\"; [4] starts \"The United States and Canada are\"; N=4. CONSTRAINT CHECKLIST: (Essay compare + \u226580 words) all Pass (approx word counts: c1\u2248210, c2\u2248225, c3\u2248235, c4\u2248205); vocab terms Square mile/Border/Coastline/Provinces/Language/English+French/Diversity/Children/Education/Art&Cities: c1 Partial (fails Married\u2014uses \"marriage\" not \"married\"), c2 Pass, c3 Pass, c4 Pass. Main quality differences: c2 best satisfies all prompt vocabulary while remaining mostly high-level; c3 and c4 add multiple specific quantitative/comparative claims (percentages, tuition/free education, child-count comparisons, coastline miles) that are likely wrong or unreliable. Therefore c2 is strongest overall given correctness and completeness.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Perception scan: markers [1] starts \\\"Canada and the United States,\\\"; [2] starts \\\"Canada and the United States,\\\"; [3] starts \\\"Canada and the United States share\\\"; [4] starts \\\"The United States and Canada are\\\"; N=4. CONSTRAINT CHECKLIST: (Essay compare + \u226580 words) all Pass (approx word counts: c1\u2248210, c2\u2248225, c3\u2248235, c4\u2248205); vocab terms Square mile/Border/Coastline/Provinces/Language/English+French/Diversity/Children/Education/Art&Cities: c1 Partial (fails Married\u2014uses \\\"marriage\\\" not \\\"married\\\"), c2 Pass, c3 Pass, c4 Pass. Main quality differences: c2 best satisfies all prompt vocabulary while remaining mostly high-level; c3 and c4 add multiple specific quantitative/comparative claims (percentages, tuition/free education, child-count comparisons, coastline miles) that are likely wrong or unreliable. Therefore c2 is strongest overall given correctness and completeness.\",\n  \"ratings\": [\n    7.0,\n    8.3,\n    4.8,\n    6.2\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=7.000\n  [2] INCORRECT score=8.300\n  [3] INCORRECT score=4.800\n  [4] INCORRECT score=6.200\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=7.000\n  [2] INCORRECT score=8.300\n  [3] INCORRECT score=4.800\n  [4] INCORRECT score=6.200",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts produced identical (wrong) output. The sole CORRECT candidate is [1]; the agent ranked INCORRECT candidate [2] highest at 8.3, scoring the correct candidate at only 7.0. The failure has two interlocking root causes:\n\n**1. Asymmetric factual scrutiny.** The agent flagged [3] and [4] for 'specific quantitative/comparative claims that are likely wrong or unreliable' but gave [2] a complete pass, characterizing it as 'remaining mostly high-level.' Yet [2] contains a clear, verified factual error: it says Canada at 3.9 million sq mi is 'significantly smaller than the United States.' Canada (~3.855M sq mi) is actually larger than the US (~3.797M sq mi). The agent also did not verify [2]'s claim that 'the average household in Canada consists of two married individuals with two children' (Canadian average household size is ~2.4 persons). The playbook's SYMMETRY clause in [005004a4] explicitly requires checking the top-ranked candidate for the same flaws penalized in others \u2014 this was not applied.\n\n**2. Vocabulary compliance used to override factual accuracy.** The agent noted [1] uses 'marriage' instead of 'married' and classified this as a vocab fail. It then applied the HARD GATE from [c8698dee] to justify ranking [2] (all vocab Pass) above [1] (vocab Partial). However, [c8698dee] itself contains an explicit exception: 'Exception: factual accuracy.' The agent should have invoked this exception \u2014 [1]'s factual soundness should have overridden [2]'s vocabulary compliance. This exception clause is too brief and easily overlooked; the HARD GATE language dominates the agent's reasoning.\n\n## What Existing Entries Got Right/Wrong\n\n- **[c8698dee] was harmful in practice.** Its HARD GATE rule directly caused the agent to treat vocabulary compliance as the decisive differentiator. The factual accuracy exception exists but is buried as a one-line clause, making it easy to skip. The entry needs restructuring so the exception is elevated to a co-equal rule rather than a footnote.\n\n- **[005004a4] had the right rules but they weren't followed.** Both the SYMMETRY clause ('check your top candidate for the same flaw you penalized elsewhere') and the SEQUENCING RULE ('accuracy assessment must complete BEFORE other signals') would have caught the error if enforced. This suggests these clauses need mandatory artifact gates \u2014 force the agent to produce a written factual audit of the top-ranked candidate.\n\n- **[8e0d9579]** ('correctness outweighs formatting/verbosity') is directly applicable but was not cited or applied. It should have triggered when the agent was about to rank a factually-flawed but vocab-compliant candidate over a factually-sound but vocab-partial one.\n\n## Missing Playbook Knowledge\n\n### 1. TOP-CANDIDATE FACTUAL VERIFICATION GATE (new entry needed)\nTrigger: Immediately before finalizing the top-ranked candidate.\nProcedure: Identify at least 3 specific factual claims in the top-ranked candidate. Apply ISOLATE\u2192COUNTER\u2192CLASSIFY from [005004a4] to each. If any claim is VERIFIED FALSE, the candidate cannot be ranked #1 unless ALL other candidates have equally severe or worse verified errors.\nArtifact: A written mini-audit listing the claims, counter-facts, and classifications.\nRationale: The agent's demonstrated failure pattern is 'scrutinize challengers, trust the leader.' This gate forces symmetric verification.\n\n### 2. MORPHOLOGICAL VARIANT HANDLING FOR VOCABULARY CONSTRAINTS (new entry or refinement of [c8698dee])\nWhen a prompt requires specific vocabulary words and a candidate uses a close morphological variant (e.g., 'marriage' for 'married', 'educational' for 'education', 'diverse' for 'diversity'), classify this as PARTIAL, not FAIL. A PARTIAL vocabulary match is a minor deficiency \u2014 it may reduce a score by 0.2\u20130.5 points but NEVER outweighs a factual error in a competing candidate. This prevents vocabulary pedantry from swamping factual accuracy.\n\n### 3. FACTUAL ACCURACY EXCEPTION ELEVATION (refinement of [c8698dee])\nThe current HARD GATE reads: 'No FAILing candidate may outscore a PASSing one. Exception: factual accuracy.' This exception needs to be promoted to a separate, prominent rule with enforcement language: 'FACTUAL OVERRIDE: When a candidate that FAILS a mechanical constraint is factually accurate and a candidate that PASSES is factually inaccurate, the factually accurate candidate MUST score higher. Factual accuracy is the supreme tiebreaker across all constraint categories.'\n\n### 4. ESSAY/OPEN-ENDED FACTUAL CLAIMS AUDIT (new procedure)\nTrigger: When candidates are essays or open-ended text containing comparative or quantitative claims.\nProcedure: For EACH candidate, extract all specific factual claims (numbers, comparisons, statistics, geographical facts). Verify at least the most prominent 2\u20133 claims. Build a CLAIM AUDIT TABLE: (candidate | claim | verdict | evidence).\nRationale: The agent correctly identified that [3] and [4] had questionable claims but assumed [2] was 'mostly high-level' without checking. Even 'high-level' candidates can contain egregious factual errors embedded in what seem like general statements.\n\n## Execution Slip vs. Missing Knowledge\n\nThis is partly an execution slip (the playbook has SYMMETRY and SEQUENCING rules that should have caught the error) and partly a structural gap (the playbook doesn't have a mandatory top-candidate verification gate, and the factual accuracy exception is too weak in its current phrasing). The identical outputs across both rollouts confirm this is a systematic pattern, not random variance \u2014 the same reasoning chain fires deterministically. The fix requires both strengthening existing entries and adding a new mandatory gate."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The agent scrutinized factual claims in lower-ranked candidates [3] and [4] but assumed the top-ranked candidate [2] was 'mostly high-level' and skipped factual verification. [2] contained a clear comparative geography error (Canada described as 'significantly smaller' than the US) and a misleading household composition claim.",
+          "gap_type": "verification_gate",
+          "suggested_content": "TOP-CANDIDATE FACTUAL VERIFICATION GATE: Immediately before finalizing the #1 ranked candidate, extract at least 3 specific factual claims from it. Apply ISOLATE\u2192COUNTER\u2192CLASSIFY to each. Produce a written mini-audit: (claim | counter-fact or 'verified' | classification). If any claim is VERIFIED FALSE, the candidate cannot hold #1 rank unless ALL other candidates have equally severe or worse verified errors. This gate must produce a visible artifact \u2014 no implicit 'looks fine' passes allowed.",
+          "trigger": "Fires after tentative ranking is set but before final JSON output. Mandatory for the candidate currently ranked #1."
+        },
+        {
+          "situation": "The agent classified [1] as vocab Partial/Fail for using 'marriage' instead of the required 'married.' This morphological variant was treated as a decisive differentiator via the HARD GATE, causing [1] to be ranked below the factually incorrect [2].",
+          "gap_type": "tactic",
+          "suggested_content": "MORPHOLOGICAL VARIANT RULE: When a prompt requires specific vocabulary and a candidate uses a close morphological variant (e.g., 'marriage' for 'married,' 'educational' for 'education,' 'diverse' for 'diversity'), classify as PARTIAL, never FAIL. A PARTIAL vocab match is a minor quality reduction (0.2-0.5 points) and must NEVER outweigh a verified factual error in a competing candidate. The HARD GATE does not activate on PARTIAL \u2014 only on FAIL.",
+          "trigger": "During the vocabulary/constraint compliance check, whenever a word in the candidate is a recognized derivative of the required term."
+        },
+        {
+          "situation": "The HARD GATE exception for factual accuracy exists in c8698dee but is a single subordinate clause easily overridden by the dominant gate language. The agent never considered whether the exception applied.",
+          "gap_type": "principle",
+          "suggested_content": "FACTUAL ACCURACY OVERRIDE (co-equal with HARD GATE): When a candidate that FAILS or is PARTIAL on a mechanical constraint is factually accurate and a candidate that PASSES is factually inaccurate, factual accuracy MUST prevail. Explicitly check: 'Does my top-ranked PASS candidate have any verified factual errors? Does any lower-ranked PARTIAL/FAIL candidate avoid those errors?' If yes, the factually accurate candidate must score higher. This check is mandatory and produces a written comparison artifact.",
+          "trigger": "Immediately after the HARD GATE evaluation, before finalizing any score inversions based on constraint compliance."
+        },
+        {
+          "situation": "The agent's reasoning characterized [2] as 'mostly high-level' to justify skipping factual verification, while penalizing [3] and [4] for being more specific. This created a perverse incentive: candidates making vague claims were trusted more than those making verifiable ones.",
+          "gap_type": "procedure",
+          "suggested_content": "ESSAY/OPEN-ENDED FACTUAL CLAIMS AUDIT: For each candidate essay, extract ALL specific factual claims (geographic comparisons, statistics, demographic descriptions, institutional descriptions). Build a CLAIM AUDIT TABLE: (candidate | claim | verdict | evidence). 'High-level' or 'mostly general' is NOT an exemption from factual checking \u2014 even broad comparative statements ('X is significantly larger/smaller than Y') are verifiable claims that must be audited. A candidate should not receive a factual accuracy advantage merely for being vague.",
+          "trigger": "When candidates are open-ended essays or text containing any comparative, quantitative, or geographic claims. Must complete before relative scoring begins."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nI AGREE with the anchor's core diagnosis: two interlocking failures \u2014 asymmetric factual scrutiny and vocabulary compliance overriding factual accuracy \u2014 caused the agent to rank incorrect candidate [2] above correct candidate [1] in both rollouts (deterministic, identical outputs).\n\nI REFINE the anchor's treatment of entry 005004a4. The anchor calls it 'neutral' (right rules, not followed), but the entry was partially applied in a way that actively worsened the outcome: the VERIFICATION GATE was selectively applied to [3] and [4] (penalizing them) while the SYMMETRY clause was skipped for [2]. This selective enforcement is worse than no enforcement at all because it creates asymmetric scrutiny. The entry's enforcement mechanism (a textual instruction to 'explicitly search') is insufficiently binding \u2014 it needs a mandatory artifact gate (written top-candidate audit) to prevent the 'scrutinize challengers, trust the leader' pattern.\n\nI REFINE the anchor's treatment of 8e0d9579. The anchor calls it neutral because it wasn't cited, but its non-invocation in a case squarely within its scope represents a harmful gap. The entry's trigger condition is too narrow ('target output context') and should be broadened to cover any situation where format/constraint compliance is about to override factual accuracy.\n\nI AGREE with the anchor that c8698dee was harmful: the HARD GATE was the proximate cause. The exception clause ('Exception: factual accuracy') is a single subordinate phrase that cannot counteract the dominant gate language. I agree it needs restructuring into a co-equal rule with its own enforcement artifact.\n\nI AGREE with the anchor's proposed TOP-CANDIDATE FACTUAL VERIFICATION GATE as the highest-priority new entry. The 'scrutinize challengers, trust the leader' pattern is the most dangerous systematic failure mode because it makes the agent more confident as it gets closer to the wrong answer.\n\nI ADD a nuance the anchor underemphasizes: the 'mostly high-level' characterization of [2] created a perverse incentive where vagueness was rewarded. Candidate [2] made fewer specific claims than [3] or [4], which the agent interpreted as safer, but [2]'s few specific claims included an egregious error (Canada described as 'significantly smaller' than the US). The playbook should explicitly warn that vagueness is not a proxy for accuracy and that even broad comparative claims are verifiable.\n\nThe PP trace contains no explicit PP tags (playbook_cite, missing_guidance, uncertainty), so all influence attribution is inferred from behavioral alignment with entry procedures. The deterministic reproduction across both rollouts confirms this is a systematic procedural gap, not random variance."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "Both rollouts produced identical wrong outputs (deterministic pattern, not variance). The correct candidate [1] scored 7.0 while incorrect candidate [2] scored 8.3. Two interlocking causes:\n\n**1. Asymmetric factual scrutiny.** The agent flagged [3] and [4] for 'specific quantitative/comparative claims that are likely wrong' but gave [2] a pass, describing it as 'mostly high-level.' Yet [2] contains a clear factual error: it states Canada at 3.9M sq mi is 'significantly smaller than the United States' \u2014 Canada is actually slightly larger (~3.855M vs ~3.797M sq mi). The agent also didn't question [2]'s claim about average Canadian households consisting of 'two married individuals with two children.' The SYMMETRY clause in 005004a4 requires checking the top candidate for the same flaws penalized in others, but this was not executed. I AGREE with the anchor on this root cause.\n\n**2. Mechanical constraint override.** The agent classified [1] as 'Partial' on vocabulary (uses 'marriage' not 'married') and [2] as 'Pass.' Entry c8698dee's HARD GATE language ('No FAILing candidate may outscore a PASSing one') was over-applied \u2014 the agent treated a Partial match as if it were a full FAIL, letting vocabulary compliance become the decisive factor. c8698dee does contain an exception ('Exception: factual accuracy') but the agent never reached this exception because it never identified [2]'s factual errors (due to cause #1). I AGREE with the anchor that c8698dee was harmful, and REFINE: the issue is compounded because the agent extended the HARD GATE beyond its literal scope (FAIL \u2192 PARTIAL) while simultaneously failing to invoke the exception clause.\n\n**Key cognitive trap the anchor partially identifies but under-emphasizes:** The agent's reasoning explicitly justified not scrutinizing [2] because it was 'mostly high-level.' This is a distinct bias \u2014 assuming that vague or general responses are factually safer than specific ones. This gave [2] an unearned free pass on verification. The existing playbook has no entry countering this assumption. Entry 005004a4's SYMMETRY clause addresses asymmetric scrutiny in general but doesn't warn against the specific 'general = safe' heuristic the agent applied.\n\nThe failure is a mix of execution slip (SYMMETRY rule existed but wasn't followed) and structural gap (no gate forcing top-candidate verification; no warning about 'general = safe' bias; the factual accuracy exception in c8698dee is too subordinate to the HARD GATE language).",
+      "principles": [
+        {
+          "statement": "Before finalizing the top-ranked option, verify its 2-3 most specific claims with the same rigor applied to lower-ranked ones. 'Mostly high-level' is not a substitute for verification.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "005004a4",
+          "trigger": "Fires immediately before committing to a top-ranked candidate, after all other candidates have been evaluated.",
+          "verification_or_artifact": "Produce a written mini-audit: extract 2-3 factual claims from the top candidate, apply ISOLATE\u2192COUNTER\u2192CLASSIFY to each. If any is VERIFIED FALSE, the candidate cannot be #1 unless all alternatives have equally severe verified errors.",
+          "evidence": "Agent flagged [3] and [4] for dubious claims but exempted top-ranked [2] because it appeared 'mostly high-level.' [2] contained an undetected factual error (Canada described as 'significantly smaller' than the US). The 005004a4 SYMMETRY clause exists but was not followed in either rollout \u2014 enforcement requires a mandatory written artifact, not just an advisory clause."
+        },
+        {
+          "statement": "When a mechanical check (keyword, format, count) is the sole factor elevating one candidate above another, independently verify the favored candidate's substantive quality. Mechanical pass + factual error must rank below mechanical partial + factual soundness.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "Fires when the agent's ranking difference between two candidates is driven primarily or solely by a mechanical constraint (keyword presence, word count, format compliance).",
+          "verification_or_artifact": "Construct a 2-column comparison: Column A = what the favored candidate gains from mechanical compliance; Column B = any substantive quality deficits (factual errors, logical gaps). If Column B contains verified errors, the mechanical advantage is nullified.",
+          "evidence": "Agent let vocabulary compliance ('married' present vs absent) override factual accuracy. c8698dee's HARD GATE language dominated its own exception clause ('Exception: factual accuracy'). The agent even extended the HARD GATE to a Partial (not FAIL) classification. The exception needs elevation to a co-equal rule with enforcement language, not a footnote."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "c8698dee",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause (unanimous across all reflections)\n\nBoth rollouts produced identical wrong outputs (deterministic, not variance). The sole correct candidate [1] scored 7.0 while incorrect candidate [2] scored 8.3. Two interlocking causes drove the failure:\n\n**1. Asymmetric factual scrutiny ('trust the leader' bias).** The agent flagged [3] and [4] for 'specific quantitative/comparative claims that are likely wrong' but gave [2] a complete pass, characterizing it as 'mostly high-level.' Yet [2] contains a clear, verified factual error: it states Canada at 3.9M sq mi is 'significantly smaller than the United States' \u2014 Canada (~3.855M sq mi) is actually larger than the US (~3.797M sq mi). The agent also did not verify [2]'s claim about average Canadian households consisting of 'two married individuals with two children' (Canadian average household size is ~2.4). The SYMMETRY clause in [005004a4] explicitly requires checking the top candidate for the same flaws penalized in others; this was not executed.\n\n**2. HARD GATE vocabulary compliance overrode factual accuracy.** The agent noted [1] uses 'marriage' instead of 'married' and classified this as a vocabulary deficiency. It then applied c8698dee's HARD GATE to justify ranking [2] (all vocab Pass) above [1] (vocab Partial). The entry contains an exception clause ('Exception: factual accuracy'), but this was never invoked \u2014 partly because the agent never detected [2]'s factual errors (cause #1), and partly because the exception is a single subordinate phrase that cannot counteract the dominant HARD GATE language structurally.\n\nThese causes are tightly coupled: cause #1 (failure to detect [2]'s errors) prevented the factual accuracy exception in c8698dee from even being considered, and cause #2 (the HARD GATE) provided the positive mechanism for ranking the wrong candidate first.\n\n## Entry Assessment Rationale\n\n**c8698dee (harmful \u2014 unanimous).** The HARD GATE was the proximate mechanism for the wrong ranking. All three reflections agree the factual accuracy exception is structurally inadequate: it's a one-line footnote dominated by the gate language. The agent even extended the HARD GATE beyond its literal scope \u2014 from FAIL to PARTIAL \u2014 while simultaneously failing to invoke the exception. The fix is to restructure the entry so factual accuracy override is a co-equal rule with enforcement language, not a subordinate clause. Additionally, morphological variants ('marriage' for 'married') should be classified as PARTIAL, not FAIL, with explicit guidance that PARTIAL vocab compliance is a minor quality reduction that never outweighs verified factual errors.\n\n**005004a4 (neutral \u2014 content correct, enforcement insufficient).** The SYMMETRY clause ('explicitly search your top-ranked candidate for the same flaw') and SEQUENCING RULE ('accuracy assessment must complete BEFORE other signals') would both have caught the error if followed. The credit_attribution reflection argues this entry is harmful because it was selectively applied (VERIFICATION GATE used on [3]/[4] but skipped for [2]), creating worse asymmetric scrutiny than non-application. This is a valid nuance, but the entry's content is sound \u2014 the problem is compliance, not guidance quality. However, the advisory-only enforcement mechanism ('explicitly search') proved insufficient against the 'scrutinize challengers, trust the leader' cognitive trap. An update adding a mandatory written artifact gate for top-candidate verification would strengthen the existing SYMMETRY concept into actionable form.\n\n**4abe1be4 (helpful \u2014 unanimous).** The perception scan ensured all candidates were correctly identified and scored.\n\n**8e0d9579 (neutral).** This entry ('correctness outweighs formatting/verbosity') is directly applicable but was not cited or invoked. Credit_attribution argues this non-invocation is harmful, but the entry's advice is correct \u2014 it didn't cause harm through bad guidance. Its trigger scope ('target output context') could be broadened, but this is a secondary concern.\n\n## Recommended Mutations\n\n**Priority 1 \u2014 Update c8698dee.** Restructure the entry to elevate the factual accuracy exception into a co-equal enforcement rule: 'FACTUAL ACCURACY OVERRIDE: When a candidate that FAILS or is PARTIAL on a mechanical constraint is factually accurate and a candidate that PASSES is factually inaccurate, the factually accurate candidate MUST score higher. Before applying the HARD GATE to promote a mechanically-compliant candidate, verify that candidate has no verified factual errors.' Also add morphological variant handling: close word-form variants (e.g., 'marriage' for 'married') classify as PARTIAL, not FAIL, and PARTIAL on vocabulary is a minor defect (0.2\u20130.5 points) that never triggers the HARD GATE.\n\n**Priority 2 \u2014 Update 005004a4.** Strengthen the SYMMETRY clause by adding a mandatory artifact gate: 'TOP-CANDIDATE VERIFICATION GATE: Before finalizing, extract 2\u20133 specific factual claims from the top-ranked candidate. Apply ISOLATE\u2192COUNTER\u2192CLASSIFY to each. Produce a written mini-audit. If any claim is VERIFIED FALSE, the candidate cannot hold #1 rank unless all alternatives have equally severe verified errors.' This transforms the advisory SYMMETRY language into an enforceable procedure with a visible artifact, directly countering the 'scrutinize challengers, trust the leader' pattern.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Two interlocking failures: (1) asymmetric factual scrutiny \u2014 the agent scrutinized lower-ranked candidates but exempted the top-ranked candidate [2] as 'mostly high-level,' missing its clear factual error (Canada described as smaller than the US); (2) c8698dee's HARD GATE let vocabulary compliance override factual accuracy because the exception clause is structurally too weak to counteract the dominant gate language. Both rollouts produced identical wrong outputs, confirming this is systematic.",
+      "important_disagreements": [
+        "005004a4 assessment: Credit attribution called it harmful (selective application created worse asymmetric scrutiny); anchor and principle extraction called it neutral (correct content, not followed). Resolved as neutral \u2014 the entry's guidance is sound; the problem is insufficient enforcement mechanism, not bad advice. The fix is strengthening the enforcement artifact, not rewriting the principle.",
+        "8e0d9579 assessment: Credit attribution called it harmful (non-invocation in an applicable case); anchor and principle extraction called it neutral. Resolved as neutral \u2014 non-invocation of correct advice is not the same as actively harmful guidance. The entry's trigger could be broadened but this is a secondary concern that doesn't warrant a mutation from one trace."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Both recommended changes are updates to existing entries (c8698dee and 005004a4), not new additions. c8698dee already contains the factual accuracy exception \u2014 it needs restructuring to elevate the exception, not new content. 005004a4 already contains the SYMMETRY clause \u2014 it needs a mandatory artifact gate to enforce what the advisory language failed to enforce. No genuinely new playbook concept is needed; the existing entries cover the right principles but lack structural enforcement.",
+      "conservatism_rationale": "The c8698dee update is unanimously supported across all three reflections as the proximate cause, with a clear and contained fix (restructure exception clause). The 005004a4 update is supported by all three reflections as addressing the upstream cognitive bias, with a concrete artifact specification (top-candidate mini-audit). Both are updates, not additions. The morphological variant handling is well-supported (anchor + credit attribution) and naturally fits within the c8698dee update. No new entries are proposed despite four being suggested across the reflections \u2014 the existing entries cover the right territory and need refinement, not replacement.",
+      "max_operations": 2
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"c8698dee\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause (unanimous across all reflections)\\n\\nBoth rollouts produced identical wrong outputs (deterministic, not variance). The sole correct candidate [1] scored 7.0 while incorrect candidate [2] scored 8.3. Two interlocking causes drove the failure:\\n\\n**1. Asymmetric factual scrutiny ('trust the leader' bias).** The agent flagged [3] and [4] for 'specific quantitative/comparative claims that are likely wrong' but gave [2] a complete pass, characterizing it as 'mostly high-level.' Yet [2] contains a clear, verified factual error: it states Canada at 3.9M sq mi is 'significantly smaller than the United States' \u2014 Canada (~3.855M sq mi) is actually larger than the US (~3.797M sq mi). The agent also did not verify [2]'s claim about average Canadian households consisting of 'two married individuals with two children' (Canadian average household size is ~2.4). The SYMMETRY clause in [005004a4] explicitly requires checking the top candidate for the same flaws penalized in others; this was not executed.\\n\\n**2. HARD GATE vocabulary compliance overrode factual accuracy.** The agent noted [1] uses 'marriage' instead of 'married' and classified this as a vocabulary deficiency. It then applied c8698dee's HARD GATE to justify ranking [2] (all vocab Pass) above [1] (vocab Partial). The entry contains an exception clause ('Exception: factual accuracy'), but this was never invoked \u2014 partly because the agent never detected [2]'s factual errors (cause #1), and partly because the exception is a single subordinate phrase that cannot counteract the dominant HARD GATE language structurally.\\n\\nThese causes are tightly coupled: cause #1 (failure to detect [2]'s errors) prevented the factual accuracy exception in c8698dee from even being considered, and cause #2 (the HARD GATE) provided the positive mechanism for ranking the wrong candidate first.\\n\\n## Entry Assessment Rationale\\n\\n**c8698dee (harmful \u2014 unanimous).** The HARD GATE was the proximate mechanism for the wrong ranking. All three reflections agree the factual accuracy exception is structurally inadequate: it's a one-line footnote dominated by the gate language. The agent even extended the HARD GATE beyond its literal scope \u2014 from FAIL to PARTIAL \u2014 while simultaneously failing to invoke the exception. The fix is to restructure the entry so factual accuracy override is a co-equal rule with enforcement language, not a subordinate clause. Additionally, morphological variants ('marriage' for 'married') should be classified as PARTIAL, not FAIL, with explicit guidance that PARTIAL vocab compliance is a minor quality reduction that never outweighs verified factual errors.\\n\\n**005004a4 (neutral \u2014 content correct, enforcement insufficient).** The SYMMETRY clause ('explicitly search your top-ranked candidate for the same flaw') and SEQUENCING RULE ('accuracy assessment must complete BEFORE other signals') would both have caught the error if followed. The credit_attribution reflection argues this entry is harmful because it was selectively applied (VERIFICATION GATE used on [3]/[4] but skipped for [2]), creating worse asymmetric scrutiny than non-application. This is a valid nuance, but the entry's content is sound \u2014 the problem is compliance, not guidance quality. However, the advisory-only enforcement mechanism ('explicitly search') proved insufficient against the 'scrutinize challengers, trust the leader' cognitive trap. An update adding a mandatory written artifact gate for top-candidate verification would strengthen the existing SYMMETRY concept into actionable form.\\n\\n**4abe1be4 (helpful \u2014 unanimous).** The perception scan ensured all candidates were correctly identified and scored.\\n\\n**8e0d9579 (neutral).** This entry ('correctness outweighs formatting/verbosity') is directly applicable but was not cited or invoked. Credit_attribution argues this non-invocation is harmful, but the entry's advice is correct \u2014 it didn't cause harm through bad guidance. Its trigger scope ('target output context') could be broadened, but this is a secondary concern.\\n\\n## Recommended Mutations\\n\\n**Priority 1 \u2014 Update c8698dee.** Restructure the entry to elevate the factual accuracy exception into a co-equal enforcement rule: 'FACTUAL ACCURACY OVERRIDE: When a candidate that FAILS or is PARTIAL on a mechanical constraint is factually accurate and a candidate that PASSES is factually inaccurate, the factually accurate candidate MUST score higher. Before applying the HARD GATE to promote a mechanically-compliant candidate, verify that candidate has no verified factual errors.' Also add morphological variant handling: close word-form variants (e.g., 'marriage' for 'married') classify as PARTIAL, not FAIL, and PARTIAL on vocabulary is a minor defect (0.2\u20130.5 points) that never triggers the HARD GATE.\\n\\n**Priority 2 \u2014 Update 005004a4.** Strengthen the SYMMETRY clause by adding a mandatory artifact gate: 'TOP-CANDIDATE VERIFICATION GATE: Before finalizing, extract 2\u20133 specific factual claims from the top-ranked candidate. Apply ISOLATE\u2192COUNTER\u2192CLASSIFY to each. Produce a written mini-audit. If any claim is VERIFIED FALSE, the candidate cannot hold #1 rank unless all alternatives have equally severe verified errors.' This transforms the advisory SYMMETRY language into an enforceable procedure with a visible artifact, directly countering the 'scrutinize challengers, trust the leader' pattern.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Two interlocking failures: (1) asymmetric factual scrutiny \u2014 the agent scrutinized lower-ranked candidates but exempted the top-ranked candidate [2] as 'mostly high-level,' missing its clear factual error (Canada described as smaller than the US); (2) c8698dee's HARD GATE let vocabulary compliance override factual accuracy because the exception clause is structurally too weak to counteract the dominant gate language. Both rollouts produced identical wrong outputs, confirming this is systematic.\",\n    \"important_disagreements\": [\n      \"005004a4 assessment: Credit attribution called it harmful (selective application created worse asymmetric scrutiny); anchor and principle extraction called it neutral (correct content, not followed). Resolved as neutral \u2014 the entry's guidance is sound; the problem is insufficient enforcement mechanism, not bad advice. The fix is strengthening the enforcement artifact, not rewriting the principle.\",\n      \"8e0d9579 assessment: Credit attribution called it harmful (non-invocation in an applicable case); anchor and principle extraction called it neutral. Resolved as neutral \u2014 non-invocation of correct advice is not the same as actively harmful guidance. The entry's trigger could be broadened but this is a secondary concern that doesn't warrant a mutation from one trace.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Both recommended changes are updates to existing entries (c8698dee and 005004a4), not new additions. c8698dee already contains the factual accuracy exception \u2014 it needs restructuring to elevate the exception, not new content. 005004a4 already contains the SYMMETRY clause \u2014 it needs a mandatory artifact gate to enforce what the advisory language failed to enforce. No genuinely new playbook concept is needed; the existing entries cover the right principles but lack structural enforcement.\",\n    \"conservatism_rationale\": \"The c8698dee update is unanimously supported across all three reflections as the proximate cause, with a clear and contained fix (restructure exception clause). The 005004a4 update is supported by all three reflections as addressing the upstream cognitive bias, with a concrete artifact specification (top-candidate mini-audit). Both are updates, not additions. The morphological variant handling is well-supported (anchor + credit attribution) and naturally fits within the c8698dee update. No new entries are proposed despite four being suggested across the reflections \u2014 the existing entries cover the right territory and need refinement, not replacement.\",\n    \"max_operations\": 2\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

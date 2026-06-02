@@ -1,0 +1,544 @@
+{
+  "task_id": "precise_if:523",
+  "pass_pct": 0.3333333333333333,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "c8698dee",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task precise_if:523\nPass percentage: 33.3%\nTask completed: False\n### Unified Reflection\n## Diagnosis\n\n**Task profile**: Content-heavy prompt (lyrics) with a trailing formatting constraint: 'Please use an emoji at the end of every sentence.' This is the classic tunnel-vision scenario c8698dee explicitly warns about \u2014 yet the agent never executed the entry's mandated procedures.\n\n**Outcome**: Deterministic failure across both rollouts (identical scores, identical reasoning). The sole CORRECT candidate (1) scored 6.0, while INCORRECT candidates 3 and 4 scored 8.5 and 7.0 respectively. Pairwise accuracy: 33.3%.\n\n**Root cause 1 \u2014 Impressionistic measurement replaced actual enumeration**: The agent stated 'Candidate 3 is strongest because it most consistently places an emoji at the end of each sentence.' This claim is empirically false: Candidate 3 has multiple sentences without trailing emojis (first sentence opens with an emoji but ends with a period; 'Verse two illustrates the personal growth journey...' has no trailing emoji; bridge and outro paragraphs each have lead sentences without emojis). Meanwhile, Candidate 1 places emojis at the end of every sentence. The agent never produced the COUNTING ARTIFACT that c8698dee's COUNTING RULE mandates. The constraint 'every sentence' is a universal quantifier on a countable textual unit, which should have triggered per-sentence enumeration \u2014 but the agent replaced measurement with an impressionistic summary.\n\n**Root cause 2 \u2014 HARD GATE stated but not enforced**: c8698dee's HARD GATE states 'No FAILing candidate may outscore a PASSing one on mechanically verifiable constraints.' This was violated: Candidate 1 (PASS on emoji constraint) scored 6.0 while Candidates 3 and 4 (FAIL) scored 8.5 and 7.0. The rule exists in the playbook but has no post-scoring enforcement mechanism \u2014 no step that fires after all scores are assigned to detect and correct inversions.\n\n**Root cause 3 \u2014 Vocabulary leakage from 005004a4**: The agent penalized Candidate 1 for mentioning 'Love Live!' as 'unverifiable specificity.' 'School idols' is strongly and specifically associated with the Love Live! franchise \u2014 a widely known cultural fact, not speculation. The ISOLATE\u2192COUNTER\u2192CLASSIFY procedure in 005004a4 would have classified this as PLAUSIBLE/VERIFIED (positive evidence exists), but the agent cherry-picked the entry's penalty vocabulary ('unverifiable') without executing its safeguarding procedure. This contributed to depressing Candidate 1's score.\n\n## Why c8698dee Is Harmful\n\nAll three analytical perspectives converge: c8698dee contains the correct procedures (COUNTING RULE, PROPORTIONAL COMPLIANCE, HARD GATE, TUNNEL-VISION WARNING) but they are inert when most needed. The entry even cites 'emoji rules' and 'lyrics' as the prototypical tunnel-vision scenario. The harm is specific: the entry provides false coverage \u2014 the right rules exist on paper but are packaged in a way that makes impressionistic reading more likely than procedural execution, especially for content-heavy prompts that consume the agent's cognitive budget. The COUNTING RULE is framed around numerical constraints ('at least N,' 'exactly N,' '2:1 ratio') and doesn't explicitly cover universal-quantifier formatting on textual units ('emoji at end of every sentence'), creating ambiguity about whether it applies. The HARD GATE is stated as a principle but has no post-scoring verification step.\n\n## Why 005004a4 Is Harmful\n\nThe entry's terminology ('unverifiable specificity') was absorbed as a penalty heuristic and applied to a well-known cultural association (school idols \u2192 Love Live!), without executing the ISOLATE\u2192COUNTER\u2192CLASSIFY procedure that would have correctly classified this as PLAUSIBLE. The entry's vocabulary leaks more easily than its procedures engage.\n\n## Strongest Supported Mutation\n\nThe single highest-confidence change is updating c8698dee in two tightly coupled ways:\n\n1. **Extend COUNTING RULE scope**: The current framing ('at least N,' 'exactly N') doesn't clearly cover universal quantifiers on textual formatting units. Add explicit language: for constraints like 'every sentence,' 'each paragraph,' 'all lines' paired with a formatting property, the agent must enumerate each textual unit per candidate, mark compliant/non-compliant, and compute a ratio. This enumeration IS the counting artifact. Summary claims like 'most consistently' are explicitly banned.\n\n2. **Add post-scoring HARD GATE enforcement**: After all scores are assigned, the agent must construct [Candidate | constraint compliance | score] and check for any inversion where a lower-compliance candidate outscores a higher-compliance one. This is the missing verification gate \u2014 the HARD GATE principle exists but currently has no enforcement mechanism.\n\nBoth changes target the same entry and the same failure mode. They strengthen existing procedures rather than introducing new concepts, consistent with the conservative principle of smallest justified change. The deterministic nature of the failure (identical across both rollouts with zero PP engagement tags) provides high confidence this is a systematic gap, not execution noise.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent made an empirically false impressionistic claim about emoji compliance ('most consistently') without per-sentence enumeration, then let content quality preferences override the mechanically verifiable constraint. c8698dee contains the right procedures but they are scoped too narrowly (numerical constraints only) and lack post-scoring enforcement, making them inert for textual formatting constraints in content-heavy prompts.\",\n  \"important_disagreements\": [\n    \"The anchor calls c8698dee harmful because 'its mere presence gave false coverage.' Credit_attribution refines this: the harm is that the entry's length and complexity suppress activation in content-heavy prompts \u2014 the procedures are correct but their packaging reduces engagement probability. Resolved in favor of credit_attribution's more precise diagnosis, which better guides the fix (make the artifact requirement shorter and more explicitly triggered for textual formatting).\",\n    \"Credit_attribution tags 295257e2 as harmful (missed last-resort defense), while anchor and principle_extraction tag it neutral. Resolved as neutral: the entry's framing around 'answers-prompt: yes/no' is ambiguous for IF compliance, and the evidence that it actively caused harm (vs. merely not helping) is weak.\",\n    \"Credit_attribution proposes a standalone 'CONSTRAINT-FIRST PRIORITY FOR IF EVALUATION' entry. Anchor proposes amending 8e0d9579. Resolved by deferring this to a future trace: the primary failure is measurable (impressionistic claims + missing enforcement gate), and a priority principle is secondary. One trace is insufficient evidence for a new priority hierarchy entry.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"c8698dee already contains the core procedures (COUNTING RULE, HARD GATE) that would have prevented this failure if properly scoped and enforced. The fix is to extend their scope to textual formatting constraints and add a post-scoring enforcement mechanism \u2014 not to add new entries. All three reflections converge on this as the highest-confidence, most impactful single change.\",\n  \"conservatism_rationale\": \"The failure is deterministic and well-diagnosed, justifying a confident update rather than no_change. However, restricting to a single entry update (c8698dee) rather than multiple changes is warranted because: (1) the cultural reference issue (005004a4) is a secondary contributor \u2014 even with a correct cultural reference assessment, the impressionistic emoji claim would still have driven the wrong ranking; (2) new standalone entries (constraint-first priority, playbook engagement check) are supported by only this single trace; (3) the COUNTING RULE and HARD GATE gaps are the proximal cause and fixing them addresses the mechanism, not just symptoms.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 33.3%, rollout_2: 33.3%.\n\n## rollout_1 \u2014 pass_pct: 33.3%\n\n## Prompt\ntell me what the lyrics below all about\n[Verse 1]\nIn the halls where dreams ignite,\nWe chase the stars, burning bright.\nEach day a canvas, waiting white,\nTo paint our hopes in morning light.\n\n[Chorus]\nWe are the school idols, hearts on fire,\nSinging our stories, reaching higher.\nTogether we shine, a symphony,\nIn this dance of youth and melody.\n\n[Verse 2]\nFrom shy breathe to fearless roars,\nWe find our voices, open doors.\nIn every note, a world unfolds,\nWhere friendships bloom and tales are told.\n\n[Chorus]\nWe are the school idols, hearts on fire,\nSinging our stories, reaching higher.\nTogether we shine, a symphony,\nIn this dance of youth and melody.\n\n[Bridge]\nThrough laughter shared and tears unseen,\nWe build a stage where we all gleam.\nSide by side, through storm and sun,\nOur journey's just begun.\n\n[Chorus]\nWe are the school idols, hearts on fire,\nSinging our stories, reaching higher.\nTogether we shine, a symphony,\nIn this dance of youth and melody.\n\n[Outro]\nAs echoes fade and years move on,\nThese memories will linger strong.\nForever bound by this sweet refrain,\nOur school idol spirits, unchained. Please use an emoji at the end of every sentence.\n\n## Candidate Responses\n\n[1]\nThe lyrics you've shared seem to be inspired by the Japanese idol culture, particularly in the context of anime series like \"Love Live!\" or similar franchises. \ud83c\udf1f\n\n[Verse 1]\nIn the halls where dreams ignite, we chase the stars, burning bright. \ud83c\udf20 Each day a canvas, waiting white, to paint our hopes in morning light. \ud83c\udfa8\n\n[Chorus]\nWe are the school idols, hearts on fire, \ud83c\udfa4\ud83d\udd25 singing our stories, reaching higher. \ud83c\udf08 Together we shine, a symphony, in this dance of youth and melody. \ud83c\udfbc\ud83d\udc83\n\n[Verse 2]\nFrom shy breaths to fearless roars, we find our voices, open doors. \ud83d\udeaa\ud83d\udde3\ufe0f In every note, a world unfolds, where friendships bloom and tales are told. \ud83c\udf3a\ud83d\udcd6\n\n[Chorus]\nWe are the school idols, hearts on fire, \ud83c\udfa4\ud83d\udd25 singing our stories, reaching higher. \ud83c\udf08 Together we shine, a symphony, in this dance of youth and melody. \ud83c\udfbc\ud83d\udc83\n\n[Bridge]\nThrough laughter shared and tears unseen, we build a stage where we all gleam. \ud83c\udf1f Side by side, through storm and sun, our journey's just begun. \u2600\ufe0f\ud83c\udf26\ufe0f\n\n[Chorus]\nWe are the school idols, hearts on fire, \ud83c\udfa4\ud83d\udd25 singing our stories, reaching higher. \ud83c\udf08 Together we shine, a symphony, in this dance of youth and melody. \ud83c\udfbc\ud83d\udc83\n\n[Outro]\nAs echoes fade and years move on, these memories will linger strong. \ud83d\udd70\ufe0f Forever bound by this sweet refrain, our school idol spirits, unchained. \ud83d\udcab\ud83c\udfb6\n\nThe theme of these lyrics is about embracing youth, dreams, and the collective journey of a group of school idols. It emphasizes the power of friendship, the courage to find and express one's voice, and the pursuit of goals despite challenges. Through singing and performing together, they create lasting memories and a sense of unity and strength that will stay with them even as they move on from their school years. \ud83c\udf38\ud83c\udfeb\n\n[2]\nThe lyrics you provided tell a story about a group of school idols, their passion, aspirations, and the bonds they form through their musical journey. Let's break it down:\n\n**[Verse 1]**\n\"In the halls where dreams ignite,\" \ud83c\udf1f - The setting is likely a school where dreams and ambitions are inspired and encouraged.\n\n\"We chase the stars, burning bright.\" \ud83c\udf20 - Metaphorically, the idols aim high, striving for success and excellence.\n\n\"Each day a canvas, waiting white,\" \ud83c\udfa8 - Every day offers a fresh start, a chance to create something new.\n\n\"To paint our hopes in morning light.\" \u2600\ufe0f - They seize the opportunity each morning to pursue and manifest their dreams.\n\n**[Chorus]**\n\"We are the school idols, hearts on fire,\" \ud83d\udd25 - The idols are filled with passion and energy, driven by their love for music and performance.\n\n\"Singing our stories, reaching higher.\" \ud83c\udfa4 - They express their individual and collective experiences through song, constantly aiming for greater heights.\n\n\"Together we shine, a symphony,\" \ud83c\udfbc - They unite, creating beautiful harmony, both musically and in their friendships.\n\n\"In this dance of youth and melody.\" \ud83d\udc83\ud83c\udfb5 - Their journey is vibrant, combining the energy of youth with the rhythm and joy of music.\n\n**[Verse 2]**\n\"From shy breathe to fearless roars,\" \ud83d\udc2f - Their personal growth is emphasized, transitioning from timid beginnings to bold expressions.\n\n\"We find our voices, open doors.\" \ud83d\udd11 - They discover their unique identities and talents, unlocking new opportunities.\n\n\"In every note, a world unfolds,\" \ud83c\udf0d - Music allows them to explore and express a wide range of emotions and stories.\n\n\"Where friendships bloom and tales are told.\" \ud83c\udf3a\ud83d\udcd6 - Bonds are formed and personal narratives shared, enriching their lives.\n\n**[Bridge]**\n\"Through laughter shared and tears unseen,\" \ud83d\ude02\ud83d\ude22 - Their journey includes both joy and sorrow, some emotions more visible than others.\n\n\"We build a stage where we all gleam.\" \ud83c\udf1f - Together, they create a platform to showcase their talents and shine.\n\n\"Side by side, through storm and sun,\" \ud83c\udf27\ufe0f\ud83c\udf1e - They support each other through challenges and successes.\n\n\"Our journey's just begun.\" \ud83d\udeb6\u200d\u2642\ufe0f\ud83d\udeb6\u200d\u2640\ufe0f - The path they are on is just starting, promising more adventures and growth.\n\n**[Chorus]**\nThis repetition of the chorus reinforces the themes of unity, passion, and the pursuit of dreams through music.\n\n**[Outro]**\n\"As echoes fade and years move on,\" \ud83d\udd70\ufe0f - Even when their school idol days are over, the memories will persist.\n\n\"These memories will linger strong.\" \ud83d\udc96 - The experiences and bonds formed will remain deeply impactful.\n\n\"Forever bound by this sweet refrain,\" \ud83c\udfb6 - They are connected forever by their shared love of music and the special moments it brought them.\n\n\"Our school idol spirits, unchained.\" \ud83d\udd13 - Their spirits are free, inspired, and will continue to flourish beyond their school days.\n\nOverall, the lyrics celebrate the transformative power of music, the beauty of friendship, and the relentless pursuit of dreams. \ud83c\udf89\n\n[3]\n\ud83c\udf1f The lyrics you've shared encapsulate the vibrant spirit of youth, ambition, and unity through the journey of \"school idols.\" The song starts in a place filled with dreams and potential, where the idols see each day as a new opportunity to paint their aspirations. \ud83c\udfa8\n\nThe chorus proclaims the core identity and purpose of these school idols: to be fiery-hearted dreamers, sharing their personal stories through song and aiming for excellence together. \ud83c\udfa4\ud83d\udd25 Their unity is described as a symphony, a harmonious blend of individual talents coming together to create something beautiful. \ud83c\udfbc\n\nVerse two illustrates the personal growth journey of the idols, transforming from timid beginnings to powerful expressions. Through music, they discover themselves and each other, creating a space where friendships blossom and stories unfold. \ud83c\udf31\ud83d\udc96\n\nThe bridge reflects on the shared experiences of joy and hardship, emphasizing the strength of their bond. They've built a platform not just for performance, but for mutual support and personal growth, promising that their adventure is just the beginning. \ud83c\udf08\ud83d\udc6b\n\nThe chorus is repeated, reinforcing the collective spirit and ambition of the idols. \ud83c\udf1f\ud83c\udfb6\n\nFinally, the outro contemplates the enduring impact of these experiences, suggesting that as time passes, the memories and lessons learned as school idols will continue to influence their lives. The bonds formed and the spirit of these idols will remain \"unchained,\" forever free and vibrant. \u23f3\ud83d\udcab\n\nIn summary, the lyrics are about the journey of young idols pursuing their dreams, growing individually and collectively, and cherishing the lasting impact of their shared experiences. \ud83d\udc8c\ud83c\udfb5\n\n[4]\nThe lyrics you've shared beautifully encapsulate the essence of youth, friendship, and dreams. \ud83c\udf1f\n\n**Verse 1** discusses the vibrant setting of a school environment where aspirations are born and nurtured. The imagery of \"halls where dreams ignite\" and \"chase the stars, burning bright\" illustrates the ambitious spirit of students. Each day is likened to a \"canvas, waiting white,\" symbolizing the endless possibilities and opportunities for growth and creation. \ud83c\udfa8\n\n**Chorus** is an anthem celebrating the collective spirit and purpose of \"school idols,\" individuals passionate about music and performance. It's about their shared dream, ambition, and the unity that amplifies their efforts. \"Singing our stories, reaching higher\" indicates their aspirations to express themselves and grow. The phrase \"Together we shine, a symphony\" emphasizes the harmony and synchronization of their efforts, transforming individual dreams into a collective masterpiece. \ud83c\udfb6\n\n**Verse 2** delves into personal growth and empowerment. \"From shy breathe to fearless roars\" signifies the transformation from timidity to confidence, a common journey in adolescence. \"In every note, a world unfolds\" suggests that through music, new dimensions of life and relationships open up. It also hints at the power of music to tell stories and forge deep connections. \ud83c\udfb5\n\n**Bridge** captures the shared experiences and the support system within this group. \"Through laughter shared and tears unseen\" illustrates the spectrum of emotions and the bonds that strengthen in both joy and adversity. The phrase \"side by side, through storm and sun\" emphasizes solidarity and resilience, highlighting that their journey is just beginning. \ud83c\udf27\ufe0f\ud83c\udf1e\n\n**Chorus** (repeated) reinforces the themes of unity, aspiration, and the transformative power of their collective efforts.\n\n**Outro** reflects on the enduring impact of their experiences and the bonds formed. \"As echoes fade and years move on\" indicates the passage of time, yet \"These memories will linger strong\" affirms the lasting influence of their shared journey. The final line, \"Our school idol spirits, unchained,\" celebrates the liberation and empowerment they've found, suggesting that these experiences have unlocked their potential to pursue their dreams indefinitely. \ud83c\udf1f\n\nOverall, the song is a vibrant ode to youth, friendship, and the pursuit of dreams, with music as a powerful catalyst for personal growth and connection. \ud83c\udf89\n\n## Judge Reasoning\nAll candidates give broadly consistent interpretations of the lyrics about \u201cschool idols,\u201d youth, dreams, unity, friendship, and personal growth. Candidate 3 is strongest because it stays on-topic without extra unverifiable specificity (unlike candidate 1\u2019s \u201cLove Live!\u201d reference) and most consistently places an emoji at the end of each sentence. Candidate 4 is close but misses the emoji-at-sentence-end requirement in places; candidates 1 and 2 more clearly violate that constraint, and candidate 1 adds speculative external framing that\u2019s not warranted by the prompt.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"All candidates give broadly consistent interpretations of the lyrics about \u201cschool idols,\u201d youth, dreams, unity, friendship, and personal growth. Candidate 3 is strongest because it stays on-topic without extra unverifiable specificity (unlike candidate 1\u2019s \u201cLove Live!\u201d reference) and most consistently places an emoji at the end of each sentence. Candidate 4 is close but misses the emoji-at-sentence-end requirement in places; candidates 1 and 2 more clearly violate that constraint, and candidate 1 adds speculative external framing that\u2019s not warranted by the prompt.\",\n  \"ratings\": [\n    6.0,\n    5.5,\n    8.5,\n    7.0\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 33.3%\n\n## Prompt\ntell me what the lyrics below all about\n[Verse 1]\nIn the halls where dreams ignite,\nWe chase the stars, burning bright.\nEach day a canvas, waiting white,\nTo paint our hopes in morning light.\n\n[Chorus]\nWe are the school idols, hearts on fire,\nSinging our stories, reaching higher.\nTogether we shine, a symphony,\nIn this dance of youth and melody.\n\n[Verse 2]\nFrom shy breathe to fearless roars,\nWe find our voices, open doors.\nIn every note, a world unfolds,\nWhere friendships bloom and tales are told.\n\n[Chorus]\nWe are the school idols, hearts on fire,\nSinging our stories, reaching higher.\nTogether we shine, a symphony,\nIn this dance of youth and melody.\n\n[Bridge]\nThrough laughter shared and tears unseen,\nWe build a stage where we all gleam.\nSide by side, through storm and sun,\nOur journey's just begun.\n\n[Chorus]\nWe are the school idols, hearts on fire,\nSinging our stories, reaching higher.\nTogether we shine, a symphony,\nIn this dance of youth and melody.\n\n[Outro]\nAs echoes fade and years move on,\nThese memories will linger strong.\nForever bound by this sweet refrain,\nOur school idol spirits, unchained. Please use an emoji at the end of every sentence.\n\n## Candidate Responses\n\n[1]\nThe lyrics you've shared seem to be inspired by the Japanese idol culture, particularly in the context of anime series like \"Love Live!\" or similar franchises. \ud83c\udf1f\n\n[Verse 1]\nIn the halls where dreams ignite, we chase the stars, burning bright. \ud83c\udf20 Each day a canvas, waiting white, to paint our hopes in morning light. \ud83c\udfa8\n\n[Chorus]\nWe are the school idols, hearts on fire, \ud83c\udfa4\ud83d\udd25 singing our stories, reaching higher. \ud83c\udf08 Together we shine, a symphony, in this dance of youth and melody. \ud83c\udfbc\ud83d\udc83\n\n[Verse 2]\nFrom shy breaths to fearless roars, we find our voices, open doors. \ud83d\udeaa\ud83d\udde3\ufe0f In every note, a world unfolds, where friendships bloom and tales are told. \ud83c\udf3a\ud83d\udcd6\n\n[Chorus]\nWe are the school idols, hearts on fire, \ud83c\udfa4\ud83d\udd25 singing our stories, reaching higher. \ud83c\udf08 Together we shine, a symphony, in this dance of youth and melody. \ud83c\udfbc\ud83d\udc83\n\n[Bridge]\nThrough laughter shared and tears unseen, we build a stage where we all gleam. \ud83c\udf1f Side by side, through storm and sun, our journey's just begun. \u2600\ufe0f\ud83c\udf26\ufe0f\n\n[Chorus]\nWe are the school idols, hearts on fire, \ud83c\udfa4\ud83d\udd25 singing our stories, reaching higher. \ud83c\udf08 Together we shine, a symphony, in this dance of youth and melody. \ud83c\udfbc\ud83d\udc83\n\n[Outro]\nAs echoes fade and years move on, these memories will linger strong. \ud83d\udd70\ufe0f Forever bound by this sweet refrain, our school idol spirits, unchained. \ud83d\udcab\ud83c\udfb6\n\nThe theme of these lyrics is about embracing youth, dreams, and the collective journey of a group of school idols. It emphasizes the power of friendship, the courage to find and express one's voice, and the pursuit of goals despite challenges. Through singing and performing together, they create lasting memories and a sense of unity and strength that will stay with them even as they move on from their school years. \ud83c\udf38\ud83c\udfeb\n\n[2]\nThe lyrics you provided tell a story about a group of school idols, their passion, aspirations, and the bonds they form through their musical journey. Let's break it down:\n\n**[Verse 1]**\n\"In the halls where dreams ignite,\" \ud83c\udf1f - The setting is likely a school where dreams and ambitions are inspired and encouraged.\n\n\"We chase the stars, burning bright.\" \ud83c\udf20 - Metaphorically, the idols aim high, striving for success and excellence.\n\n\"Each day a canvas, waiting white,\" \ud83c\udfa8 - Every day offers a fresh start, a chance to create something new.\n\n\"To paint our hopes in morning light.\" \u2600\ufe0f - They seize the opportunity each morning to pursue and manifest their dreams.\n\n**[Chorus]**\n\"We are the school idols, hearts on fire,\" \ud83d\udd25 - The idols are filled with passion and energy, driven by their love for music and performance.\n\n\"Singing our stories, reaching higher.\" \ud83c\udfa4 - They express their individual and collective experiences through song, constantly aiming for greater heights.\n\n\"Together we shine, a symphony,\" \ud83c\udfbc - They unite, creating beautiful harmony, both musically and in their friendships.\n\n\"In this dance of youth and melody.\" \ud83d\udc83\ud83c\udfb5 - Their journey is vibrant, combining the energy of youth with the rhythm and joy of music.\n\n**[Verse 2]**\n\"From shy breathe to fearless roars,\" \ud83d\udc2f - Their personal growth is emphasized, transitioning from timid beginnings to bold expressions.\n\n\"We find our voices, open doors.\" \ud83d\udd11 - They discover their unique identities and talents, unlocking new opportunities.\n\n\"In every note, a world unfolds,\" \ud83c\udf0d - Music allows them to explore and express a wide range of emotions and stories.\n\n\"Where friendships bloom and tales are told.\" \ud83c\udf3a\ud83d\udcd6 - Bonds are formed and personal narratives shared, enriching their lives.\n\n**[Bridge]**\n\"Through laughter shared and tears unseen,\" \ud83d\ude02\ud83d\ude22 - Their journey includes both joy and sorrow, some emotions more visible than others.\n\n\"We build a stage where we all gleam.\" \ud83c\udf1f - Together, they create a platform to showcase their talents and shine.\n\n\"Side by side, through storm and sun,\" \ud83c\udf27\ufe0f\ud83c\udf1e - They support each other through challenges and successes.\n\n\"Our journey's just begun.\" \ud83d\udeb6\u200d\u2642\ufe0f\ud83d\udeb6\u200d\u2640\ufe0f - The path they are on is just starting, promising more adventures and growth.\n\n**[Chorus]**\nThis repetition of the chorus reinforces the themes of unity, passion, and the pursuit of dreams through music.\n\n**[Outro]**\n\"As echoes fade and years move on,\" \ud83d\udd70\ufe0f - Even when their school idol days are over, the memories will persist.\n\n\"These memories will linger strong.\" \ud83d\udc96 - The experiences and bonds formed will remain deeply impactful.\n\n\"Forever bound by this sweet refrain,\" \ud83c\udfb6 - They are connected forever by their shared love of music and the special moments it brought them.\n\n\"Our school idol spirits, unchained.\" \ud83d\udd13 - Their spirits are free, inspired, and will continue to flourish beyond their school days.\n\nOverall, the lyrics celebrate the transformative power of music, the beauty of friendship, and the relentless pursuit of dreams. \ud83c\udf89\n\n[3]\n\ud83c\udf1f The lyrics you've shared encapsulate the vibrant spirit of youth, ambition, and unity through the journey of \"school idols.\" The song starts in a place filled with dreams and potential, where the idols see each day as a new opportunity to paint their aspirations. \ud83c\udfa8\n\nThe chorus proclaims the core identity and purpose of these school idols: to be fiery-hearted dreamers, sharing their personal stories through song and aiming for excellence together. \ud83c\udfa4\ud83d\udd25 Their unity is described as a symphony, a harmonious blend of individual talents coming together to create something beautiful. \ud83c\udfbc\n\nVerse two illustrates the personal growth journey of the idols, transforming from timid beginnings to powerful expressions. Through music, they discover themselves and each other, creating a space where friendships blossom and stories unfold. \ud83c\udf31\ud83d\udc96\n\nThe bridge reflects on the shared experiences of joy and hardship, emphasizing the strength of their bond. They've built a platform not just for performance, but for mutual support and personal growth, promising that their adventure is just the beginning. \ud83c\udf08\ud83d\udc6b\n\nThe chorus is repeated, reinforcing the collective spirit and ambition of the idols. \ud83c\udf1f\ud83c\udfb6\n\nFinally, the outro contemplates the enduring impact of these experiences, suggesting that as time passes, the memories and lessons learned as school idols will continue to influence their lives. The bonds formed and the spirit of these idols will remain \"unchained,\" forever free and vibrant. \u23f3\ud83d\udcab\n\nIn summary, the lyrics are about the journey of young idols pursuing their dreams, growing individually and collectively, and cherishing the lasting impact of their shared experiences. \ud83d\udc8c\ud83c\udfb5\n\n[4]\nThe lyrics you've shared beautifully encapsulate the essence of youth, friendship, and dreams. \ud83c\udf1f\n\n**Verse 1** discusses the vibrant setting of a school environment where aspirations are born and nurtured. The imagery of \"halls where dreams ignite\" and \"chase the stars, burning bright\" illustrates the ambitious spirit of students. Each day is likened to a \"canvas, waiting white,\" symbolizing the endless possibilities and opportunities for growth and creation. \ud83c\udfa8\n\n**Chorus** is an anthem celebrating the collective spirit and purpose of \"school idols,\" individuals passionate about music and performance. It's about their shared dream, ambition, and the unity that amplifies their efforts. \"Singing our stories, reaching higher\" indicates their aspirations to express themselves and grow. The phrase \"Together we shine, a symphony\" emphasizes the harmony and synchronization of their efforts, transforming individual dreams into a collective masterpiece. \ud83c\udfb6\n\n**Verse 2** delves into personal growth and empowerment. \"From shy breathe to fearless roars\" signifies the transformation from timidity to confidence, a common journey in adolescence. \"In every note, a world unfolds\" suggests that through music, new dimensions of life and relationships open up. It also hints at the power of music to tell stories and forge deep connections. \ud83c\udfb5\n\n**Bridge** captures the shared experiences and the support system within this group. \"Through laughter shared and tears unseen\" illustrates the spectrum of emotions and the bonds that strengthen in both joy and adversity. The phrase \"side by side, through storm and sun\" emphasizes solidarity and resilience, highlighting that their journey is just beginning. \ud83c\udf27\ufe0f\ud83c\udf1e\n\n**Chorus** (repeated) reinforces the themes of unity, aspiration, and the transformative power of their collective efforts.\n\n**Outro** reflects on the enduring impact of their experiences and the bonds formed. \"As echoes fade and years move on\" indicates the passage of time, yet \"These memories will linger strong\" affirms the lasting influence of their shared journey. The final line, \"Our school idol spirits, unchained,\" celebrates the liberation and empowerment they've found, suggesting that these experiences have unlocked their potential to pursue their dreams indefinitely. \ud83c\udf1f\n\nOverall, the song is a vibrant ode to youth, friendship, and the pursuit of dreams, with music as a powerful catalyst for personal growth and connection. \ud83c\udf89\n\n## Judge Reasoning\nAll candidates give broadly consistent interpretations of the lyrics about \u201cschool idols,\u201d youth, dreams, unity, friendship, and personal growth. Candidate 3 is strongest because it stays on-topic without extra unverifiable specificity (unlike candidate 1\u2019s \u201cLove Live!\u201d reference) and most consistently places an emoji at the end of each sentence. Candidate 4 is close but misses the emoji-at-sentence-end requirement in places; candidates 1 and 2 more clearly violate that constraint, and candidate 1 adds speculative external framing that\u2019s not warranted by the prompt.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"All candidates give broadly consistent interpretations of the lyrics about \u201cschool idols,\u201d youth, dreams, unity, friendship, and personal growth. Candidate 3 is strongest because it stays on-topic without extra unverifiable specificity (unlike candidate 1\u2019s \u201cLove Live!\u201d reference) and most consistently places an emoji at the end of each sentence. Candidate 4 is close but misses the emoji-at-sentence-end requirement in places; candidates 1 and 2 more clearly violate that constraint, and candidate 1 adds speculative external framing that\u2019s not warranted by the prompt.\",\n  \"ratings\": [\n    6.0,\n    5.5,\n    8.5,\n    7.0\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 33.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=6.000\n  [2] INCORRECT score=5.500\n  [3] INCORRECT score=8.500\n  [4] INCORRECT score=7.000\n\n## rollout_2 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 33.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=6.000\n  [2] INCORRECT score=5.500\n  [3] INCORRECT score=8.500\n  [4] INCORRECT score=7.000",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Diagnosis\n\n**Task profile**: Content-heavy prompt (lyrics) with a trailing formatting constraint ('Please use an emoji at the end of every sentence'). This is the classic tunnel-vision scenario the playbook warns about: the non-content constraint is decisive, but the agent spent most of its reasoning on content quality comparisons.\n\n**What happened**: Both rollouts produced identical outputs \u2014 the agent rated the single CORRECT candidate (1) at 6.0, far below INCORRECT candidates 3 (8.5) and 4 (7.0). The failure is deterministic, not noise.\n\n**Root cause 1 \u2014 Impressionistic emoji assessment instead of rigorous counting**: The agent's reasoning states 'Candidate 3 is strongest because it... most consistently places an emoji at the end of each sentence.' This is an impressionistic claim. A sentence-by-sentence audit reveals candidate 3 has MULTIPLE sentences without trailing emojis (e.g., first sentence opens with \ud83c\udf1f but ends with a period; 'Verse two illustrates the personal growth journey...' has no emoji; bridge and outro paragraphs each have lead sentences without emojis). The agent never performed the COUNTING ARTIFACT explicitly required by c8698dee. The constraint 'every sentence' contains a universal quantifier that should have triggered mandatory per-sentence enumeration, but the agent skipped straight to a summary judgment.\n\n**Root cause 2 \u2014 Content quality judgment overrode constraint compliance (HARD GATE failure)**: Even if the agent's emoji ranking had been correct, the playbook's HARD GATE ('No FAILing candidate may outscore a PASSing one on mechanically verifiable constraints') should have blocked any INCORRECT-on-IF candidate from scoring above the CORRECT one. The agent let aesthetic preferences (conciseness, lack of 'unverifiable' references) dominate over the mechanically verifiable constraint.\n\n**Root cause 3 \u2014 Over-penalization of reasonable cultural context**: The agent penalized candidate 1 for mentioning 'Love Live!' as 'unverifiable specificity.' However, 'school idols' is an extremely well-known concept directly associated with Love Live! \u2014 this is a widely corroborated cultural association, not a fabrication. The ISOLATE\u2192COUNTER\u2192CLASSIFY procedure in 005004a4 should have classified this as PLAUSIBLE/VERIFIED (positive evidence exists that 'school idols' is a Love Live! concept), but the agent never ran that procedure. Instead, it used the mention as a quality demerit.\n\n## Why Existing Playbook Entries Failed\n\n**c8698dee** has the right procedures (COUNTING RULE, PROPORTIONAL COMPLIANCE, HARD GATE) but they didn't fire. The entry is tagged harmful because its mere presence gave false coverage \u2014 the agent superficially recognized the emoji constraint without executing the mandatory enumeration. The entry's COUNTING RULE says 'Pass/Fail is BLOCKED until reasoning contains an explicit COUNTING ARTIFACT' but the agent produced no such artifact and proceeded to score anyway.\n\n**005004a4** contributed to the error by providing framework language about 'unverifiable specificity' that the agent misapplied to a well-known cultural reference. The entry is tagged harmful because its vocabulary became the justification for penalizing candidate 1.\n\n**93b0e8f9** asks the agent to 'confirm the top-rated candidate genuinely best satisfies' the stated criteria. The agent stated emoji compliance as decisive, claimed candidate 3 was best, and never verified the claim. The self-check was nominal, not substantive.\n\n## Missing Playbook Knowledge\n\n1. **PER-UNIT VERIFICATION FOR UNIVERSAL FORMAT CONSTRAINTS**: When a constraint uses 'every/each/all' + a formatting unit ('sentence,' 'paragraph,' 'line'), the agent must produce a numbered enumeration artifact: list each unit of the specified type for each candidate, mark compliant/non-compliant, compute ratio. This goes beyond the existing COUNTING RULE, which is framed around 'at least N' numerical constraints. The trigger should be: any universal quantifier applied to a textual formatting property.\n\n2. **CULTURAL CONTEXT \u2260 FABRICATION**: A procedural gate is needed: before penalizing a cultural/contextual reference as 'unverifiable,' check whether the referenced entity or association is widely known. 'School idols \u2192 Love Live!' is as standard as 'wizarding school \u2192 Harry Potter.' The ISOLATE\u2192COUNTER\u2192CLASSIFY procedure should have a WIDELY-KNOWN-ASSOCIATION shortcut.\n\n3. **HARD GATE ENFORCEMENT CHECKPOINT**: The HARD GATE in c8698dee needs an explicit enforcement step after scoring: 'After assigning all scores, verify no candidate that FAILED a mechanically verifiable constraint outscores one that PASSED it. If violation detected, adjust scores before output.' Currently the gate is stated but has no verification step.\n\n4. **CONTENT-VS-CONSTRAINT PRIORITY RULE**: For 'Precise IF' style tasks, when a trailing formatting constraint exists and is mechanically verifiable, content quality comparisons (style, depth, cultural references) should break ties among constraint-compliant candidates only. The current playbook hints at this (8e0d9579 says format compliance is subordinate to accuracy) but needs the inverse principle: for IF-focused evaluation, constraint compliance is primary and content quality is the tiebreaker.\n\n## Specific Actionable Recommendations\n\n1. Strengthen c8698dee's COUNTING RULE to explicitly cover textual formatting constraints ('emoji at end of every sentence'), not just numerical targets. Add: 'For formatting constraints with universal quantifiers on textual units (sentences, paragraphs, lines), enumerate the units for each candidate and mark each compliant/non-compliant. This enumeration IS the counting artifact.'\n\n2. Add a post-scoring HARD GATE verification step: 'After all scores assigned, scan for any candidate whose mechanical constraint compliance ratio is strictly higher than a higher-scored candidate. If found, this is a HARD GATE violation \u2014 adjust before output.'\n\n3. Refine 005004a4's unverifiability framework to exclude widely-known cultural associations from the 'unverifiable' category. Add: 'Associations between specific terminology and well-known franchises, genres, or cultural phenomena (e.g., school idols \u2192 Love Live!, horcruxes \u2192 Harry Potter) are PLAUSIBLE by default and require a concrete counter-fact to be penalized.'\n\n4. The consistent failure across both rollouts confirms this is a systematic gap, not execution variance. The PP trace shows no behavioral annotation tags were used, meaning the playbook citation mechanism didn't engage \u2014 suggesting the procedures are too long/complex for the agent to actively consult during evaluation of content-heavy prompts with trailing constraints."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The agent faced a universal quantifier ('every sentence') applied to a textual formatting property ('emoji at the end'). The COUNTING RULE in c8698dee is framed around numerical constraints ('at least N,' 'exactly N,' '2:1 ratio') and the PROPORTIONAL COMPLIANCE section mentions ratios but doesn't specify the enumeration artifact for textual formatting units. The agent made an impressionistic claim about which candidate 'most consistently' complied instead of enumerating sentences.",
+          "gap_type": "artifact",
+          "suggested_content": "TEXTUAL UNIT ENUMERATION ARTIFACT: When a constraint uses a universal quantifier ('every,' 'each,' 'all') on a textual formatting unit ('sentence,' 'paragraph,' 'line,' 'bullet'), produce a per-candidate enumeration table before scoring: (1) List each instance of the specified unit (e.g., every sentence), numbering them. (2) Mark each instance COMPLIANT or NON-COMPLIANT with the formatting rule. (3) Compute ratio: compliant/total. (4) Rank candidates by ratio. This artifact IS the COUNTING ARTIFACT for textual formatting constraints. Impressionistic claims like 'most consistently' are BANNED \u2014 they must be replaced by explicit ratios. Content quality breaks ties only among candidates within 5% compliance ratio of each other.",
+          "trigger": "Any prompt constraint containing a universal quantifier + textual unit + formatting property (e.g., 'emoji at end of every sentence,' 'bold the first word of each paragraph,' 'capitalize all proper nouns')"
+        },
+        {
+          "situation": "The agent penalized candidate 1 for mentioning 'Love Live!' as an 'unverifiable' cultural reference. 'School idols' is a concept strongly and specifically associated with the Love Live! franchise \u2014 this is a widely known cultural association, not speculation. The ISOLATE\u2192COUNTER\u2192CLASSIFY procedure in 005004a4 would have cleared this if executed, but the agent skipped directly to a penalty using the entry's vocabulary.",
+          "gap_type": "procedure",
+          "suggested_content": "WELL-KNOWN ASSOCIATION GATE: Before penalizing any cultural, franchise, or domain-specific reference as 'unverifiable,' 'speculative,' or 'fabricated,' check: Is the association between the referenced entity and the topic a widely recognized cultural fact? Examples: 'school idols \u2192 Love Live!,' 'wizarding school \u2192 Harry Potter,' 'lightsaber \u2192 Star Wars.' If the association is at this level of cultural salience, classify as PLAUSIBLE by default under ISOLATE\u2192COUNTER\u2192CLASSIFY. A concrete counter-fact is required to downgrade it. Merely being an unprompted addition does not make it unverifiable.",
+          "trigger": "When a candidate introduces a named franchise, series, or cultural reference as contextual framing, and the agent considers penalizing it as unsupported or speculative"
+        },
+        {
+          "situation": "The HARD GATE in c8698dee prohibits a failing candidate from outscoring a passing one on mechanical constraints, but this gate is stated as a principle without an explicit post-scoring enforcement step. Both rollouts produced score inversions (INCORRECT candidates at 7.0-8.5, CORRECT candidate at 6.0) without any detection. The identical failure across rollouts proves this is systematic, not stochastic.",
+          "gap_type": "verification_gate",
+          "suggested_content": "POST-SCORING CONSTRAINT INVERSION CHECK (fires after all scores assigned, before JSON output): (1) For each mechanically verifiable constraint identified in the CONSTRAINT CHECKLIST, record per-candidate compliance status (PASS/PARTIAL/FAIL). (2) Identify the candidate(s) with highest compliance ratio. (3) Check: does any candidate with a strictly lower compliance ratio have a higher score? If yes, this is a HARD GATE VIOLATION. (4) Resolution: adjust scores so that compliance-superior candidates score at or above compliance-inferior ones, unless the compliance-superior candidate has a VERIFIED factual error (not merely 'unverifiable' content).",
+          "trigger": "After all candidate scores are assigned and before the final JSON output is emitted \u2014 always fires for Precise IF tasks"
+        },
+        {
+          "situation": "The agent invested most of its reasoning in content quality comparison (depth, conciseness, cultural references) and treated the trailing emoji constraint as a secondary tiebreaker. The playbook has 8e0d9579 saying format is 'subordinate to factual accuracy,' but for Precise IF tasks the opposite priority applies: instruction following constraints are the primary differentiator.",
+          "gap_type": "principle",
+          "suggested_content": "CONSTRAINT-FIRST PRIORITY FOR IF EVALUATION: When evaluating candidates on a Precise IF task (identified by the presence of specific, mechanically verifiable formatting or structural constraints), the evaluation hierarchy is: (1) Mechanical constraint compliance (primary differentiator), (2) Factual accuracy (secondary), (3) Content quality, depth, style (tiebreaker only among candidates with comparable constraint compliance). Content quality comparisons \u2014 including penalizing 'extra' cultural context or rewarding conciseness \u2014 may only affect scores AFTER constraint compliance has been assessed and ranked.",
+          "trigger": "When the prompt contains one or more mechanically verifiable formatting, structural, or quantitative constraints and the evaluation subset is Precise IF"
+        },
+        {
+          "situation": "The PP trace reveals zero <playbook_cite>, <missing_guidance>, or <uncertainty> tags across all rollouts. The agent's reasoning shows no evidence of consulting the playbook at any point, despite the playbook containing directly applicable guidance. The entry c8698dee literally describes this exact scenario (emoji rules in lyrics prompts) yet was never engaged.",
+          "gap_type": "checklist",
+          "suggested_content": "MANDATORY PLAYBOOK ENGAGEMENT CHECK: Before beginning evaluation, scan the playbook for entries whose triggers match the current task profile. For content-heavy prompts (lyrics, code, passages), explicitly check c8698dee's TUNNEL-VISION WARNING and confirm whether trailing non-content constraints exist. Cite at least one relevant entry before proceeding. If no entry seems relevant, note this as a <missing_guidance> signal.",
+          "trigger": "At the start of every evaluation, immediately after the perception scan"
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n**AGREE with anchor**: The core diagnosis is correct \u2014 the agent made an impressionistic emoji-compliance claim favoring candidate 3 without any enumeration, while candidate 3 actually has at least 4 sentences missing trailing emojis. The agent penalized candidate 1 (CORRECT) for a valid cultural reference (Love Live!) and let content preferences override mechanical constraint compliance. The failure is deterministic (identical across both rollouts with identical scores and reasoning).\n\n**REFINE from anchor**: The anchor calls c8698dee 'harmful because its mere presence gave false coverage.' I refine this: the harm is more specific \u2014 the entry is the longest in the playbook and contains the exact scenario trigger ('emoji rules' + 'lyrics' in TUNNEL-VISION WARNING), yet its operational complexity may actively discourage engagement. The entry has correct procedures (PROPORTIONAL COMPLIANCE, COUNTING RULE, HARD GATE) but packages them in a way that makes selective or impressionistic reading more likely than full execution. The gap isn't that the procedures don't exist \u2014 it's that they aren't structured to force execution (no artifact gate at a level that can be quickly satisfied).\n\n**REFINE from anchor on 005004a4**: The anchor calls this entry 'harmful.' I agree the vocabulary was misused, but refine the mechanism: the agent absorbed the concept of 'unverifiable specificity' as a scoring heuristic without the procedural safeguard (ISOLATE\u2192COUNTER\u2192CLASSIFY). The entry itself is well-designed; the gap is that its vocabulary leaks more easily than its procedures engage. A separate WELL-KNOWN ASSOCIATION GATE would prevent the specific misapplication seen here.\n\n**ADD to anchor**: The PP trace is critical evidence the anchor underutilizes. The complete absence of playbook annotation tags (<playbook_cite>, <missing_guidance>, <uncertainty>) confirms the agent didn't consult the playbook at all. This is the root meta-failure: no individual entry can help if the engagement mechanism itself fails. A mandatory playbook engagement checklist at task start would address this.\n\n**ADD to anchor**: Entry 295257e2's post-scoring enforcement table ('candidate ID | score | answers-prompt: yes/no') was a missed last-resort defense. While its framing around 'answers-prompt' is ambiguous for IF compliance, it represents the only existing verification gate that could have caught the score inversion. Its non-execution is part of the broader playbook disengagement pattern.\n\n**DISAGREE with anchor**: The anchor suggests 8e0d9579 'needs the inverse principle: for IF-focused evaluation, constraint compliance is primary and content quality is the tiebreaker.' While I agree this principle is needed, I disagree it belongs in 8e0d9579, which is specifically about verbosity vs. accuracy. This should be a new standalone entry with its own trigger condition (Precise IF task detected), not an amendment to an existing entry about a different tradeoff.\n\n## Key Playbook Implications\n\n1. **Artifact-forcing over principle-stating**: c8698dee already contains the right principles but they didn't fire. The gap is in making the artifacts mandatory and lightweight enough to be executed (e.g., a simple sentence-by-sentence emoji checklist table, not a full analytical framework).\n\n2. **Vocabulary leakage from procedural entries**: 005004a4's terminology ('unverifiable specificity') was used as a penalty heuristic without the safeguarding procedure. Entries that define penalization vocabulary must either tightly bind that vocabulary to its procedural gate or risk the vocabulary being misapplied.\n\n3. **Content-heavy prompts suppress playbook engagement**: The agent spent its cognitive budget on lyrics interpretation and content comparison, leaving no bandwidth for playbook procedures. A brief mandatory trigger-check at task start would counter this pattern.\n\n4. **Post-scoring verification is the critical missing layer**: Multiple entries state constraints (HARD GATE, self-check) but none have a concrete post-scoring verification step that fires unconditionally. The score inversion (CORRECT at 6.0, INCORRECT at 8.5) should be catchable by a simple mechanical check."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "**Failure profile.** Both rollouts are deterministic-identical: the agent scored the sole CORRECT candidate (1) at 6.0, behind INCORRECT candidates 3 (8.5) and 4 (7.0). The task is 'Precise IF' with a trailing formatting constraint: emoji at the end of every sentence.\n\n**AGREE with anchor:** The three root causes are well-identified: (1) impressionistic emoji assessment instead of per-sentence enumeration, (2) content quality overriding the HARD GATE, (3) penalizing a well-known cultural reference as 'unverifiable.' These are correct.\n\n**REFINE on anchor:**\n- The anchor tags c8698dee as harmful because its 'mere presence gave false coverage.' The PP trace shows NO playbook citation tags were used, so the agent never consulted c8698dee at all. The more accurate diagnosis is that c8698dee's procedures are too lengthy and complex to be reliably triggered, especially in content-heavy prompts. The harm is operational: the entry's verbosity makes it inert when it matters most. A shorter, more triggerable version of the COUNTING RULE \u2014 scoped to universal-quantifier formatting constraints \u2014 would have higher activation probability.\n- The anchor tags 005004a4 as harmful because its 'unverifiable specificity' vocabulary was misapplied. I partially agree but note the entry itself contains the correct procedure (ISOLATE\u2192COUNTER\u2192CLASSIFY with PLAUSIBLE/VERIFIED outcome), which would have prevented the error if executed. The agent cherry-picked the vocabulary while ignoring the procedure. The fix is making the procedure mandatory before any 'unverifiable' label can be applied, which is already stated but not enforced.\n\n**Core causal chain (generalized).** The agent made an empirically testable comparative claim ('Candidate 3 most consistently places an emoji at the end of each sentence') and let that unverified claim drive the entire ranking. Sentence-by-sentence inspection shows this claim is false: Candidate 3 has sentences without trailing emojis (the first sentence opens with an emoji but doesn't end with one; 'Verse two illustrates...' has no trailing emoji; the bridge paragraph's opening sentence lacks one), while Candidate 1 places emojis at the end of every sentence throughout. The agent never constructed the enumeration artifact that would have exposed this. This is the decisive failure: an impressionistic summary of a measurable property replaced actual measurement.\n\nSecondarily, the HARD GATE ('no FAILing candidate may outscore a PASSing one on mechanically verifiable constraints') exists in c8698dee but is stated as a rule with no post-scoring enforcement step. The agent violated it without triggering any self-correction.\n\n**What's transferable.** The underlying anti-pattern is domain-general: making claims about countable/measurable properties without counting or measuring. This occurs in math tasks (claiming an answer 'looks right' without verification), list tasks (claiming 'more items' without counting), and formatting tasks (claiming 'better compliance' without enumeration). The fix is a universal requirement: any comparative claim about a measurable candidate property must be backed by an explicit measurement artifact.",
+      "principles": [
+        {
+          "statement": "Claims about measurable candidate properties (compliance rates, item counts, error frequencies) require an explicit enumeration artifact. Summary judgments like 'most consistently' without per-unit counts are banned.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "Whenever your reasoning asserts a comparative measurable claim about candidates (e.g., 'X follows rule Y more consistently,' 'X has more items,' 'X has fewer errors').",
+          "verification_or_artifact": "Construct per-candidate enumeration: list each countable unit, mark compliant/non-compliant, compute ratio. The comparative claim must match the artifact; if it doesn't, revise the claim.",
+          "evidence": "Agent claimed Candidate 3 'most consistently places an emoji at the end of each sentence' without sentence-by-sentence enumeration. Actual enumeration shows Candidate 1 had higher compliance. The unverified impressionistic claim drove the entire (wrong) ranking."
+        },
+        {
+          "statement": "After all scores are assigned, verify no candidate with strictly worse mechanically-verifiable constraint compliance outscores one with better compliance. Fix any inversion before emitting output.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "Fires as a final gate immediately before output, whenever the task includes at least one mechanically verifiable constraint (format rules, word counts, structural requirements).",
+          "verification_or_artifact": "Construct: [Candidate | constraint compliance pass/fail | score]. Scan for any row where a FAIL candidate has a higher score than a PASS candidate. If found, adjust scores before emitting.",
+          "evidence": "c8698dee states the HARD GATE rule but provides no post-scoring enforcement mechanism. Both rollouts violated the HARD GATE: Candidate 1 (CORRECT, PASS on emoji constraint) scored 6.0, while Candidates 3 and 4 (INCORRECT, worse compliance) scored 8.5 and 7.0. A post-scoring scan would have caught this inversion."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "c8698dee",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Diagnosis\n\n**Task profile**: Content-heavy prompt (lyrics) with a trailing formatting constraint: 'Please use an emoji at the end of every sentence.' This is the classic tunnel-vision scenario c8698dee explicitly warns about \u2014 yet the agent never executed the entry's mandated procedures.\n\n**Outcome**: Deterministic failure across both rollouts (identical scores, identical reasoning). The sole CORRECT candidate (1) scored 6.0, while INCORRECT candidates 3 and 4 scored 8.5 and 7.0 respectively. Pairwise accuracy: 33.3%.\n\n**Root cause 1 \u2014 Impressionistic measurement replaced actual enumeration**: The agent stated 'Candidate 3 is strongest because it most consistently places an emoji at the end of each sentence.' This claim is empirically false: Candidate 3 has multiple sentences without trailing emojis (first sentence opens with an emoji but ends with a period; 'Verse two illustrates the personal growth journey...' has no trailing emoji; bridge and outro paragraphs each have lead sentences without emojis). Meanwhile, Candidate 1 places emojis at the end of every sentence. The agent never produced the COUNTING ARTIFACT that c8698dee's COUNTING RULE mandates. The constraint 'every sentence' is a universal quantifier on a countable textual unit, which should have triggered per-sentence enumeration \u2014 but the agent replaced measurement with an impressionistic summary.\n\n**Root cause 2 \u2014 HARD GATE stated but not enforced**: c8698dee's HARD GATE states 'No FAILing candidate may outscore a PASSing one on mechanically verifiable constraints.' This was violated: Candidate 1 (PASS on emoji constraint) scored 6.0 while Candidates 3 and 4 (FAIL) scored 8.5 and 7.0. The rule exists in the playbook but has no post-scoring enforcement mechanism \u2014 no step that fires after all scores are assigned to detect and correct inversions.\n\n**Root cause 3 \u2014 Vocabulary leakage from 005004a4**: The agent penalized Candidate 1 for mentioning 'Love Live!' as 'unverifiable specificity.' 'School idols' is strongly and specifically associated with the Love Live! franchise \u2014 a widely known cultural fact, not speculation. The ISOLATE\u2192COUNTER\u2192CLASSIFY procedure in 005004a4 would have classified this as PLAUSIBLE/VERIFIED (positive evidence exists), but the agent cherry-picked the entry's penalty vocabulary ('unverifiable') without executing its safeguarding procedure. This contributed to depressing Candidate 1's score.\n\n## Why c8698dee Is Harmful\n\nAll three analytical perspectives converge: c8698dee contains the correct procedures (COUNTING RULE, PROPORTIONAL COMPLIANCE, HARD GATE, TUNNEL-VISION WARNING) but they are inert when most needed. The entry even cites 'emoji rules' and 'lyrics' as the prototypical tunnel-vision scenario. The harm is specific: the entry provides false coverage \u2014 the right rules exist on paper but are packaged in a way that makes impressionistic reading more likely than procedural execution, especially for content-heavy prompts that consume the agent's cognitive budget. The COUNTING RULE is framed around numerical constraints ('at least N,' 'exactly N,' '2:1 ratio') and doesn't explicitly cover universal-quantifier formatting on textual units ('emoji at end of every sentence'), creating ambiguity about whether it applies. The HARD GATE is stated as a principle but has no post-scoring verification step.\n\n## Why 005004a4 Is Harmful\n\nThe entry's terminology ('unverifiable specificity') was absorbed as a penalty heuristic and applied to a well-known cultural association (school idols \u2192 Love Live!), without executing the ISOLATE\u2192COUNTER\u2192CLASSIFY procedure that would have correctly classified this as PLAUSIBLE. The entry's vocabulary leaks more easily than its procedures engage.\n\n## Strongest Supported Mutation\n\nThe single highest-confidence change is updating c8698dee in two tightly coupled ways:\n\n1. **Extend COUNTING RULE scope**: The current framing ('at least N,' 'exactly N') doesn't clearly cover universal quantifiers on textual formatting units. Add explicit language: for constraints like 'every sentence,' 'each paragraph,' 'all lines' paired with a formatting property, the agent must enumerate each textual unit per candidate, mark compliant/non-compliant, and compute a ratio. This enumeration IS the counting artifact. Summary claims like 'most consistently' are explicitly banned.\n\n2. **Add post-scoring HARD GATE enforcement**: After all scores are assigned, the agent must construct [Candidate | constraint compliance | score] and check for any inversion where a lower-compliance candidate outscores a higher-compliance one. This is the missing verification gate \u2014 the HARD GATE principle exists but currently has no enforcement mechanism.\n\nBoth changes target the same entry and the same failure mode. They strengthen existing procedures rather than introducing new concepts, consistent with the conservative principle of smallest justified change. The deterministic nature of the failure (identical across both rollouts with zero PP engagement tags) provides high confidence this is a systematic gap, not execution noise.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent made an empirically false impressionistic claim about emoji compliance ('most consistently') without per-sentence enumeration, then let content quality preferences override the mechanically verifiable constraint. c8698dee contains the right procedures but they are scoped too narrowly (numerical constraints only) and lack post-scoring enforcement, making them inert for textual formatting constraints in content-heavy prompts.",
+      "important_disagreements": [
+        "The anchor calls c8698dee harmful because 'its mere presence gave false coverage.' Credit_attribution refines this: the harm is that the entry's length and complexity suppress activation in content-heavy prompts \u2014 the procedures are correct but their packaging reduces engagement probability. Resolved in favor of credit_attribution's more precise diagnosis, which better guides the fix (make the artifact requirement shorter and more explicitly triggered for textual formatting).",
+        "Credit_attribution tags 295257e2 as harmful (missed last-resort defense), while anchor and principle_extraction tag it neutral. Resolved as neutral: the entry's framing around 'answers-prompt: yes/no' is ambiguous for IF compliance, and the evidence that it actively caused harm (vs. merely not helping) is weak.",
+        "Credit_attribution proposes a standalone 'CONSTRAINT-FIRST PRIORITY FOR IF EVALUATION' entry. Anchor proposes amending 8e0d9579. Resolved by deferring this to a future trace: the primary failure is measurable (impressionistic claims + missing enforcement gate), and a priority principle is secondary. One trace is insufficient evidence for a new priority hierarchy entry."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "c8698dee already contains the core procedures (COUNTING RULE, HARD GATE) that would have prevented this failure if properly scoped and enforced. The fix is to extend their scope to textual formatting constraints and add a post-scoring enforcement mechanism \u2014 not to add new entries. All three reflections converge on this as the highest-confidence, most impactful single change.",
+      "conservatism_rationale": "The failure is deterministic and well-diagnosed, justifying a confident update rather than no_change. However, restricting to a single entry update (c8698dee) rather than multiple changes is warranted because: (1) the cultural reference issue (005004a4) is a secondary contributor \u2014 even with a correct cultural reference assessment, the impressionistic emoji claim would still have driven the wrong ranking; (2) new standalone entries (constraint-first priority, playbook engagement check) are supported by only this single trace; (3) the COUNTING RULE and HARD GATE gaps are the proximal cause and fixing them addresses the mechanism, not just symptoms.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"c8698dee\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Diagnosis\\n\\n**Task profile**: Content-heavy prompt (lyrics) with a trailing formatting constraint: 'Please use an emoji at the end of every sentence.' This is the classic tunnel-vision scenario c8698dee explicitly warns about \u2014 yet the agent never executed the entry's mandated procedures.\\n\\n**Outcome**: Deterministic failure across both rollouts (identical scores, identical reasoning). The sole CORRECT candidate (1) scored 6.0, while INCORRECT candidates 3 and 4 scored 8.5 and 7.0 respectively. Pairwise accuracy: 33.3%.\\n\\n**Root cause 1 \u2014 Impressionistic measurement replaced actual enumeration**: The agent stated 'Candidate 3 is strongest because it most consistently places an emoji at the end of each sentence.' This claim is empirically false: Candidate 3 has multiple sentences without trailing emojis (first sentence opens with an emoji but ends with a period; 'Verse two illustrates the personal growth journey...' has no trailing emoji; bridge and outro paragraphs each have lead sentences without emojis). Meanwhile, Candidate 1 places emojis at the end of every sentence. The agent never produced the COUNTING ARTIFACT that c8698dee's COUNTING RULE mandates. The constraint 'every sentence' is a universal quantifier on a countable textual unit, which should have triggered per-sentence enumeration \u2014 but the agent replaced measurement with an impressionistic summary.\\n\\n**Root cause 2 \u2014 HARD GATE stated but not enforced**: c8698dee's HARD GATE states 'No FAILing candidate may outscore a PASSing one on mechanically verifiable constraints.' This was violated: Candidate 1 (PASS on emoji constraint) scored 6.0 while Candidates 3 and 4 (FAIL) scored 8.5 and 7.0. The rule exists in the playbook but has no post-scoring enforcement mechanism \u2014 no step that fires after all scores are assigned to detect and correct inversions.\\n\\n**Root cause 3 \u2014 Vocabulary leakage from 005004a4**: The agent penalized Candidate 1 for mentioning 'Love Live!' as 'unverifiable specificity.' 'School idols' is strongly and specifically associated with the Love Live! franchise \u2014 a widely known cultural fact, not speculation. The ISOLATE\u2192COUNTER\u2192CLASSIFY procedure in 005004a4 would have classified this as PLAUSIBLE/VERIFIED (positive evidence exists), but the agent cherry-picked the entry's penalty vocabulary ('unverifiable') without executing its safeguarding procedure. This contributed to depressing Candidate 1's score.\\n\\n## Why c8698dee Is Harmful\\n\\nAll three analytical perspectives converge: c8698dee contains the correct procedures (COUNTING RULE, PROPORTIONAL COMPLIANCE, HARD GATE, TUNNEL-VISION WARNING) but they are inert when most needed. The entry even cites 'emoji rules' and 'lyrics' as the prototypical tunnel-vision scenario. The harm is specific: the entry provides false coverage \u2014 the right rules exist on paper but are packaged in a way that makes impressionistic reading more likely than procedural execution, especially for content-heavy prompts that consume the agent's cognitive budget. The COUNTING RULE is framed around numerical constraints ('at least N,' 'exactly N,' '2:1 ratio') and doesn't explicitly cover universal-quantifier formatting on textual units ('emoji at end of every sentence'), creating ambiguity about whether it applies. The HARD GATE is stated as a principle but has no post-scoring verification step.\\n\\n## Why 005004a4 Is Harmful\\n\\nThe entry's terminology ('unverifiable specificity') was absorbed as a penalty heuristic and applied to a well-known cultural association (school idols \u2192 Love Live!), without executing the ISOLATE\u2192COUNTER\u2192CLASSIFY procedure that would have correctly classified this as PLAUSIBLE. The entry's vocabulary leaks more easily than its procedures engage.\\n\\n## Strongest Supported Mutation\\n\\nThe single highest-confidence change is updating c8698dee in two tightly coupled ways:\\n\\n1. **Extend COUNTING RULE scope**: The current framing ('at least N,' 'exactly N') doesn't clearly cover universal quantifiers on textual formatting units. Add explicit language: for constraints like 'every sentence,' 'each paragraph,' 'all lines' paired with a formatting property, the agent must enumerate each textual unit per candidate, mark compliant/non-compliant, and compute a ratio. This enumeration IS the counting artifact. Summary claims like 'most consistently' are explicitly banned.\\n\\n2. **Add post-scoring HARD GATE enforcement**: After all scores are assigned, the agent must construct [Candidate | constraint compliance | score] and check for any inversion where a lower-compliance candidate outscores a higher-compliance one. This is the missing verification gate \u2014 the HARD GATE principle exists but currently has no enforcement mechanism.\\n\\nBoth changes target the same entry and the same failure mode. They strengthen existing procedures rather than introducing new concepts, consistent with the conservative principle of smallest justified change. The deterministic nature of the failure (identical across both rollouts with zero PP engagement tags) provides high confidence this is a systematic gap, not execution noise.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent made an empirically false impressionistic claim about emoji compliance ('most consistently') without per-sentence enumeration, then let content quality preferences override the mechanically verifiable constraint. c8698dee contains the right procedures but they are scoped too narrowly (numerical constraints only) and lack post-scoring enforcement, making them inert for textual formatting constraints in content-heavy prompts.\",\n    \"important_disagreements\": [\n      \"The anchor calls c8698dee harmful because 'its mere presence gave false coverage.' Credit_attribution refines this: the harm is that the entry's length and complexity suppress activation in content-heavy prompts \u2014 the procedures are correct but their packaging reduces engagement probability. Resolved in favor of credit_attribution's more precise diagnosis, which better guides the fix (make the artifact requirement shorter and more explicitly triggered for textual formatting).\",\n      \"Credit_attribution tags 295257e2 as harmful (missed last-resort defense), while anchor and principle_extraction tag it neutral. Resolved as neutral: the entry's framing around 'answers-prompt: yes/no' is ambiguous for IF compliance, and the evidence that it actively caused harm (vs. merely not helping) is weak.\",\n      \"Credit_attribution proposes a standalone 'CONSTRAINT-FIRST PRIORITY FOR IF EVALUATION' entry. Anchor proposes amending 8e0d9579. Resolved by deferring this to a future trace: the primary failure is measurable (impressionistic claims + missing enforcement gate), and a priority principle is secondary. One trace is insufficient evidence for a new priority hierarchy entry.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"c8698dee already contains the core procedures (COUNTING RULE, HARD GATE) that would have prevented this failure if properly scoped and enforced. The fix is to extend their scope to textual formatting constraints and add a post-scoring enforcement mechanism \u2014 not to add new entries. All three reflections converge on this as the highest-confidence, most impactful single change.\",\n    \"conservatism_rationale\": \"The failure is deterministic and well-diagnosed, justifying a confident update rather than no_change. However, restricting to a single entry update (c8698dee) rather than multiple changes is warranted because: (1) the cultural reference issue (005004a4) is a secondary contributor \u2014 even with a correct cultural reference assessment, the impressionistic emoji claim would still have driven the wrong ranking; (2) new standalone entries (constraint-first priority, playbook engagement check) are supported by only this single trace; (3) the COUNTING RULE and HARD GATE gaps are the proximal cause and fixing them addresses the mechanism, not just symptoms.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "helpful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

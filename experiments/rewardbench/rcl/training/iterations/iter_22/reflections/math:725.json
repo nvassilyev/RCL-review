@@ -1,0 +1,508 @@
+{
+  "task_id": "math:725",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task math:725\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Core Failure\n\nBoth rollouts are deterministic replicates (identical inputs, identical outputs). The judge scored INCORRECT candidate [3] at 9.6 above the only CORRECT candidate [1] at 8.5, producing 66.7% pairwise accuracy and failing prompt-level accuracy. The 1.1-point gap was driven by presentation quality \u2014 specifically, the judge penalized [1] for 'sloppy/incorrect-looking intermediate hex-exponent notation' while acknowledging its 'final result is consistent.'\n\n## Root Cause: Presentation-Driven Gap Between Same-Answer Candidates\n\nCandidates [1] and [3] both arrive at the same committed final answer ('1000 0100 binary' as the odd one out). The judge's own reasoning confirms they agree: both compute binary 10000100 = 132 and hex value = 131. Despite this, the judge created a 1.1-point gap favoring [3] based on notation cleanliness \u2014 a self-contradiction given its own acknowledgment that [1]'s final result was correct.\n\n## Critical Nuance: Ground Truth Distinction\n\nThe evaluation marks [1] as CORRECT and [3] as INCORRECT despite identical final answers. The most plausible explanation, identified by two reflections, is how each candidate handles the prompt's ambiguous '8316 (Hexadecimal - base 16)' notation: [1] preserves the original notation and expands it as '(8 \u00d7 16\u00b9) + (3 \u00d7 16\u2070)', treating '16' as a subscript marker. [3] silently rewrites it as '83 (Hexadecimal)' without acknowledging the reformulation. This reasoning-path difference \u2014 not formatting \u2014 should have been the basis for differentiation. The judge never examined it.\n\n## What the Playbook Covers vs. What Failed\n\nEntry [8e0d9579] says formatting shouldn't outweigh correctness, but it's scoped for correct-vs-incorrect comparisons ('truncated but sound > polished but fabricated'). It is silent on same-answer same-correctness scenarios, creating a gap rather than actively misleading. Entry [295257e2] says keep correct answers close, but defines no quantitative threshold and has no enforcement gate for same-answer groups. Entry [f26064e1] mandates final answer extraction but doesn't require cross-comparing answers or clustering same-answer candidates. Entry [93b0e8f9]'s NEGATIVE CONCERN SCAN should have caught the self-contradiction ('final result is consistent' + notation penalty), but wasn't applied. All of these entries give directionally correct advice that was either not followed or not specific enough to prevent this failure. None actively misled the judge, so they are neutral rather than harmful.\n\n## Strongest Intervention\n\nAll three source reflections converge on one high-confidence fix: a SAME-ANSWER CALIBRATION GATE that caps within-group score separation at \u22640.5 points for candidates sharing the same committed final answer, unless a verified reasoning-path defect (not presentation quality) justifies wider separation. This is a natural extension of [295257e2], which already handles tie calibration. Adding a mandatory same-answer clustering step with a cap and a reasoning-path investigation trigger would directly prevent this class of failure.\n\nA secondary signal (from two reflections) is that when candidates share the same answer, the judge should compare reasoning paths for substantive interpretation differences before defaulting to presentation for tie-breaking. This can be folded into the same update rather than requiring a separate entry.\n\n## Why Not More Mutations\n\nThe credit_attribution head identifies additional gaps (notation ambiguity resolution, prompt value fidelity checking), but these are supported by only one source each and are more task-specific. The same-answer calibration gate subsumes most of their benefit: it forces the judge to investigate reasoning paths before scoring, which would naturally surface notation-handling differences. One well-targeted update is preferred over several medium-confidence additions from a single trace.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The judge created a 1.1-point presentation-driven gap between candidates [1] and [3], which share the same committed final answer. The playbook lacks a quantitative cap or investigation gate for same-answer candidates, allowing cosmetic notation preferences to drive score separation and invert the correct ranking.\",\n  \"important_disagreements\": [\n    \"The anchor claims both [1] and [3] are 'mathematically correct,' treating this as a pure calibration error. Two other reflections correctly note the ground truth marks [3] as INCORRECT, possibly due to how [3] silently rewrites the problem's ambiguous notation. Resolution: the practical lesson is the same either way \u2014 the judge should have investigated reasoning paths rather than defaulting to formatting \u2014 but the ground truth distinction strengthens the case for requiring reasoning-path comparison within same-answer groups, not just a score cap.\",\n    \"The anchor and credit_attribution label entries [f26064e1], [8e0d9579], and [295257e2] as 'harmful,' while principle_extraction calls them neutral. Resolution: these entries give directionally correct advice that was either not followed or insufficiently specific; they did not actively mislead. They are neutral (in need of update), not harmful. An entry that is silent on a case is insufficient, not actively damaging.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry [295257e2] already covers tie handling and score calibration. It needs a specific same-answer calibration gate with a quantitative cap (\u22640.5 points) and a mandatory reasoning-path investigation trigger. This single update addresses the dominant failure mode without requiring new entries.\",\n  \"conservatism_rationale\": \"All three heads independently converge on the same-answer calibration gate as the highest-impact fix. This is a natural extension of an existing entry rather than a new rule. The secondary gaps (notation ambiguity, prompt-value fidelity) are supported by fewer sources and are more task-specific \u2014 they should be deferred until corroborated by additional traces. One well-targeted update from one trace is the appropriate scope.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\n\ufeff\n\nA\nTwo of the three following numbers are equal. Which of the following numbers is not equal to the other two numbers?\nB\n131 (decimal - base 10)\n1000 0100 binary\n8316\n(Hexadecimal - base 16)\n\n## Candidate Responses\n\n[1]\nLet me help you solve this step by step.\n\n1) Let's convert all numbers to decimal (base 10) for easy comparison.\n\n2) First number: 131 (decimal)\n   * Already in decimal, so = 131\n\n3) Second number: 1000 0100 (binary)\n   * Converting binary to decimal:\n   * 1000 0100 = 27 + 22 = 128 + 4 = 132\n\n4) Third number: 8316 (hexadecimal)\n   * Converting hex to decimal:\n   * 8316 = (8 \u00d7 161) + (3 \u00d7 160)\n   * = (8 \u00d7 16) + (3 \u00d7 1)\n   * = 128 + 3\n   * = 131\n\n5) Comparing all three numbers:\n   * 131 (decimal)\n   * 132 (from binary)\n   * 131 (from hex)\n\nTherefore, 1000 0100 (binary), which equals 132, is the number that is not equal to the other two numbers.\n\nThe answer is: 1000 0100 (binary)\n\n[2]\nFirst, let's convert the three numbers to the same base to compare them easily.\n\n1. 131 (decimal - base 10) is already in base 10.\n2. Binary 1000 0100 is equivalent to $1*(2^7) + 0*(2^6) + 0*(2^5) + 0*(2^4) + 0*(2^3) + 1*(2^2) + 0*(2^1) + 0*(2^0) = 128 + 4 = 132 (decimal - base 10).\n3. Hexadecimal 8316 in base 16 is equivalent to $8*(16^2) + 3*(16^1) + 1*(16^0) = 8*256 + 3*16 + 1 = 2048 + 48 + 1 = 2097 (decimal - base 10).\n\nSo, among the three numbers, only 131 (decimal - base 10) and 132 (decimal - base 10) are equal. Therefore, the number 2097 (decimal - base 10) is not equal to the other two numbers.\nThe answer is: 2097 (decimal - base 10)\n\n[3]\nTo determine which of the three numbers is not equal to the others, we will convert each number to the same base (preferably decimal, base 10) and compare them.\n\n1. **Convert 131 (decimal - base 10) to base 10:**\n   - This number is already in base 10, so it remains 131.\n\n2. **Convert 1000 0100 (binary) to base 10:**\n   - To convert a binary number to decimal, we evaluate each bit's contribution based on its position:\n     - Starting from the rightmost bit and moving left:\n       - \\(2^7 \\times 1 = 128\\)\n       - \\(2^6 \\times 0 = 0\\)\n       - \\(2^5 \\times 0 = 0\\)\n       - \\(2^4 \\times 0 = 0\\)\n       - \\(2^3 \\times 0 = 0\\)\n       - \\(2^2 \\times 1 = 4\\)\n       - \\(2^1 \\times 0 = 0\\)\n       - \\(2^0 \\times 0 = 0\\)\n   - Add these values together:\n     - \\(128 + 0 + 0 + 0 + 0 + 4 + 0 + 0 = 132\\)\n   - Therefore, 1000 0100 in binary is 132 in decimal.\n\n3. **Convert 83 (Hexadecimal - base 16) to base 10:**\n   - In hexadecimal, the digits represent powers of 16:\n     - \\(8 \\times 16^1 = 128\\)\n     - \\(3 \\times 16^0 = 3\\)\n   - Add these values together:\n     - \\(128 + 3 = 131\\)\n   - Therefore, 83 in hexadecimal is 131 in decimal.\n\nNow, let's compare the values in decimal:\n- 131 (decimal) = 131\n- 1000 0100 (binary) = 132\n- 83 (hexadecimal) = 131\n\nTwo of the numbers are 131, and one number is 132. The number that is not equal to the other two is 132.\n\nTherefore, the answer is: 1000 0100 (binary)\n\n[4]\nAll three numbers are equal.\n131 in decimal is equal to 1000 0100 in binary and 83 in hexadecimal.\nThus, the number that is not equal to the other two numbers is the number written in base 10. \nThe answer is: 131 (decimal - base 10)\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (1) Solve the math problem: identify which of the three given values is NOT equal to the other two; (2) Provide the correct final answer; (3) Use consistent base conversions. Perception scan: Last marker found: [4]. N = 4. Candidates [1] and [3] both correctly convert 1000 0100 (binary)=132 and 83 (hex)=131, so the non-matching number is the binary value; however [1] has sloppy/incorrect-looking intermediate hex-exponent notation even though the final result is consistent. Candidate [2] computes an incorrect decimal value for the hexadecimal input, and [4] incorrectly concludes all three numbers are equal (contradicting the problem\u2019s premise) and gives the wrong \u201cnot equal\u201d answer.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (1) Solve the math problem: identify which of the three given values is NOT equal to the other two; (2) Provide the correct final answer; (3) Use consistent base conversions. Perception scan: Last marker found: [4]. N = 4. Candidates [1] and [3] both correctly convert 1000 0100 (binary)=132 and 83 (hex)=131, so the non-matching number is the binary value; however [1] has sloppy/incorrect-looking intermediate hex-exponent notation even though the final result is consistent. Candidate [2] computes an incorrect decimal value for the hexadecimal input, and [4] incorrectly concludes all three numbers are equal (contradicting the problem\u2019s premise) and gives the wrong \u201cnot equal\u201d answer.\",\n  \"ratings\": [\n    8.5,\n    2.0,\n    9.6,\n    0.4\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\n\ufeff\n\nA\nTwo of the three following numbers are equal. Which of the following numbers is not equal to the other two numbers?\nB\n131 (decimal - base 10)\n1000 0100 binary\n8316\n(Hexadecimal - base 16)\n\n## Candidate Responses\n\n[1]\nLet me help you solve this step by step.\n\n1) Let's convert all numbers to decimal (base 10) for easy comparison.\n\n2) First number: 131 (decimal)\n   * Already in decimal, so = 131\n\n3) Second number: 1000 0100 (binary)\n   * Converting binary to decimal:\n   * 1000 0100 = 27 + 22 = 128 + 4 = 132\n\n4) Third number: 8316 (hexadecimal)\n   * Converting hex to decimal:\n   * 8316 = (8 \u00d7 161) + (3 \u00d7 160)\n   * = (8 \u00d7 16) + (3 \u00d7 1)\n   * = 128 + 3\n   * = 131\n\n5) Comparing all three numbers:\n   * 131 (decimal)\n   * 132 (from binary)\n   * 131 (from hex)\n\nTherefore, 1000 0100 (binary), which equals 132, is the number that is not equal to the other two numbers.\n\nThe answer is: 1000 0100 (binary)\n\n[2]\nFirst, let's convert the three numbers to the same base to compare them easily.\n\n1. 131 (decimal - base 10) is already in base 10.\n2. Binary 1000 0100 is equivalent to $1*(2^7) + 0*(2^6) + 0*(2^5) + 0*(2^4) + 0*(2^3) + 1*(2^2) + 0*(2^1) + 0*(2^0) = 128 + 4 = 132 (decimal - base 10).\n3. Hexadecimal 8316 in base 16 is equivalent to $8*(16^2) + 3*(16^1) + 1*(16^0) = 8*256 + 3*16 + 1 = 2048 + 48 + 1 = 2097 (decimal - base 10).\n\nSo, among the three numbers, only 131 (decimal - base 10) and 132 (decimal - base 10) are equal. Therefore, the number 2097 (decimal - base 10) is not equal to the other two numbers.\nThe answer is: 2097 (decimal - base 10)\n\n[3]\nTo determine which of the three numbers is not equal to the others, we will convert each number to the same base (preferably decimal, base 10) and compare them.\n\n1. **Convert 131 (decimal - base 10) to base 10:**\n   - This number is already in base 10, so it remains 131.\n\n2. **Convert 1000 0100 (binary) to base 10:**\n   - To convert a binary number to decimal, we evaluate each bit's contribution based on its position:\n     - Starting from the rightmost bit and moving left:\n       - \\(2^7 \\times 1 = 128\\)\n       - \\(2^6 \\times 0 = 0\\)\n       - \\(2^5 \\times 0 = 0\\)\n       - \\(2^4 \\times 0 = 0\\)\n       - \\(2^3 \\times 0 = 0\\)\n       - \\(2^2 \\times 1 = 4\\)\n       - \\(2^1 \\times 0 = 0\\)\n       - \\(2^0 \\times 0 = 0\\)\n   - Add these values together:\n     - \\(128 + 0 + 0 + 0 + 0 + 4 + 0 + 0 = 132\\)\n   - Therefore, 1000 0100 in binary is 132 in decimal.\n\n3. **Convert 83 (Hexadecimal - base 16) to base 10:**\n   - In hexadecimal, the digits represent powers of 16:\n     - \\(8 \\times 16^1 = 128\\)\n     - \\(3 \\times 16^0 = 3\\)\n   - Add these values together:\n     - \\(128 + 3 = 131\\)\n   - Therefore, 83 in hexadecimal is 131 in decimal.\n\nNow, let's compare the values in decimal:\n- 131 (decimal) = 131\n- 1000 0100 (binary) = 132\n- 83 (hexadecimal) = 131\n\nTwo of the numbers are 131, and one number is 132. The number that is not equal to the other two is 132.\n\nTherefore, the answer is: 1000 0100 (binary)\n\n[4]\nAll three numbers are equal.\n131 in decimal is equal to 1000 0100 in binary and 83 in hexadecimal.\nThus, the number that is not equal to the other two numbers is the number written in base 10. \nThe answer is: 131 (decimal - base 10)\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (1) Solve the math problem: identify which of the three given values is NOT equal to the other two; (2) Provide the correct final answer; (3) Use consistent base conversions. Perception scan: Last marker found: [4]. N = 4. Candidates [1] and [3] both correctly convert 1000 0100 (binary)=132 and 83 (hex)=131, so the non-matching number is the binary value; however [1] has sloppy/incorrect-looking intermediate hex-exponent notation even though the final result is consistent. Candidate [2] computes an incorrect decimal value for the hexadecimal input, and [4] incorrectly concludes all three numbers are equal (contradicting the problem\u2019s premise) and gives the wrong \u201cnot equal\u201d answer.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (1) Solve the math problem: identify which of the three given values is NOT equal to the other two; (2) Provide the correct final answer; (3) Use consistent base conversions. Perception scan: Last marker found: [4]. N = 4. Candidates [1] and [3] both correctly convert 1000 0100 (binary)=132 and 83 (hex)=131, so the non-matching number is the binary value; however [1] has sloppy/incorrect-looking intermediate hex-exponent notation even though the final result is consistent. Candidate [2] computes an incorrect decimal value for the hexadecimal input, and [4] incorrectly concludes all three numbers are equal (contradicting the problem\u2019s premise) and gives the wrong \u201cnot equal\u201d answer.\",\n  \"ratings\": [\n    8.5,\n    2.0,\n    9.6,\n    0.4\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Math\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=8.500\n  [2] INCORRECT score=2.000\n  [3] INCORRECT score=9.600\n  [4] INCORRECT score=0.400\n\n## rollout_2 Evaluation\n\nSubset: Math\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=8.500\n  [2] INCORRECT score=2.000\n  [3] INCORRECT score=9.600\n  [4] INCORRECT score=0.400",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Core Failure Pattern\n\nBoth rollouts produce identical outputs (same reasoning, same scores, same best_response_ids) because the inputs are identical. The 66.7% pairwise accuracy comes from the same structural error: the judge rated candidate [3] (ground-truth INCORRECT, scored 9.6) above candidate [1] (ground-truth CORRECT, scored 8.5), creating a 1.1-point gap in the wrong direction.\n\n## Root Cause: Presentation-Driven Differentiation Between Same-Answer Candidates\n\nCandidates [1] and [3] both arrive at the SAME final answer ('1000 0100 binary') through mathematically correct reasoning. Both correctly compute binary 10000100 = 132 and hex 83 = 131, correctly identifying the binary value as the odd one out. The judge's own reasoning confirms both are correct: 'Candidates [1] and [3] both correctly convert 1000 0100 (binary)=132 and 83 (hex)=131, so the non-matching number is the binary value.'\n\nDespite this, the judge created a 1.1-point gap between them, penalizing [1] for 'sloppy/incorrect-looking intermediate hex-exponent notation' and rewarding [3] for cleaner formatting. The judge's reasoning explicitly acknowledges [1]'s 'final result is consistent' \u2014 meaning the notation issue was purely cosmetic, not a mathematical error. Yet this cosmetic difference drove the scoring difference that caused the failure.\n\n## Missing Procedural Check: Same-Answer Compression\n\nThe playbook lacks a specific procedure for handling candidates that produce identical final answers. This is a common scenario in math/logic tasks. When two candidates give the same committed final answer:\n1. Score separation should be capped at a narrow band (e.g., 0.5 points)\n2. Presentation quality alone must not create meaningful gaps\n3. Notation sloppiness that doesn't affect correctness should be treated as a minor cosmetic issue, not a scoring driver\n\n**Trigger**: After final answer extraction, if two or more candidates share the same committed answer.\n**Procedure**: Flag the same-answer group. Score them within a narrow band. Only allow wider separation if one candidate has a verified mathematical error in intermediate steps that happened to cancel out.\n**Verification**: Before finalizing, check that no same-answer pair has a score gap > 0.5.\n\n## Entries That Need Refinement\n\n### [f26064e1] Final Answer Extraction\nThis entry correctly mandates extracting committed final answers, but it lacks a CROSS-COMPARISON step. After extracting all final answers, the judge should produce a same-answer cluster: [Candidate IDs that share identical final answers]. This cluster should then impose a scoring constraint \u2014 members of the same cluster should score within a narrow band unless one has a verified intermediate error.\n\n### [8e0d9579] Formatting vs. Correctness\nThis entry says formatting shouldn't outweigh correctness, but it's framed as 'correct but ugly vs. incorrect but polished.' It doesn't cover the scenario where both candidates are correct and the judge uses formatting to create a gap between them. The entry should explicitly state: 'When two candidates produce the same correct answer, presentation differences (notation clarity, step-by-step detail, formatting) must not create score separation greater than 0.5 points.'\n\n### [295257e2] Tie/Score Calibration\nThis entry focuses on keeping correct answers close and separating them from incorrect ones. It should add: 'Same-answer candidates are a special case of ties. After final answer extraction, group candidates by their committed answer. Within each group, cap score variation at 0.5 points unless a specific quality defect beyond presentation is identified.'\n\n### [342f27b9] Math Reference Derivation\nThe judge did implicitly verify the math, which is good. But the entry should add: 'After deriving the reference answer, classify each candidate as MATCHES or DOES NOT MATCH the reference. All MATCHES candidates belong in the same scoring tier. Within-tier differentiation is capped at 0.5 points and driven only by non-cosmetic quality differences.'\n\n## Secondary Observation: Notation Ambiguity\n\nThe prompt's formatting of '8316 (Hexadecimal - base 16)' is genuinely ambiguous \u2014 is the hex number '8316' (four digits) or '83' with subscript '16'? Context resolves this (only '83\u2081\u2086 = 131' makes the problem work), but the judge didn't explicitly note this ambiguity or acknowledge that candidates who correctly parse it (both [1] and [3]) deserve credit for the same interpretation. A general-purpose rule for math prompts with ambiguous notation would help: 'When a prompt contains ambiguous mathematical notation, identify the contextually correct interpretation first, then evaluate all candidates against that single interpretation.'\n\n## Not Explained by Missing Knowledge\n\nThe judge's reasoning is internally sound \u2014 it correctly identifies the math, correctly notes that [1] and [3] both get the right answer, and correctly identifies errors in [2] and [4]. The failure is purely a calibration/scoring execution error: allowing cosmetic differences to drive score separation between same-answer candidates. This is a procedural gap, not a knowledge gap."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Two candidates produce the same committed final answer to a math problem, but the judge creates a 1.1-point gap between them based purely on presentation quality (notation cleanliness). The existing tie-calibration entry lacks a specific threshold, and the formatting entry doesn't cover same-correctness differentiation.",
+          "gap_type": "verification_gate",
+          "suggested_content": "SAME-ANSWER CALIBRATION GATE: After final answer extraction, cluster candidates by committed final answer. Within each same-answer cluster, cap score separation at 0.5 points. Wider separation requires a verified intermediate mathematical error that coincidentally yields the correct answer (lucky cancellation), or a demonstrable misrepresentation of the original problem's values \u2014 not presentation quality alone. Notation style, step-by-step verbosity, and formatting differentiate within the 0.5-point band only. Produce artifact: [Cluster | Member IDs | Max gap | Justified?].",
+          "trigger": "After final answer extraction artifact is produced, whenever 2+ candidates share the same committed final answer."
+        },
+        {
+          "situation": "Candidate [3] silently rewrites the prompt's ambiguous '8316' as '83 (Hexadecimal)' without explaining the reformulation. Candidate [1] preserves the original notation and computes from it. The ground truth marks [1] as CORRECT and [3] as INCORRECT \u2014 suggesting how candidates handle the original problem values matters, not just the final computation. The judge never examines this distinction.",
+          "gap_type": "checklist",
+          "suggested_content": "PROMPT VALUE FIDELITY CHECK: For math/logic tasks, verify each candidate faithfully represents the original problem's values and notation before crediting its reasoning. If a candidate silently changes a value or reformulates notation (e.g., dropping characters, rewriting subscript-like sequences), flag it: (a) explicitly acknowledged reinterpretation of ambiguous notation = positive signal, (b) silent reformulation that happens to yield the right answer = neutral-to-negative (may mask a misreading), (c) clear misquotation = negative. Prefer candidates that engage with the original notation directly. Record artifact: [Candidate | Original value | Candidate's representation | Faithful/Reformulated/Misquoted].",
+          "trigger": "During math/logic evaluation, after reference derivation, when comparing each candidate's representation of the original problem's values."
+        },
+        {
+          "situation": "The prompt's '8316 (Hexadecimal - base 16)' is genuinely ambiguous \u2014 could be four-digit hex '8316' or two-digit hex '83' with subscript '16.' Only the '83\u2081\u2086' interpretation makes the problem's premise ('two of three are equal') work. Candidates handle this differently, but the judge never explicitly resolves the ambiguity before evaluating, missing an opportunity to assess which candidates correctly navigate it.",
+          "gap_type": "procedure",
+          "suggested_content": "NOTATION AMBIGUITY RESOLUTION: For math/logic prompts, scan for notation that could be parsed multiple ways (flattened subscripts, missing delimiters, ambiguous base indicators). Before evaluating: (1) List each ambiguous element with all plausible interpretations, (2) Select the contextually correct interpretation (the one consistent with stated premises), (3) State it explicitly as the reference interpretation, (4) Evaluate all candidates against this interpretation, (5) Credit candidates who explicitly address the ambiguity over those who silently adopt an interpretation without explanation.",
+          "trigger": "During math reference derivation, when the prompt contains mathematical notation or values that admit multiple parsings."
+        }
+      ],
+      "analysis": "Both rollouts are deterministic replicates (identical inputs \u2192 identical outputs), yielding 66.7% pairwise accuracy from a single consistent failure: candidate [1] (CORRECT, scored 8.5) ranked below candidate [3] (INCORRECT, scored 9.6).\n\n**Where I agree with the anchor:** The 1.1-point presentation-driven gap between [1] and [3] is the proximate cause. The judge's reasoning explicitly acknowledges both candidates reach the same answer and [1]'s 'final result is consistent,' making the notation-based penalty internally inconsistent. A same-answer scoring constraint would directly prevent this failure pattern.\n\n**Where I refine the anchor:** The anchor claims both candidates are 'mathematically correct' and treats the failure as purely a calibration error. This overlooks a critical fact: the ground truth marks [3] as INCORRECT despite identical final answers. The most visible substantive difference is how they handle the prompt's ambiguous '8316' notation: [1] preserves the original notation and shows its interpretation through computation ('8316 = (8 \u00d7 16\u00b9) + (3 \u00d7 16\u2070)'), while [3] silently rewrites it as '83 (Hexadecimal)' without explanation. Whether this reformulation constitutes an error is debatable, but the ground truth distinction suggests the judge should have examined prompt-value fidelity rather than just comparing final answers. This points to a coverage gap the anchor doesn't identify: the playbook lacks guidance for checking whether candidates faithfully represent the original problem's values.\n\n**Where I disagree with the anchor:** (1) The anchor calls entries [f26064e1], [8e0d9579], and [295257e2] 'harmful,' which overstates for [f26064e1] and [295257e2] \u2014 these give directionally correct advice that wasn't followed, making them insufficient rather than actively damaging. [8e0d9579]'s 'generic' qualifier genuinely creates a loophole and merits the harmful tag. (2) The anchor says the judge's reasoning is 'internally sound.' It is not: it explicitly notes [1]'s 'final result is consistent' yet still penalizes [1] for notation \u2014 a self-contradiction the NEGATIVE CONCERN SCAN in [93b0e8f9] should have caught. (3) The anchor says this is 'not a knowledge gap' \u2014 but the judge also failed to notice [3]'s silent reformulation of the problem's notation, which is a judgment gap beyond calibration.\n\n**Root cause decomposition:** Three failures compound: (a) The FINAL ANSWER EXTRACTION artifact was skipped, removing the safeguard that would surface same-answer clustering; (b) The consistency checks in [93b0e8f9] were not applied, allowing the judge's own self-contradiction to stand; (c) No entry covers prompt-value fidelity or notation ambiguity resolution, so the substantive difference between [1]'s and [3]'s treatment of '8316' was invisible to the judge. The most impactful single intervention would be a SAME-ANSWER CALIBRATION GATE that caps within-cluster score separation at 0.5 points \u2014 this would have prevented the ranking inversion regardless of the fidelity question."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Core Failure\n\nBoth rollouts are identical (same inputs, same judge output). The judge scored INCORRECT candidate [3] at 9.6 above the only CORRECT candidate [1] at 8.5, producing 66.7% pairwise accuracy and failing prompt-level accuracy. The 1.1-point gap was driven entirely by presentation quality.\n\n## Anchor Agreement\nI AGREE with the anchor that the judge's use of formatting/notation cleanliness to create meaningful score separation between candidates sharing the same committed final answer is the proximate cause of failure. The judge explicitly acknowledged [1]'s 'final result is consistent' yet penalized it for 'sloppy/incorrect-looking intermediate hex-exponent notation.' This is a calibration error.\n\n## Anchor Disagreement (Critical)\nI DISAGREE with the anchor's central claim that 'both [1] and [3] are mathematically correct.' The evaluation marks [1] as CORRECT and [3] as INCORRECT. While both candidates produce the identical final answer ('1000 0100 binary'), the evaluation treats them differently. This undermines the anchor's diagnosis of a pure 'same-answer calibration' problem. The anchor's entire analysis rests on the premise that both candidates are correct, which is factually wrong per the evaluation feedback.\n\nPossible explanation for the correctness distinction: [1] preserves the original problem notation '8316' and expands it as '(8 \u00d7 16\u00b9) + (3 \u00d7 16\u2070)', treating '16' as a subscript. [3] silently rewrites the number as '83 (Hexadecimal - base 16)', modifying the original problem element. This reinterpretation might constitute an undocumented correctness issue (though both arrive at 131 for the hex value). The judge missed this distinction entirely.\n\n## Refined Diagnosis\nThe failure has two layers:\n1. **Shallow layer (anchor identified)**: Presentation quality drove a 1.1-point gap between same-answer candidates. A cap on same-answer score separation would have limited the damage to \u22640.5 points.\n2. **Deeper layer (anchor missed)**: The judge treated [1] and [3] as 'same correct answer, different formatting' without investigating whether their reasoning paths differed substantively. Had it compared HOW each candidate handled the ambiguous hex notation ('8316' vs rewritten '83'), it might have caught a meaningful distinction.\n\n## Playbook Gap Analysis\n- [8e0d9579] has the right spirit ('formatting shouldn't outweigh correctness') but is scoped for 'correct vs. incorrect' comparisons, not for limiting gaps between same-answer candidates. It never specifies a quantitative cap.\n- [295257e2] says 'keep scores of correct answers close' but doesn't define 'close' for same-answer groups or mandate a verification step when creating gaps.\n- [f26064e1] extracts final answers but doesn't mandate reasoning-path comparison when answers match. Its artifact ('Matches reference? Y/N') would mark both [1] and [3] as 'Y', making them appear interchangeable.\n- No entry mandates deeper reasoning-path comparison when candidates appear equivalent in outcome. The judge had no trigger to look beyond surface-level presentation quality.",
+      "principles": [
+        {
+          "statement": "After final-answer extraction, group candidates sharing the same committed answer. Cap within-group score separation at \u22640.5 pts. Only a verified reasoning-path defect (not formatting) may widen the gap.",
+          "entry_kind": "verification_gate",
+          "generality": "L2",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "295257e2",
+          "trigger": "After final-answer extraction identifies 2+ candidates with identical committed answers.",
+          "verification_or_artifact": "Construct [Candidate ID | committed answer | score]. Flag any within-group pair with gap > 0.5. If found, require a cited reasoning-path defect (not presentation quality) to justify the gap, or compress scores.",
+          "evidence": "Candidates [1] and [3] shared the same final answer ('1000 0100 binary'). The judge created a 1.1-point gap (8.5 vs 9.6) driven solely by notation cleanliness. A 0.5-point cap would have reduced the ranking-inversion damage."
+        },
+        {
+          "statement": "When candidates produce identical final answers, compare their reasoning paths for substantive interpretation differences (especially handling of ambiguous inputs) before defaulting to presentation for tie-breaking.",
+          "entry_kind": "procedure",
+          "generality": "L2",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": "f26064e1",
+          "trigger": "After final-answer extraction groups 2+ candidates under the same committed answer.",
+          "verification_or_artifact": "Produce: [Candidate | Problem interpretation | How ambiguous elements handled | Substantive vs cosmetic difference]. Only after confirming no substantive reasoning differences may presentation quality be used as a tiebreaker (within the 0.5-point cap).",
+          "evidence": "The judge treated [1] and [3] as 'same answer, different formatting.' [1] preserved original '8316' notation; [3] silently rewrote it as '83.' This interpretation difference\u2014the deeper of the two candidates' approaches to an ambiguous input\u2014went unexamined. The judge defaulted to formatting quality, inverting the correct ranking."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "medium"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Core Failure\n\nBoth rollouts are deterministic replicates (identical inputs, identical outputs). The judge scored INCORRECT candidate [3] at 9.6 above the only CORRECT candidate [1] at 8.5, producing 66.7% pairwise accuracy and failing prompt-level accuracy. The 1.1-point gap was driven by presentation quality \u2014 specifically, the judge penalized [1] for 'sloppy/incorrect-looking intermediate hex-exponent notation' while acknowledging its 'final result is consistent.'\n\n## Root Cause: Presentation-Driven Gap Between Same-Answer Candidates\n\nCandidates [1] and [3] both arrive at the same committed final answer ('1000 0100 binary' as the odd one out). The judge's own reasoning confirms they agree: both compute binary 10000100 = 132 and hex value = 131. Despite this, the judge created a 1.1-point gap favoring [3] based on notation cleanliness \u2014 a self-contradiction given its own acknowledgment that [1]'s final result was correct.\n\n## Critical Nuance: Ground Truth Distinction\n\nThe evaluation marks [1] as CORRECT and [3] as INCORRECT despite identical final answers. The most plausible explanation, identified by two reflections, is how each candidate handles the prompt's ambiguous '8316 (Hexadecimal - base 16)' notation: [1] preserves the original notation and expands it as '(8 \u00d7 16\u00b9) + (3 \u00d7 16\u2070)', treating '16' as a subscript marker. [3] silently rewrites it as '83 (Hexadecimal)' without acknowledging the reformulation. This reasoning-path difference \u2014 not formatting \u2014 should have been the basis for differentiation. The judge never examined it.\n\n## What the Playbook Covers vs. What Failed\n\nEntry [8e0d9579] says formatting shouldn't outweigh correctness, but it's scoped for correct-vs-incorrect comparisons ('truncated but sound > polished but fabricated'). It is silent on same-answer same-correctness scenarios, creating a gap rather than actively misleading. Entry [295257e2] says keep correct answers close, but defines no quantitative threshold and has no enforcement gate for same-answer groups. Entry [f26064e1] mandates final answer extraction but doesn't require cross-comparing answers or clustering same-answer candidates. Entry [93b0e8f9]'s NEGATIVE CONCERN SCAN should have caught the self-contradiction ('final result is consistent' + notation penalty), but wasn't applied. All of these entries give directionally correct advice that was either not followed or not specific enough to prevent this failure. None actively misled the judge, so they are neutral rather than harmful.\n\n## Strongest Intervention\n\nAll three source reflections converge on one high-confidence fix: a SAME-ANSWER CALIBRATION GATE that caps within-group score separation at \u22640.5 points for candidates sharing the same committed final answer, unless a verified reasoning-path defect (not presentation quality) justifies wider separation. This is a natural extension of [295257e2], which already handles tie calibration. Adding a mandatory same-answer clustering step with a cap and a reasoning-path investigation trigger would directly prevent this class of failure.\n\nA secondary signal (from two reflections) is that when candidates share the same answer, the judge should compare reasoning paths for substantive interpretation differences before defaulting to presentation for tie-breaking. This can be folded into the same update rather than requiring a separate entry.\n\n## Why Not More Mutations\n\nThe credit_attribution head identifies additional gaps (notation ambiguity resolution, prompt value fidelity checking), but these are supported by only one source each and are more task-specific. The same-answer calibration gate subsumes most of their benefit: it forces the judge to investigate reasoning paths before scoring, which would naturally surface notation-handling differences. One well-targeted update is preferred over several medium-confidence additions from a single trace.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The judge created a 1.1-point presentation-driven gap between candidates [1] and [3], which share the same committed final answer. The playbook lacks a quantitative cap or investigation gate for same-answer candidates, allowing cosmetic notation preferences to drive score separation and invert the correct ranking.",
+      "important_disagreements": [
+        "The anchor claims both [1] and [3] are 'mathematically correct,' treating this as a pure calibration error. Two other reflections correctly note the ground truth marks [3] as INCORRECT, possibly due to how [3] silently rewrites the problem's ambiguous notation. Resolution: the practical lesson is the same either way \u2014 the judge should have investigated reasoning paths rather than defaulting to formatting \u2014 but the ground truth distinction strengthens the case for requiring reasoning-path comparison within same-answer groups, not just a score cap.",
+        "The anchor and credit_attribution label entries [f26064e1], [8e0d9579], and [295257e2] as 'harmful,' while principle_extraction calls them neutral. Resolution: these entries give directionally correct advice that was either not followed or insufficiently specific; they did not actively mislead. They are neutral (in need of update), not harmful. An entry that is silent on a case is insufficient, not actively damaging."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry [295257e2] already covers tie handling and score calibration. It needs a specific same-answer calibration gate with a quantitative cap (\u22640.5 points) and a mandatory reasoning-path investigation trigger. This single update addresses the dominant failure mode without requiring new entries.",
+      "conservatism_rationale": "All three heads independently converge on the same-answer calibration gate as the highest-impact fix. This is a natural extension of an existing entry rather than a new rule. The secondary gaps (notation ambiguity, prompt-value fidelity) are supported by fewer sources and are more task-specific \u2014 they should be deferred until corroborated by additional traces. One well-targeted update from one trace is the appropriate scope.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Core Failure\\n\\nBoth rollouts are deterministic replicates (identical inputs, identical outputs). The judge scored INCORRECT candidate [3] at 9.6 above the only CORRECT candidate [1] at 8.5, producing 66.7% pairwise accuracy and failing prompt-level accuracy. The 1.1-point gap was driven by presentation quality \u2014 specifically, the judge penalized [1] for 'sloppy/incorrect-looking intermediate hex-exponent notation' while acknowledging its 'final result is consistent.'\\n\\n## Root Cause: Presentation-Driven Gap Between Same-Answer Candidates\\n\\nCandidates [1] and [3] both arrive at the same committed final answer ('1000 0100 binary' as the odd one out). The judge's own reasoning confirms they agree: both compute binary 10000100 = 132 and hex value = 131. Despite this, the judge created a 1.1-point gap favoring [3] based on notation cleanliness \u2014 a self-contradiction given its own acknowledgment that [1]'s final result was correct.\\n\\n## Critical Nuance: Ground Truth Distinction\\n\\nThe evaluation marks [1] as CORRECT and [3] as INCORRECT despite identical final answers. The most plausible explanation, identified by two reflections, is how each candidate handles the prompt's ambiguous '8316 (Hexadecimal - base 16)' notation: [1] preserves the original notation and expands it as '(8 \u00d7 16\u00b9) + (3 \u00d7 16\u2070)', treating '16' as a subscript marker. [3] silently rewrites it as '83 (Hexadecimal)' without acknowledging the reformulation. This reasoning-path difference \u2014 not formatting \u2014 should have been the basis for differentiation. The judge never examined it.\\n\\n## What the Playbook Covers vs. What Failed\\n\\nEntry [8e0d9579] says formatting shouldn't outweigh correctness, but it's scoped for correct-vs-incorrect comparisons ('truncated but sound > polished but fabricated'). It is silent on same-answer same-correctness scenarios, creating a gap rather than actively misleading. Entry [295257e2] says keep correct answers close, but defines no quantitative threshold and has no enforcement gate for same-answer groups. Entry [f26064e1] mandates final answer extraction but doesn't require cross-comparing answers or clustering same-answer candidates. Entry [93b0e8f9]'s NEGATIVE CONCERN SCAN should have caught the self-contradiction ('final result is consistent' + notation penalty), but wasn't applied. All of these entries give directionally correct advice that was either not followed or not specific enough to prevent this failure. None actively misled the judge, so they are neutral rather than harmful.\\n\\n## Strongest Intervention\\n\\nAll three source reflections converge on one high-confidence fix: a SAME-ANSWER CALIBRATION GATE that caps within-group score separation at \u22640.5 points for candidates sharing the same committed final answer, unless a verified reasoning-path defect (not presentation quality) justifies wider separation. This is a natural extension of [295257e2], which already handles tie calibration. Adding a mandatory same-answer clustering step with a cap and a reasoning-path investigation trigger would directly prevent this class of failure.\\n\\nA secondary signal (from two reflections) is that when candidates share the same answer, the judge should compare reasoning paths for substantive interpretation differences before defaulting to presentation for tie-breaking. This can be folded into the same update rather than requiring a separate entry.\\n\\n## Why Not More Mutations\\n\\nThe credit_attribution head identifies additional gaps (notation ambiguity resolution, prompt value fidelity checking), but these are supported by only one source each and are more task-specific. The same-answer calibration gate subsumes most of their benefit: it forces the judge to investigate reasoning paths before scoring, which would naturally surface notation-handling differences. One well-targeted update is preferred over several medium-confidence additions from a single trace.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The judge created a 1.1-point presentation-driven gap between candidates [1] and [3], which share the same committed final answer. The playbook lacks a quantitative cap or investigation gate for same-answer candidates, allowing cosmetic notation preferences to drive score separation and invert the correct ranking.\",\n    \"important_disagreements\": [\n      \"The anchor claims both [1] and [3] are 'mathematically correct,' treating this as a pure calibration error. Two other reflections correctly note the ground truth marks [3] as INCORRECT, possibly due to how [3] silently rewrites the problem's ambiguous notation. Resolution: the practical lesson is the same either way \u2014 the judge should have investigated reasoning paths rather than defaulting to formatting \u2014 but the ground truth distinction strengthens the case for requiring reasoning-path comparison within same-answer groups, not just a score cap.\",\n      \"The anchor and credit_attribution label entries [f26064e1], [8e0d9579], and [295257e2] as 'harmful,' while principle_extraction calls them neutral. Resolution: these entries give directionally correct advice that was either not followed or insufficiently specific; they did not actively mislead. They are neutral (in need of update), not harmful. An entry that is silent on a case is insufficient, not actively damaging.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry [295257e2] already covers tie handling and score calibration. It needs a specific same-answer calibration gate with a quantitative cap (\u22640.5 points) and a mandatory reasoning-path investigation trigger. This single update addresses the dominant failure mode without requiring new entries.\",\n    \"conservatism_rationale\": \"All three heads independently converge on the same-answer calibration gate as the highest-impact fix. This is a natural extension of an existing entry rather than a new rule. The secondary gaps (notation ambiguity, prompt-value fidelity) are supported by fewer sources and are more task-specific \u2014 they should be deferred until corroborated by additional traces. One well-targeted update from one trace is the appropriate scope.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

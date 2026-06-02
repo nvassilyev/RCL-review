@@ -1,0 +1,482 @@
+{
+  "task_id": "factuality:201",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:201\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts are identical: the correct candidate [1] scored 5.8 while the incorrect candidate [4] scored 7.0 and was declared best. The judge correctly identified [2] and [3] as weak (66.7% pairwise accuracy) but inverted the ranking between the two strongest candidates.\n\nCandidates [1] and [4] share the same structure \u2014 both present attributed quotes from the same set of ML authors (Mitchell, Bishop, Goodfellow et al., Murphy, Domingos, Ng) using the same cited sources. However, they provide *different quote wordings* for every single author. This systematic divergence is a powerful diagnostic signal: at most one version can be correct for each author, so contradictory attributions are direct evidence that at least one candidate is fabricating quotes. The judge never noticed this because no externalized comparison was performed. Instead, it collapsed the decisive comparison into a single holistic impression \u2014 '[4] is best because its attributions are more standard and coherent, with fewer glaring red flags' \u2014 which is precisely the gut-level plausibility judgment the playbook exists to prevent.\n\n## Causal Chain\n\n1. **No near-duplicate diff table artifact** \u2192 The agent had no forced mechanism to externalize item-level comparison between structurally similar candidates. Without rows of (Author | Candidate [1] quote | Candidate [4] quote | Match?), the systematic divergence was invisible.\n2. **No anti-corroboration trigger in 29e534bd** \u2192 Entry 29e534bd covers the positive direction (candidates agree \u2192 corroborated \u2192 require counter-fact to penalize) but not the negative direction (candidates contradict each other on the same attributed claim \u2192 at least one is wrong \u2192 investigate). The contradiction signal went unused.\n3. **Verification gate trigger loophole in 005004a4** \u2192 The gate fires 'before applying any fabrication penalty.' Since the judge was promoting [4] rather than penalizing it, the gate's trigger condition didn't psychologically activate. The SYMMETRY sub-rule (search your top candidate for the same flaw you penalized in another) existed but was skipped \u2014 the agent penalized [3] for questionable attributions but never applied the same scrutiny to [4].\n4. **Result** \u2192 The judge defaulted to 'which quotes feel more standard' \u2014 pure subjective impression \u2014 for the most consequential comparison.\n\n## Playbook Implication\n\nThe highest-leverage intervention is updating entry 29e534bd to cover both the anti-corroboration case AND to require a diff-table artifact as the mechanism for systematic cross-candidate comparison. These concepts naturally belong together under 'cross-candidate comparison': the existing corroboration logic tells you what to do when candidates agree; the anti-corroboration extension tells you what to do when they disagree on the same attributed claim; and the diff table is the forced artifact that makes both signals visible.\n\nEntry 005004a4's trigger loophole (gate doesn't fire for promotion, only for penalization) is a secondary concern. If the diff table and anti-corroboration detection catch the problem upstream, the verification gate's trigger gap becomes moot. Fixing 005004a4 is a valid future improvement but is not the highest-priority single change.\n\n## Evidence Strength\n\nAll three reflections independently converge on the diff table artifact and contradictory-attribution detection as the critical missing pieces. The anchor identifies them as the top two missing procedures. The credit_attribution reflection identifies them as the top two coverage gaps with detailed triggers. The principle_extraction reflection distills the same two lessons as L3 (universal) and L2 (domain-specific) principles. This convergence across three independent analytical angles makes the diagnosis high-confidence.\n\nThe failure is approximately 70% missing procedural guidance (no diff-table trigger, no contradictory-attribution detection) and 30% execution slip (SYMMETRY and VERIFICATION GATE rules existed but weren't followed). The execution slip is likely downstream of the missing procedure \u2014 without a forced comparison artifact, the agent naturally gravitates toward impressionistic evaluation for structurally similar candidates, which is where rigor is most needed.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Candidates [1] and [4] cited the same authors but attributed different quote texts to each. No playbook entry required the agent to externalize item-level comparison between structurally similar candidates (diff table) or to flag contradictory attributions as a fabrication signal (anti-corroboration). Without these, the decisive comparison collapsed into subjective 'plausibility feel,' causing the correct candidate to rank below the incorrect one.\",\n  \"important_disagreements\": [\n    \"Entry 005004a4: Anchor and credit_attribution tag harmful; principle_extraction tags neutral. Resolved as harmful because the trigger framing ('before applying any fabrication penalty') creates a specific loophole where the gate doesn't fire when promoting rather than penalizing a candidate \u2014 this is a formulation gap, not merely an execution slip. However, fixing this is secondary to the primary intervention on 29e534bd.\",\n    \"Entry 29e534bd: Anchor and credit_attribution tag harmful; principle_extraction tags neutral, arguing the entry has a coverage gap rather than being actively harmful. Resolved as harmful because the entry's incomplete coverage (corroboration only, no anti-corroboration) left a critical diagnostic signal unused. The existing corroboration direction is correct and should be preserved; the anti-corroboration direction must be added.\",\n    \"Entry 71f11566: Credit_attribution tags harmful (sampling requirement applicable but skipped); anchor and principle_extraction tag neutral. Resolved as neutral \u2014 the entry's applicability to this specific scenario is arguable (the trigger is 'when the user requests enumerable specifics'), and two of three reflections agree it wasn't the primary failure mechanism.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry 29e534bd already covers cross-candidate corroboration but has a clear, well-documented gap: it doesn't cover the case where candidates contradict each other on the same attributed claim (anti-corroboration). All three reflections converge that this gap and the lack of a forced diff-table artifact are the two most critical missing pieces. Both fit naturally as extensions to 29e534bd's existing cross-candidate comparison logic, making a single entry update the cleanest intervention.\",\n  \"conservatism_rationale\": \"The existing corroboration entry (29e534bd) is not wrong \u2014 its positive-direction logic is correct. The update adds the complementary negative direction and a forcing artifact, addressing the specific failure mode without altering or removing correct existing content. A new entry (ADD) for the diff table would also be defensible, but integrating it into 29e534bd is more conservative (one entry update vs. one update + one new entry) and keeps related cross-candidate comparison logic co-located. The 005004a4 trigger loophole is a valid concern but is addressed upstream by the 29e534bd update, so fixing it can be deferred.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\nWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning? \n\n## Candidate Responses\n\n[1]\nIn the context of machine learning, several prominent definitions of \"model\" are frequently cited in literature and academic works. Here are some of the most notable ones:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data and can be used to make predictions or decisions about new data.\"\n\n2. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a mathematical representation of a process, typically expressed as a set of equations or a probabilistic framework, that can be used to make predictions or inferences about data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a specific mathematical form for representing a set of assumptions about how data is generated. It includes parameters that can be adjusted to fit the data.\"\n\n4. **Andrew Ng**:\n   - From his popular online courses:\n     > \"A model is a simplified representation of reality, designed to capture the essential features of a problem and make predictions based on input data.\"\n\n5. **Chris Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, usually expressed in terms of a set of parameters. The goal of learning is to determine the values of these parameters that best explain the observed data.\"\n\n6. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between inputs and outputs, which is derived from the training data and used to make predictions on new data.\"\n\nThese definitions collectively emphasize the role of a model in capturing patterns in data, making predictions, and being adjustable through parameters. They also highlight the importance of the model's ability to generalize to new, unseen data.\n\n[2]\nIn the context of machine learning, the term \"model\" has several prominent definitions. Here are some of the most commonly quoted ones:\n\n1. **Mathematical model**: A mathematical model is a representation of a real-world system or phenomenon using mathematical equations, functions, and algorithms. In machine learning, this model is typically a set of equations that describe the relationships between inputs and outputs, such as a linear regression model or a neural network.\n\n2. **Statistical model**: A statistical model is a probability distribution over a set of possible outcomes or predictions. In machine learning, statistical models are used to quantify uncertainty and make predictions based on observed data. Examples include Bayesian networks, Gaussian mixture models, and random forests.\n\n3. **Algebraic model**: An algebraic model represents a system or process using algebraic equations and variables. In machine learning, algebraic models are used to describe the relationships between inputs and outputs, such as linear algebra-based models or matrix factorization techniques.\n\n4. **Abstraction model**: An abstraction model is a simplified representation of a complex system or process. In machine learning, abstraction models are used to capture the essential characteristics of a system or process, such as a decision tree or a clustering model.\n\n5. **Conceptual model**: A conceptual model is a high-level representation of a system or process. In machine learning, conceptual models are used to describe the underlying relationships and structures of a system, such as a graph or a semantic network.\n\n6. **Computational model**: A computational model is a software implementation of a mathematical or statistical model. In machine learning, computational models are used to train and deploy models on real-world data, such as deep learning models or decision tree ensembles.\n\n7. **Statistical pattern recognition model**: A statistical pattern recognition model is a type of model that recognizes patterns in data and makes predictions based on those patterns. In machine learning, statistical pattern recognition models are used for tasks such as image classification, speech recognition, and natural language processing.\n\n8. **Dynamical system model**: A dynamical system model represents the behavior of a system over time. In machine learning, dynamical system models are used to forecast future behavior or simulate the effects of different scenarios, such as Markov chain models or time-series forecasting models.\n\nThese definitions are not mutually exclusive, and many machine learning models blend elements from multiple categories.\n\n[3]\nIn the context of machine learning, the term \"model\" is often used to refer to a mathematical representation or computational system that learns from and makes predictions on data. Here are some of the most prominent quoted definitions of \"model\" in machine learning:\n\n1. **Tom M. Mitchell (1997)**:\n   - **Definition**: A computer program is considered a model for a concept C if, for any inputs in the input domain of C, the program returns a result that accurately reflects the concept's intended behavior.\n   - **Context**: This definition emphasizes the accuracy and behavior of the model relative to the concept it is modeling.\n\n2. **Pedro Domingos (2012)**:\n   - **Definition**: In machine learning, a model is a computational system that takes as input some data and produces as output a prediction, decision, or value. It is a mapping from inputs to outputs based on learned patterns in the training data.\n   - **Context**: This definition highlights the functional aspect of models, focusing on their predictive capability and how they learn from data.\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville (2016)**:\n   - **Definition**: A model is an abstraction that describes a set of possible relationships between inputs and outputs.\n   - **Context**: This definition emphasizes the abstract nature of models and their role in representing complex relationships in data.\n\n4. **Scott Cheng-Hsin Chen (2018)**:\n   - **Definition**: A machine learning model is a computational representation of a set of learned functions that map from inputs to outputs, typically optimized to minimize error on a given task.\n   - **Context**: This definition underscores the optimization process and the specific goal of reducing prediction errors.\n\n5. **David Barber (2012)**:\n   - **Definition**: A model is a representation of a phenomenon or a system that can be used to make predictions about future observations.\n   - **Context**: This definition focuses on the predictive power of models and their application in making future predictions.\n\n6. **Michael I. Jordan (2014)**:\n   - **Definition**: A model is a formalization of assumptions about a system or problem, encapsulated in a set of equations, rules, or parameters that enable the computation of predictions or decisions.\n   - **Context**: This definition highlights the formalization and the computational aspect of models.\n\nThese definitions capture different aspects of what constitutes a model in machine learning, such as its predictive power, learning mechanism, and representational capabilities.\n\n[4]\nIn the context of machine learning, the term \"model\" is often defined in various ways by different experts and researchers. Here are some of the most prominent and widely quoted definitions:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data. It is a mathematical representation of the relationships among variables in the data.\"\n\n2. **Christopher M. Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, typically expressed in the form of a probabilistic model, which can be used to make predictions or inferences about new data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a system that takes as input one or more variables and produces an output. In machine learning, models are trained on data to learn the parameters that best map inputs to outputs.\"\n\n4. **Andrew Ng**:\n   - From his course \"Machine Learning\" on Coursera:\n     > \"A model is a simplified representation of the real world, typically in the form of a mathematical function that maps inputs to outputs. In machine learning, this function is learned from data.\"\n\n5. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between the inputs and the outputs, expressed in a form that can be used to make predictions.\"\n\n6. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a formal description of how the data is generated, usually involving a set of parameters. The goal of machine learning is to estimate these parameters from the data.\"\n\nThese definitions collectively emphasize that a model in machine learning is a mathematical or computational representation that captures the relationships between input features and output targets, learned from data, and used for making predictions or inferences.\n\n## Judge Reasoning\nPerception scan found N=4 candidates; after each marker [1]\u2013[4] the first five words are \u201cIn the context of\u201d. Extracted requirement: give multiple prominent *quoted* ML definitions with credible attributions. Candidate [2] fails this by not providing direct quotes/citations and instead gives generic category descriptions. Candidate [3] is likely inaccurate due to questionable author/quote attribution (including an implausible Mitchell definition and extra nonstandard sources), while Candidates [1] and [4] include direct quotes from broadly known figures; [4] is the best overall because its attributions are more standard and coherent, with fewer glaring red flags.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Perception scan found N=4 candidates; after each marker [1]\u2013[4] the first five words are \u201cIn the context of\u201d. Extracted requirement: give multiple prominent *quoted* ML definitions with credible attributions. Candidate [2] fails this by not providing direct quotes/citations and instead gives generic category descriptions. Candidate [3] is likely inaccurate due to questionable author/quote attribution (including an implausible Mitchell definition and extra nonstandard sources), while Candidates [1] and [4] include direct quotes from broadly known figures; [4] is the best overall because its attributions are more standard and coherent, with fewer glaring red flags.\",\n  \"ratings\": [\n    5.8,\n    1.5,\n    1.0,\n    7.0\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\nWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning? \n\n## Candidate Responses\n\n[1]\nIn the context of machine learning, several prominent definitions of \"model\" are frequently cited in literature and academic works. Here are some of the most notable ones:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data and can be used to make predictions or decisions about new data.\"\n\n2. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a mathematical representation of a process, typically expressed as a set of equations or a probabilistic framework, that can be used to make predictions or inferences about data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a specific mathematical form for representing a set of assumptions about how data is generated. It includes parameters that can be adjusted to fit the data.\"\n\n4. **Andrew Ng**:\n   - From his popular online courses:\n     > \"A model is a simplified representation of reality, designed to capture the essential features of a problem and make predictions based on input data.\"\n\n5. **Chris Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, usually expressed in terms of a set of parameters. The goal of learning is to determine the values of these parameters that best explain the observed data.\"\n\n6. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between inputs and outputs, which is derived from the training data and used to make predictions on new data.\"\n\nThese definitions collectively emphasize the role of a model in capturing patterns in data, making predictions, and being adjustable through parameters. They also highlight the importance of the model's ability to generalize to new, unseen data.\n\n[2]\nIn the context of machine learning, the term \"model\" has several prominent definitions. Here are some of the most commonly quoted ones:\n\n1. **Mathematical model**: A mathematical model is a representation of a real-world system or phenomenon using mathematical equations, functions, and algorithms. In machine learning, this model is typically a set of equations that describe the relationships between inputs and outputs, such as a linear regression model or a neural network.\n\n2. **Statistical model**: A statistical model is a probability distribution over a set of possible outcomes or predictions. In machine learning, statistical models are used to quantify uncertainty and make predictions based on observed data. Examples include Bayesian networks, Gaussian mixture models, and random forests.\n\n3. **Algebraic model**: An algebraic model represents a system or process using algebraic equations and variables. In machine learning, algebraic models are used to describe the relationships between inputs and outputs, such as linear algebra-based models or matrix factorization techniques.\n\n4. **Abstraction model**: An abstraction model is a simplified representation of a complex system or process. In machine learning, abstraction models are used to capture the essential characteristics of a system or process, such as a decision tree or a clustering model.\n\n5. **Conceptual model**: A conceptual model is a high-level representation of a system or process. In machine learning, conceptual models are used to describe the underlying relationships and structures of a system, such as a graph or a semantic network.\n\n6. **Computational model**: A computational model is a software implementation of a mathematical or statistical model. In machine learning, computational models are used to train and deploy models on real-world data, such as deep learning models or decision tree ensembles.\n\n7. **Statistical pattern recognition model**: A statistical pattern recognition model is a type of model that recognizes patterns in data and makes predictions based on those patterns. In machine learning, statistical pattern recognition models are used for tasks such as image classification, speech recognition, and natural language processing.\n\n8. **Dynamical system model**: A dynamical system model represents the behavior of a system over time. In machine learning, dynamical system models are used to forecast future behavior or simulate the effects of different scenarios, such as Markov chain models or time-series forecasting models.\n\nThese definitions are not mutually exclusive, and many machine learning models blend elements from multiple categories.\n\n[3]\nIn the context of machine learning, the term \"model\" is often used to refer to a mathematical representation or computational system that learns from and makes predictions on data. Here are some of the most prominent quoted definitions of \"model\" in machine learning:\n\n1. **Tom M. Mitchell (1997)**:\n   - **Definition**: A computer program is considered a model for a concept C if, for any inputs in the input domain of C, the program returns a result that accurately reflects the concept's intended behavior.\n   - **Context**: This definition emphasizes the accuracy and behavior of the model relative to the concept it is modeling.\n\n2. **Pedro Domingos (2012)**:\n   - **Definition**: In machine learning, a model is a computational system that takes as input some data and produces as output a prediction, decision, or value. It is a mapping from inputs to outputs based on learned patterns in the training data.\n   - **Context**: This definition highlights the functional aspect of models, focusing on their predictive capability and how they learn from data.\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville (2016)**:\n   - **Definition**: A model is an abstraction that describes a set of possible relationships between inputs and outputs.\n   - **Context**: This definition emphasizes the abstract nature of models and their role in representing complex relationships in data.\n\n4. **Scott Cheng-Hsin Chen (2018)**:\n   - **Definition**: A machine learning model is a computational representation of a set of learned functions that map from inputs to outputs, typically optimized to minimize error on a given task.\n   - **Context**: This definition underscores the optimization process and the specific goal of reducing prediction errors.\n\n5. **David Barber (2012)**:\n   - **Definition**: A model is a representation of a phenomenon or a system that can be used to make predictions about future observations.\n   - **Context**: This definition focuses on the predictive power of models and their application in making future predictions.\n\n6. **Michael I. Jordan (2014)**:\n   - **Definition**: A model is a formalization of assumptions about a system or problem, encapsulated in a set of equations, rules, or parameters that enable the computation of predictions or decisions.\n   - **Context**: This definition highlights the formalization and the computational aspect of models.\n\nThese definitions capture different aspects of what constitutes a model in machine learning, such as its predictive power, learning mechanism, and representational capabilities.\n\n[4]\nIn the context of machine learning, the term \"model\" is often defined in various ways by different experts and researchers. Here are some of the most prominent and widely quoted definitions:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data. It is a mathematical representation of the relationships among variables in the data.\"\n\n2. **Christopher M. Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, typically expressed in the form of a probabilistic model, which can be used to make predictions or inferences about new data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a system that takes as input one or more variables and produces an output. In machine learning, models are trained on data to learn the parameters that best map inputs to outputs.\"\n\n4. **Andrew Ng**:\n   - From his course \"Machine Learning\" on Coursera:\n     > \"A model is a simplified representation of the real world, typically in the form of a mathematical function that maps inputs to outputs. In machine learning, this function is learned from data.\"\n\n5. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between the inputs and the outputs, expressed in a form that can be used to make predictions.\"\n\n6. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a formal description of how the data is generated, usually involving a set of parameters. The goal of machine learning is to estimate these parameters from the data.\"\n\nThese definitions collectively emphasize that a model in machine learning is a mathematical or computational representation that captures the relationships between input features and output targets, learned from data, and used for making predictions or inferences.\n\n## Judge Reasoning\nPerception scan found N=4 candidates; after each marker [1]\u2013[4] the first five words are \u201cIn the context of\u201d. Extracted requirement: give multiple prominent *quoted* ML definitions with credible attributions. Candidate [2] fails this by not providing direct quotes/citations and instead gives generic category descriptions. Candidate [3] is likely inaccurate due to questionable author/quote attribution (including an implausible Mitchell definition and extra nonstandard sources), while Candidates [1] and [4] include direct quotes from broadly known figures; [4] is the best overall because its attributions are more standard and coherent, with fewer glaring red flags.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Perception scan found N=4 candidates; after each marker [1]\u2013[4] the first five words are \u201cIn the context of\u201d. Extracted requirement: give multiple prominent *quoted* ML definitions with credible attributions. Candidate [2] fails this by not providing direct quotes/citations and instead gives generic category descriptions. Candidate [3] is likely inaccurate due to questionable author/quote attribution (including an implausible Mitchell definition and extra nonstandard sources), while Candidates [1] and [4] include direct quotes from broadly known figures; [4] is the best overall because its attributions are more standard and coherent, with fewer glaring red flags.\",\n  \"ratings\": [\n    5.8,\n    1.5,\n    1.0,\n    7.0\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=5.800\n  [2] INCORRECT score=1.500\n  [3] INCORRECT score=1.000\n  [4] INCORRECT score=7.000\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=5.800\n  [2] INCORRECT score=1.500\n  [3] INCORRECT score=1.000\n  [4] INCORRECT score=7.000",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts produce identical outputs and fail identically: candidate [1] is CORRECT but scored 5.8, while candidate [4] is INCORRECT but scored 7.0 and declared best. The judge correctly identified [2] and [3] as weak (pairwise accuracy 66.7%), but inverted the ranking between the two strongest candidates, missing prompt accuracy entirely.\n\nThe core failure is the judge's inability to meaningfully differentiate between two structurally near-identical candidates that present different specific claims attributed to the same authors. The judge resorted to a vague, subjective impression \u2014 '[4] is best because its attributions are more standard and coherent, with fewer glaring red flags' \u2014 instead of rigorous claim-level comparison. This is a classic case where the playbook has the right principles (VERIFICATION GATE, SYMMETRY) but lacks the specific procedural trigger for this very common pattern.\n\n## Specific Failure Mechanism\n\n1. **Different quotes, same authors \u2014 undetected red flag.** Candidates [1] and [4] both quote Mitchell, Bishop, Goodfellow et al., Murphy, Domingos, and Ng \u2014 but attribute *different wordings* to the same authors. This is a powerful signal that at least one candidate (or both) is fabricating quotes. The judge never noticed or remarked on this discrepancy. No playbook entry tells the judge to cross-compare the specific claims of similar candidates at the item level.\n\n2. **VERIFICATION GATE not executed for the decisive comparison.** Entry [005004a4] requires ISOLATE\u2192COUNTER\u2192CLASSIFY before penalizing. The judge applied it loosely to [3] (noting 'implausible Mitchell definition') but skipped it entirely when ranking [1] vs [4]. The SYMMETRY sub-rule was also violated: after flagging [3]'s attributions as questionable, the judge never checked whether [4]'s quotes were equally suspect.\n\n3. **CROSS-CANDIDATE CORROBORATION ([29e534bd]) was misapplied or not applied.** The rule says to check if 2+ candidates converge on the same claim. Here, [1] and [4] share the same author names but provide divergent quote texts \u2014 this is anti-corroboration and should have raised alarm. The entry doesn't explicitly cover this 'same source, conflicting details' pattern, which is arguably the most diagnostic scenario.\n\n4. **No side-by-side diff procedure exists.** When candidates share structure and sources but differ in specifics, the judge needs a forced itemized comparison. The judge should have produced a comparison table: (Author | Candidate [1] quote | Candidate [4] quote | Match?) and noticed systematic divergence. Without this artifact, the judge collapsed the comparison into a holistic 'feel' judgment.\n\n## What's Missing from the Playbook\n\n### 1. Near-Duplicate Candidate Differentiation Procedure\n**Trigger:** Two or more candidates share the same structure, cite the same sources/authors, but present different specific claims (quotes, numbers, definitions).\n**Procedure:** \n- Produce a DIFF TABLE: rows = shared entities (authors, sources, data points), columns = candidates, cells = the specific claim each candidate makes.\n- For each row where claims diverge, flag the divergence explicitly.\n- Apply ISOLATE\u2192COUNTER\u2192CLASSIFY to the divergent claims. If neither can be verified or refuted, candidates receive equal scores for those claims \u2014 do not differentiate based on subjective 'plausibility feel.'\n**Verification:** Before finalizing a score gap > 0.5 between near-duplicate candidates, the judge must cite at least one concrete, verified factual difference that justifies the gap.\n\n### 2. Contradictory Attribution Detection\n**Trigger:** Multiple candidates attribute different content (quotes, claims, data) to the same named source.\n**Procedure:** Flag as CONFLICTING ATTRIBUTIONS. At most one version can be correct; without external verification, treat all conflicting versions as UNVERIFIABLE-CONFIDENT (tier b in the existing severity hierarchy). Neither conflicting candidate may outscore the other based solely on 'this version sounds more plausible.'\n\n### 3. Refinement Needed for [29e534bd] (Cross-Candidate Corroboration)\nThe current rule only covers the corroboration direction (2+ candidates agree \u2192 require counter-fact to penalize). It should explicitly cover the anti-corroboration direction: when candidates contradict each other on the same attributed claim, this is diagnostic \u2014 both cannot be right, and the judge must investigate rather than picking whichever 'feels' more authoritative.\n\n### 4. Refinement Needed for [005004a4] (Verification Gate)\nThe SYMMETRY sub-rule exists but needs stronger enforcement. Add: 'When your final ranking places candidate A above candidate B, and both present factual claims of the same type (attributed quotes, numerical data, historical facts), you must apply identical depth of verification to A's claims as you applied to B's. If you sampled claims from B, sample the same number from A. Asymmetric depth of scrutiny is the leading cause of factuality ranking errors.'\n\n## Execution Slip vs. Missing Knowledge\n\nThis is approximately 60% missing procedural guidance (no diff-table trigger, no contradictory-attribution detection) and 40% execution slip (the SYMMETRY and VERIFICATION GATE rules existed but weren't followed for the [1] vs [4] comparison). The execution slip is likely caused by the missing procedure \u2014 without a forced comparison artifact, the judge naturally gravitates toward holistic impressions for structurally similar candidates.\n\n## Generalizability\n\nThis pattern \u2014 near-identical candidates with different specific factual claims \u2014 will recur frequently in factuality tasks. The diff-table procedure and contradictory-attribution trigger are highly reusable across any task where candidates cite sources, quote figures, or attribute claims to specific entities."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "helpful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Two candidates ([1] and [4]) cited the same set of authors (Mitchell, Bishop, Goodfellow et al., Murphy, Domingos, Ng) but attributed different specific quote text to each author. The judge collapsed the comparison into a holistic impression rather than detecting the systematic divergence.",
+          "gap_type": "artifact",
+          "suggested_content": "NEAR-DUPLICATE DIFF TABLE \u2014 When two or more candidates share the same structure, cite the same sources/authors, and present specific attributed content (quotes, numbers, definitions): (1) Construct a DIFF TABLE with rows = shared entities, columns = candidates, cells = the specific claim each candidate makes. (2) For each row where claims diverge, flag as DIVERGENT. (3) Apply ISOLATE\u2192COUNTER\u2192CLASSIFY to each divergent pair. (4) If neither version can be verified, both receive equal factuality credit for that claim \u2014 do not differentiate based on subjective 'plausibility feel.' (5) Before finalizing a score gap > 0.5 between structurally similar candidates, cite at least one verified factual difference justifying the gap.",
+          "trigger": "Fires when two or more candidates share 3+ of the same named sources, authors, or entities but present different specific claims attributed to those shared sources."
+        },
+        {
+          "situation": "Candidates [1] and [4] each attributed fabricated quotes to the same well-known ML authors. The quotes differed across candidates, meaning at most one version could be correct for each author. No playbook entry told the agent to flag contradictory attributions as a powerful fabrication signal.",
+          "gap_type": "verification_gate",
+          "suggested_content": "CONTRADICTORY ATTRIBUTION DETECTION \u2014 When multiple candidates attribute different content (quotes, data, claims) to the same named source: (1) Flag as CONFLICTING ATTRIBUTIONS \u2014 at most one version can be correct. (2) Without external verification, classify all conflicting versions as UNVERIFIABLE-CONFIDENT. (3) Neither conflicting candidate may outscore the other based solely on which version 'sounds more plausible' or 'standard.' (4) This signal should increase scrutiny on all candidates involved, not just the one that feels less familiar.",
+          "trigger": "Fires when the diff table (or a scanning pass) reveals that two or more candidates attribute different specific content to the same named source or author."
+        },
+        {
+          "situation": "The VERIFICATION GATE in 005004a4 triggers on 'before applying any fabrication penalty.' The judge's error was failing to apply a penalty \u2014 i.e., failing to investigate the promoted candidate. The trigger framing creates a loophole: if you promote a candidate without penalizing it, the gate never fires.",
+          "gap_type": "verification_gate",
+          "suggested_content": "PROMOTION VERIFICATION \u2014 Before your final ranking, if your top-ranked candidate's primary differentiator over the second-ranked candidate is the plausibility or quality of factual claims (quotes, numbers, attributions, citations), you must apply the same depth of ISOLATE\u2192COUNTER\u2192CLASSIFY verification to the top candidate's claims as you applied to any scrutinized candidate. If you sampled N claims from a penalized candidate, sample N claims from your top candidate. Asymmetric depth of scrutiny is the leading cause of factuality ranking errors.",
+          "trigger": "Fires at final ranking stage when the gap between #1 and #2 rests on factual claim quality rather than structural or format differences."
+        },
+        {
+          "situation": "The cross-candidate corroboration entry (29e534bd) only covers the positive direction (candidates agree \u2192 corroborated). It does not cover anti-corroboration (candidates citing the same source disagree on content), which is arguably a more diagnostic signal for detecting fabrication.",
+          "gap_type": "procedure",
+          "suggested_content": "Extend CROSS-CANDIDATE CORROBORATION to cover anti-corroboration: When candidates cite the same source/author but provide contradictory specific content, flag as ANTI-CORROBORATED. This is stronger evidence of fabrication than an isolated suspicious claim, because the contradiction proves at least one version is wrong. The judge must investigate rather than defaulting to whichever version 'feels' more authoritative. If neither version can be verified, both are UNVERIFIABLE-CONFIDENT for that claim.",
+          "trigger": "Fires during the corroboration scan when candidates reference the same source but their specific attributed claims differ materially."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n**Agreement with anchor:** I agree with the anchor's core diagnosis \u2014 the judge inverted [1] (CORRECT, 5.8) and [4] (INCORRECT, 7.0) because it relied on subjective 'plausibility feel' rather than rigorous claim-level verification, and it applied asymmetric scrutiny (deep for [3], none for [4]). The anchor correctly identifies the missing diff-table artifact and contradictory-attribution detection as the highest-value gaps.\n\n**Refinements to anchor:**\n\n1. **Entry 005004a4 (Verification Gate):** The anchor tags this as harmful, and I agree, but I add a specific causal mechanism: the gate's trigger is framed as 'before applying any fabrication penalty.' Since the judge was promoting [4] rather than penalizing it, the gate's trigger condition didn't psychologically activate. This is not just an execution slip \u2014 it's a formulation gap. The fix is a complementary 'PROMOTION VERIFICATION' gate that fires when the top candidate's advantage rests on factual claims.\n\n2. **Entry 29e534bd (Corroboration):** The anchor tags this as harmful. I refine: the entry is better classified as having a coverage gap rather than being actively harmful. It didn't cause bad behavior; it simply failed to provide the anti-corroboration procedure that would have caught the error. The distinction matters for the curator: the existing entry's corroboration direction is correct and should be preserved; the anti-corroboration direction should be added.\n\n3. **Entry 71f11566 (Volume \u2260 Accuracy):** The anchor tags this as neutral. I disagree \u2014 this entry was applicable and its sampling requirement (sample 3+ claims from high-volume candidates) was completely skipped. Had the agent followed it, fabricated quotes in [4] would likely have been detected. This is harmful via omission: the entry exists but its trigger condition wasn't recognized as matching.\n\n4. **Execution slip vs. missing guidance split:** The anchor says 60/40 missing guidance vs. execution slip. I refine to 70/30: the SYMMETRY rule and sampling requirement exist but weren't followed, and the reason they weren't followed is that no forced artifact (diff table, sampling log) was required by the playbook for this specific scenario. Without externalized artifacts, holistic impression naturally dominates. The fix is primarily procedural (mandatory artifacts) rather than principled (the principles already exist).\n\n**Key causal chain:**\n(a) No near-duplicate diff table \u2192 agent didn't notice systematic quote divergence between [1] and [4]\n(b) No contradictory-attribution trigger \u2192 anti-corroboration signal went unused\n(c) Verification gate trigger framed around penalties \u2192 gate didn't fire for the promoted candidate [4]\n(d) Sampling requirement in 71f11566 not executed \u2192 fabricated quotes in [4] went undetected\n(e) SYMMETRY rule in 005004a4 skipped \u2192 asymmetric scrutiny: [3] deeply examined, [4] given a pass\n\nAll five failures compound into a single outcome: the judge defaulted to 'which quotes feel more standard' \u2014 precisely the gut-level judgment the playbook was designed to prevent, but which no existing artifact or gate forced the agent to externalize and check.\n\n**Generalizability:** This pattern (near-identical candidates with divergent attributed claims) will recur in any factuality task involving citations, quotes, statistics, or source attributions. The diff-table artifact and contradictory-attribution gate are high-value, reusable additions."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "Both rollouts produce identical outputs and identical failures: the correct candidate [1] scored 5.8 while the incorrect candidate [4] scored 7.0 and was declared best. The judge correctly identified [2] and [3] as weak (pairwise accuracy 66.7%), but inverted the ranking between the two strongest candidates.\n\n**Core failure:** Candidates [1] and [4] share the same structure \u2014 both present attributed quotes from the same set of ML authors (Mitchell, Bishop, Goodfellow et al., Murphy, Domingos, Ng) using the same cited sources. However, they provide *different quote wordings* for every single author. The judge never noticed this systematic divergence. Instead, it collapsed the comparison into a single holistic impression: '[4] is best because its attributions are more standard and coherent, with fewer glaring red flags.' This vague subjective judgment replaced the concrete item-level analysis that would have revealed the contradiction.\n\n**Where I agree with the anchor:** The anchor correctly identifies (1) the 'same authors, different quotes' pattern as the critical missed signal, (2) the VERIFICATION GATE not being applied to the decisive [1] vs [4] comparison, (3) the SYMMETRY violation (agent scrutinized [3] but not [4]), and (4) the need for a diff-table artifact.\n\n**Where I refine the anchor:** The anchor tags 005004a4 and 29e534bd as 'harmful.' I disagree \u2014 neither rule actively caused harm. 005004a4's VERIFICATION GATE was simply not triggered for the critical comparison; the SYMMETRY sub-rule exists but has a narrow trigger ('after penalizing candidate X') that didn't fire since the agent never penalized [4]. 29e534bd's corroboration logic is *incomplete* (doesn't cover contradictions), which is different from causing harm. Both are 'neutral' \u2014 they had the potential to help but lacked the specific trigger or coverage for this scenario.\n\n**What's truly missing:** No playbook entry tells the agent to externalize item-level comparisons between structurally similar candidates, and no entry covers the diagnostic case where candidates contradict each other on specific attributed claims. These are the two operational gaps. The SYMMETRY sub-rule (005004a4) and self-check (93b0e8f9) could theoretically have caught the error, but without a forced comparison artifact, the agent naturally gravitated toward impressionistic evaluation for the hardest comparison \u2014 precisely where rigor is most needed.",
+      "principles": [
+        {
+          "statement": "When top candidates share the same structure and sources but differ in specifics, build an explicit diff table (rows=shared entities, columns=candidates, cells=specific claims) before scoring. Score gaps >0.5 require citing a verified difference from this table.",
+          "entry_kind": "artifact",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "Two or more candidates reference the same entities, sources, or data points but present different specific content (quotes, numbers, definitions) for the same entity.",
+          "verification_or_artifact": "Construct a comparison table: rows = shared entities/sources, columns = candidates, cells = the specific claim each makes. Flag every row where claims diverge. Apply ISOLATE\u2192COUNTER\u2192CLASSIFY to divergent rows before allowing a score difference.",
+          "evidence": "Candidates [1] and [4] cited the same 6 authors from the same books but gave entirely different quote texts for each. The agent never noticed this systematic divergence because no externalized comparison was performed \u2014 the decision collapsed into 'feels more standard.'"
+        },
+        {
+          "statement": "When candidates attribute contradictory content to the same source (same author, different quotes; same dataset, different numbers), flag this as a mandatory investigation trigger \u2014 at least one must be wrong. Neither may be preferred on plausibility feel alone.",
+          "entry_kind": "rule",
+          "generality": "L2",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "29e534bd",
+          "trigger": "During cross-candidate comparison, two or more candidates cite the same named source/authority but present different specific content attributed to that source.",
+          "verification_or_artifact": "Flag as CONFLICTING ATTRIBUTIONS. Apply ISOLATE\u2192COUNTER\u2192CLASSIFY to both versions. If neither can be verified or refuted, both are UNVERIFIABLE-CONFIDENT and neither may outscore the other based on subjective impression of which 'sounds more right.'",
+          "evidence": "Entry 29e534bd covers corroboration (candidates agree \u2192 harder to penalize) but not the anti-corroboration case (candidates contradict each other on the same attributed claim). Here, [1] and [4] both quoted Mitchell, Bishop, etc. but gave completely different quote texts \u2014 a powerful diagnostic signal that was invisible to the agent because the rule only looks for agreement, not disagreement."
+        }
+      ],
+      "mutation_implication": "add",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts are identical: the correct candidate [1] scored 5.8 while the incorrect candidate [4] scored 7.0 and was declared best. The judge correctly identified [2] and [3] as weak (66.7% pairwise accuracy) but inverted the ranking between the two strongest candidates.\n\nCandidates [1] and [4] share the same structure \u2014 both present attributed quotes from the same set of ML authors (Mitchell, Bishop, Goodfellow et al., Murphy, Domingos, Ng) using the same cited sources. However, they provide *different quote wordings* for every single author. This systematic divergence is a powerful diagnostic signal: at most one version can be correct for each author, so contradictory attributions are direct evidence that at least one candidate is fabricating quotes. The judge never noticed this because no externalized comparison was performed. Instead, it collapsed the decisive comparison into a single holistic impression \u2014 '[4] is best because its attributions are more standard and coherent, with fewer glaring red flags' \u2014 which is precisely the gut-level plausibility judgment the playbook exists to prevent.\n\n## Causal Chain\n\n1. **No near-duplicate diff table artifact** \u2192 The agent had no forced mechanism to externalize item-level comparison between structurally similar candidates. Without rows of (Author | Candidate [1] quote | Candidate [4] quote | Match?), the systematic divergence was invisible.\n2. **No anti-corroboration trigger in 29e534bd** \u2192 Entry 29e534bd covers the positive direction (candidates agree \u2192 corroborated \u2192 require counter-fact to penalize) but not the negative direction (candidates contradict each other on the same attributed claim \u2192 at least one is wrong \u2192 investigate). The contradiction signal went unused.\n3. **Verification gate trigger loophole in 005004a4** \u2192 The gate fires 'before applying any fabrication penalty.' Since the judge was promoting [4] rather than penalizing it, the gate's trigger condition didn't psychologically activate. The SYMMETRY sub-rule (search your top candidate for the same flaw you penalized in another) existed but was skipped \u2014 the agent penalized [3] for questionable attributions but never applied the same scrutiny to [4].\n4. **Result** \u2192 The judge defaulted to 'which quotes feel more standard' \u2014 pure subjective impression \u2014 for the most consequential comparison.\n\n## Playbook Implication\n\nThe highest-leverage intervention is updating entry 29e534bd to cover both the anti-corroboration case AND to require a diff-table artifact as the mechanism for systematic cross-candidate comparison. These concepts naturally belong together under 'cross-candidate comparison': the existing corroboration logic tells you what to do when candidates agree; the anti-corroboration extension tells you what to do when they disagree on the same attributed claim; and the diff table is the forced artifact that makes both signals visible.\n\nEntry 005004a4's trigger loophole (gate doesn't fire for promotion, only for penalization) is a secondary concern. If the diff table and anti-corroboration detection catch the problem upstream, the verification gate's trigger gap becomes moot. Fixing 005004a4 is a valid future improvement but is not the highest-priority single change.\n\n## Evidence Strength\n\nAll three reflections independently converge on the diff table artifact and contradictory-attribution detection as the critical missing pieces. The anchor identifies them as the top two missing procedures. The credit_attribution reflection identifies them as the top two coverage gaps with detailed triggers. The principle_extraction reflection distills the same two lessons as L3 (universal) and L2 (domain-specific) principles. This convergence across three independent analytical angles makes the diagnosis high-confidence.\n\nThe failure is approximately 70% missing procedural guidance (no diff-table trigger, no contradictory-attribution detection) and 30% execution slip (SYMMETRY and VERIFICATION GATE rules existed but weren't followed). The execution slip is likely downstream of the missing procedure \u2014 without a forced comparison artifact, the agent naturally gravitates toward impressionistic evaluation for structurally similar candidates, which is where rigor is most needed.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Candidates [1] and [4] cited the same authors but attributed different quote texts to each. No playbook entry required the agent to externalize item-level comparison between structurally similar candidates (diff table) or to flag contradictory attributions as a fabrication signal (anti-corroboration). Without these, the decisive comparison collapsed into subjective 'plausibility feel,' causing the correct candidate to rank below the incorrect one.",
+      "important_disagreements": [
+        "Entry 005004a4: Anchor and credit_attribution tag harmful; principle_extraction tags neutral. Resolved as harmful because the trigger framing ('before applying any fabrication penalty') creates a specific loophole where the gate doesn't fire when promoting rather than penalizing a candidate \u2014 this is a formulation gap, not merely an execution slip. However, fixing this is secondary to the primary intervention on 29e534bd.",
+        "Entry 29e534bd: Anchor and credit_attribution tag harmful; principle_extraction tags neutral, arguing the entry has a coverage gap rather than being actively harmful. Resolved as harmful because the entry's incomplete coverage (corroboration only, no anti-corroboration) left a critical diagnostic signal unused. The existing corroboration direction is correct and should be preserved; the anti-corroboration direction must be added.",
+        "Entry 71f11566: Credit_attribution tags harmful (sampling requirement applicable but skipped); anchor and principle_extraction tag neutral. Resolved as neutral \u2014 the entry's applicability to this specific scenario is arguable (the trigger is 'when the user requests enumerable specifics'), and two of three reflections agree it wasn't the primary failure mechanism."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry 29e534bd already covers cross-candidate corroboration but has a clear, well-documented gap: it doesn't cover the case where candidates contradict each other on the same attributed claim (anti-corroboration). All three reflections converge that this gap and the lack of a forced diff-table artifact are the two most critical missing pieces. Both fit naturally as extensions to 29e534bd's existing cross-candidate comparison logic, making a single entry update the cleanest intervention.",
+      "conservatism_rationale": "The existing corroboration entry (29e534bd) is not wrong \u2014 its positive-direction logic is correct. The update adds the complementary negative direction and a forcing artifact, addressing the specific failure mode without altering or removing correct existing content. A new entry (ADD) for the diff table would also be defensible, but integrating it into 29e534bd is more conservative (one entry update vs. one update + one new entry) and keeps related cross-candidate comparison logic co-located. The 005004a4 trigger loophole is a valid concern but is addressed upstream by the 29e534bd update, so fixing it can be deferred.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts are identical: the correct candidate [1] scored 5.8 while the incorrect candidate [4] scored 7.0 and was declared best. The judge correctly identified [2] and [3] as weak (66.7% pairwise accuracy) but inverted the ranking between the two strongest candidates.\\n\\nCandidates [1] and [4] share the same structure \u2014 both present attributed quotes from the same set of ML authors (Mitchell, Bishop, Goodfellow et al., Murphy, Domingos, Ng) using the same cited sources. However, they provide *different quote wordings* for every single author. This systematic divergence is a powerful diagnostic signal: at most one version can be correct for each author, so contradictory attributions are direct evidence that at least one candidate is fabricating quotes. The judge never noticed this because no externalized comparison was performed. Instead, it collapsed the decisive comparison into a single holistic impression \u2014 '[4] is best because its attributions are more standard and coherent, with fewer glaring red flags' \u2014 which is precisely the gut-level plausibility judgment the playbook exists to prevent.\\n\\n## Causal Chain\\n\\n1. **No near-duplicate diff table artifact** \u2192 The agent had no forced mechanism to externalize item-level comparison between structurally similar candidates. Without rows of (Author | Candidate [1] quote | Candidate [4] quote | Match?), the systematic divergence was invisible.\\n2. **No anti-corroboration trigger in 29e534bd** \u2192 Entry 29e534bd covers the positive direction (candidates agree \u2192 corroborated \u2192 require counter-fact to penalize) but not the negative direction (candidates contradict each other on the same attributed claim \u2192 at least one is wrong \u2192 investigate). The contradiction signal went unused.\\n3. **Verification gate trigger loophole in 005004a4** \u2192 The gate fires 'before applying any fabrication penalty.' Since the judge was promoting [4] rather than penalizing it, the gate's trigger condition didn't psychologically activate. The SYMMETRY sub-rule (search your top candidate for the same flaw you penalized in another) existed but was skipped \u2014 the agent penalized [3] for questionable attributions but never applied the same scrutiny to [4].\\n4. **Result** \u2192 The judge defaulted to 'which quotes feel more standard' \u2014 pure subjective impression \u2014 for the most consequential comparison.\\n\\n## Playbook Implication\\n\\nThe highest-leverage intervention is updating entry 29e534bd to cover both the anti-corroboration case AND to require a diff-table artifact as the mechanism for systematic cross-candidate comparison. These concepts naturally belong together under 'cross-candidate comparison': the existing corroboration logic tells you what to do when candidates agree; the anti-corroboration extension tells you what to do when they disagree on the same attributed claim; and the diff table is the forced artifact that makes both signals visible.\\n\\nEntry 005004a4's trigger loophole (gate doesn't fire for promotion, only for penalization) is a secondary concern. If the diff table and anti-corroboration detection catch the problem upstream, the verification gate's trigger gap becomes moot. Fixing 005004a4 is a valid future improvement but is not the highest-priority single change.\\n\\n## Evidence Strength\\n\\nAll three reflections independently converge on the diff table artifact and contradictory-attribution detection as the critical missing pieces. The anchor identifies them as the top two missing procedures. The credit_attribution reflection identifies them as the top two coverage gaps with detailed triggers. The principle_extraction reflection distills the same two lessons as L3 (universal) and L2 (domain-specific) principles. This convergence across three independent analytical angles makes the diagnosis high-confidence.\\n\\nThe failure is approximately 70% missing procedural guidance (no diff-table trigger, no contradictory-attribution detection) and 30% execution slip (SYMMETRY and VERIFICATION GATE rules existed but weren't followed). The execution slip is likely downstream of the missing procedure \u2014 without a forced comparison artifact, the agent naturally gravitates toward impressionistic evaluation for structurally similar candidates, which is where rigor is most needed.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Candidates [1] and [4] cited the same authors but attributed different quote texts to each. No playbook entry required the agent to externalize item-level comparison between structurally similar candidates (diff table) or to flag contradictory attributions as a fabrication signal (anti-corroboration). Without these, the decisive comparison collapsed into subjective 'plausibility feel,' causing the correct candidate to rank below the incorrect one.\",\n    \"important_disagreements\": [\n      \"Entry 005004a4: Anchor and credit_attribution tag harmful; principle_extraction tags neutral. Resolved as harmful because the trigger framing ('before applying any fabrication penalty') creates a specific loophole where the gate doesn't fire when promoting rather than penalizing a candidate \u2014 this is a formulation gap, not merely an execution slip. However, fixing this is secondary to the primary intervention on 29e534bd.\",\n      \"Entry 29e534bd: Anchor and credit_attribution tag harmful; principle_extraction tags neutral, arguing the entry has a coverage gap rather than being actively harmful. Resolved as harmful because the entry's incomplete coverage (corroboration only, no anti-corroboration) left a critical diagnostic signal unused. The existing corroboration direction is correct and should be preserved; the anti-corroboration direction must be added.\",\n      \"Entry 71f11566: Credit_attribution tags harmful (sampling requirement applicable but skipped); anchor and principle_extraction tag neutral. Resolved as neutral \u2014 the entry's applicability to this specific scenario is arguable (the trigger is 'when the user requests enumerable specifics'), and two of three reflections agree it wasn't the primary failure mechanism.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry 29e534bd already covers cross-candidate corroboration but has a clear, well-documented gap: it doesn't cover the case where candidates contradict each other on the same attributed claim (anti-corroboration). All three reflections converge that this gap and the lack of a forced diff-table artifact are the two most critical missing pieces. Both fit naturally as extensions to 29e534bd's existing cross-candidate comparison logic, making a single entry update the cleanest intervention.\",\n    \"conservatism_rationale\": \"The existing corroboration entry (29e534bd) is not wrong \u2014 its positive-direction logic is correct. The update adds the complementary negative direction and a forcing artifact, addressing the specific failure mode without altering or removing correct existing content. A new entry (ADD) for the diff table would also be defensible, but integrating it into 29e534bd is more conservative (one entry update vs. one update + one new entry) and keeps related cross-candidate comparison logic co-located. The 005004a4 trigger loophole is a valid concern but is addressed upstream by the 29e534bd update, so fixing it can be deferred.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

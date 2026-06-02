@@ -1,0 +1,607 @@
+{
+  "task_id": "focus:1371",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "a3832d7e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "5d627ffd",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task focus:1371\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts produced identical deterministic output: Candidate [3] rated 8.0 (selected as best), Candidate [1] (the only CORRECT response) rated 5.0, [4] at 4.0, [2] at 2.5. The agent credited [3]'s extensive episode-level specificity \u2014 5 DS9 episode names with season/episode numbers and plot summaries \u2014 as a decisive quality signal without verifying any claims. All of [3]'s differentiating content is fabricated: wrong season numbers, wrong episode numbers, invented plot points involving trilithium.\n\nThe most damning diagnostic evidence: the agent wrote '[4] gives multiple likely-inaccurate episode/season specifics for DS9' but applied zero skepticism to [3]'s structurally identical content (also episode/season specifics for DS9). This is textbook asymmetric skepticism \u2014 the exact failure mode 93b0e8f9's EPISTEMIC SYMMETRY AUDIT was designed to prevent.\n\n## Why Existing Rules Failed\n\nThe playbook contains at least four entries with procedures that should have caught this error: 93b0e8f9 (DIFFERENTIAL CLAIM VERIFICATION requiring ISOLATE\u2192COUNTER\u2192CLASSIFY on \u22652 unique claims; EPISTEMIC SYMMETRY AUDIT requiring uniform skepticism), 005004a4 (SEQUENCING RULE: accuracy before responsiveness), 71f11566 (VOLUME VERIFICATION GATE: sample \u22653 claims from higher-volume candidate), and 342f27b9 (derive reference answer before evaluating). None were executed. No verification artifacts exist in either rollout.\n\nAll three reflections agree on the core diagnosis but differ on the causal framing. The anchor calls it an 'execution/salience gap.' The credit_attribution head (running in fallback mode \u2014 no PP tags, so narrative-inferred) calls it 'complete playbook disengagement.' The principle_extraction head provides the most actionable diagnosis: **the problem is timing, not knowledge**. All verification gates are positioned as finalization steps ('before finalizing'), which is too late. The agent's quality impression ('most directly and specifically answers the question') formed during evaluation; once conviction was established, deferred finalization checks were never reached. This is not a single-trace anomaly \u2014 93b0e8f9's track record (+8 -8) and 005004a4's track record (+4 -26) confirm these entries fail at least as often as they succeed, consistent with procedures that are correct in content but positioned too late to influence the decision.\n\n## Entry-Level Reasoning\n\n**93b0e8f9 (harmful)**: All three reflections agree. The EPISTEMIC SYMMETRY AUDIT and DIFFERENTIAL CLAIM VERIFICATION contain the exact procedures needed but are framed as finalization steps that the agent skipped entirely. The entry's five finalization sub-steps may contribute to disengagement \u2014 too many deferred checks compete for attention at the end. The inline symmetry trigger (fire when doubt language appears during evaluation, not after) is the most precise fix.\n\n**005004a4 (harmful)**: All three reflections agree. The SEQUENCING RULE ('accuracy assessment must complete BEFORE responsiveness') directly addresses the failure but has no artifact requirement to enforce it. Its extremely negative track record (+4 -26) suggests the entry's bulk (PROACTIVE CLASSIFICATION, VERIFICATION GATE, severity hierarchy, MANDATORY SYMMETRY TABLE) buries its most critical instruction.\n\n**132aab84 (neutral)**: Credit_attribution tagged harmful, arguing the entry's vocabulary ('directly answers') influenced the agent's quality impression. The anchor and principle_extraction tagged neutral. I resolve in favor of neutral: the entry's HARD GATE is about DIRECT vs. ADJACENT classification, not about crediting unverified specificity within DIRECT candidates. The agent's error was upstream \u2014 failing to verify accuracy before forming the directness impression.\n\n**71f11566 (neutral)**: The anchor and credit_attribution tagged harmful, but principle_extraction provides the more precise assessment: the trigger condition ('when the user requests enumerable specifics') legitimately didn't match \u2014 the user asked a simple factual question and [3] volunteered an unsolicited list. This is a scope weakness, not active harm. The trigger should be broadened to cover volunteered lists, but this is secondary to the timing fix.\n\n**8e0d9579, 342f27b9 (neutral)**: The anchor tagged these harmful but the entries address different dimensions (formatting vs. correctness; reference derivation for deterministic answers). They should have helped but weren't engaged. Their non-execution is a symptom of the same playbook disengagement, not evidence of entry-level harm.\n\n## Recommended Mutation\n\nUpdate 93b0e8f9's EPISTEMIC SYMMETRY AUDIT to fire **inline during evaluation** rather than only at finalization. The concrete trigger: when the agent writes any doubt language about a candidate's content type ('likely-inaccurate,' 'suspicious,' 'questionable'), it must immediately check whether any other candidate \u2014 especially the current top-ranked one \u2014 has the same content type and apply identical scrutiny before continuing evaluation. This converts a deferred post-hoc audit into an inline interception at the exact moment asymmetric skepticism occurs.\n\nThis is preferable to adding a new entry (e.g., a 'hallucination-prone specificity gate') because: (1) the concept already exists in 93b0e8f9, (2) the change is to trigger timing rather than adding new content to an already-long playbook, and (3) the inline trigger is domain-agnostic \u2014 it catches asymmetric skepticism in any content domain, not just fictional universe details.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Asymmetric skepticism combined with deferred verification timing. The agent flagged [4]'s episode specifics as likely-inaccurate but credited [3]'s structurally identical fabricated content. All existing verification procedures (93b0e8f9, 005004a4, 71f11566) are correctly designed but positioned as finalization steps that are skipped once the agent forms an evaluation conviction during the main assessment pass.\",\n  \"important_disagreements\": [\n    \"132aab84 focus alignment: credit_attribution tagged harmful (entry vocabulary 'directly answers' influenced agent), anchor and principle_extraction tagged neutral. Resolved as neutral \u2014 the entry's HARD GATE addresses DIRECT vs. ADJACENT classification, not crediting unverified specificity. The failure was upstream in accuracy verification.\",\n    \"71f11566 volume verification: anchor and credit_attribution tagged harmful, principle_extraction tagged neutral. Resolved as neutral \u2014 the trigger legitimately didn't match (user didn't request a list). This is a scope weakness to note, not active harm from the entry.\",\n    \"Causal framing: anchor says 'execution/salience gap,' credit_attribution says 'complete playbook disengagement,' principle_extraction says 'timing problem.' Resolved in favor of timing diagnosis \u2014 it is the most actionable and explains both why existing correct procedures failed and what specific change would fix them.\",\n    \"New entry vs. update: anchor and credit_attribution suggest new entries (hallucination-prone specificity gate, minimum engagement floor). Principle_extraction suggests updating existing entries. Resolved in favor of update \u2014 the concept already exists, the change is to trigger timing, and adding more procedures to a playbook the agent already struggles to engage risks further disengagement.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"93b0e8f9 already contains the EPISTEMIC SYMMETRY AUDIT that would have caught this exact failure. The entry needs its symmetry check repositioned to fire inline during evaluation (triggered by doubt language) rather than as a deferred finalization step. This is a targeted timing fix, not new knowledge. All three reflections agree the procedures are correct but positioned too late.\",\n  \"conservatism_rationale\": \"One observation is one observation, and the playbook already contains the correct procedures. Adding new entries (hallucination-prone specificity gate, minimum engagement floor) risks bloating a playbook the agent already struggles to engage with. The inline-trigger repositioning is the smallest change with the most direct causal connection to the failure. Secondary fixes (broadening 71f11566's trigger, adding artifact requirements to 005004a4) are noted but deferred until a pattern across multiple traces confirms their necessity.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"a3832d7e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"5d627ffd\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\ntrilithium from ds9, right?\n\n## Candidate Responses\n\n[1]\nYes, you're correct! Trilithium is a fictional substance from the Star Trek: Deep Space Nine (DS9) series. It's a highly unstable and dangerous explosive material that was used in several episodes of the show. The term \"trilithium\" comes from the fact that it contains three lithium atoms in its molecular structure. In the show, trilithium is often used as a plot device for various dramatic and destructive purposes.\n\n[2]\nIn the Star Trek universe, trilithium is a fictional element that plays a significant role in the series. It is a highly unstable and powerful isotope of lithium, which is used as a key component in the creation of a device that can neutralize or destroy a cloaking device.\n\nTrilithium is first introduced in the movie \"Star Trek: Nemesis\" (2002), where it is used by the Romulan ship, the Scimitar, to destroy the Romulan cloaking device. The trilithium matrix is a highly unstable substance that can be used to overload and destroy a cloaking device, rendering it useless.\n\nIn the movie, the trilithium matrix is used by the Romulans to destroy the cloaking device on the Scimitar, which is a key plot point in the story. The trilithium is also used as a plot device to explore the themes of power, control, and the consequences of playing with forces beyond one's control.\n\nIt's worth noting that trilithium is not a real-world element and is purely a fictional concept within the Star Trek universe.\n\n[3]\n\"Star Trek: Deep Space Nine\" (DS9) does feature trilithium, a powerful and rare mineral, in several episodes. Here are some key episodes where trilithium is mentioned:\n\n1. \"The Maquis, Part I\" (Season 3, Episode 1): Trilithium is mentioned in this episode when Captain Sisko discusses the Maquis' use of a stolen Cardassian trilithium-powered warship.\n\n2. \"The Maquis, Part II\" (Season 3, Episode 2): In this episode, the Maquis' trilithium-powered warship is destroyed, and the crew is taken aboard Deep Space Nine.\n\n3. \"The Search, Part II\" (Season 6, Episode 1): Trilithium is mentioned when the Defiant is damaged during a battle with the Jem'Hadar. The crew must find a way to repair the ship using a trilithium-laced dilithium crystal.\n\n4. \"The Reckoning\" (Season 6, Episode 26): In this episode, the Dominion uses a trilithium-powered weapon to destroy a Bajoran moon.\n\n5. \"What You Leave Behind\" (Season 7, Episode 25): Trilithium is mentioned in the final episode of the series when the Defiant is damaged during the final battle against the Dominion. The crew must find a way to repair the ship using a trilithium-laced dilithium crystal.\n\nThese episodes highlight the importance and power of trilithium in the DS9 universe.\n\n[4]\nTrilithium technology in Star Trek is a fictional technology that has appeared in several series, but its exact nature and applications can vary between them. Here\u2019s a breakdown of how it differs across the various Star Trek series:\n\n### **Star Trek: The Next Generation (TNG)**\n- **Appearance**: Trilithium was first introduced in the episode \"Disaster\" (Season 2, Episode 19). It is a highly toxic substance that can be used as a weapon.\n- **Function**: In TNG, trilithium is primarily used as a weapon. It can cause severe neurological damage and is lethal to organic life forms. The technology involves creating a trilithium mine, which releases a cloud of trilithium particles that can incapacitate or kill anyone exposed to it.\n\n### **Star Trek: Deep Space Nine (DS9)**\n- **Appearance**: Trilithium appears in the episode \"The Search, Part II\" (Season 5, Episode 23).\n- **Function**: In DS9, trilithium is also used as a weapon. It is described as a superweapon capable of destroying entire planets. The episode reveals that the Cardassians developed this weapon during the Dominion War, but they were unable to use it due to the risks involved.\n\n### **Star Trek: Voyager (VOY)**\n- **Appearance**: Trilithium appears in the episode \"The Thaw\" (Season 7, Episode 24).\n- **Function**: In VOY, trilithium is again used as a weapon. It is mentioned that the weapon is so powerful that it can destroy an entire planet. The episode focuses on the ethical implications of using such a weapon and the potential for it to be used by the Kazon-Nistrim.\n\n### **Star Trek: Enterprise (ENT)**\n- **Appearance**: Trilithium does not appear in ENT. The series focuses on earlier Starfleet history and does not delve into the technology of later series.\n\n### **Star Trek: Discovery (DIS)**\n- **Appearance**: Trilithium appears in the episode \"The War Without, The War Within\" (Season 1, Episode 10).\n- **Function**: In DIS, trilithium is again used as a weapon. It is described as a superweapon that can destroy entire planets. The episode explores the ethical and moral dilemmas surrounding the use of such a weapon.\n\n### **Common Themes Across Series**\n- **Weaponry**: Across all series where trilithium appears, it is consistently portrayed as a highly dangerous and destructive weapon.\n- **Ethical Implications**: There is often an emphasis on the ethical and moral implications of using such a weapon, reflecting the show's themes of responsibility and the consequences of one's actions.\n\nIn summary, while the basic function of trilithium as a weapon remains consistent across the series, the specific contexts and ethical considerations surrounding its use can vary, reflecting the different narrative arcs and themes of each series.\n\n## Judge Reasoning\nResponse [3] most directly and specifically answers the question by confirming trilithium is featured in DS9 and listing multiple DS9 episodes. Response [1] is broadly aligned but is more generic and includes an unsupported detail about \u201cthree lithium atoms\u201d without citing episode context. Response [2] focuses on broader Star Trek and the film Nemesis rather than clearly supporting the DS9-specific claim. Response [4] is distracted by a multi-series overview and gives multiple likely-inaccurate episode/season specifics for DS9, making it less reliable overall.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Response [3] most directly and specifically answers the question by confirming trilithium is featured in DS9 and listing multiple DS9 episodes. Response [1] is broadly aligned but is more generic and includes an unsupported detail about \u201cthree lithium atoms\u201d without citing episode context. Response [2] focuses on broader Star Trek and the film Nemesis rather than clearly supporting the DS9-specific claim. Response [4] is distracted by a multi-series overview and gives multiple likely-inaccurate episode/season specifics for DS9, making it less reliable overall.\",\n  \"ratings\": [\n    5.0,\n    2.5,\n    8.0,\n    4.0\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\ntrilithium from ds9, right?\n\n## Candidate Responses\n\n[1]\nYes, you're correct! Trilithium is a fictional substance from the Star Trek: Deep Space Nine (DS9) series. It's a highly unstable and dangerous explosive material that was used in several episodes of the show. The term \"trilithium\" comes from the fact that it contains three lithium atoms in its molecular structure. In the show, trilithium is often used as a plot device for various dramatic and destructive purposes.\n\n[2]\nIn the Star Trek universe, trilithium is a fictional element that plays a significant role in the series. It is a highly unstable and powerful isotope of lithium, which is used as a key component in the creation of a device that can neutralize or destroy a cloaking device.\n\nTrilithium is first introduced in the movie \"Star Trek: Nemesis\" (2002), where it is used by the Romulan ship, the Scimitar, to destroy the Romulan cloaking device. The trilithium matrix is a highly unstable substance that can be used to overload and destroy a cloaking device, rendering it useless.\n\nIn the movie, the trilithium matrix is used by the Romulans to destroy the cloaking device on the Scimitar, which is a key plot point in the story. The trilithium is also used as a plot device to explore the themes of power, control, and the consequences of playing with forces beyond one's control.\n\nIt's worth noting that trilithium is not a real-world element and is purely a fictional concept within the Star Trek universe.\n\n[3]\n\"Star Trek: Deep Space Nine\" (DS9) does feature trilithium, a powerful and rare mineral, in several episodes. Here are some key episodes where trilithium is mentioned:\n\n1. \"The Maquis, Part I\" (Season 3, Episode 1): Trilithium is mentioned in this episode when Captain Sisko discusses the Maquis' use of a stolen Cardassian trilithium-powered warship.\n\n2. \"The Maquis, Part II\" (Season 3, Episode 2): In this episode, the Maquis' trilithium-powered warship is destroyed, and the crew is taken aboard Deep Space Nine.\n\n3. \"The Search, Part II\" (Season 6, Episode 1): Trilithium is mentioned when the Defiant is damaged during a battle with the Jem'Hadar. The crew must find a way to repair the ship using a trilithium-laced dilithium crystal.\n\n4. \"The Reckoning\" (Season 6, Episode 26): In this episode, the Dominion uses a trilithium-powered weapon to destroy a Bajoran moon.\n\n5. \"What You Leave Behind\" (Season 7, Episode 25): Trilithium is mentioned in the final episode of the series when the Defiant is damaged during the final battle against the Dominion. The crew must find a way to repair the ship using a trilithium-laced dilithium crystal.\n\nThese episodes highlight the importance and power of trilithium in the DS9 universe.\n\n[4]\nTrilithium technology in Star Trek is a fictional technology that has appeared in several series, but its exact nature and applications can vary between them. Here\u2019s a breakdown of how it differs across the various Star Trek series:\n\n### **Star Trek: The Next Generation (TNG)**\n- **Appearance**: Trilithium was first introduced in the episode \"Disaster\" (Season 2, Episode 19). It is a highly toxic substance that can be used as a weapon.\n- **Function**: In TNG, trilithium is primarily used as a weapon. It can cause severe neurological damage and is lethal to organic life forms. The technology involves creating a trilithium mine, which releases a cloud of trilithium particles that can incapacitate or kill anyone exposed to it.\n\n### **Star Trek: Deep Space Nine (DS9)**\n- **Appearance**: Trilithium appears in the episode \"The Search, Part II\" (Season 5, Episode 23).\n- **Function**: In DS9, trilithium is also used as a weapon. It is described as a superweapon capable of destroying entire planets. The episode reveals that the Cardassians developed this weapon during the Dominion War, but they were unable to use it due to the risks involved.\n\n### **Star Trek: Voyager (VOY)**\n- **Appearance**: Trilithium appears in the episode \"The Thaw\" (Season 7, Episode 24).\n- **Function**: In VOY, trilithium is again used as a weapon. It is mentioned that the weapon is so powerful that it can destroy an entire planet. The episode focuses on the ethical implications of using such a weapon and the potential for it to be used by the Kazon-Nistrim.\n\n### **Star Trek: Enterprise (ENT)**\n- **Appearance**: Trilithium does not appear in ENT. The series focuses on earlier Starfleet history and does not delve into the technology of later series.\n\n### **Star Trek: Discovery (DIS)**\n- **Appearance**: Trilithium appears in the episode \"The War Without, The War Within\" (Season 1, Episode 10).\n- **Function**: In DIS, trilithium is again used as a weapon. It is described as a superweapon that can destroy entire planets. The episode explores the ethical and moral dilemmas surrounding the use of such a weapon.\n\n### **Common Themes Across Series**\n- **Weaponry**: Across all series where trilithium appears, it is consistently portrayed as a highly dangerous and destructive weapon.\n- **Ethical Implications**: There is often an emphasis on the ethical and moral implications of using such a weapon, reflecting the show's themes of responsibility and the consequences of one's actions.\n\nIn summary, while the basic function of trilithium as a weapon remains consistent across the series, the specific contexts and ethical considerations surrounding its use can vary, reflecting the different narrative arcs and themes of each series.\n\n## Judge Reasoning\nResponse [3] most directly and specifically answers the question by confirming trilithium is featured in DS9 and listing multiple DS9 episodes. Response [1] is broadly aligned but is more generic and includes an unsupported detail about \u201cthree lithium atoms\u201d without citing episode context. Response [2] focuses on broader Star Trek and the film Nemesis rather than clearly supporting the DS9-specific claim. Response [4] is distracted by a multi-series overview and gives multiple likely-inaccurate episode/season specifics for DS9, making it less reliable overall.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Response [3] most directly and specifically answers the question by confirming trilithium is featured in DS9 and listing multiple DS9 episodes. Response [1] is broadly aligned but is more generic and includes an unsupported detail about \u201cthree lithium atoms\u201d without citing episode context. Response [2] focuses on broader Star Trek and the film Nemesis rather than clearly supporting the DS9-specific claim. Response [4] is distracted by a multi-series overview and gives multiple likely-inaccurate episode/season specifics for DS9, making it less reliable overall.\",\n  \"ratings\": [\n    5.0,\n    2.5,\n    8.0,\n    4.0\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Focus\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=5.000\n  [2] INCORRECT score=2.500\n  [3] INCORRECT score=8.000\n  [4] INCORRECT score=4.000\n\n## rollout_2 Evaluation\n\nSubset: Focus\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=5.000\n  [2] INCORRECT score=2.500\n  [3] INCORRECT score=8.000\n  [4] INCORRECT score=4.000",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "5d627ffd",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause Analysis\n\nBoth rollouts produced identical, deterministic output (same reasoning, same ratings, same winner), confirming the failure is structural rather than stochastic.\n\n**Primary failure**: The agent rated Candidate [3] at 8.0 and selected it as best, but [3] is INCORRECT. Candidate [1] (rated 5.0) is the only CORRECT response. The agent failed to verify [3]'s extensive specific claims (episode titles, season/episode numbers, plot summaries about trilithium in DS9) before crediting them as quality signals. These details are fabricated \u2014 wrong season numbers, wrong episode numbers, and invented plot points involving trilithium.\n\n**Critical asymmetric skepticism**: The agent explicitly noted that [4] has 'multiple likely-inaccurate episode/season specifics for DS9' yet applied ZERO skepticism to [3]'s structurally identical content (also episode/season specifics for DS9). This is the exact pattern the EPISTEMIC SYMMETRY AUDIT (93b0e8f9) was designed to catch, but the agent never executed that audit.\n\n**Specificity-as-quality bias**: The agent treated [3]'s episode-listing format as evidence of being 'most directly and specifically' on-topic. In reality, in hallucination-prone domains (pop culture episode references, specific citations), granular specificity is a RISK FACTOR that demands verification, not a quality signal to credit. The playbook states this principle (93b0e8f9: 'Unique specificity is a risk factor, not inherently a quality signal') but the agent ignored it.\n\n**DIFFERENTIAL CLAIM VERIFICATION not triggered**: Entry 93b0e8f9 requires that when the top-ranked candidate's decisive advantage rests on unique factual content, ISOLATE\u2192COUNTER\u2192CLASSIFY must be applied to \u22652 of those differentiating claims. [3]'s entire advantage is its episode list \u2014 unique factual content. This verification gate was never fired.\n\n**VOLUME VERIFICATION GATE not triggered**: Entry 71f11566 requires sampling \u22653 claims from a higher-volume candidate's unique items and verifying them. [3] lists 5 specific episodes; if any 2 were verified as fabricated, the volume advantage would be nullified. This gate was never fired.\n\n## What Existing Rules Need\n\nThe playbook already contains the correct rules (93b0e8f9, 71f11566, 005004a4, 8e0d9579) but the agent didn't execute any of them for the decisive comparison. This is not a knowledge gap but an execution/salience gap. Multiple relevant verification gates exist but none fired.\n\n### Needed: A stronger, earlier-firing trigger for hallucination-prone specificity\n\nThe root issue is that detailed specificity in certain content domains (fictional universe episode references, specific page/chapter citations, exact dates for niche events) triggers LLM hallucination at extremely high rates. The agent needs a DOMAIN-SENSITIVE HALLUCINATION ALERT that fires BEFORE the standard quality comparison, not after. Proposed trigger:\n\n**TRIGGER**: When ANY candidate provides 3+ specific factual claims in a domain where LLMs commonly hallucinate (fictional universe details, specific citation data like episode/season/page numbers, attributed quotes), ALL such claims across ALL candidates are auto-classified as UNVERIFIABLE-HIGH-RISK. The agent must then apply ISOLATE\u2192COUNTER\u2192CLASSIFY to at least 2 such claims per candidate before crediting or penalizing specificity.\n\n**INTERMEDIATE ARTIFACT**: A table [Candidate | Specific claim | Domain | Verified/Unverifiable/False] must be produced before any candidate is credited for 'more specific' or 'more detailed' content.\n\n### Entry 93b0e8f9 needs stronger enforcement language\n\nThe DIFFERENTIAL CLAIM VERIFICATION step is correctly designed but the agent skipped it entirely. The entry should make this a FINALIZATION BLOCKER (like constraint extraction already is) \u2014 the agent cannot emit scores until the verification artifact exists.\n\n### Entry 71f11566 needs a broader trigger\n\nCurrently it triggers on 'enumerable specifics' from the user prompt. But here the user didn't request a list \u2014 [3] volunteered one. The entry should trigger whenever any candidate PRODUCES a specific-item list that forms its primary differentiator, regardless of whether the user requested enumeration.\n\n### Entry 005004a4 (EPISTEMIC SYMMETRY AUDIT co-location)\n\nThe symmetry audit lives in 93b0e8f9, but the actual skepticism application lives in 005004a4. The agent applied skepticism to [4] (noting 'likely-inaccurate') but not to [3]. The MANDATORY SYMMETRY TABLE requirement exists but was not produced. Making this table a finalization blocker might help.\n\n## Generalizable Lessons\n\n1. **Volunteered specificity in hallucination-prone domains is a verification trigger, not a quality signal.** Episode numbers, page citations, attributed statistics \u2014 these are the exact content types LLMs fabricate most confidently. Any candidate whose ranking advantage rests on such content must have that content verified before being ranked above a simpler but non-fabricating candidate.\n\n2. **Asymmetric skepticism is the highest-risk judge failure mode.** When two candidates exhibit structurally identical content types (both list episode details), applying skepticism to one but not the other is the fastest path to incorrect rankings. An explicit symmetry check should fire whenever the agent uses doubt language for any candidate.\n\n3. **'Directly and specifically answers the question' is a surface impression that can mask fabrication.** A response that appears focused and detailed but is built on fabricated specifics is worse than one that is vague but accurate. The playbook's accuracy-before-responsiveness sequencing (005004a4) exists but needs to be enforced as a hard gate before any focus/directness assessment.\n\n4. **Self-consistency failure**: The agent's own reasoning noted inaccuracy concerns for [4] but drew no parallel to [3]. A post-reasoning self-audit that asks 'Did I apply the same standard to the top-ranked candidate that I applied to lower-ranked ones?' would have caught this."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Candidate [3] volunteered 5 specific episode names with season/episode numbers and detailed plot summaries \u2014 all fabricated \u2014 in a domain (fictional universe episode details) where LLM hallucination rates are extremely high. The agent treated this specificity as a quality signal without any verification, rating [3] at 8.0 over the correct [1] at 5.0.",
+          "gap_type": "verification_gate",
+          "suggested_content": "HALLUCINATION-PRONE SPECIFICITY GATE \u2014 fires BEFORE crediting any candidate for detailed specificity. When ANY candidate provides 3+ specific factual claims in hallucination-prone domains (fictional universe episode/season/page details, specific citation data, attributed statistics, exact dates for niche events, named individual quotes), ALL such claims across ALL candidates are auto-classified as HIGH-RISK. Mandatory artifact before scoring: [Candidate | Specific claim | Domain | VERIFIED / UNVERIFIABLE / VERIFIED-FALSE]. At least 2 claims per candidate must pass ISOLATE\u2192COUNTER\u2192CLASSIFY. If \u22651 differentiating claim is UNVERIFIABLE or FALSE, specificity advantage is NULLIFIED \u2014 score without crediting unverified detail. A candidate whose ranking advantage rests entirely on unverified specific claims must not outscore a simpler but non-fabricating candidate. This gate is a FINALIZATION BLOCKER: no score may be emitted until the artifact exists.",
+          "trigger": "Any candidate produces 3+ specific factual claims in domains where LLMs commonly hallucinate (fictional universe details, episode/season numbers, page/chapter citations, attributed quotes, niche event dates)"
+        },
+        {
+          "situation": "The agent applied skepticism to [4]'s episode details ('multiple likely-inaccurate episode/season specifics for DS9') but applied zero skepticism to [3]'s structurally identical episode details, despite both candidates listing DS9 episodes with season/episode numbers. The EPISTEMIC SYMMETRY AUDIT in 93b0e8f9 addresses this but was not triggered.",
+          "gap_type": "verification_gate",
+          "suggested_content": "SKEPTICISM SYMMETRY HARD CHECK \u2014 fires after reasoning draft, before score finalization. Scan your reasoning for ANY doubt language applied to ANY candidate: 'likely-inaccurate,' 'questionable,' 'suspicious,' 'uncertain,' 'possibly fabricated,' 'unsupported.' For each instance: (1) Identify the content TYPE that triggered doubt (e.g., episode/season citations, attributed quotes, statistics). (2) Search ALL other candidates for the same content type. (3) If found, produce artifact: [Candidate | Content type | Doubt applied? Y/N | Same standard?]. (4) Any row where doubt is applied asymmetrically (Y for one candidate, N for another with same content type) is a FINALIZATION BLOCKER \u2014 apply ISOLATE\u2192COUNTER\u2192CLASSIFY to the un-doubted candidate's matching content before proceeding.",
+          "trigger": "Agent's reasoning contains doubt language ('likely-inaccurate,' 'questionable,' 'suspicious,' 'uncertain,' 'possibly fabricated,' 'unsupported') applied to any candidate"
+        },
+        {
+          "situation": "The PP trace contains zero <playbook_cite>, <missing_guidance>, or <uncertainty> tags, suggesting the agent evaluated all 4 candidates without consulting any playbook procedures. The prompt appeared simple ('trilithium from ds9, right?'), which may have caused the agent to skip structured verification entirely. Multiple existing entries (93b0e8f9, 005004a4, 342f27b9, 71f11566) contain the correct procedures but none were engaged.",
+          "gap_type": "procedure",
+          "suggested_content": "MINIMUM ENGAGEMENT FLOOR \u2014 regardless of prompt length or apparent simplicity, every evaluation must visibly execute: (1) Perception scan artifact (4abe1be4), (2) At least one accuracy check on the top-ranked candidate using ISOLATE\u2192COUNTER\u2192CLASSIFY (005004a4), (3) Differential claim verification if the top candidate's advantage rests on unique factual content (93b0e8f9 step 3). Short or casual prompts are HIGHER risk, not lower, because they invite cursory evaluation where fabrication-heavy candidates can appear 'helpfully specific' without scrutiny. If your reasoning is under 200 words, flag this as a SHALLOW EVALUATION RISK and re-engage with at least the accuracy sequencing rule before finalizing.",
+          "trigger": "Every evaluation, with escalated enforcement when the agent's reasoning is unusually short or the prompt appears simple/casual"
+        },
+        {
+          "situation": "Entry 71f11566's VOLUME VERIFICATION GATE triggers only 'when the user requests enumerable specifics,' but the user here asked a simple yes/no question. Candidate [3] volunteered an unsolicited episode listing that became its primary differentiator. The trigger missed this because the enumeration was candidate-generated, not user-requested.",
+          "gap_type": "tactic",
+          "suggested_content": "Expand 71f11566's VOLUME VERIFICATION GATE trigger to fire whenever ANY candidate PRODUCES a specific-item list (3+ items) that forms its primary ranking differentiator, regardless of whether the user requested enumeration. Volunteered lists are HIGHER risk than solicited ones because they reflect the candidate's choice to generate detailed content in domains where it may hallucinate. When a candidate's ranking advantage comes from a volunteered list, apply the same \u22653 sample verification procedure.",
+          "trigger": "Any candidate produces a list of 3+ specific items that serves as its primary differentiator over other candidates, whether or not the user requested a list"
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n### Agreement with Anchor\nI agree with the anchor's core diagnosis: the failure is structural asymmetric skepticism combined with specificity-as-quality bias. The agent flagged [4]'s episode details as 'likely-inaccurate' but applied zero scrutiny to [3]'s structurally identical content, then credited [3]'s fabricated episode listing as evidence of being 'most directly and specifically' on-topic. Multiple existing playbook entries (93b0e8f9, 005004a4, 71f11566, 342f27b9) contain the exact procedures that would have caught this error, but none were executed.\n\n### Refinements to Anchor\n1. **Complete playbook disengagement, not selective omission**: The anchor characterizes this as an 'execution/salience gap,' but the PP trace shows NO playbook citations whatsoever \u2014 the agent didn't partially engage and skip verification steps; it appears to have bypassed the entire playbook. This is a qualitatively different failure from 'knew the rule but didn't apply it.' The prompt's casual brevity ('trilithium from ds9, right?') likely triggered a shallow evaluation mode where structured procedures felt unnecessary. This suggests a need for a MINIMUM ENGAGEMENT FLOOR entry, not just stronger enforcement of existing verification gates.\n\n2. **Entry 29e534bd (cross-candidate comparison) should be tagged harmful, not neutral**: Both [3] and [4] reference 'The Search, Part II' with contradicting season numbers (Season 6 vs Season 5). This meets the entry's MANDATORY TRIGGER condition for same-source attribution, but no DIFF TABLE was built. Building it would have revealed the contradiction and triggered verification of both candidates' claims.\n\n3. **Entry 132aab84 (focus alignment) contributed to harm**: The anchor tags it neutral, but the agent's decisive reasoning phrase \u2014 'most directly and specifically answers the question' \u2014 maps to this entry's vocabulary. The entry's HARD GATE correctly doesn't differentiate between two DIRECT candidates, but its emphasis on directness/specificity as quality signals, combined with the SUBJECTIVE SCORING GATE's risk-factor warning only applying to subjective questions, created a gap where 'direct + fabricated' could outscore 'direct + accurate but generic.'\n\n### Key Playbook Implications\nThe most critical gap is that the playbook has no entry treating volunteered specificity in hallucination-prone domains as an automatic verification trigger. Episode/season numbers, page citations, and attributed quotes are the exact content types LLMs fabricate most confidently \u2014 they need a dedicated pre-scoring gate. Multiple existing entries contain verification procedures that would catch this (93b0e8f9 step 3, 71f11566 VOLUME VERIFICATION GATE, 005004a4 SEQUENCING RULE), but their triggers are too narrow or too easily bypassed for short/casual prompts.\n\nThe second critical gap is enforcement: existing verification gates need to be FINALIZATION BLOCKERS, not optional procedures. The agent currently has the option to skip every verification gate with no structural penalty, as demonstrated by both deterministic rollouts producing identical reasoning with zero verification artifacts."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "**Agreement with anchor**: The anchor correctly identifies the primary failure as asymmetric skepticism \u2014 the agent noted [4]'s episode/season specifics were 'likely-inaccurate' but credited [3]'s structurally identical content (episode titles, season/episode numbers, plot summaries) as a quality signal. The anchor is also correct that 93b0e8f9's EPISTEMIC SYMMETRY AUDIT and DIFFERENTIAL CLAIM VERIFICATION, 005004a4's SEQUENCING RULE, and 71f11566's VOLUME VERIFICATION GATE all should have caught this. Both rollouts produced identical deterministic output confirming this is structural.\n\n**Refinement of anchor**: The anchor frames this as 'an execution/salience gap' and proposes adding a new DOMAIN-SENSITIVE HALLUCINATION ALERT plus stronger enforcement language. I refine this: adding more finalization checks to an already-overloaded entry (93b0e8f9 has 5 finalization steps) will not improve execution. The deeper problem is **timing** \u2014 all verification gates fire 'before finalizing,' which is too late. The agent's quality impression ('most directly and specifically answers') forms during evaluation, and once formed, the finalization checks are skipped because the agent already has conviction. The fix is making verification fire *during* evaluation, triggered by the agent's own language, not as a post-hoc audit.\n\n**Refinement on 71f11566**: The anchor tags this as harmful, but its trigger condition ('when the user requests enumerable specifics') legitimately didn't match \u2014 the user didn't request a list. This is a scope weakness (WEAK), not active harm. The entry needs a broader trigger covering volunteered lists, but it wasn't misapplied.\n\n**Refinement on domain specificity**: The anchor proposes a domain-specific hallucination alert for fictional universe details, citations, etc. While reasonable, the more generalizable insight is that *any* quality impression (directness, specificity, comprehensiveness) is downstream of accuracy, not parallel to it. The agent treated 'directly and specifically answers the question' as an independent quality axis when it's causally dependent on the accuracy of the specific content. This framing prevents the error regardless of domain knowledge.\n\n**Root cause chain**: (1) Agent evaluates [3] and forms surface impression 'most directly and specifically answers.' (2) This impression is treated as a quality signal without verifying the 5 episode references that create it. (3) The same content type in [4] is flagged as 'likely-inaccurate,' but no symmetry check fires because all verification is deferred to finalization. (4) The agent emits scores with [3] at 8.0 and [1] (the only CORRECT candidate) at 5.0. The critical missing artifact: an accuracy verification table produced *before* any directness/specificity credit.\n\n**Key evidence**: The agent's reasoning says: '[3] most directly and specifically answers the question by confirming trilithium is featured in DS9 and listing multiple DS9 episodes.' Every listed episode contains fabricated details \u2014 wrong season numbers, wrong episode numbers, invented plot points. The agent's own reasoning for [4] says 'gives multiple likely-inaccurate episode/season specifics for DS9' \u2014 recognizing the exact risk in one candidate but not the other.",
+      "principles": [
+        {
+          "statement": "When your evaluation credits a candidate for 'directly answering' or 'more specific detail,' verify accuracy of the content enabling that impression first. Fabricated directness ranks below vague accuracy.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "005004a4",
+          "trigger": "When 'directly answers,' 'more specific,' 'more detailed,' or 'more comprehensive' appears as a positive quality judgment in your evaluation reasoning for any candidate.",
+          "verification_or_artifact": "Before crediting the impression, produce: [Candidate | Specific claim enabling the impression | ISOLATE\u2192COUNTER result | VERIFIED/UNVERIFIABLE/FALSE]. If \u22651 enabling claim is FALSE, the quality impression is void \u2014 do not credit directness or specificity for that candidate.",
+          "evidence": "Agent wrote '[3] most directly and specifically answers' based on 5 fabricated episode references. The directness impression was entirely dependent on accuracy of those references. 005004a4's SEQUENCING RULE ('accuracy before responsiveness') exists but lacks an artifact requirement, so it was skipped."
+        },
+        {
+          "statement": "When you write doubt language about any candidate's content type, stop and check whether the top-ranked candidate has the same content type. Apply identical scrutiny before writing the next sentence.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "93b0e8f9",
+          "trigger": "When any negative epistemic label ('likely inaccurate,' 'suspicious,' 'unverifiable,' 'fabricated') appears in your evaluation reasoning for ANY candidate.",
+          "verification_or_artifact": "Immediately search all other candidates for the same content type. If found, apply the same ISOLATE\u2192COUNTER\u2192CLASSIFY before proceeding. This fires DURING evaluation, not as a finalization step.",
+          "evidence": "Agent wrote '[4] gives multiple likely-inaccurate episode/season specifics for DS9' but never checked [3]'s structurally identical episode/season specifics. 93b0e8f9's EPISTEMIC SYMMETRY AUDIT covers this but fires 'before finalizing' \u2014 too late. Moving symmetry to fire inline at the moment doubt language is written would have caught this immediately."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "medium"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "a3832d7e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "5d627ffd",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts produced identical deterministic output: Candidate [3] rated 8.0 (selected as best), Candidate [1] (the only CORRECT response) rated 5.0, [4] at 4.0, [2] at 2.5. The agent credited [3]'s extensive episode-level specificity \u2014 5 DS9 episode names with season/episode numbers and plot summaries \u2014 as a decisive quality signal without verifying any claims. All of [3]'s differentiating content is fabricated: wrong season numbers, wrong episode numbers, invented plot points involving trilithium.\n\nThe most damning diagnostic evidence: the agent wrote '[4] gives multiple likely-inaccurate episode/season specifics for DS9' but applied zero skepticism to [3]'s structurally identical content (also episode/season specifics for DS9). This is textbook asymmetric skepticism \u2014 the exact failure mode 93b0e8f9's EPISTEMIC SYMMETRY AUDIT was designed to prevent.\n\n## Why Existing Rules Failed\n\nThe playbook contains at least four entries with procedures that should have caught this error: 93b0e8f9 (DIFFERENTIAL CLAIM VERIFICATION requiring ISOLATE\u2192COUNTER\u2192CLASSIFY on \u22652 unique claims; EPISTEMIC SYMMETRY AUDIT requiring uniform skepticism), 005004a4 (SEQUENCING RULE: accuracy before responsiveness), 71f11566 (VOLUME VERIFICATION GATE: sample \u22653 claims from higher-volume candidate), and 342f27b9 (derive reference answer before evaluating). None were executed. No verification artifacts exist in either rollout.\n\nAll three reflections agree on the core diagnosis but differ on the causal framing. The anchor calls it an 'execution/salience gap.' The credit_attribution head (running in fallback mode \u2014 no PP tags, so narrative-inferred) calls it 'complete playbook disengagement.' The principle_extraction head provides the most actionable diagnosis: **the problem is timing, not knowledge**. All verification gates are positioned as finalization steps ('before finalizing'), which is too late. The agent's quality impression ('most directly and specifically answers the question') formed during evaluation; once conviction was established, deferred finalization checks were never reached. This is not a single-trace anomaly \u2014 93b0e8f9's track record (+8 -8) and 005004a4's track record (+4 -26) confirm these entries fail at least as often as they succeed, consistent with procedures that are correct in content but positioned too late to influence the decision.\n\n## Entry-Level Reasoning\n\n**93b0e8f9 (harmful)**: All three reflections agree. The EPISTEMIC SYMMETRY AUDIT and DIFFERENTIAL CLAIM VERIFICATION contain the exact procedures needed but are framed as finalization steps that the agent skipped entirely. The entry's five finalization sub-steps may contribute to disengagement \u2014 too many deferred checks compete for attention at the end. The inline symmetry trigger (fire when doubt language appears during evaluation, not after) is the most precise fix.\n\n**005004a4 (harmful)**: All three reflections agree. The SEQUENCING RULE ('accuracy assessment must complete BEFORE responsiveness') directly addresses the failure but has no artifact requirement to enforce it. Its extremely negative track record (+4 -26) suggests the entry's bulk (PROACTIVE CLASSIFICATION, VERIFICATION GATE, severity hierarchy, MANDATORY SYMMETRY TABLE) buries its most critical instruction.\n\n**132aab84 (neutral)**: Credit_attribution tagged harmful, arguing the entry's vocabulary ('directly answers') influenced the agent's quality impression. The anchor and principle_extraction tagged neutral. I resolve in favor of neutral: the entry's HARD GATE is about DIRECT vs. ADJACENT classification, not about crediting unverified specificity within DIRECT candidates. The agent's error was upstream \u2014 failing to verify accuracy before forming the directness impression.\n\n**71f11566 (neutral)**: The anchor and credit_attribution tagged harmful, but principle_extraction provides the more precise assessment: the trigger condition ('when the user requests enumerable specifics') legitimately didn't match \u2014 the user asked a simple factual question and [3] volunteered an unsolicited list. This is a scope weakness, not active harm. The trigger should be broadened to cover volunteered lists, but this is secondary to the timing fix.\n\n**8e0d9579, 342f27b9 (neutral)**: The anchor tagged these harmful but the entries address different dimensions (formatting vs. correctness; reference derivation for deterministic answers). They should have helped but weren't engaged. Their non-execution is a symptom of the same playbook disengagement, not evidence of entry-level harm.\n\n## Recommended Mutation\n\nUpdate 93b0e8f9's EPISTEMIC SYMMETRY AUDIT to fire **inline during evaluation** rather than only at finalization. The concrete trigger: when the agent writes any doubt language about a candidate's content type ('likely-inaccurate,' 'suspicious,' 'questionable'), it must immediately check whether any other candidate \u2014 especially the current top-ranked one \u2014 has the same content type and apply identical scrutiny before continuing evaluation. This converts a deferred post-hoc audit into an inline interception at the exact moment asymmetric skepticism occurs.\n\nThis is preferable to adding a new entry (e.g., a 'hallucination-prone specificity gate') because: (1) the concept already exists in 93b0e8f9, (2) the change is to trigger timing rather than adding new content to an already-long playbook, and (3) the inline trigger is domain-agnostic \u2014 it catches asymmetric skepticism in any content domain, not just fictional universe details.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Asymmetric skepticism combined with deferred verification timing. The agent flagged [4]'s episode specifics as likely-inaccurate but credited [3]'s structurally identical fabricated content. All existing verification procedures (93b0e8f9, 005004a4, 71f11566) are correctly designed but positioned as finalization steps that are skipped once the agent forms an evaluation conviction during the main assessment pass.",
+      "important_disagreements": [
+        "132aab84 focus alignment: credit_attribution tagged harmful (entry vocabulary 'directly answers' influenced agent), anchor and principle_extraction tagged neutral. Resolved as neutral \u2014 the entry's HARD GATE addresses DIRECT vs. ADJACENT classification, not crediting unverified specificity. The failure was upstream in accuracy verification.",
+        "71f11566 volume verification: anchor and credit_attribution tagged harmful, principle_extraction tagged neutral. Resolved as neutral \u2014 the trigger legitimately didn't match (user didn't request a list). This is a scope weakness to note, not active harm from the entry.",
+        "Causal framing: anchor says 'execution/salience gap,' credit_attribution says 'complete playbook disengagement,' principle_extraction says 'timing problem.' Resolved in favor of timing diagnosis \u2014 it is the most actionable and explains both why existing correct procedures failed and what specific change would fix them.",
+        "New entry vs. update: anchor and credit_attribution suggest new entries (hallucination-prone specificity gate, minimum engagement floor). Principle_extraction suggests updating existing entries. Resolved in favor of update \u2014 the concept already exists, the change is to trigger timing, and adding more procedures to a playbook the agent already struggles to engage risks further disengagement."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "93b0e8f9 already contains the EPISTEMIC SYMMETRY AUDIT that would have caught this exact failure. The entry needs its symmetry check repositioned to fire inline during evaluation (triggered by doubt language) rather than as a deferred finalization step. This is a targeted timing fix, not new knowledge. All three reflections agree the procedures are correct but positioned too late.",
+      "conservatism_rationale": "One observation is one observation, and the playbook already contains the correct procedures. Adding new entries (hallucination-prone specificity gate, minimum engagement floor) risks bloating a playbook the agent already struggles to engage with. The inline-trigger repositioning is the smallest change with the most direct causal connection to the failure. Secondary fixes (broadening 71f11566's trigger, adding artifact requirements to 005004a4) are noted but deferred until a pattern across multiple traces confirms their necessity.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"a3832d7e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"5d627ffd\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts produced identical deterministic output: Candidate [3] rated 8.0 (selected as best), Candidate [1] (the only CORRECT response) rated 5.0, [4] at 4.0, [2] at 2.5. The agent credited [3]'s extensive episode-level specificity \u2014 5 DS9 episode names with season/episode numbers and plot summaries \u2014 as a decisive quality signal without verifying any claims. All of [3]'s differentiating content is fabricated: wrong season numbers, wrong episode numbers, invented plot points involving trilithium.\\n\\nThe most damning diagnostic evidence: the agent wrote '[4] gives multiple likely-inaccurate episode/season specifics for DS9' but applied zero skepticism to [3]'s structurally identical content (also episode/season specifics for DS9). This is textbook asymmetric skepticism \u2014 the exact failure mode 93b0e8f9's EPISTEMIC SYMMETRY AUDIT was designed to prevent.\\n\\n## Why Existing Rules Failed\\n\\nThe playbook contains at least four entries with procedures that should have caught this error: 93b0e8f9 (DIFFERENTIAL CLAIM VERIFICATION requiring ISOLATE\u2192COUNTER\u2192CLASSIFY on \u22652 unique claims; EPISTEMIC SYMMETRY AUDIT requiring uniform skepticism), 005004a4 (SEQUENCING RULE: accuracy before responsiveness), 71f11566 (VOLUME VERIFICATION GATE: sample \u22653 claims from higher-volume candidate), and 342f27b9 (derive reference answer before evaluating). None were executed. No verification artifacts exist in either rollout.\\n\\nAll three reflections agree on the core diagnosis but differ on the causal framing. The anchor calls it an 'execution/salience gap.' The credit_attribution head (running in fallback mode \u2014 no PP tags, so narrative-inferred) calls it 'complete playbook disengagement.' The principle_extraction head provides the most actionable diagnosis: **the problem is timing, not knowledge**. All verification gates are positioned as finalization steps ('before finalizing'), which is too late. The agent's quality impression ('most directly and specifically answers the question') formed during evaluation; once conviction was established, deferred finalization checks were never reached. This is not a single-trace anomaly \u2014 93b0e8f9's track record (+8 -8) and 005004a4's track record (+4 -26) confirm these entries fail at least as often as they succeed, consistent with procedures that are correct in content but positioned too late to influence the decision.\\n\\n## Entry-Level Reasoning\\n\\n**93b0e8f9 (harmful)**: All three reflections agree. The EPISTEMIC SYMMETRY AUDIT and DIFFERENTIAL CLAIM VERIFICATION contain the exact procedures needed but are framed as finalization steps that the agent skipped entirely. The entry's five finalization sub-steps may contribute to disengagement \u2014 too many deferred checks compete for attention at the end. The inline symmetry trigger (fire when doubt language appears during evaluation, not after) is the most precise fix.\\n\\n**005004a4 (harmful)**: All three reflections agree. The SEQUENCING RULE ('accuracy assessment must complete BEFORE responsiveness') directly addresses the failure but has no artifact requirement to enforce it. Its extremely negative track record (+4 -26) suggests the entry's bulk (PROACTIVE CLASSIFICATION, VERIFICATION GATE, severity hierarchy, MANDATORY SYMMETRY TABLE) buries its most critical instruction.\\n\\n**132aab84 (neutral)**: Credit_attribution tagged harmful, arguing the entry's vocabulary ('directly answers') influenced the agent's quality impression. The anchor and principle_extraction tagged neutral. I resolve in favor of neutral: the entry's HARD GATE is about DIRECT vs. ADJACENT classification, not about crediting unverified specificity within DIRECT candidates. The agent's error was upstream \u2014 failing to verify accuracy before forming the directness impression.\\n\\n**71f11566 (neutral)**: The anchor and credit_attribution tagged harmful, but principle_extraction provides the more precise assessment: the trigger condition ('when the user requests enumerable specifics') legitimately didn't match \u2014 the user asked a simple factual question and [3] volunteered an unsolicited list. This is a scope weakness, not active harm. The trigger should be broadened to cover volunteered lists, but this is secondary to the timing fix.\\n\\n**8e0d9579, 342f27b9 (neutral)**: The anchor tagged these harmful but the entries address different dimensions (formatting vs. correctness; reference derivation for deterministic answers). They should have helped but weren't engaged. Their non-execution is a symptom of the same playbook disengagement, not evidence of entry-level harm.\\n\\n## Recommended Mutation\\n\\nUpdate 93b0e8f9's EPISTEMIC SYMMETRY AUDIT to fire **inline during evaluation** rather than only at finalization. The concrete trigger: when the agent writes any doubt language about a candidate's content type ('likely-inaccurate,' 'suspicious,' 'questionable'), it must immediately check whether any other candidate \u2014 especially the current top-ranked one \u2014 has the same content type and apply identical scrutiny before continuing evaluation. This converts a deferred post-hoc audit into an inline interception at the exact moment asymmetric skepticism occurs.\\n\\nThis is preferable to adding a new entry (e.g., a 'hallucination-prone specificity gate') because: (1) the concept already exists in 93b0e8f9, (2) the change is to trigger timing rather than adding new content to an already-long playbook, and (3) the inline trigger is domain-agnostic \u2014 it catches asymmetric skepticism in any content domain, not just fictional universe details.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Asymmetric skepticism combined with deferred verification timing. The agent flagged [4]'s episode specifics as likely-inaccurate but credited [3]'s structurally identical fabricated content. All existing verification procedures (93b0e8f9, 005004a4, 71f11566) are correctly designed but positioned as finalization steps that are skipped once the agent forms an evaluation conviction during the main assessment pass.\",\n    \"important_disagreements\": [\n      \"132aab84 focus alignment: credit_attribution tagged harmful (entry vocabulary 'directly answers' influenced agent), anchor and principle_extraction tagged neutral. Resolved as neutral \u2014 the entry's HARD GATE addresses DIRECT vs. ADJACENT classification, not crediting unverified specificity. The failure was upstream in accuracy verification.\",\n      \"71f11566 volume verification: anchor and credit_attribution tagged harmful, principle_extraction tagged neutral. Resolved as neutral \u2014 the trigger legitimately didn't match (user didn't request a list). This is a scope weakness to note, not active harm from the entry.\",\n      \"Causal framing: anchor says 'execution/salience gap,' credit_attribution says 'complete playbook disengagement,' principle_extraction says 'timing problem.' Resolved in favor of timing diagnosis \u2014 it is the most actionable and explains both why existing correct procedures failed and what specific change would fix them.\",\n      \"New entry vs. update: anchor and credit_attribution suggest new entries (hallucination-prone specificity gate, minimum engagement floor). Principle_extraction suggests updating existing entries. Resolved in favor of update \u2014 the concept already exists, the change is to trigger timing, and adding more procedures to a playbook the agent already struggles to engage risks further disengagement.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"93b0e8f9 already contains the EPISTEMIC SYMMETRY AUDIT that would have caught this exact failure. The entry needs its symmetry check repositioned to fire inline during evaluation (triggered by doubt language) rather than as a deferred finalization step. This is a targeted timing fix, not new knowledge. All three reflections agree the procedures are correct but positioned too late.\",\n    \"conservatism_rationale\": \"One observation is one observation, and the playbook already contains the correct procedures. Adding new entries (hallucination-prone specificity gate, minimum engagement floor) risks bloating a playbook the agent already struggles to engage with. The inline-trigger repositioning is the smallest change with the most direct causal connection to the failure. Secondary fixes (broadening 71f11566's trigger, adding artifact requirements to 005004a4) are noted but deferred until a pattern across multiple traces confirms their necessity.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "5d627ffd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

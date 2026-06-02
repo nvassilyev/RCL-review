@@ -1,0 +1,74 @@
+{
+  "task_id": "51",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "056f0a9e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "a674b64e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "66f87cbc",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c67e6085",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "009bd398",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "47e3a943",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "1f931f4e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "678183ac",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f9a44264",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3b3c61ba",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "7ca56b8b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "0126ca3e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f5869cc3",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c636be22",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "843d2ff0",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f9a44264",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "All rollouts (baseline and PP) uniformly timed out with zero trace content available. This is a systematic failure with no execution variance \u2014 the agent never produced an answer in any attempt. Without any trace data (no searches, no reasoning, no playbook citations, no XML tags), root-cause diagnosis must be inferred from the failure pattern itself.\n\nThe most significant observation is that the existing playbook's budget-control mechanism is SEARCH-COUNT-BASED ([1f931f4e]: Hard Budget Stop at 40 Searches) but the failure is TIME-BASED. These are fundamentally different constraints. The agent could be: (a) spending excessive time per search cycle reasoning about which of 14+ playbook entries to consult, (b) generating very long reasoning chains between searches, (c) stuck in early-stage planning/decomposition before even beginning to search, or (d) encountering a task that requires many searches and the per-search overhead exceeds the wall-clock budget.\n\nKey structural concern: the playbook has grown to 14 entries, many of which are multi-step procedures with nested checklists. Before each search, the agent may be cross-referencing multiple entries, running trigger checks, and performing constraint scoring \u2014 all of which consume time without generating searchable progress. The playbook has NO guidance on time management, early action, or keeping per-search overhead low.\n\nA second concern is the absence of an EARLY COMMIT signal. Entry [1f931f4e] triggers at search 40, but if the agent never reaches 40 searches due to time-per-search overhead, the rule never fires. There is no entry that says 'if you have been working for N minutes and have fewer than X searches completed, something is wrong \u2014 simplify and accelerate.'\n\nA third concern is the lack of a FAST-START directive. Many entries (decomposition, distinctiveness triage, clue listing) encourage extensive pre-search reasoning. For difficult tasks, this front-loaded planning phase could consume a disproportionate share of the time budget before any search is issued.\n\nSince no trace content exists, I cannot attribute credit or blame to any specific entry with confidence. All entries are tagged neutral. The timeout is the only signal, and it points to a COVERAGE GAP: the playbook lacks wall-clock time awareness.",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\nError: timeout\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\nError: timeout",
+  "evaluation_details": "## rollout_1 Evaluation\n\nError: timeout\n\n## rollout_2 Evaluation\n\nError: timeout"
+}

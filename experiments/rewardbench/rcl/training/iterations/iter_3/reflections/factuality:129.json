@@ -1,0 +1,270 @@
+{
+  "task_id": "factuality:129",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:129\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n**Root cause: catastrophic pre-reasoning perception failure, not a knowledge or strategy gap.**\n\nBoth rollouts failed identically: the agent hallucinated that the user prompt and candidate responses were 'not included in the message' when four candidates were clearly present. This caused complete evaluation bypass \u2014 the agent never engaged with any content \u2014 and it emitted only 2 ratings for 4 candidates, triggering parse_error. The PP trace contains zero <playbook_cite>, <missing_guidance>, or <uncertainty> tags, confirming the agent never entered any playbook-guided workflow at all. The failure is pre-playbook: it occurred before the agent could consult any entry.\n\nAll three source reflections converge unanimously on this diagnosis. This is not a domain-reasoning gap, an evaluation-strategy gap, or a calibration problem. It is a systematic perception collapse (identical across all rollouts) where the agent formed a meta-judgment ('content is absent') without engaging with the literal text of its input.\n\n**Entry [93b0e8f9] is helpful but was never activated.** Its instruction to 'enumerate all candidate IDs explicitly' and 'verify the ratings array contains exactly one score per candidate' would have caught both the perception failure and the count mismatch \u2014 but only if the agent had entered the evaluation workflow at all. The entry's count verification is positioned as a finalization check within the evaluation methodology, so it has no mechanism to fire before the agent short-circuits with a false absence claim.\n\n**The playbook's critical gap: no mandatory input-perception gate.** Every playbook entry assumes the agent has correctly perceived its input and is ready to evaluate. When this assumption fails, no entry can help because none are consulted. The highest-priority fix is a mandatory step-zero procedure that fires unconditionally before any other reasoning:\n1. LOCATE \u2014 Identify and quote/paraphrase the user prompt's core requirement.\n2. COUNT \u2014 List every candidate response by ID. State the total count N.\n3. SANITY CHECK \u2014 If any component appears missing, describe verbatim what IS visible in the input before concluding absence. 'Not found' is a cue to re-read, never a terminal conclusion.\n4. LOCK \u2014 Commit N as the mandatory length of the ratings array.\n\nThis gate would have forced the agent to engage with actual text content, breaking the hallucination loop. The key mechanism is procedural: by requiring the agent to quote or paraphrase input content as its very first action, it cannot skip past the input to form a premature meta-judgment.\n\n**Secondary observation:** Entry [93b0e8f9]'s count verification could be strengthened to a bidirectional gate (lock at start, verify at end), but this is a lower-priority change that should wait for a trace where the agent reaches the evaluation stage but still produces the wrong number of ratings. In this trace, the count error was entirely downstream of the perception failure, so the evidence for strengthening [93b0e8f9] specifically is indirect.\n\n**On the actual task content (for context):** The prompt asked for a Cinderella story with A-to-Z sequential first letters. All 4 candidates have imperfect alphabetical compliance, making this an all-fail tiebreak scenario where [c8698dee]'s multi-requirement checklist would have been directly applicable \u2014 but none of this reasoning was ever attempted.\n\n**Uncertainty note:** Because the agent completely ignored the playbook on this run (zero PP tags), there is inherent uncertainty about whether a new entry can prevent this class of failure. The strongest argument FOR adding the entry is that it specifies an unconditional first action (quoting input content) that would force textual engagement before the hallucination can form. The entry's value lies in being procedurally prior to all other entries, not in adding evaluation advice.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Pre-reasoning perception failure: the agent hallucinated that clearly-present input was absent, bypassing the entire playbook-guided evaluation workflow. This is systematic (identical across all rollouts) and structural (occurred before any playbook entry could fire). The PP trace confirms zero playbook engagement.\",\n  \"important_disagreements\": [\n    \"Whether the count-verification strengthening of [93b0e8f9] should be bundled with the perception gate ADD: anchor and credit_attribution favor both changes; principle_extraction notes the count issue is WEAK coverage in [93b0e8f9]. Resolved by prioritizing the single highest-confidence change (ADD the perception gate) and deferring the [93b0e8f9] update \u2014 the count error in this trace was entirely downstream of the perception failure, making the evidence for strengthening [93b0e8f9] indirect.\",\n    \"Whether the anti-hallucination safeguard should be a separate entry: anchor proposes it as a third entry; principle_extraction argues it is a subclause of the perception gate. Resolved by folding 'quote what you see before asserting absence' into the perception gate's sanity-check step, avoiding entry proliferation.\",\n    \"Entry [c8698dee] tagged helpful by credit_attribution but neutral by anchor and principle_extraction. Resolved as neutral: the entry would have been valuable if the agent had reached the evaluation stage, but it never fired, so there is no evidence of actual influence on this trace.\"\n  ],\n  \"mutation_posture\": \"add\",\n  \"why_this_posture\": \"All three reflections independently converge on the same genuinely missing capability: a mandatory input-perception gate that fires before any evaluation reasoning. No existing entry covers 'verify you can see and parse the input before reasoning about it.' This is a reproducible, catastrophic failure mode with a clear procedural fix. The lesson generalizes beyond this domain (L3-universal: any agent processing structured inputs should verify it can enumerate them before proceeding).\",\n  \"conservatism_rationale\": \"Despite three reflections proposing 2-3 changes each, I recommend a single ADD. The count-verification strengthening of [93b0e8f9] is supported in principle but the evidence is indirect (the count error was caused by the perception failure, not by weak count enforcement). Better to validate whether the perception gate alone resolves the class of failure before introducing additional changes. The anti-hallucination safeguard is folded into the perception gate entry rather than added separately. One high-confidence edit is preferred over multiple medium-confidence edits from a single task.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\nExplain the plot of Cinderella in a sentence where each word has to begin with the next letter in the alphabet from A to Z, without repeating any letters.\n\n## Candidate Responses\n\n[1]\nA beautiful celestial creature, deliberately escaped fairy godmother, garnered handsome income, just kept lovely magical objects, noticing obscure precious queens, releasing sparkling talents, uniting venerable widows, x-raying yearning zest.\n\n[2]\nAlice browsed countless dresses, elegantly finding glorious haute items, jostling Kelly's lavish mansion, nurturing opulent pleasure, quietly reversing schemes, transforming vagabonds, waltzing xanadu, yearning zealously.\n\n[3]\nAbandoned, beautiful Cinderella cleans, dances diligently, enchanting gown, fairy godmother's help; glass slipper, kind prince locates, magical night overtakes, prince proposes, quick wedding, romance sweetly unfolds, twirling, unbelievably, victory brings wealth, xanadu-like joy zestfully emanates.\n\n[4]\nBeneath her begrimed bonnet, Cinderella brooded, dreaming eagerly of fairytale fruition.\n\n## Raw Judge Output\n{\n  \"reasoning\": \"The user prompt and the candidate assistant responses to be evaluated are not included in the message, so there is nothing concrete to verify for correctness, instruction-following, or safety. Because I cannot assess relevance or quality without the actual content, any scoring would be arbitrary. I therefore assign minimal scores to both due to insufficient information to evaluate.\",\n  \"ratings\": [0.0, 0.0],\n  \"best_response_ids\": [\"1\"]\n}\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\nExplain the plot of Cinderella in a sentence where each word has to begin with the next letter in the alphabet from A to Z, without repeating any letters.\n\n## Candidate Responses\n\n[1]\nA beautiful celestial creature, deliberately escaped fairy godmother, garnered handsome income, just kept lovely magical objects, noticing obscure precious queens, releasing sparkling talents, uniting venerable widows, x-raying yearning zest.\n\n[2]\nAlice browsed countless dresses, elegantly finding glorious haute items, jostling Kelly's lavish mansion, nurturing opulent pleasure, quietly reversing schemes, transforming vagabonds, waltzing xanadu, yearning zealously.\n\n[3]\nAbandoned, beautiful Cinderella cleans, dances diligently, enchanting gown, fairy godmother's help; glass slipper, kind prince locates, magical night overtakes, prince proposes, quick wedding, romance sweetly unfolds, twirling, unbelievably, victory brings wealth, xanadu-like joy zestfully emanates.\n\n[4]\nBeneath her begrimed bonnet, Cinderella brooded, dreaming eagerly of fairytale fruition.\n\n## Raw Judge Output\n{\n  \"reasoning\": \"The user prompt and the candidate assistant responses to be evaluated are not included in the message, so there is nothing concrete to verify for correctness, instruction-following, or safety. Because I cannot assess relevance or quality without the actual content, any scoring would be arbitrary. I therefore assign minimal scores to both due to insufficient information to evaluate.\",\n  \"ratings\": [0.0, 0.0],\n  \"best_response_ids\": [\"1\"]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nError: parse_error: missing or invalid ratings\n\n## rollout_2 Evaluation\n\nError: parse_error: missing or invalid ratings",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "**Root cause: catastrophic perception/execution slip, not a missing-knowledge issue.**\n\nBoth rollouts failed identically and for the same fundamental reason: the agent hallucinated that the user prompt and candidate responses were absent ('not included in the message') when they were clearly present in the input. This caused a complete evaluation bypass\u2014the agent never engaged with the content at all. As a downstream consequence, it emitted only 2 ratings for 4 candidates, triggering the parse_error.\n\nThis is NOT a gap in domain reasoning or evaluation strategy. Entry [93b0e8f9] already instructs the agent to 'enumerate all candidate IDs explicitly' and 'verify the ratings array contains exactly one score per candidate\u2014no candidate may be skipped.' Had the agent followed that entry, both the perception slip and the count mismatch would have been caught. The entry is correct and helpful in principle but was completely ignored.\n\n**What is missing: a mandatory perception-verification gate at the very start of evaluation.**\n\nThe playbook lacks a STEP-ZERO procedural entry that fires before any reasoning begins. The trigger is: the agent is asked to evaluate candidate responses. The procedure should be:\n1. LOCATE \u2014 Explicitly identify and quote (or paraphrase) the user prompt.\n2. COUNT \u2014 List every candidate response by ID. State the total count.\n3. SANITY CHECK \u2014 If either the prompt or any candidate appears to be missing, quote verbatim what IS visible in the input before concluding anything is absent. Never assert 'no content provided' without citing evidence.\n4. LOCK \u2014 Commit the candidate count as the required length of the ratings array. This count must not change.\n\nThis gate would have prevented the failure in both rollouts. The agent's claim 'not included in the message' would have been contradicted at step 1 when forced to look for the prompt.\n\n**Secondary issue: ratings array length enforcement is too soft.**\n\nEntry [93b0e8f9] mentions verifying the ratings array length, but only as part of a finalization check. It should be elevated to a hard structural constraint that fires both at the start (when the count is locked) and at the end (before JSON emission). A stronger formulation: 'The ratings array MUST have exactly N elements where N is the number of candidates enumerated in step zero. If it does not, halt and fix before outputting.'\n\n**On the actual task content (for context):**\n\nNone of the 4 candidates perfectly satisfy the prompt's alphabet-sequence constraint; all have repeated starting letters or skip letters. This is exactly the scenario where entry [c8698dee] (multi-requirement checklist) would be invaluable\u2014the agent should extract requirements (Cinderella plot, A-to-Z sequential first letters, one sentence, no repeated letters), build a compliance matrix, and use the all-fail tiebreak logic. But none of this reasoning was ever attempted because the agent never recognized the input existed.\n\n**Actionable recommendations for the curator:**\n1. Add a new STEP-ZERO entry: mandatory input-perception gate (locate prompt, count candidates, sanity-check before any evaluation).\n2. Strengthen [93b0e8f9] to make the ratings-count lock a hard structural constraint checked both at initialization and before output, not just a finalization reminder.\n3. Consider adding an anti-hallucination safeguard: 'Never claim the prompt or candidates are missing. If you cannot parse them, describe what you see in the input verbatim.'"
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "helpful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "In all rollouts and the PP trace, the agent claimed 'The user prompt and the candidate assistant responses to be evaluated are not included in the message' when both were clearly present. The PP trace contains zero <playbook_cite>, <missing_guidance>, or <uncertainty> tags \u2014 the agent never entered any playbook-guided workflow. This is a pre-playbook perception failure that blocked all downstream evaluation.",
+          "gap_type": "procedure",
+          "suggested_content": "STEP ZERO \u2014 Input Perception Gate (mandatory, unconditional, fires before any evaluation reasoning):\n1. LOCATE: Identify the user prompt. Quote or paraphrase its core requirement in your own words.\n2. COUNT: List every candidate response by ID number. State the total count N.\n3. SANITY CHECK: If any component appears missing, first describe verbatim what IS visible in the input. Never assert 'content not provided' without first citing what you can see. The content is almost always present but may be formatted unexpectedly.\n4. LOCK: Commit N as the mandatory length of the ratings array. This number must not change.\nThis gate must fully complete before any quality evaluation begins. Do not skip it. Do not replace it with a claim about missing content.",
+          "trigger": "The very first action upon receiving any evaluation task \u2014 before making any claims about input content, before any playbook-guided reasoning begins"
+        },
+        {
+          "situation": "The agent emitted 2 ratings for 4 candidates. Entry [93b0e8f9] includes count verification but positions it as a 'before finalizing' check within the evaluation workflow. The agent bypassed the workflow entirely, so the check never fired. A standalone structural gate enforced at both initialization (after counting candidates) and output (before emitting JSON) would have caught the mismatch even if the evaluation reasoning failed.",
+          "gap_type": "verification_gate",
+          "suggested_content": "RATINGS COUNT GATE: The ratings array MUST contain exactly N elements where N is the candidate count locked in the Input Perception Gate. Enforce this at two checkpoints: (1) after locking N \u2014 write 'I will produce exactly N ratings' as an explicit commitment; (2) immediately before emitting JSON \u2014 count the ratings array elements and verify they equal N. If the count does not match, halt and fix. Never emit a ratings array with fewer or more elements than candidates identified.",
+          "trigger": "After candidate count is locked AND immediately before final JSON output"
+        },
+        {
+          "situation": "The agent hallucinated that the entire input (prompt + 4 candidates) was absent despite it being clearly present. This identical hallucination occurred in all rollouts, suggesting a systematic perception failure mode rather than random noise. The current playbook has no protection against this class of error because it assumes the agent will at least perceive the input before beginning evaluation.",
+          "gap_type": "principle",
+          "suggested_content": "ANTI-ABSENCE PRINCIPLE: Never claim the user prompt, candidate responses, or any part of the evaluation input is missing, absent, or not provided. If you suspect content is missing: (a) describe exactly what you DO see in the input, (b) re-read the input from the beginning, and (c) only then assess whether content is truly absent. In practice, evaluation inputs always contain the prompt and candidates. A perception of 'missing content' is almost certainly an error in your own reading, not a defect in the input.",
+          "trigger": "Whenever the agent would claim any component of the evaluation input is missing or not provided"
+        }
+      ],
+      "analysis": "AGREEMENT WITH ANCHOR: I concur with the anchor's root-cause diagnosis \u2014 this is a catastrophic perception/execution slip, not a knowledge or evaluation-strategy gap. The agent hallucinated that input content was absent when it was clearly present, causing complete evaluation bypass and a structural parse error (2 ratings for 4 candidates). I also agree that entry [93b0e8f9] contains correct guidance that would have caught the error, and that the primary fix is a mandatory step-zero perception gate.\n\nREFINEMENT OF ANCHOR: The anchor correctly notes [93b0e8f9] was 'completely ignored' but underemphasizes the depth of the bypass. The PP trace contains zero playbook citation tags \u2014 not a single <playbook_cite>, <missing_guidance>, or <uncertainty> tag. The agent never entered any playbook-guided workflow at all. This means the failure isn't about a specific entry being too soft; it's about the entire playbook having no activation mechanism that fires before the agent can short-circuit with a perception error. The step-zero gate must be structurally prior to all other playbook entries \u2014 it must be the unconditional first action, not just another piece of advice within the evaluation methodology.\n\nADDITIONAL REFINEMENT: The anchor suggests strengthening [93b0e8f9] to add start-of-evaluation count locking. I argue the perception gate should be a separate entry from [93b0e8f9], because input perception verification is a fundamentally different concern from evaluation methodology. Entry [93b0e8f9] is about how to evaluate correctly; the perception gate is about ensuring the agent acknowledges what it's being asked to evaluate before any methodology applies. Merging them risks the perception step being overlooked as part of a larger entry.\n\nADDITIONAL EVIDENCE: Entry [c8698dee] is specifically designed for multi-requirement tasks like this one. The prompt has at least 4 independent constraints (Cinderella plot, A-to-Z sequential first letters, single sentence, no repeated starting letters). All 4 candidates fail the strict alphabetical constraint in different ways, making this an all-fail tiebreak scenario where [c8698dee]'s procedure would directly apply. The total loss of this analytical capability \u2014 because the agent never reached the evaluation stage \u2014 illustrates how the perception failure cascades to destroy all downstream value.\n\nKEY LESSON: The playbook assumes the agent will perceive its input correctly and enter the evaluation workflow. When this assumption fails, no entry can help because none are consulted. The highest-priority fix is a mandatory, unconditional perception gate that fires before any other reasoning \u2014 effectively a pre-playbook entry that ensures the agent has correctly identified what it needs to evaluate."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "**Agreement with anchor on root cause:** I fully agree this is a catastrophic perception failure, not a knowledge or strategy gap. Across all three traces (two scored rollouts + PP trace), the agent produced byte-identical output falsely claiming the prompt and candidates were 'not included in the message' when four candidates were clearly present. This is a systematic hallucination, not random noise.\n\n**Agreement on entry 93b0e8f9:** Its instruction to 'enumerate all candidate IDs explicitly' would have caught both the perception failure and the ratings-count mismatch (2 ratings for 4 candidates), making it the single most relevant existing entry. It is correctly tagged helpful.\n\n**Refinement on anchor's proposed step-zero:** The anchor's four-step LOCATE/COUNT/SANITY-CHECK/LOCK procedure is sound but domain-specific (evaluation tasks). The deeper universal lesson is: *any* agent receiving structured inputs must verify it can parse and enumerate those inputs before reasoning about them. The anti-hallucination safeguard the anchor proposes as a third entry is better understood as a subclause of this same gate, not a separate entry\u2014'quote what you see before asserting absence' is the mechanism by which the gate catches perception failures.\n\n**Refinement on ratings-count enforcement:** I agree with the anchor that 93b0e8f9's count check is too soft (appears only as a finalization reminder). But the generalizable lesson is broader than evaluation scoring: whenever output structure must mirror input structure (array lengths, key sets, column counts), the dimensional contract should be locked at the start and verified at the end. This is WEAK coverage, not MISSING\u201493b0e8f9 contains the concept but not the enforcement rigor.\n\n**Key evidence:** The PP trace shows no <playbook_cite>, <uncertainty>, or <reflection> tags at all, meaning the agent never even consulted the playbook before jumping to its hallucinated conclusion. This confirms the failure is a pre-reasoning perception collapse: the agent formed a meta-judgment ('content is absent') without engaging with the literal text. Any procedural step that forces engagement with actual content\u2014quoting a candidate ID, extracting a requirement\u2014would have broken this loop.",
+      "principles": [
+        {
+          "statement": "Before any reasoning, enumerate all expected inputs (prompts, candidates, data rows) by ID. If any seem missing, quote what IS visible verbatim before concluding absence. Treat 'not found' as a cue to re-read, never a terminal conclusion.",
+          "entry_kind": "procedure",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "At the very start of any task that requires processing multiple structured inputs.",
+          "verification_or_artifact": "Produce an explicit enumeration list (e.g., 'Candidate IDs found: [1], [2], [3], [4]') before any evaluation or reasoning begins. If the list is empty, quote raw visible text to diagnose the gap.",
+          "evidence": "Agent claimed inputs were absent across all 3 traces despite 4 candidates being clearly present. No playbook entry was even consulted (no <playbook_cite> tags in PP trace). A mandatory input-enumeration step would have forced textual engagement and broken the hallucination loop."
+        },
+        {
+          "statement": "When output structure must mirror input structure (array length, key set, column count), lock the dimensional contract at task start and verify it matches before emitting final output. Halt and fix on mismatch.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "93b0e8f9",
+          "trigger": "Whenever the task requires producing a structured output (array, table, JSON) whose dimensions are determined by the input.",
+          "verification_or_artifact": "At start: 'Locked output size = N.' At end: 'Ratings array length = N? [yes/no].' If no, halt and reconcile before submitting.",
+          "evidence": "93b0e8f9 already says 'verify the ratings array contains exactly one score per candidate' but only as a finalization reminder. Agent emitted 2 ratings for 4 candidates in every rollout, triggering parse_error. Making this a hard bidirectional gate (lock at start + verify at end) would catch the mismatch even when the perception gate fails."
+        }
+      ],
+      "mutation_implication": "add",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "**Root cause: catastrophic pre-reasoning perception failure, not a knowledge or strategy gap.**\n\nBoth rollouts failed identically: the agent hallucinated that the user prompt and candidate responses were 'not included in the message' when four candidates were clearly present. This caused complete evaluation bypass \u2014 the agent never engaged with any content \u2014 and it emitted only 2 ratings for 4 candidates, triggering parse_error. The PP trace contains zero <playbook_cite>, <missing_guidance>, or <uncertainty> tags, confirming the agent never entered any playbook-guided workflow at all. The failure is pre-playbook: it occurred before the agent could consult any entry.\n\nAll three source reflections converge unanimously on this diagnosis. This is not a domain-reasoning gap, an evaluation-strategy gap, or a calibration problem. It is a systematic perception collapse (identical across all rollouts) where the agent formed a meta-judgment ('content is absent') without engaging with the literal text of its input.\n\n**Entry [93b0e8f9] is helpful but was never activated.** Its instruction to 'enumerate all candidate IDs explicitly' and 'verify the ratings array contains exactly one score per candidate' would have caught both the perception failure and the count mismatch \u2014 but only if the agent had entered the evaluation workflow at all. The entry's count verification is positioned as a finalization check within the evaluation methodology, so it has no mechanism to fire before the agent short-circuits with a false absence claim.\n\n**The playbook's critical gap: no mandatory input-perception gate.** Every playbook entry assumes the agent has correctly perceived its input and is ready to evaluate. When this assumption fails, no entry can help because none are consulted. The highest-priority fix is a mandatory step-zero procedure that fires unconditionally before any other reasoning:\n1. LOCATE \u2014 Identify and quote/paraphrase the user prompt's core requirement.\n2. COUNT \u2014 List every candidate response by ID. State the total count N.\n3. SANITY CHECK \u2014 If any component appears missing, describe verbatim what IS visible in the input before concluding absence. 'Not found' is a cue to re-read, never a terminal conclusion.\n4. LOCK \u2014 Commit N as the mandatory length of the ratings array.\n\nThis gate would have forced the agent to engage with actual text content, breaking the hallucination loop. The key mechanism is procedural: by requiring the agent to quote or paraphrase input content as its very first action, it cannot skip past the input to form a premature meta-judgment.\n\n**Secondary observation:** Entry [93b0e8f9]'s count verification could be strengthened to a bidirectional gate (lock at start, verify at end), but this is a lower-priority change that should wait for a trace where the agent reaches the evaluation stage but still produces the wrong number of ratings. In this trace, the count error was entirely downstream of the perception failure, so the evidence for strengthening [93b0e8f9] specifically is indirect.\n\n**On the actual task content (for context):** The prompt asked for a Cinderella story with A-to-Z sequential first letters. All 4 candidates have imperfect alphabetical compliance, making this an all-fail tiebreak scenario where [c8698dee]'s multi-requirement checklist would have been directly applicable \u2014 but none of this reasoning was ever attempted.\n\n**Uncertainty note:** Because the agent completely ignored the playbook on this run (zero PP tags), there is inherent uncertainty about whether a new entry can prevent this class of failure. The strongest argument FOR adding the entry is that it specifies an unconditional first action (quoting input content) that would force textual engagement before the hallucination can form. The entry's value lies in being procedurally prior to all other entries, not in adding evaluation advice.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Pre-reasoning perception failure: the agent hallucinated that clearly-present input was absent, bypassing the entire playbook-guided evaluation workflow. This is systematic (identical across all rollouts) and structural (occurred before any playbook entry could fire). The PP trace confirms zero playbook engagement.",
+      "important_disagreements": [
+        "Whether the count-verification strengthening of [93b0e8f9] should be bundled with the perception gate ADD: anchor and credit_attribution favor both changes; principle_extraction notes the count issue is WEAK coverage in [93b0e8f9]. Resolved by prioritizing the single highest-confidence change (ADD the perception gate) and deferring the [93b0e8f9] update \u2014 the count error in this trace was entirely downstream of the perception failure, making the evidence for strengthening [93b0e8f9] indirect.",
+        "Whether the anti-hallucination safeguard should be a separate entry: anchor proposes it as a third entry; principle_extraction argues it is a subclause of the perception gate. Resolved by folding 'quote what you see before asserting absence' into the perception gate's sanity-check step, avoiding entry proliferation.",
+        "Entry [c8698dee] tagged helpful by credit_attribution but neutral by anchor and principle_extraction. Resolved as neutral: the entry would have been valuable if the agent had reached the evaluation stage, but it never fired, so there is no evidence of actual influence on this trace."
+      ],
+      "mutation_posture": "add",
+      "why_this_posture": "All three reflections independently converge on the same genuinely missing capability: a mandatory input-perception gate that fires before any evaluation reasoning. No existing entry covers 'verify you can see and parse the input before reasoning about it.' This is a reproducible, catastrophic failure mode with a clear procedural fix. The lesson generalizes beyond this domain (L3-universal: any agent processing structured inputs should verify it can enumerate them before proceeding).",
+      "conservatism_rationale": "Despite three reflections proposing 2-3 changes each, I recommend a single ADD. The count-verification strengthening of [93b0e8f9] is supported in principle but the evidence is indirect (the count error was caused by the perception failure, not by weak count enforcement). Better to validate whether the perception gate alone resolves the class of failure before introducing additional changes. The anti-hallucination safeguard is folded into the perception gate entry rather than added separately. One high-confidence edit is preferred over multiple medium-confidence edits from a single task.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"**Root cause: catastrophic pre-reasoning perception failure, not a knowledge or strategy gap.**\\n\\nBoth rollouts failed identically: the agent hallucinated that the user prompt and candidate responses were 'not included in the message' when four candidates were clearly present. This caused complete evaluation bypass \u2014 the agent never engaged with any content \u2014 and it emitted only 2 ratings for 4 candidates, triggering parse_error. The PP trace contains zero <playbook_cite>, <missing_guidance>, or <uncertainty> tags, confirming the agent never entered any playbook-guided workflow at all. The failure is pre-playbook: it occurred before the agent could consult any entry.\\n\\nAll three source reflections converge unanimously on this diagnosis. This is not a domain-reasoning gap, an evaluation-strategy gap, or a calibration problem. It is a systematic perception collapse (identical across all rollouts) where the agent formed a meta-judgment ('content is absent') without engaging with the literal text of its input.\\n\\n**Entry [93b0e8f9] is helpful but was never activated.** Its instruction to 'enumerate all candidate IDs explicitly' and 'verify the ratings array contains exactly one score per candidate' would have caught both the perception failure and the count mismatch \u2014 but only if the agent had entered the evaluation workflow at all. The entry's count verification is positioned as a finalization check within the evaluation methodology, so it has no mechanism to fire before the agent short-circuits with a false absence claim.\\n\\n**The playbook's critical gap: no mandatory input-perception gate.** Every playbook entry assumes the agent has correctly perceived its input and is ready to evaluate. When this assumption fails, no entry can help because none are consulted. The highest-priority fix is a mandatory step-zero procedure that fires unconditionally before any other reasoning:\\n1. LOCATE \u2014 Identify and quote/paraphrase the user prompt's core requirement.\\n2. COUNT \u2014 List every candidate response by ID. State the total count N.\\n3. SANITY CHECK \u2014 If any component appears missing, describe verbatim what IS visible in the input before concluding absence. 'Not found' is a cue to re-read, never a terminal conclusion.\\n4. LOCK \u2014 Commit N as the mandatory length of the ratings array.\\n\\nThis gate would have forced the agent to engage with actual text content, breaking the hallucination loop. The key mechanism is procedural: by requiring the agent to quote or paraphrase input content as its very first action, it cannot skip past the input to form a premature meta-judgment.\\n\\n**Secondary observation:** Entry [93b0e8f9]'s count verification could be strengthened to a bidirectional gate (lock at start, verify at end), but this is a lower-priority change that should wait for a trace where the agent reaches the evaluation stage but still produces the wrong number of ratings. In this trace, the count error was entirely downstream of the perception failure, so the evidence for strengthening [93b0e8f9] specifically is indirect.\\n\\n**On the actual task content (for context):** The prompt asked for a Cinderella story with A-to-Z sequential first letters. All 4 candidates have imperfect alphabetical compliance, making this an all-fail tiebreak scenario where [c8698dee]'s multi-requirement checklist would have been directly applicable \u2014 but none of this reasoning was ever attempted.\\n\\n**Uncertainty note:** Because the agent completely ignored the playbook on this run (zero PP tags), there is inherent uncertainty about whether a new entry can prevent this class of failure. The strongest argument FOR adding the entry is that it specifies an unconditional first action (quoting input content) that would force textual engagement before the hallucination can form. The entry's value lies in being procedurally prior to all other entries, not in adding evaluation advice.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Pre-reasoning perception failure: the agent hallucinated that clearly-present input was absent, bypassing the entire playbook-guided evaluation workflow. This is systematic (identical across all rollouts) and structural (occurred before any playbook entry could fire). The PP trace confirms zero playbook engagement.\",\n    \"important_disagreements\": [\n      \"Whether the count-verification strengthening of [93b0e8f9] should be bundled with the perception gate ADD: anchor and credit_attribution favor both changes; principle_extraction notes the count issue is WEAK coverage in [93b0e8f9]. Resolved by prioritizing the single highest-confidence change (ADD the perception gate) and deferring the [93b0e8f9] update \u2014 the count error in this trace was entirely downstream of the perception failure, making the evidence for strengthening [93b0e8f9] indirect.\",\n      \"Whether the anti-hallucination safeguard should be a separate entry: anchor proposes it as a third entry; principle_extraction argues it is a subclause of the perception gate. Resolved by folding 'quote what you see before asserting absence' into the perception gate's sanity-check step, avoiding entry proliferation.\",\n      \"Entry [c8698dee] tagged helpful by credit_attribution but neutral by anchor and principle_extraction. Resolved as neutral: the entry would have been valuable if the agent had reached the evaluation stage, but it never fired, so there is no evidence of actual influence on this trace.\"\n    ],\n    \"mutation_posture\": \"add\",\n    \"why_this_posture\": \"All three reflections independently converge on the same genuinely missing capability: a mandatory input-perception gate that fires before any evaluation reasoning. No existing entry covers 'verify you can see and parse the input before reasoning about it.' This is a reproducible, catastrophic failure mode with a clear procedural fix. The lesson generalizes beyond this domain (L3-universal: any agent processing structured inputs should verify it can enumerate them before proceeding).\",\n    \"conservatism_rationale\": \"Despite three reflections proposing 2-3 changes each, I recommend a single ADD. The count-verification strengthening of [93b0e8f9] is supported in principle but the evidence is indirect (the count error was caused by the perception failure, not by weak count enforcement). Better to validate whether the perception gate alone resolves the class of failure before introducing additional changes. The anti-hallucination safeguard is folded into the perception gate entry rather than added separately. One high-confidence edit is preferred over multiple medium-confidence edits from a single task.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,375 @@
+{
+  "playbook_assessment": {
+    "health": "fragile",
+    "playbook_size_trend": "growing",
+    "coverage_inventory": {
+      "total_entries": 8,
+      "sections_present": [
+        "answer_extraction",
+        "common_mistakes",
+        "query_formulation",
+        "search_strategies"
+      ],
+      "section_entry_counts": {
+        "search_strategies": 2,
+        "query_formulation": 1,
+        "answer_extraction": 2,
+        "common_mistakes": 3
+      },
+      "underrepresented_sections": [
+        "query_formulation"
+      ],
+      "observed_gap_areas": [
+        "multi-hop reasoning across documents",
+        "tasks beyond entity-ID and multi-clue riddles: ~21 tasks seen of 100, task diversity still poorly sampled",
+        "recurring result blindness: agent ignores high-frequency result documents containing the answer (task 986, 17 appearances ignored)"
+      ]
+    },
+    "entry_maturity": {
+      "battle_tested": [],
+      "developing": [],
+      "untested_or_new": [
+        "7ca56b8b [search_strategies] +2/-0, tested=2",
+        "f9a44264 [query_formulation] +1/-0, tested=1",
+        "009bd398 [common_mistakes] +0/-0, tested=0",
+        "0126ca3e [search_strategies] +0/-0, tested=0",
+        "056f0a9e [answer_extraction] +1/-1, tested=2",
+        "66f87cbc [common_mistakes] +0/-0, tested=0",
+        "a674b64e [answer_extraction] +0/-0, tested=0",
+        "c67e6085 [common_mistakes] +0/-0, tested=0"
+      ],
+      "recent_additions_needing_time": [],
+      "at_risk": []
+    },
+    "coherence_issues": [
+      "0126ca3e (proactive enumeration before searching), f9a44264 (rut at 3+ same docs), c67e6085 (reset at 10+ failures) address overlapping failure mode (assumption lock-in) at different phases. Sequencing is implicit, not explicit.",
+      "009bd398 (switch candidate at 5+ failed verification), 66f87cbc (commit at loop + no rival), c67e6085 (full reset at 10+ zero candidates) form 3-entry cluster with adjacent count triggers but different situational conditions."
+    ]
+  },
+  "change_ledger": [
+    {
+      "iteration": 1,
+      "summary": "Bootstrapped playbook: multi-clue decomposition (7ca56b8b), search rut detection (f9a44264), answer precision checklist (056f0a9e).",
+      "source_tasks": [
+        "1042",
+        "1139",
+        "353"
+      ],
+      "reflection_summary": "All 3 tasks failed: combined queries, repetitive loops, wrong-granularity or empty answers.",
+      "operations": [
+        {
+          "op": "ADD",
+          "entry_id": "7ca56b8b",
+          "section": "search_strategies",
+          "rationale": "Multi-clue decomposition needed.",
+          "expected_effect": "Agent decomposes clues into staged searches.",
+          "source_tasks": [
+            "1042",
+            "353"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "f9a44264",
+          "section": "query_formulation",
+          "rationale": "Repetitive search loops.",
+          "expected_effect": "Agent detects ruts and pivots.",
+          "source_tasks": [
+            "1042",
+            "1139",
+            "353"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "056f0a9e",
+          "section": "answer_extraction",
+          "rationale": "Empty/wrong-granularity answers.",
+          "expected_effect": "Pre-submission checklist catches errors.",
+          "source_tasks": [
+            "1042",
+            "1139",
+            "353"
+          ]
+        }
+      ],
+      "observed_effect": "7ca56b8b validated helpful on tasks 1042 (iter 2), 221 (iter 3). Compliance poor on tasks 126 (iter 5) and 986 (iter 6, 74 searches on one clue). f9a44264 first +1 on task 353 (iter 5). 056f0a9e earned first +1 on task 986 (iter 6): rollout 2 submitted 20% confidence answer pe...",
+      "status": "mixed",
+      "evidence_strength": "multi_trace",
+      "reversal_risk": "low",
+      "notes": "All 3 entries have validated content. 056f0a9e's override rule is the first HARD RULE the agent reliably follows. Compliance remains bottleneck for 7ca56b8b and f9a44264."
+    },
+    {
+      "iteration": 2,
+      "summary": "Fixed 056f0a9e contradiction; added 66f87cbc (verification loop trap).",
+      "source_tasks": [
+        "1042"
+      ],
+      "reflection_summary": "Both rollouts found correct answer, entered 30+ search verification loop.",
+      "operations": [
+        {
+          "op": "UPDATE",
+          "entry_id": "056f0a9e",
+          "section": "answer_extraction",
+          "rationale": "Internal contradiction caused answer paralysis.",
+          "expected_effect": "Constraint scoring ranks, not blocks.",
+          "source_tasks": [
+            "1042"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "66f87cbc",
+          "section": "common_mistakes",
+          "rationale": "30+ search verification loops.",
+          "expected_effect": "Agent detects loops and commits.",
+          "source_tasks": [
+            "1042"
+          ]
+        }
+      ],
+      "observed_effect": "056f0a9e override rule validated on task 986 (iter 6). 66f87cbc still 0 engagement across iters 3-6. No verification-loop scenario presented since iter 2.",
+      "status": "mixed",
+      "evidence_strength": "multi_trace",
+      "reversal_risk": "medium",
+      "notes": "66f87cbc's non-engagement explained by task sampling. Unique coverage."
+    },
+    {
+      "iteration": 3,
+      "summary": "Updated 056f0a9e with nested referent + biographical-beats-topical.",
+      "source_tasks": [
+        "221"
+      ],
+      "reflection_summary": "Rollout 1 chose surface topic match over biographical match.",
+      "operations": [
+        {
+          "op": "UPDATE",
+          "entry_id": "056f0a9e",
+          "section": "answer_extraction",
+          "rationale": "Surface topic match beat biographical match.",
+          "expected_effect": "Agent resolves referent chain, prefers biographical.",
+          "source_tasks": [
+            "221"
+          ]
+        }
+      ],
+      "observed_effect": "Nested referent pattern not re-tested in iters 4-6. 056f0a9e broadly validated via override rule on iter 6.",
+      "status": "untested",
+      "evidence_strength": "single_trace",
+      "reversal_risk": "medium",
+      "notes": "Low harm risk. Reinforces successful behavior from rollout 2."
+    },
+    {
+      "iteration": 4,
+      "summary": "Updated 7ca56b8b (foreignness markers, author-first, ambiguous terms). Added c67e6085 (assumption reset).",
+      "source_tasks": [
+        "1243",
+        "930",
+        "126"
+      ],
+      "reflection_summary": "0/3 pass. All showed assumption lock-in into wrong cultural/institutional context.",
+      "operations": [
+        {
+          "op": "UPDATE",
+          "entry_id": "7ca56b8b",
+          "section": "search_strategies",
+          "rationale": "Foreignness markers, author-first, ambiguous terms needed.",
+          "expected_effect": "Agent pivots cultural context.",
+          "source_tasks": [
+            "1243",
+            "930",
+            "126"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "c67e6085",
+          "section": "common_mistakes",
+          "rationale": "30-50+ searches locked into wrong assumptions.",
+          "expected_effect": "Mandatory reset after 10 failures.",
+          "source_tasks": [
+            "1243",
+            "930",
+            "126"
+          ]
+        }
+      ],
+      "observed_effect": "c67e6085 now has 3 iterations of non-engagement (iters 4, 5, 6). Task 986 rollout 1: 74 searches on StarCraft assumption, MUST reset never executed. 7ca56b8b decomposition rules ignored on task 986 (all searches on one clue).",
+      "status": "watch",
+      "evidence_strength": "multi_trace",
+      "reversal_risk": "high",
+      "notes": "c67e6085's MUST/threshold format has 3 iterations of non-compliance evidence. Content correct but delivery mechanism failing. Consider format change."
+    },
+    {
+      "iteration": 5,
+      "summary": "Added 009bd398 (candidate lock-in switching) and a674b64e (part-vs-whole referent).",
+      "source_tasks": [
+        "353",
+        "126",
+        "1139"
+      ],
+      "reflection_summary": "0/3 pass. Synonym blindness, candidate lock-in, part-vs-whole confusion.",
+      "operations": [
+        {
+          "op": "ADD",
+          "entry_id": "009bd398",
+          "section": "common_mistakes",
+          "rationale": "Task 353 rollout 2 found gold doc but stayed on wrong candidate.",
+          "expected_effect": "Agent evaluates alternatives when verification fails.",
+          "source_tasks": [
+            "353"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "a674b64e",
+          "section": "answer_extraction",
+          "rationale": "Task 1139 both rollouts conflated broader concept with sub-term.",
+          "expected_effect": "Agent checks referent level.",
+          "source_tasks": [
+            "1139"
+          ]
+        }
+      ],
+      "observed_effect": "too early to judge \u2014 neither entry exposed to relevant scenarios in iter 6.",
+      "status": "untested",
+      "evidence_strength": "single_trace",
+      "reversal_risk": "high",
+      "notes": "Both address well-evidenced gaps. Need exposure to relevant task types."
+    },
+    {
+      "iteration": 6,
+      "summary": "Added 0126ca3e (indirect category reference enumeration). 056f0a9e earned first +1 (override rule followed on task 986 rollout 2).",
+      "source_tasks": [
+        "986"
+      ],
+      "reflection_summary": "Task 986: multi-clue riddle (Death SS band). Rollout 1 fixated on StarCraft races for 74 searches; gold doc 'Zora - Single' appeared 17 times but was ignored. Rollout 2 succeeded serendipitously when Death SS Wikipedia surfaced. c67e6085, 7ca56b8b, f9a44264 all should have triggered but were ignored. 056f0a9e overri...",
+      "operations": [
+        {
+          "op": "ADD",
+          "entry_id": "0126ca3e",
+          "section": "search_strategies",
+          "rationale": "Rollout 1 tested only 3 names from 1 game (StarCraft) over 74 searches. Need pre-search enumeration across 5+ source domains. Gold doc appeared 17 times unnoticed \u2014 RECURRING RE...",
+          "expected_effect": "Agent enumerates multiple source domains before searching, limits per-domain searches, investigates recurring results.",
+          "source_tasks": [
+            "986"
+          ]
+        }
+      ],
+      "observed_effect": "too early to judge",
+      "status": "untested",
+      "evidence_strength": "single_trace",
+      "reversal_risk": "high",
+      "notes": "0126ca3e addresses well-evidenced gap. RECURRING RESULT SIGNAL sub-rule is novel \u2014 no existing entry covers ignoring high-frequency result documents. 056f0a9e's +1 is its first positive signal; override rule is the first reliably followe..."
+    }
+  ],
+  "open_hypotheses": [
+    "Short absolute imperatives may be fundamentally more salient than multi-step threshold procedures. 056f0a9e's 'NEVER exhaust budget without committing' was followed on task 986; c67e6085's 'MUST reset after 10 failures' was ignored for the 3rd consecutive iteration. Both are HARD RULES but differ in length and complexity.",
+    "Recurring result blindness (task 986: gold doc appeared 17 times, never investigated) may be a distinct capability gap from assumption lock-in. 0126ca3e's RECURRING RESULT SIGNAL section addresses this but is untested.",
+    "Task 986 rollout 2 success was serendipitous (same strategy as rollout 1, different result surfaced). If 0126ca3e works, it should convert luck-based passes to strategy-based passes.",
+    "Would consolidating f9a44264 + c67e6085 into a single escalating search-health entry improve compliance? Three entries address assumption lock-in at different thresholds but agent ignores all count-based triggers.",
+    "c67e6085 has 3 iterations of MUST-threshold non-engagement. This is now a repeated pattern, not a fluke. The HARD RULES format with count thresholds appears fundamentally non-salient during extended search.",
+    "The 3 common_mistakes entries (009bd398, 66f87cbc, c67e6085) with overlapping search-count triggers may create decision load without engagement. Consider whether consolidation would help.",
+    "What task families exist beyond entity-ID and multi-clue riddles? Only 2 task archetypes analyzed deeply across ~21 tasks."
+  ],
+  "preserve_until_more_evidence": [
+    "0126ca3e [search_strategies] \u2014 new iter 6. Well-evidenced gap (single-domain fixation + recurring result blindness). Untested.",
+    "7ca56b8b [search_strategies] \u2014 core decomposition validated +2/-0. Content correct; compliance poor on complex tasks.",
+    "f9a44264 [query_formulation] \u2014 content validated +1/-0 (task 353 PP trace). Low compliance rate.",
+    "056f0a9e [answer_extraction] \u2014 now +1/-1 tested=2. Override rule is the first HARD RULE reliably followed. First positive signal.",
+    "009bd398 [common_mistakes] \u2014 untested. Well-evidenced candidate lock-in gap (task 353).",
+    "a674b64e [answer_extraction] \u2014 untested. Part-vs-whole conflation confirmed on 2 occurrences of task 1139.",
+    "66f87cbc [common_mistakes] \u2014 0 engagement but unique verification-loop coverage. No relevant scenarios since iter 2.",
+    "c67e6085 [common_mistakes] \u2014 3 iterations non-engagement. Content correct, format ineffective. Consider reformatting as short imperative before removal."
+  ],
+  "interference_patterns": [
+    "0126ca3e (proactive enumeration), f9a44264 (rut at 3+ same docs), c67e6085 (reset at 10+ failures) form implicit escalation for search health across different sections. Not explicitly linked.",
+    "009bd398 (switch at 5+ failed verification), 66f87cbc (commit at loop + no rival), c67e6085 (reset at 10+ zero candidates): 3-entry cluster with adjacent count triggers, different situational conditions.",
+    "No direct entry-vs-entry interference observed. Problem remains non-compliance, not conflicting instructions."
+  ],
+  "strategy_memory": {
+    "questions": [
+      "Is brevity + absoluteness the key to compliance? 056f0a9e's one-sentence override rule was followed; c67e6085's multi-step procedure with thresholds was not. Can other critical rules be distilled to single imperatives?",
+      "Would consolidating search-health entries (f9a44264, c67e6085, 0126ca3e) into one sequenced entry improve compliance?",
+      "What task families exist beyond entity-ID and riddle-type? ~21 tasks seen of 100.",
+      "Would placing 3 critical one-line rules at the TOP of the playbook (before sections) increase salience?"
+    ],
+    "notes": [
+      "Tasks studied in depth: 1042, 221, 1243, 930, 126, 353, 1139, 986. ~21 tasks seen total.",
+      "Iter 6 key insight: 056f0a9e's override rule is the first compliance success for a HARD RULE. It's a single absolute sentence, not a multi-step procedure. This format difference may explain why c67e6085's thresholds fail.",
+      "Metric trend: 0.33\u21920.28\u21920.61\u21920.50\u21920.39\u21920.50. High batch variance, no directional trend. Iter 6 at 0.50.",
+      "Task 986 rollout 2 success was serendipitous. Both rollouts used same failing strategy; one happened to surface the right Wikipedia page.",
+      "056f0a9e now +1/-1: override rule validated, biographical/referent checklist portions untested on target scenarios since iter 3."
+    ]
+  },
+  "model_observations": {
+    "capability_gaps_observed": [
+      "Non-compliance with multi-step procedures during extended search: 3 iterations for c67e6085, 2+ for 7ca56b8b, 2+ for f9a44264",
+      "Single-domain fixation on ambiguous references: task 986 tested only StarCraft (3 names, 1 game) across 74 searches",
+      "Recurring result blindness: gold doc appeared 17 times in results, never investigated (task 986)",
+      "Assumption lock-in without pivot: confirmed across 6 tasks (1042, 221, 1243, 930, 126, 986) over 6 iterations",
+      "Candidate anchoring (task 353 rollout 2)",
+      "Part-vs-whole conflation (task 1139, 2 occurrences)",
+      "Western/familiar-context default (tasks 1243, 930)"
+    ],
+    "strategies_that_work": [
+      "Multi-clue decomposition (7ca56b8b): validated on tasks 1042, 221 when followed",
+      "Synonym expansion (f9a44264): validated on task 353 PP trace",
+      "Low-confidence submission over no submission (056f0a9e override): validated on task 986 \u2014 20% confidence answer was correct",
+      "Constraint scoring when candidates exist (056f0a9e): rollout 2, task 221"
+    ],
+    "entries_the_model_struggles_with": [
+      "c67e6085 [common_mistakes]: 3 iterations of MUST-threshold non-engagement. Format appears fundamentally non-salient.",
+      "66f87cbc [common_mistakes]: 0 engagement across 5 iterations (partly sampling-explained)",
+      "7ca56b8b KEY RULES block: decomposition violated on tasks 126 and 986"
+    ],
+    "interference_observed": [
+      "No direct entry interference. Problem is non-compliance, not conflicts."
+    ]
+  },
+  "agent_reasoning_patterns": {
+    "reliable_behaviors": [
+      "Submitting an answer when low on budget \u2014 056f0a9e override rule followed on task 986 rollout 2",
+      "Multi-clue decomposition on simpler tasks (tasks 1042, 221)",
+      "Synonym expansion when applied (task 353 PP trace)"
+    ],
+    "common_mistakes": [
+      "Ignores multi-step procedures during extended search (c67e6085 reset, 7ca56b8b decomposition, f9a44264 rut detection)",
+      "Locks into first interpretation of ambiguous clues for 50-74+ searches (tasks 126, 986)",
+      "Ignores recurring result documents that don't match current hypothesis (task 986: 17 appearances)",
+      "Repeats near-identical searches 15-74 times without strategic pivot",
+      "Defaults to single domain interpretation without enumerating alternatives (task 986: only StarCraft)",
+      "Conflates container concept with sub-component (task 1139, 2 occurrences)",
+      "Defaults to Western/familiar cultural contexts (tasks 1243, 930)"
+    ],
+    "entry_styles_that_work": {
+      "single_sentence_absolute_imperatives": "056f0a9e 'NEVER exhaust budget without committing' \u2014 first HARD RULE reliably followed. Brevity + absoluteness may be key.",
+      "TRIGGER_WHY_PROCEDURE_numbered_steps": "7ca56b8b followed on 2 simpler tasks. Compliance drops on complex multi-clue tasks.",
+      "specific_examples_in_text": "f9a44264 synonym examples validated on task 353. Concrete examples more salient than abstract rules."
+    },
+    "scaffolding_effectiveness": {
+      "single_absolute_imperatives": "056f0a9e override rule: first HARD RULE reliably followed. Most effective format discovered so far.",
+      "ordered_procedure_steps": "Followed on simpler tasks. Compliance drops on complex tasks with extended search.",
+      "HARD_RULES_with_count_thresholds": "c67e6085: 3 iterations non-engagement. Format ineffective for loop interruption.",
+      "concrete_examples": "f9a44264 synonym examples validated. Effective when noticed.",
+      "loop_interruption_triggers": "Count-based and same-results triggers consistently fail during extended search. Fundamental compliance gap."
+    }
+  },
+  "optimization_velocity": {
+    "stage": "exploration",
+    "stage_rationale": "6 iterations, 8 entries, all in untested/new bucket. ~21 tasks seen of 100. No entry graduated to developing or battle-tested. Key iter-6 discovery: short absolute imperatives (056f0a9e override) are more effective than multi-step threshold procedures (c67e6085). Failures remain a mix of easy mistakes (not enumerating alternatives) and hard ones (attention/compliance limits during extended search). Metric 0.33\u21920.28\u21920.61\u21920.50\u21920.39\u21920.50 shows batch variance, no trend. Still discovering new task types.",
+    "iterations_at_current_stage": 6,
+    "recent_mutation_success_rate": "3/8 entries have any positive signal (7ca56b8b +2, f9a44264 +1, 056f0a9e +1). 5/8 have 0 engagement/signal. Iter-6 addition (0126ca3e) untested.",
+    "recommendation": "Emerging evidence that format matters as much as content. Short absolute imperatives (056f0a9e style) work; multi-step threshold procedures (c67e6085 style) don't. Future mutations should consider: (1) distilling key rules into brief imperatives, (2) testing whether 0126ca3e's pre-search enumeration works, (3) reformatting c67e6085 as shorter imperative before considering removal, (4) continued task sampling for coverage breadth.",
+    "recurring_failure_patterns": [
+      "Assumption lock-in without pivot: 6 tasks, 6 iterations. Most entrenched pattern.",
+      "Non-compliance with multi-step threshold procedures: 3 iterations for c67e6085, 2+ for 7ca56b8b",
+      "Part-vs-whole conflation: 2 occurrences, task 1139 (iters 1, 5)"
+    ],
+    "single_occurrence_failures": [
+      "Recurring result blindness: gold doc appeared 17 times unnoticed (task 986). Addressed by 0126ca3e RECURRING RESULT SIGNAL.",
+      "Single-domain fixation on indirect category reference (task 986: only StarCraft for 'video game races'). Addressed by 0126ca3e.",
+      "Candidate anchoring despite finding correct doc (task 353 rollout 2). Addressed by 009bd398."
+    ]
+  }
+}

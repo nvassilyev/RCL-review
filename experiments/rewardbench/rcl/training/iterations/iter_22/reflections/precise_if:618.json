@@ -1,0 +1,554 @@
+{
+  "task_id": "precise_if:618",
+  "pass_pct": 0.3333333333333333,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "c8698dee",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "a3832d7e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task precise_if:618\nPass percentage: 33.3%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts produced byte-identical output (same reasoning, scores, best_response_ids=[2]), confirming a systematic, non-stochastic failure. The task is a Precise IF prompt where a word-repetition constraint ('no word repeated more than 5 times') was the decisive differentiator. Only Candidate [1] is CORRECT, yet the agent scored it 8.2\u2014below Candidates [2] (8.6) and [3] (8.3), both INCORRECT.\n\nThe agent extracted and acknowledged the word-repetition constraint in its reasoning but then wrote: 'the no word repeated more than 5 times constraint is likely violated by all candidates due to frequent repetition of the key term, so it doesn't meaningfully differentiate among them.' This rationalization eliminated the constraint from the ranking decision without any measurement. The agent then defaulted to subjective presentation quality ('most directly ties its points to the prompt') to rank candidates\u2014ranking three non-compliant candidates above the compliant one.\n\n## Why Entry c8698dee Failed\n\nEntry c8698dee already contains three rules that should have prevented this failure:\n- **COUNTING RULE**: 'Pass/Fail is BLOCKED until reasoning contains an explicit COUNTING ARTIFACT' and 'Summary claims are BANNED as counting substitutes.' The agent's statement is exactly the banned summary claim.\n- **NO-DISMISS RULE**: 'Once extracted, a constraint CANNOT be dismissed as non-differentiating without a per-candidate measurement artifact proving equal compliance.' No measurement artifact was produced.\n- **ALL-FAIL TIEBREAK**: Even if all candidates violate, the procedure requires 'per-candidate table (candidate | measured | target | distance).' The agent skipped this entirely.\n\nThe entry is marked harmful not because its rules are wrong, but because its formulation failed to trigger compliance despite directly addressing this failure mode. Two specific structural weaknesses explain the bypass:\n\n**1. The COUNTING RULE's trigger categories don't cover frequency constraints.** Current categories: (a) numerical constraints ('at least N,' 'exactly N'), (b) universal-quantifier formatting ('every sentence,' 'each paragraph'). A word-frequency constraint ('no word more than 5 times') doesn't pattern-match to either category. The agent likely categorized it as a 'stylistic directive' rather than a counting-triggerable constraint. Adding explicit category (c) for frequency/repetition constraints on words, phrases, characters, or patterns\u2014with a concrete procedure (tokenize, build frequency table for top-10 words, compare to threshold)\u2014closes this gap.\n\n**2. The INDEPENDENT SELF-AUDIT checks presence, not measurement completeness.** The audit currently says: 'confirm every explicit constraint appears in your checklist.' The constraint DID appear in the checklist, so the audit passed trivially. But no measurement artifact existed for it. The audit must verify not just that constraints appear in the checklist, but that each has a per-candidate compliance artifact (Pass/Partial/Fail with supporting measurement data). A constraint acknowledged in reasoning but lacking measurement for any candidate should be a finalization blocker.\n\n**3. The specific rationalization 'all candidates probably fail equally' is the highest-risk bypass pattern and is not explicitly named.** This assumption eliminates an entire constraint dimension with zero evidence. In this task, the assumption was factually wrong\u2014Candidate [1] passed while others failed. This pattern must be flagged as a prohibited bypass that always requires per-candidate measurement proof before proceeding.\n\n## Entry 93b0e8f9 Assessment\n\nCredit_attribution argued this entry is harmful because its POSITIVE CONSISTENCY CHECK validated against the agent's stated criteria, which excluded the dismissed constraint\u2014creating a false validation pass. This is a real structural observation, but the entry's checks work as designed for their intended purpose (catching inconsistencies between stated criteria and top-ranked candidate). The upstream failure was in c8698dee's domain: the constraint should never have been dismissable without measurement. Strengthening c8698dee's self-audit to verify measurement completeness addresses this more directly than patching 93b0e8f9's consistency checks. A future update to 93b0e8f9 could add a cross-reference to the constraint checklist, but that is a secondary concern.\n\n## Recommended Mutation\n\nUpdate entry c8698dee with three targeted changes:\n1. Add category (c) to the COUNTING RULE trigger list: 'frequency/repetition constraints on words, phrases, characters, or patterns.' Include a concrete procedure: for each candidate, identify the 10 highest-frequency tokens, count each explicitly, produce artifact [Candidate | word | count | exceeds limit?], determine Pass/Fail.\n2. Strengthen the INDEPENDENT SELF-AUDIT to verify every extracted constraint has a per-candidate compliance artifact (measurement data), not just checklist presence. A constraint with no measurement artifact is a finalization blocker.\n3. Add an explicit named prohibition: the rationalization 'all candidates probably fail equally' is the highest-risk counting bypass. It always requires per-candidate measurement proof. If measurements confirm equal failure, proceed to ALL-FAIL TIEBREAK. If any candidate passes, apply HARD GATE.\n\nThese three changes address a single coherent failure mode in one existing entry. Other suggested additions (differentiator hierarchy for same-answer scenarios, separate Constraint Coverage Audit entry, 93b0e8f9 patch) are either lower priority or will be naturally covered by the improved c8698dee enforcement.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent bypassed c8698dee's COUNTING RULE, NO-DISMISS RULE, and ALL-FAIL TIEBREAK by rationalizing that all candidates 'likely' fail the word-frequency constraint equally, without performing any measurement. Two structural weaknesses in c8698dee enabled this: (1) the COUNTING RULE's trigger categories don't include frequency/repetition constraints, and (2) the SELF-AUDIT checks constraint presence in the checklist, not whether measurement artifacts exist. All three reflections converge on this diagnosis.\",\n  \"important_disagreements\": [\n    \"Credit_attribution tagged 93b0e8f9 as harmful (its consistency checks created a false validation pass by checking stated criteria rather than the full constraint list); anchor and principle_extraction tagged it neutral. Resolved in favor of neutral: the entry's checks work as designed for their purpose; the root failure was upstream in c8698dee's domain. Strengthening c8698dee's self-audit is a more direct and effective fix than patching 93b0e8f9's consistency checks.\",\n    \"Credit_attribution recommended four separate mutations (expand c8698dee, add Constraint Coverage Audit, patch 93b0e8f9, add Differentiator Hierarchy); principle_extraction recommended a focused update to c8698dee. Resolved in favor of a single c8698dee update that incorporates the measurement completeness check (making a separate Constraint Coverage Audit entry redundant) and the frequency constraint trigger (making the category expansion concrete). Other mutations are deferred as lower priority.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry c8698dee already contains the right rules (NO-DISMISS, COUNTING RULE, ALL-FAIL TIEBREAK) but has specific structural gaps that prevented compliance. Updating the entry to close these gaps\u2014adding a frequency constraint trigger category, strengthening the self-audit to check measurement artifact existence, and naming the 'all probably fail equally' bypass\u2014directly addresses the root cause without introducing new entries.\",\n  \"conservatism_rationale\": \"All three reflections converge on c8698dee as the locus of failure. The entry already covers the correct principles but has concrete trigger and audit gaps. Updating one entry is the minimal intervention that addresses the demonstrated failure mode. Adding a separate Constraint Coverage Audit entry would duplicate functionality that belongs in c8698dee's self-audit. Patching 93b0e8f9 addresses a secondary symptom, not the root cause. The differentiator hierarchy principle, while reasonable, is supported by only this single trace and is partially covered by the existing HARD GATE logic.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"a3832d7e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 33.3%, rollout_2: 33.3%.\n\n## rollout_1 \u2014 pass_pct: 33.3%\n\n## Prompt\nThose who believe in the theory of ________ maintain that the government\u2019s role in regulating the economy should be focused on lowering taxes and creating incentives for a more productive and efficient use of resources.\n\nGroup of answer choices\n\nKeynesianism\n\nsupply-side economics\n\nfiscalism\n\nlaissez-faire capitalism\n\nThe response should not repeat any word more than 5 times.\n\n## Candidate Responses\n\n[1]\nThe correct answer is \"supply-side economics.\"\n\nSupply-side economics is a theory that emphasizes the importance of stimulating the production (supply) side of the economy, rather than focusing on demand. Proponents of this economic theory believe that:\n\n1. Lower tax rates create incentives for businesses and individuals to work, save, and invest more\n\n2. Reduced government regulation helps businesses operate more efficiently\n\n3. Economic growth is best achieved by making it easier and more profitable for suppliers to produce goods and services\n\n4. Tax cuts can potentially generate more government revenue by expanding economic activity (known as the Laffer Curve concept)\n\nThe other options are incorrect because:\n\n- Keynesianism emphasizes government spending and demand-side interventions\n- Fiscalism isn't a widely recognized economic theory\n- Laissez-faire capitalism advocates for minimal government intervention, going beyond just tax policy\n\nSupply-side economics gained prominence during the Reagan administration in the 1980s and remains influential in contemporary economic policy debates.\n\n[2]\nThe correct answer is: supply-side economics\n\nSupply-side economics is the theory that advocates for reducing tax rates and decreasing government regulation to stimulate economic growth. Its proponents believe that lower taxes, especially on businesses and high-income earners, will encourage increased production (supply) of goods and services. This economic theory gained prominence during the Reagan administration in the 1980s.\n\nKey principles of supply-side economics include:\n\n1. Lower tax rates increase incentives to work and invest\n2. Reduced government regulation promotes business growth\n3. Focus on increasing production rather than stimulating demand\n4. Belief that economic growth will generate more tax revenue despite lower rates\n\nThis differs from Keynesianism, which emphasizes government spending and demand-side policies. Laissez-faire capitalism, while similarly advocating minimal government intervention, has a broader scope beyond just tax and incentive policies. Fiscalism isn't a commonly used economic term in this context.\n\nThe theory aligns directly with the description in the question regarding government's role in lowering taxes and creating incentives for more productive resource use.\n\n[3]\nThe correct answer is \"supply-side economics.\"\n\nSupply-side economics is a theory that emphasizes the importance of reducing taxes and government regulations to stimulate economic growth. The key principles of this theory include:\n\n1. Lower tax rates encourage:\n- Increased business investment\n- Greater work effort\n- Higher productivity\n- More economic output\n\n2. According to supply-siders, reducing taxes will:\n- Generate more government revenue (Laffer Curve concept)\n- Lead to expanded business activity\n- Create more jobs\n- Improve overall economic performance\n\n3. The theory focuses on:\n- Production (supply) rather than consumption (demand)\n- Market incentives\n- Reducing government interference\n- Promoting business growth\n\nThis approach contrasts with Keynesianism, which advocates for active government intervention and demand-side management. While laissez-faire capitalism calls for minimal government involvement, and fiscalism relates to broader government financial policies, supply-side economics specifically emphasizes tax reduction and incentives as primary tools for economic growth.\n\nSupply-side economics gained prominence during the Reagan administration in the 1980s and continues to influence economic policy discussions today.\n\n[4]\nThe correct answer is \"supply-side economics.\"\n\nSupply-side economics is a macroeconomic theory that emphasizes the importance of reducing tax rates and decreasing government regulation to stimulate economic growth. According to this theory, lower taxes encourage businesses and individuals to produce more goods and services, leading to increased economic output and prosperity.\n\nKey principles of supply-side economics include:\n\n1. Tax reduction stimulates investment and work\n2. Fewer regulations promote business growth\n3. Focus on increasing production rather than demand\n4. Belief in the \"trickle-down\" effect\n\nWhile Keynesianism focuses on demand-side policies and government spending, and laissez-faire capitalism advocates for minimal government intervention, supply-side economics specifically emphasizes tax reduction and incentives to boost production and efficiency.\n\nThe theory gained prominence during the Reagan administration in the 1980s, when it became known as \"Reaganomics,\" though its influence continues in economic policy debates today.\n\n## Judge Reasoning\nPROMPT ANCHOR (verbatim): \"Those who believe in the theory of ________ maintain that the government\u2019s role in regulating the economy should be focused on lowering taxes and creating incentives for a more productive and efficient use of resources.\\n\\nGroup of answer choices\\n\\nKeynesianism\\n\\nsupply-side economics\\n\\nfiscalism\\n\\nlaissez-faire capitalism\\n\\nThe response should not repeat any word more than 5 times.\" Perception scan: candidate markers found [1]\u2192\"The correct answer is \\\"supply-side economics\\\".\" [2]\u2192\"The correct answer is: supply-side economics\" [3]\u2192\"The correct answer is \\\"supply-side economics\\\".\" [4]\u2192\"The correct answer is \\\"supply-side economics\\\".\" Last marker found: [4]. N = 4. All four responses directly select the correct option and give reasonable explanations; none include clear verified-false facts. The main quality difference is presentation/fit: [2] most directly ties its points to the prompt\u2019s \u201clower taxes/incentives\u201d framing and contrasts alternatives cleanly, while [4] adds more debatable/extra framing (e.g., \u201ctrickle-down\u201d) without improving alignment. Note: the \u201cno word repeated more than 5 times\u201d constraint is likely violated by all candidates due to frequent repetition of the key term, so it doesn\u2019t meaningfully differentiate among them.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"PROMPT ANCHOR (verbatim): \\\"Those who believe in the theory of ________ maintain that the government\u2019s role in regulating the economy should be focused on lowering taxes and creating incentives for a more productive and efficient use of resources.\\\\n\\\\nGroup of answer choices\\\\n\\\\nKeynesianism\\\\n\\\\nsupply-side economics\\\\n\\\\nfiscalism\\\\n\\\\nlaissez-faire capitalism\\\\n\\\\nThe response should not repeat any word more than 5 times.\\\" Perception scan: candidate markers found [1]\u2192\\\"The correct answer is \\\\\\\"supply-side economics\\\\\\\".\\\" [2]\u2192\\\"The correct answer is: supply-side economics\\\" [3]\u2192\\\"The correct answer is \\\\\\\"supply-side economics\\\\\\\".\\\" [4]\u2192\\\"The correct answer is \\\\\\\"supply-side economics\\\\\\\".\\\" Last marker found: [4]. N = 4. All four responses directly select the correct option and give reasonable explanations; none include clear verified-false facts. The main quality difference is presentation/fit: [2] most directly ties its points to the prompt\u2019s \u201clower taxes/incentives\u201d framing and contrasts alternatives cleanly, while [4] adds more debatable/extra framing (e.g., \u201ctrickle-down\u201d) without improving alignment. Note: the \u201cno word repeated more than 5 times\u201d constraint is likely violated by all candidates due to frequent repetition of the key term, so it doesn\u2019t meaningfully differentiate among them.\",\n  \"ratings\": [\n    8.2,\n    8.6,\n    8.3,\n    7.8\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 33.3%\n\n## Prompt\nThose who believe in the theory of ________ maintain that the government\u2019s role in regulating the economy should be focused on lowering taxes and creating incentives for a more productive and efficient use of resources.\n\nGroup of answer choices\n\nKeynesianism\n\nsupply-side economics\n\nfiscalism\n\nlaissez-faire capitalism\n\nThe response should not repeat any word more than 5 times.\n\n## Candidate Responses\n\n[1]\nThe correct answer is \"supply-side economics.\"\n\nSupply-side economics is a theory that emphasizes the importance of stimulating the production (supply) side of the economy, rather than focusing on demand. Proponents of this economic theory believe that:\n\n1. Lower tax rates create incentives for businesses and individuals to work, save, and invest more\n\n2. Reduced government regulation helps businesses operate more efficiently\n\n3. Economic growth is best achieved by making it easier and more profitable for suppliers to produce goods and services\n\n4. Tax cuts can potentially generate more government revenue by expanding economic activity (known as the Laffer Curve concept)\n\nThe other options are incorrect because:\n\n- Keynesianism emphasizes government spending and demand-side interventions\n- Fiscalism isn't a widely recognized economic theory\n- Laissez-faire capitalism advocates for minimal government intervention, going beyond just tax policy\n\nSupply-side economics gained prominence during the Reagan administration in the 1980s and remains influential in contemporary economic policy debates.\n\n[2]\nThe correct answer is: supply-side economics\n\nSupply-side economics is the theory that advocates for reducing tax rates and decreasing government regulation to stimulate economic growth. Its proponents believe that lower taxes, especially on businesses and high-income earners, will encourage increased production (supply) of goods and services. This economic theory gained prominence during the Reagan administration in the 1980s.\n\nKey principles of supply-side economics include:\n\n1. Lower tax rates increase incentives to work and invest\n2. Reduced government regulation promotes business growth\n3. Focus on increasing production rather than stimulating demand\n4. Belief that economic growth will generate more tax revenue despite lower rates\n\nThis differs from Keynesianism, which emphasizes government spending and demand-side policies. Laissez-faire capitalism, while similarly advocating minimal government intervention, has a broader scope beyond just tax and incentive policies. Fiscalism isn't a commonly used economic term in this context.\n\nThe theory aligns directly with the description in the question regarding government's role in lowering taxes and creating incentives for more productive resource use.\n\n[3]\nThe correct answer is \"supply-side economics.\"\n\nSupply-side economics is a theory that emphasizes the importance of reducing taxes and government regulations to stimulate economic growth. The key principles of this theory include:\n\n1. Lower tax rates encourage:\n- Increased business investment\n- Greater work effort\n- Higher productivity\n- More economic output\n\n2. According to supply-siders, reducing taxes will:\n- Generate more government revenue (Laffer Curve concept)\n- Lead to expanded business activity\n- Create more jobs\n- Improve overall economic performance\n\n3. The theory focuses on:\n- Production (supply) rather than consumption (demand)\n- Market incentives\n- Reducing government interference\n- Promoting business growth\n\nThis approach contrasts with Keynesianism, which advocates for active government intervention and demand-side management. While laissez-faire capitalism calls for minimal government involvement, and fiscalism relates to broader government financial policies, supply-side economics specifically emphasizes tax reduction and incentives as primary tools for economic growth.\n\nSupply-side economics gained prominence during the Reagan administration in the 1980s and continues to influence economic policy discussions today.\n\n[4]\nThe correct answer is \"supply-side economics.\"\n\nSupply-side economics is a macroeconomic theory that emphasizes the importance of reducing tax rates and decreasing government regulation to stimulate economic growth. According to this theory, lower taxes encourage businesses and individuals to produce more goods and services, leading to increased economic output and prosperity.\n\nKey principles of supply-side economics include:\n\n1. Tax reduction stimulates investment and work\n2. Fewer regulations promote business growth\n3. Focus on increasing production rather than demand\n4. Belief in the \"trickle-down\" effect\n\nWhile Keynesianism focuses on demand-side policies and government spending, and laissez-faire capitalism advocates for minimal government intervention, supply-side economics specifically emphasizes tax reduction and incentives to boost production and efficiency.\n\nThe theory gained prominence during the Reagan administration in the 1980s, when it became known as \"Reaganomics,\" though its influence continues in economic policy debates today.\n\n## Judge Reasoning\nPROMPT ANCHOR (verbatim): \"Those who believe in the theory of ________ maintain that the government\u2019s role in regulating the economy should be focused on lowering taxes and creating incentives for a more productive and efficient use of resources.\\n\\nGroup of answer choices\\n\\nKeynesianism\\n\\nsupply-side economics\\n\\nfiscalism\\n\\nlaissez-faire capitalism\\n\\nThe response should not repeat any word more than 5 times.\" Perception scan: candidate markers found [1]\u2192\"The correct answer is \\\"supply-side economics\\\".\" [2]\u2192\"The correct answer is: supply-side economics\" [3]\u2192\"The correct answer is \\\"supply-side economics\\\".\" [4]\u2192\"The correct answer is \\\"supply-side economics\\\".\" Last marker found: [4]. N = 4. All four responses directly select the correct option and give reasonable explanations; none include clear verified-false facts. The main quality difference is presentation/fit: [2] most directly ties its points to the prompt\u2019s \u201clower taxes/incentives\u201d framing and contrasts alternatives cleanly, while [4] adds more debatable/extra framing (e.g., \u201ctrickle-down\u201d) without improving alignment. Note: the \u201cno word repeated more than 5 times\u201d constraint is likely violated by all candidates due to frequent repetition of the key term, so it doesn\u2019t meaningfully differentiate among them.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"PROMPT ANCHOR (verbatim): \\\"Those who believe in the theory of ________ maintain that the government\u2019s role in regulating the economy should be focused on lowering taxes and creating incentives for a more productive and efficient use of resources.\\\\n\\\\nGroup of answer choices\\\\n\\\\nKeynesianism\\\\n\\\\nsupply-side economics\\\\n\\\\nfiscalism\\\\n\\\\nlaissez-faire capitalism\\\\n\\\\nThe response should not repeat any word more than 5 times.\\\" Perception scan: candidate markers found [1]\u2192\\\"The correct answer is \\\\\\\"supply-side economics\\\\\\\".\\\" [2]\u2192\\\"The correct answer is: supply-side economics\\\" [3]\u2192\\\"The correct answer is \\\\\\\"supply-side economics\\\\\\\".\\\" [4]\u2192\\\"The correct answer is \\\\\\\"supply-side economics\\\\\\\".\\\" Last marker found: [4]. N = 4. All four responses directly select the correct option and give reasonable explanations; none include clear verified-false facts. The main quality difference is presentation/fit: [2] most directly ties its points to the prompt\u2019s \u201clower taxes/incentives\u201d framing and contrasts alternatives cleanly, while [4] adds more debatable/extra framing (e.g., \u201ctrickle-down\u201d) without improving alignment. Note: the \u201cno word repeated more than 5 times\u201d constraint is likely violated by all candidates due to frequent repetition of the key term, so it doesn\u2019t meaningfully differentiate among them.\",\n  \"ratings\": [\n    8.2,\n    8.6,\n    8.3,\n    7.8\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 33.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=8.200\n  [2] INCORRECT score=8.600\n  [3] INCORRECT score=8.300\n  [4] INCORRECT score=7.800\n\n## rollout_2 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 33.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=8.200\n  [2] INCORRECT score=8.600\n  [3] INCORRECT score=8.300\n  [4] INCORRECT score=7.800",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts produced identical output (same reasoning, same scores, same best_response_ids), confirming this is a systematic failure, not execution variance. The core failure: the agent dismissed the word-repetition constraint ('The response should not repeat any word more than 5 times') without performing any actual counting. Its reasoning explicitly states: 'the no word repeated more than 5 times constraint is likely violated by all candidates due to frequent repetition of the key term, so it doesn't meaningfully differentiate among them.'\n\nThis violated three rules already in the playbook:\n1. **COUNTING RULE** (c8698dee): 'Pass/Fail is BLOCKED until reasoning contains an explicit COUNTING ARTIFACT' and 'Summary claims are BANNED as counting substitutes.' The agent's statement is exactly the banned summary claim.\n2. **NO-DISMISS RULE** (c8698dee): 'Once extracted, a constraint CANNOT be dismissed as non-differentiating without a per-candidate measurement artifact proving equal compliance.' No measurement artifact was produced.\n3. **ALL-FAIL TIEBREAK** (c8698dee): Even if all candidates violate, the rule requires 'per-candidate table (candidate | measured | target | distance)' and 'Proximity wins.' The agent skipped this entirely.\n\nThe evaluation feedback confirms only Candidate [1] is CORRECT (presumably it better satisfies the word-frequency constraint), but the agent ranked it below Candidates [2] and [3] based on content presentation quality\u2014a soft, subjective differentiator that should have been subordinate to the mechanically verifiable constraint.\n\n## Why the Existing Playbook Failed\n\nEntry [c8698dee] is marked harmful because despite containing the right rules, its current formulation failed to trigger compliance. The likely reason: the COUNTING RULE's examples and language focus on 'numerical constraints (at least N, exactly N)' and 'universal-quantifier formatting (every sentence, each paragraph).' **Word/phrase frequency constraints** ('no word more than X times') don't pattern-match to either category in the agent's interpretation. The agent likely categorized this constraint as a 'stylistic directive' rather than a 'numerical constraint requiring counting.'\n\nAdditionally, the COUNTING RULE procedure doesn't specify HOW to count word frequencies\u2014there's no explicit step for tokenization. For list-length or sentence-count constraints, counting is straightforward. For word frequency, the agent needs to know: split response into tokens, build a frequency table (at least for high-frequency candidates like 'the,' 'and,' 'economics,' 'government,' 'tax,' etc.), compare max frequency to threshold.\n\n## Missing Generalizable Knowledge\n\n### 1. WORD/PHRASE FREQUENCY CONSTRAINT PROCEDURE\nTrigger: Any constraint containing patterns like 'no word/phrase more than N times,' 'each word at most N occurrences,' 'don't repeat X more than Y times.'\nProcedure:\n(a) For each candidate, identify the 5-10 highest-frequency words (function words like 'the,' 'and,' 'of,' 'is,' plus domain-specific repeated terms).\n(b) Count each explicitly\u2014produce artifact: [Candidate | word | count | exceeds limit?]\n(c) For each candidate, determine Pass/Fail on the constraint.\n(d) Apply HARD GATE: no FAILing candidate outscores a PASSing one.\n(e) If ALL-FAIL: use the ALL-FAIL TIEBREAK with 'distance' = number of words exceeding the limit, or the maximum excess count.\n\nThis is absent from the playbook and is the primary missing procedure.\n\n### 2. CONSTRAINT CATEGORY EXPANSION in COUNTING RULE\nThe existing COUNTING RULE needs explicit enumeration of constraint categories that require counting. Current categories: (a) numerical constraints, (b) universal-quantifier formatting. Missing category: (c) frequency/repetition constraints on words, phrases, characters, or patterns. Without this explicit category, the agent doesn't recognize word-frequency limits as COUNTING-RULE triggers.\n\n### 3. SOFT-VS-HARD DIFFERENTIATOR HIERARCHY\nWhen all candidates give the same correct answer (as here\u2014all chose 'supply-side economics'), the agent defaulted to subjective presentation quality ('most directly ties its points to the prompt') as the ranking driver. The playbook needs a stronger principle: when a mechanically verifiable constraint exists and candidates differ in compliance, soft quality judgments (presentation, explanation depth, phrasing) NEVER override constraint compliance. The HARD GATE covers this in theory, but the agent bypassed the gate by never measuring compliance.\n\n## Consistency Check Gap\n\nThe agent's own reasoning identified the constraint ('no word repeated more than 5 times') but then explicitly declined to evaluate it. A self-consistency check should catch this: 'If your reasoning acknowledges a constraint exists but does not produce a compliance measurement for it, this is a finalization blocker.' This check is absent from entry [93b0e8f9]'s consistency checks, which focus on whether the top-rated candidate satisfies the agent's own stated criteria\u2014but here the agent explicitly set aside the constraint, so the criteria it stated were only about content quality.\n\n## Actionable Recommendations\n\n1. **Add a new COUNTING RULE category** to [c8698dee] explicitly covering word/phrase frequency constraints, with a concrete procedure (tokenize, count top-N words, produce artifact table).\n2. **Add a CONSTRAINT COVERAGE AUDIT** as a finalization blocker: after scoring, verify every extracted constraint has a corresponding per-candidate measurement artifact. Any constraint acknowledged but unmeasured blocks finalization.\n3. **Strengthen the ALL-FAIL TIEBREAK** to require degree-of-violation measurement (e.g., how many words exceed the limit, by how much) rather than allowing the agent to collapse all candidates to 'equally non-compliant.'\n4. **Add to HARD GATE enforcement**: 'When all candidates provide the same correct factual answer, constraint compliance becomes the PRIMARY differentiator. Subjective quality differences in explanation style are TIEBREAKERS ONLY among candidates with equal constraint compliance.'"
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The agent faced a word-frequency constraint ('no word more than 5 times') and dismissed it without measurement, because the COUNTING RULE's trigger categories don't explicitly include frequency/repetition constraints.",
+          "gap_type": "procedure",
+          "suggested_content": "WORD/PHRASE FREQUENCY CONSTRAINT PROCEDURE. Trigger pattern: any constraint containing 'no word/phrase more than N times,' 'each word at most N occurrences,' 'don't repeat X more than Y times,' or synonymous formulations. Steps: (1) For each candidate, identify the 10 highest-frequency tokens (include both function words like 'the,' 'and,' 'of' and domain-specific terms). (2) Count each explicitly. Produce a per-candidate artifact: [Candidate | word | count | exceeds limit? Y/N]. (3) Determine Pass/Fail per candidate: Pass = zero words exceeding the limit; Fail = any word exceeding. (4) Apply HARD GATE: no FAILing candidate outscores a PASSing one. (5) If ALL-FAIL: use ALL-FAIL TIEBREAK with 'distance' = number of distinct words exceeding the limit plus the total excess count. This procedure must also be added as category (c) in the COUNTING RULE's trigger list in entry c8698dee.",
+          "trigger": "During constraint extraction (step 1 of c8698dee), whenever a constraint references word, phrase, character, or pattern frequency/repetition limits."
+        },
+        {
+          "situation": "The agent acknowledged a constraint in its reasoning but produced no compliance measurement for it, then finalized scores. No existing check catches this gap between acknowledged and measured constraints.",
+          "gap_type": "verification_gate",
+          "suggested_content": "CONSTRAINT COVERAGE AUDIT (finalization blocker). After scoring and before final output: (1) List every constraint from the CONSTRAINT CHECKLIST. (2) For each, confirm a per-candidate compliance artifact exists (Pass/Partial/Fail with supporting measurement). (3) If any constraint is acknowledged in reasoning but has NO compliance artifact, this is a finalization blocker\u2014produce the missing artifact before proceeding. This catches the specific failure mode where the agent recognizes a constraint exists but rationalizes skipping its evaluation.",
+          "trigger": "After all scoring is complete, immediately before the final output guard (entry 61b87a5f)."
+        },
+        {
+          "situation": "All candidates gave the same correct factual answer. The agent defaulted to subjective presentation quality ('most directly ties its points to the prompt') as the primary ranking driver, bypassing mechanically verifiable constraint compliance.",
+          "gap_type": "principle",
+          "suggested_content": "DIFFERENTIATOR HIERARCHY WHEN FACTUAL ANSWERS MATCH: When all candidates provide the same correct factual answer, the ranking decision must be driven by the next most mechanically verifiable differentiator, in this order: (1) Compliance with explicit formatting/structural constraints (measurable). (2) Constraint proximity for partially-met constraints (measurable). (3) Factual accuracy of supporting explanation (verifiable). (4) Subjective presentation quality (breaks ties only among candidates with equal constraint compliance). Soft quality judgments like 'more directly ties its points to the prompt' may NEVER override mechanically measurable constraint differences.",
+          "trigger": "After final answer extraction (entry f26064e1) reveals all candidates converge on the same correct answer, before or during compliance matrix construction."
+        },
+        {
+          "situation": "The POSITIVE CONSISTENCY CHECK in 93b0e8f9 passed trivially because the agent had already dismissed the relevant constraint before forming its stated criteria. The check validates against stated criteria but not against the full constraint set.",
+          "gap_type": "verification_gate",
+          "suggested_content": "CRITERIA COMPLETENESS CROSS-CHECK: After the POSITIVE CONSISTENCY CHECK, cross-reference the agent's stated decisive criteria against the CONSTRAINT CHECKLIST. If any extracted constraint is absent from the stated criteria AND has no explicit per-candidate measurement showing it is non-differentiating, this is a finalization blocker. The agent must either add the constraint to its criteria and re-evaluate, or produce the measurement artifact proving equal compliance.",
+          "trigger": "During 93b0e8f9's consistency checks, after step (2) POSITIVE CONSISTENCY CHECK."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nBoth rollouts produced byte-identical output (same reasoning, same scores, same best_response_ids=[2]), confirming a systematic failure mode rather than execution variance. The correct answer was Candidate [1] (per evaluation), which the agent scored 8.2\u2014below Candidates [2] (8.6), [3] (8.3), and even [4] (7.8 is debatable). The task falls in the Precise IF subset, where instruction-following constraints are the decisive differentiator.\n\n### Agreement with Anchor\n\nI agree with the anchor's core diagnosis: the agent violated the COUNTING RULE, NO-DISMISS RULE, and ALL-FAIL TIEBREAK procedures from entry c8698dee by dismissing the word-frequency constraint without producing any measurement artifact. The anchor correctly identifies that c8698dee's trigger categories don't cover frequency/repetition constraints, creating a categorization gap that prevented the counting procedure from firing.\n\nI also agree that a Constraint Coverage Audit is the highest-priority missing entry\u2014it would have caught the specific failure mode where the agent acknowledges a constraint but skips measurement.\n\n### Refinements\n\n1. **Entry 93b0e8f9 should be tagged harmful, not neutral.** The anchor treats 93b0e8f9 as neutral, but its consistency checks created a false validation pass. The POSITIVE CONSISTENCY CHECK validated against the agent's stated criteria, which excluded the dismissed constraint\u2014this is a structural blind spot that let the error through. The fix isn't just adding a new entry; it's patching 93b0e8f9's consistency checks to cross-reference the full constraint list.\n\n2. **The anchor underweights the 'all candidates match factually' scenario.** When all candidates converge on the same correct answer, the agent needs an explicit protocol for what drives differentiation. Currently, it defaults to subjective presentation quality. The playbook needs a differentiator hierarchy principle that places constraint compliance above stylistic preferences.\n\n3. **No PP tags were generated**, so all credit attribution is inferred from behavioral alignment. The agent performed the perception scan (consistent with 4abe1be4) and produced valid JSON output (consistent with 61b87a5f), but the critical middle steps\u2014constraint measurement, compliance matrix, hard gate enforcement\u2014were skipped. This suggests the agent's engagement with the playbook was shallow: it followed structural/formatting entries but not the analytical procedures.\n\n### Key Playbook Mutations Needed\n\n1. **Expand c8698dee's COUNTING RULE trigger list** to include category (c): frequency/repetition constraints on words, phrases, characters, or patterns. Include a concrete procedure for word-frequency counting (tokenize, frequency table, top-N check).\n2. **Add a Constraint Coverage Audit** as a finalization blocker that verifies every extracted constraint has a corresponding per-candidate compliance artifact.\n3. **Patch 93b0e8f9's consistency checks** to cross-reference stated criteria against the constraint checklist.\n4. **Add a Differentiator Hierarchy principle** for scenarios where all candidates give the same factual answer."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "AGREE with anchor's root cause: both rollouts (identical output) show the agent acknowledged the word-repetition constraint ('no word repeated more than 5 times') but explicitly skipped measurement with the rationalization 'likely violated by all candidates\u2026so it doesn't meaningfully differentiate.' The evaluation shows only Candidate [1] is CORRECT, yet it was scored below three INCORRECT candidates.\n\nAGREE with anchor that c8698dee is harmful: it contains the NO-DISMISS RULE ('constraint CANNOT be dismissed as non-differentiating without per-candidate measurement artifact') and the COUNTING RULE ('Pass/Fail is BLOCKED until reasoning contains an explicit COUNTING ARTIFACT'), yet the agent violated both. The entry's formulation failed to trigger compliance despite directly addressing this failure mode.\n\nREFINE the anchor's claim that the root issue is word-frequency constraints not being recognized as a counting-constraint category. While that contributed, the deeper failure is more general: the agent produced a rationalization ('all probably fail equally') that functionally bypassed the NO-DISMISS and COUNTING rules entirely. The constraint WAS extracted and acknowledged\u2014what was missing was a finalization-stage check catching 'constraint mentioned but never measured.' The agent's self-audit step in c8698dee ('confirm every explicit constraint appears in your checklist') was satisfied because the constraint WAS in the checklist\u2014but no measurement artifact existed for it. The audit checks presence, not measurement completeness.\n\nAGREE with anchor that 93b0e8f9's consistency checks didn't help: they verify the top candidate satisfies the agent's own stated criteria, but the agent had already removed the repetition constraint from its criteria by rationalizing it away. The consistency check fires too late to catch criteria that were prematurely dropped.\n\nThe two transferable lessons: (1) A post-scoring gate must verify every extracted constraint has per-candidate measurement, not just checklist presence. (2) The specific rationalization pattern 'all candidates probably fail equally \u2192 skip measurement' must be explicitly flagged as the highest-risk bypass, because it eliminates entire constraint dimensions from ranking based on an unverified assumption\u2014which was factually wrong here.",
+      "principles": [
+        {
+          "statement": "After scoring, verify every extracted constraint has a per-candidate compliance artifact. A constraint acknowledged in reasoning but lacking measurement data for any candidate is a finalization blocker.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "Fires at finalization, after all scores are assigned but before output. Cross-reference the constraint checklist against measurement artifacts in reasoning.",
+          "verification_or_artifact": "Construct [Constraint | Candidate | Measurement artifact present? Y/N]. Any row with N blocks finalization\u2014return and produce the missing measurement.",
+          "evidence": "Agent extracted the word-repetition constraint and included it in reasoning but produced zero measurement artifacts for it. The existing SELF-AUDIT in c8698dee only checks constraint presence in the checklist, not whether a measurement artifact exists. This gap allowed the constraint to be acknowledged yet functionally ignored."
+        },
+        {
+          "statement": "The assumption 'all candidates probably fail constraint X equally' is the highest-risk skip: it eliminates a constraint dimension with zero evidence. It always requires per-candidate measurement proof before proceeding.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "Fires whenever reasoning contains language suggesting equal non-compliance across candidates ('all likely violate,' 'doesn't meaningfully differentiate,' 'all candidates fail this equally').",
+          "verification_or_artifact": "Produce per-candidate measurement for the assumed-equal constraint. If measurements confirm equal failure, proceed with ALL-FAIL TIEBREAK. If any candidate passes, apply HARD GATE. The assumption itself is never sufficient.",
+          "evidence": "Agent wrote 'likely violated by all candidates\u2026doesn't meaningfully differentiate' without measuring any candidate. The assumption was wrong\u2014Candidate [1] passed while others did not. The existing NO-DISMISS RULE prohibits this but doesn't name the specific rationalization pattern, so it wasn't triggered."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "c8698dee",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "a3832d7e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts produced byte-identical output (same reasoning, scores, best_response_ids=[2]), confirming a systematic, non-stochastic failure. The task is a Precise IF prompt where a word-repetition constraint ('no word repeated more than 5 times') was the decisive differentiator. Only Candidate [1] is CORRECT, yet the agent scored it 8.2\u2014below Candidates [2] (8.6) and [3] (8.3), both INCORRECT.\n\nThe agent extracted and acknowledged the word-repetition constraint in its reasoning but then wrote: 'the no word repeated more than 5 times constraint is likely violated by all candidates due to frequent repetition of the key term, so it doesn't meaningfully differentiate among them.' This rationalization eliminated the constraint from the ranking decision without any measurement. The agent then defaulted to subjective presentation quality ('most directly ties its points to the prompt') to rank candidates\u2014ranking three non-compliant candidates above the compliant one.\n\n## Why Entry c8698dee Failed\n\nEntry c8698dee already contains three rules that should have prevented this failure:\n- **COUNTING RULE**: 'Pass/Fail is BLOCKED until reasoning contains an explicit COUNTING ARTIFACT' and 'Summary claims are BANNED as counting substitutes.' The agent's statement is exactly the banned summary claim.\n- **NO-DISMISS RULE**: 'Once extracted, a constraint CANNOT be dismissed as non-differentiating without a per-candidate measurement artifact proving equal compliance.' No measurement artifact was produced.\n- **ALL-FAIL TIEBREAK**: Even if all candidates violate, the procedure requires 'per-candidate table (candidate | measured | target | distance).' The agent skipped this entirely.\n\nThe entry is marked harmful not because its rules are wrong, but because its formulation failed to trigger compliance despite directly addressing this failure mode. Two specific structural weaknesses explain the bypass:\n\n**1. The COUNTING RULE's trigger categories don't cover frequency constraints.** Current categories: (a) numerical constraints ('at least N,' 'exactly N'), (b) universal-quantifier formatting ('every sentence,' 'each paragraph'). A word-frequency constraint ('no word more than 5 times') doesn't pattern-match to either category. The agent likely categorized it as a 'stylistic directive' rather than a counting-triggerable constraint. Adding explicit category (c) for frequency/repetition constraints on words, phrases, characters, or patterns\u2014with a concrete procedure (tokenize, build frequency table for top-10 words, compare to threshold)\u2014closes this gap.\n\n**2. The INDEPENDENT SELF-AUDIT checks presence, not measurement completeness.** The audit currently says: 'confirm every explicit constraint appears in your checklist.' The constraint DID appear in the checklist, so the audit passed trivially. But no measurement artifact existed for it. The audit must verify not just that constraints appear in the checklist, but that each has a per-candidate compliance artifact (Pass/Partial/Fail with supporting measurement data). A constraint acknowledged in reasoning but lacking measurement for any candidate should be a finalization blocker.\n\n**3. The specific rationalization 'all candidates probably fail equally' is the highest-risk bypass pattern and is not explicitly named.** This assumption eliminates an entire constraint dimension with zero evidence. In this task, the assumption was factually wrong\u2014Candidate [1] passed while others failed. This pattern must be flagged as a prohibited bypass that always requires per-candidate measurement proof before proceeding.\n\n## Entry 93b0e8f9 Assessment\n\nCredit_attribution argued this entry is harmful because its POSITIVE CONSISTENCY CHECK validated against the agent's stated criteria, which excluded the dismissed constraint\u2014creating a false validation pass. This is a real structural observation, but the entry's checks work as designed for their intended purpose (catching inconsistencies between stated criteria and top-ranked candidate). The upstream failure was in c8698dee's domain: the constraint should never have been dismissable without measurement. Strengthening c8698dee's self-audit to verify measurement completeness addresses this more directly than patching 93b0e8f9's consistency checks. A future update to 93b0e8f9 could add a cross-reference to the constraint checklist, but that is a secondary concern.\n\n## Recommended Mutation\n\nUpdate entry c8698dee with three targeted changes:\n1. Add category (c) to the COUNTING RULE trigger list: 'frequency/repetition constraints on words, phrases, characters, or patterns.' Include a concrete procedure: for each candidate, identify the 10 highest-frequency tokens, count each explicitly, produce artifact [Candidate | word | count | exceeds limit?], determine Pass/Fail.\n2. Strengthen the INDEPENDENT SELF-AUDIT to verify every extracted constraint has a per-candidate compliance artifact (measurement data), not just checklist presence. A constraint with no measurement artifact is a finalization blocker.\n3. Add an explicit named prohibition: the rationalization 'all candidates probably fail equally' is the highest-risk counting bypass. It always requires per-candidate measurement proof. If measurements confirm equal failure, proceed to ALL-FAIL TIEBREAK. If any candidate passes, apply HARD GATE.\n\nThese three changes address a single coherent failure mode in one existing entry. Other suggested additions (differentiator hierarchy for same-answer scenarios, separate Constraint Coverage Audit entry, 93b0e8f9 patch) are either lower priority or will be naturally covered by the improved c8698dee enforcement.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent bypassed c8698dee's COUNTING RULE, NO-DISMISS RULE, and ALL-FAIL TIEBREAK by rationalizing that all candidates 'likely' fail the word-frequency constraint equally, without performing any measurement. Two structural weaknesses in c8698dee enabled this: (1) the COUNTING RULE's trigger categories don't include frequency/repetition constraints, and (2) the SELF-AUDIT checks constraint presence in the checklist, not whether measurement artifacts exist. All three reflections converge on this diagnosis.",
+      "important_disagreements": [
+        "Credit_attribution tagged 93b0e8f9 as harmful (its consistency checks created a false validation pass by checking stated criteria rather than the full constraint list); anchor and principle_extraction tagged it neutral. Resolved in favor of neutral: the entry's checks work as designed for their purpose; the root failure was upstream in c8698dee's domain. Strengthening c8698dee's self-audit is a more direct and effective fix than patching 93b0e8f9's consistency checks.",
+        "Credit_attribution recommended four separate mutations (expand c8698dee, add Constraint Coverage Audit, patch 93b0e8f9, add Differentiator Hierarchy); principle_extraction recommended a focused update to c8698dee. Resolved in favor of a single c8698dee update that incorporates the measurement completeness check (making a separate Constraint Coverage Audit entry redundant) and the frequency constraint trigger (making the category expansion concrete). Other mutations are deferred as lower priority."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry c8698dee already contains the right rules (NO-DISMISS, COUNTING RULE, ALL-FAIL TIEBREAK) but has specific structural gaps that prevented compliance. Updating the entry to close these gaps\u2014adding a frequency constraint trigger category, strengthening the self-audit to check measurement artifact existence, and naming the 'all probably fail equally' bypass\u2014directly addresses the root cause without introducing new entries.",
+      "conservatism_rationale": "All three reflections converge on c8698dee as the locus of failure. The entry already covers the correct principles but has concrete trigger and audit gaps. Updating one entry is the minimal intervention that addresses the demonstrated failure mode. Adding a separate Constraint Coverage Audit entry would duplicate functionality that belongs in c8698dee's self-audit. Patching 93b0e8f9 addresses a secondary symptom, not the root cause. The differentiator hierarchy principle, while reasonable, is supported by only this single trace and is partially covered by the existing HARD GATE logic.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"c8698dee\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"a3832d7e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts produced byte-identical output (same reasoning, scores, best_response_ids=[2]), confirming a systematic, non-stochastic failure. The task is a Precise IF prompt where a word-repetition constraint ('no word repeated more than 5 times') was the decisive differentiator. Only Candidate [1] is CORRECT, yet the agent scored it 8.2\u2014below Candidates [2] (8.6) and [3] (8.3), both INCORRECT.\\n\\nThe agent extracted and acknowledged the word-repetition constraint in its reasoning but then wrote: 'the no word repeated more than 5 times constraint is likely violated by all candidates due to frequent repetition of the key term, so it doesn't meaningfully differentiate among them.' This rationalization eliminated the constraint from the ranking decision without any measurement. The agent then defaulted to subjective presentation quality ('most directly ties its points to the prompt') to rank candidates\u2014ranking three non-compliant candidates above the compliant one.\\n\\n## Why Entry c8698dee Failed\\n\\nEntry c8698dee already contains three rules that should have prevented this failure:\\n- **COUNTING RULE**: 'Pass/Fail is BLOCKED until reasoning contains an explicit COUNTING ARTIFACT' and 'Summary claims are BANNED as counting substitutes.' The agent's statement is exactly the banned summary claim.\\n- **NO-DISMISS RULE**: 'Once extracted, a constraint CANNOT be dismissed as non-differentiating without a per-candidate measurement artifact proving equal compliance.' No measurement artifact was produced.\\n- **ALL-FAIL TIEBREAK**: Even if all candidates violate, the procedure requires 'per-candidate table (candidate | measured | target | distance).' The agent skipped this entirely.\\n\\nThe entry is marked harmful not because its rules are wrong, but because its formulation failed to trigger compliance despite directly addressing this failure mode. Two specific structural weaknesses explain the bypass:\\n\\n**1. The COUNTING RULE's trigger categories don't cover frequency constraints.** Current categories: (a) numerical constraints ('at least N,' 'exactly N'), (b) universal-quantifier formatting ('every sentence,' 'each paragraph'). A word-frequency constraint ('no word more than 5 times') doesn't pattern-match to either category. The agent likely categorized it as a 'stylistic directive' rather than a counting-triggerable constraint. Adding explicit category (c) for frequency/repetition constraints on words, phrases, characters, or patterns\u2014with a concrete procedure (tokenize, build frequency table for top-10 words, compare to threshold)\u2014closes this gap.\\n\\n**2. The INDEPENDENT SELF-AUDIT checks presence, not measurement completeness.** The audit currently says: 'confirm every explicit constraint appears in your checklist.' The constraint DID appear in the checklist, so the audit passed trivially. But no measurement artifact existed for it. The audit must verify not just that constraints appear in the checklist, but that each has a per-candidate compliance artifact (Pass/Partial/Fail with supporting measurement data). A constraint acknowledged in reasoning but lacking measurement for any candidate should be a finalization blocker.\\n\\n**3. The specific rationalization 'all candidates probably fail equally' is the highest-risk bypass pattern and is not explicitly named.** This assumption eliminates an entire constraint dimension with zero evidence. In this task, the assumption was factually wrong\u2014Candidate [1] passed while others failed. This pattern must be flagged as a prohibited bypass that always requires per-candidate measurement proof before proceeding.\\n\\n## Entry 93b0e8f9 Assessment\\n\\nCredit_attribution argued this entry is harmful because its POSITIVE CONSISTENCY CHECK validated against the agent's stated criteria, which excluded the dismissed constraint\u2014creating a false validation pass. This is a real structural observation, but the entry's checks work as designed for their intended purpose (catching inconsistencies between stated criteria and top-ranked candidate). The upstream failure was in c8698dee's domain: the constraint should never have been dismissable without measurement. Strengthening c8698dee's self-audit to verify measurement completeness addresses this more directly than patching 93b0e8f9's consistency checks. A future update to 93b0e8f9 could add a cross-reference to the constraint checklist, but that is a secondary concern.\\n\\n## Recommended Mutation\\n\\nUpdate entry c8698dee with three targeted changes:\\n1. Add category (c) to the COUNTING RULE trigger list: 'frequency/repetition constraints on words, phrases, characters, or patterns.' Include a concrete procedure: for each candidate, identify the 10 highest-frequency tokens, count each explicitly, produce artifact [Candidate | word | count | exceeds limit?], determine Pass/Fail.\\n2. Strengthen the INDEPENDENT SELF-AUDIT to verify every extracted constraint has a per-candidate compliance artifact (measurement data), not just checklist presence. A constraint with no measurement artifact is a finalization blocker.\\n3. Add an explicit named prohibition: the rationalization 'all candidates probably fail equally' is the highest-risk counting bypass. It always requires per-candidate measurement proof. If measurements confirm equal failure, proceed to ALL-FAIL TIEBREAK. If any candidate passes, apply HARD GATE.\\n\\nThese three changes address a single coherent failure mode in one existing entry. Other suggested additions (differentiator hierarchy for same-answer scenarios, separate Constraint Coverage Audit entry, 93b0e8f9 patch) are either lower priority or will be naturally covered by the improved c8698dee enforcement.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent bypassed c8698dee's COUNTING RULE, NO-DISMISS RULE, and ALL-FAIL TIEBREAK by rationalizing that all candidates 'likely' fail the word-frequency constraint equally, without performing any measurement. Two structural weaknesses in c8698dee enabled this: (1) the COUNTING RULE's trigger categories don't include frequency/repetition constraints, and (2) the SELF-AUDIT checks constraint presence in the checklist, not whether measurement artifacts exist. All three reflections converge on this diagnosis.\",\n    \"important_disagreements\": [\n      \"Credit_attribution tagged 93b0e8f9 as harmful (its consistency checks created a false validation pass by checking stated criteria rather than the full constraint list); anchor and principle_extraction tagged it neutral. Resolved in favor of neutral: the entry's checks work as designed for their purpose; the root failure was upstream in c8698dee's domain. Strengthening c8698dee's self-audit is a more direct and effective fix than patching 93b0e8f9's consistency checks.\",\n      \"Credit_attribution recommended four separate mutations (expand c8698dee, add Constraint Coverage Audit, patch 93b0e8f9, add Differentiator Hierarchy); principle_extraction recommended a focused update to c8698dee. Resolved in favor of a single c8698dee update that incorporates the measurement completeness check (making a separate Constraint Coverage Audit entry redundant) and the frequency constraint trigger (making the category expansion concrete). Other mutations are deferred as lower priority.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry c8698dee already contains the right rules (NO-DISMISS, COUNTING RULE, ALL-FAIL TIEBREAK) but has specific structural gaps that prevented compliance. Updating the entry to close these gaps\u2014adding a frequency constraint trigger category, strengthening the self-audit to check measurement artifact existence, and naming the 'all probably fail equally' bypass\u2014directly addresses the root cause without introducing new entries.\",\n    \"conservatism_rationale\": \"All three reflections converge on c8698dee as the locus of failure. The entry already covers the correct principles but has concrete trigger and audit gaps. Updating one entry is the minimal intervention that addresses the demonstrated failure mode. Adding a separate Constraint Coverage Audit entry would duplicate functionality that belongs in c8698dee's self-audit. Patching 93b0e8f9 addresses a secondary symptom, not the root cause. The differentiator hierarchy principle, while reasonable, is supported by only this single trace and is partially covered by the existing HARD GATE logic.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

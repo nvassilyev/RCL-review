@@ -1,0 +1,613 @@
+{
+  "task_id": "ref:50",
+  "pass_pct": 0.9642857142857143,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "a3832d7e",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task ref:50\nPass percentage: 96.4%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts are deterministic (identical outputs, identical 96.4% accuracy). The single error: the judge rated candidate [4] 'Cable-stayed bridge' at 10.0 alongside candidate [1] 'Suspension bridge,' treating both as correct. The correct answer is exclusively 'Suspension bridge.' A suspension bridge has main cables draped in a catenary between towers with vertical suspender cables connecting the main cable to the deck. A cable-stayed bridge has cables running directly from the tower to the deck \u2014 no main catenary cables, no separate vertical suspenders. The prompt's description ('main cables suspended between towers, with vertical suspender cables that support the bridge deck') unambiguously identifies a suspension bridge.\n\nCritically, this is a self-contradiction within the judge's own reasoning: for candidates [5]\u2013[8], the judge explicitly states 'the described structure is a Suspension bridge,' yet for [4] asserts 'The description matches a cable-stayed bridge.' These are mutually exclusive factual claims in the same evaluation pass, and the judge never noticed the conflict.\n\n## Why the Playbook Failed to Prevent This\n\n**Primary cause \u2014 [342f27b9] scope too narrow.** This entry requires independent reference derivation BEFORE evaluating candidates, but its trigger is limited to 'math, logic, or computation prompts.' This factual identification question has an equally deterministic correct answer but did not activate the entry. Had the judge been required to commit to 'Suspension bridge' with justification before evaluating, the [4] error would have been caught when comparing 'cable-stayed' to the pre-committed reference.\n\n**Secondary cause \u2014 [a3832d7e] produced a harmful false negative.** The agent actively applied PREMISE CHECKLIST and wrote 'No factual premises detected,' missing the structural/definitional descriptions in the prompt ('main cables suspended between towers, with vertical suspender cables'). The entry's example list (dates, categories, events, causal claims, attributions, classifications) does not clearly encompass structural or definitional characteristics embedded in identification questions. This false negative removed a downstream verification pathway \u2014 if these features had been extracted as premises, each candidate's answer would have been checked against them.\n\n**Tertiary cause \u2014 [295257e2] lacks a different-answer gate.** The SAME-ANSWER CALIBRATION GATE only fires when candidates share the same committed answer. When best_response_ids contained [1] ('Suspension bridge') and [4] ('Cable-stayed bridge') \u2014 two structurally different answers \u2014 no gate forced the judge to justify why both are valid. This is a pure coverage gap: all three reflections independently identify it.\n\n**Contributing factor \u2014 inconsistent procedural application.** Candidate [4] received a bare one-sentence evaluation with no constraint checklist, no premise checklist, and no compliance matrix, while candidates [1] and [5] received full structured treatment. The procedural shortcut for [4] allowed the factual error to pass unexamined. However, this is a single-source observation (credit_attribution only), so I note it without recommending a new entry.\n\n## Entry-Level Reasoning\n\n**[4abe1be4] HELPFUL** \u2014 The perception scan correctly identified all 15 candidates and structured the evaluation. Without it, additional candidates might have been missed.\n\n**[61b87a5f] HELPFUL** \u2014 Final output guard produced valid JSON in the correct schema. Output formatting is not the failure dimension.\n\n**[a3832d7e] HARMFUL** \u2014 Actively applied, produced 'No factual premises detected' for a prompt containing testable structural descriptions. The entry's example list is too narrow to catch this class of premises. The false negative removed verification that would have flagged the cable-stayed/suspension distinction.\n\n**[342f27b9] NEUTRAL** \u2014 Sound methodology (reference derivation + COMPONENT COMPARISON TABLE), but did not fire due to narrow scope. Its approach is exactly what was needed; the entry needs a broader trigger, not a redesign. All three reflections converge on this diagnosis.\n\n**[295257e2] NEUTRAL** \u2014 SAME-ANSWER CALIBRATION GATE handled same-answer groups correctly but has no coverage for different-answer ties in best_response_ids. The gap is clearly identified by all three reflections. A MULTI-CORRECT DIVERGENCE GATE clause would address this.\n\n**[93b0e8f9] NEUTRAL** \u2014 POSITIVE CONSISTENCY CHECK and NEGATIVE CONCERN SCAN are scoped to the top-rated candidate's alignment with stated criteria, not cross-candidate factual coherence. A cross-evaluation consistency scan would have caught the self-contradiction, but the existing check wasn't designed for this.\n\n## Recommended Mutations (in priority order)\n\n1. **UPDATE [342f27b9]** \u2014 Broaden the trigger from 'math, logic, or computation prompts' to 'any prompt with a deterministic correct answer \u2014 including factual identification, classification, definition, named entity selection, and MCQ-style questions.' The existing COMPONENT COMPARISON TABLE methodology extends naturally to factual feature matching (e.g., [Feature from prompt | Bridge Type A | Bridge Type B | Match?]). This is the single highest-leverage change: all three reflections agree, and it would have prevented the error by forcing a pre-committed reference answer.\n\n2. **UPDATE [295257e2]** \u2014 Add a MULTI-CORRECT DIVERGENCE GATE clause: 'When best_response_ids contains candidates with DIFFERENT committed answers, produce a feature-mapping artifact: [Answer A | Answer B | Key feature from prompt | A satisfies? | B satisfies? | Both valid?]. If any prompt feature distinguishes the answers, resolve before finalizing. Different-answer ties without explicit justification are a finalization blocker.' Both credit_attribution and principle_extraction independently identify this gap, providing strong convergence.\n\n## Impact\n\nThe error costs exactly 1 pair out of 14 correct-vs-incorrect pairs ([1] vs [4] scored as a tie instead of [1] > [4]), yielding 96.4% pairwise accuracy and prompt_accurate = False. Either recommended change would likely have prevented this with high confidence \u2014 the model already knows the correct answer (stated it 6 times) and merely failed to maintain consistency and verify its own conflicting assertion.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The judge made a self-contradictory factual error \u2014 correctly identifying 'Suspension bridge' in 6 candidate evaluations but accepting 'Cable-stayed bridge' for candidate [4] \u2014 because (1) no reference derivation step fired for this non-math factual question, and (2) no gate checks different-answer ties in best_response_ids. All three reflections converge on these two causal factors.\",\n  \"important_disagreements\": [\n    \"a3832d7e: Anchor tags NEUTRAL, credit_attribution tags HARMFUL. Resolved toward HARMFUL because credit_attribution provides direct evidence: the entry was actively applied and produced a false negative ('No factual premises detected') that removed a verification pathway. This is stronger than narrative-inferred neutrality \u2014 the entry's narrow example list caused a harmful omission.\",\n    \"342f27b9: Credit_attribution tags HELPFUL, anchor and principle_extraction tag NEUTRAL. Resolved toward NEUTRAL because the entry did not fire on this task (its scope excluded it). Its methodology is sound but was not applied \u2014 calling it 'helpful' overstates its contribution. The right action is updating its trigger scope.\",\n    \"93b0e8f9: Credit_attribution tags HARMFUL, others tag NEUTRAL. Resolved toward NEUTRAL because the entry's consistency checks were not designed for cross-candidate factual coherence, so it didn't actively mislead \u2014 it simply has a coverage gap. This is better addressed by broadening 342f27b9 (preventing the error upstream) than by expanding 93b0e8f9's already complex check.\",\n    \"Uniform procedural application check (credit_attribution only): Single-source observation without convergence from other heads. Noted as a contributing factor but not recommended for a new entry per conservatism principle.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Two existing entries (342f27b9 and 295257e2) already contain the correct methodology and structure \u2014 they just have scope gaps. Broadening 342f27b9's trigger and adding a different-answer gate clause to 295257e2 are minimal, high-confidence edits that directly address the root cause. No new entries are needed; the playbook's architecture is sound, just under-triggered.\",\n  \"conservatism_rationale\": \"All three reflections converge on the same two gaps (narrow reference-derivation scope, missing different-answer gate). Both are surgical updates to existing entries, not new concepts. The error is deterministic and reproducible, so the evidence is strong. However, I cap at 2 operations because the failure is a single factual mistake with a clear prevention path \u2014 adding more entries (self-verification clause, uniform procedural application, a3832d7e premise expansion) risks playbook bloat from a single observation. If a3832d7e's narrow scope proves harmful in future tasks, it can be updated then.\",\n  \"max_operations\": 2\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"a3832d7e\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 96.4%, rollout_2: 96.4%.\n\n## rollout_1 \u2014 pass_pct: 96.4%\n\n## Prompt\nWhich bridge type uses main cables suspended between towers, with vertical suspender cables that support the bridge deck?\n\n## Candidate Responses\n\n[1]\nSuspension bridge\n\n[2]\nArch bridge\n\n[3]\nBeam bridge\n\n[4]\nCable-stayed bridge\n\n[5]\nTruss bridge\n\n[6]\nCantilever bridge\n\n[7]\nMovable bridge\n\n[8]\nTied-arch bridge\n\n[9]\nRoad\n\n[10]\nHighway\n\n[11]\nTunnel\n\n[12]\nCivil engineering principles guide the design and construction of bridges to ensure safety, efficiency, and durability.\n\n[13]\nFamous bridges often become symbols of their locations and represent significant engineering achievements.\n\n[14]\nCertainly, I would be happy to help you with that.\n\n[15]\nI'm not sure I understand, can you rephrase your question?\n\n## Judge Reasoning\n[1] PREMISE CHECKLIST: No factual premises detected; CONSTRAINT CHECKLIST: (1) Identify the bridge type described by main cables suspended between towers with vertical suspender cables supporting the deck\u2014PASS; the candidate answer 'Suspension bridge' exactly matches the prompt, so rating 10.0.\n[2] The prompt asks for the bridge type with main cables between towers and vertical suspenders supporting the deck (a suspension bridge). The candidate answer 'Arch bridge' does not match that description, so it is incorrect.\n[3] The prompt describes a suspension bridge (main cables between towers with vertical suspenders supporting the deck), but the candidate answered \u201cBeam bridge,\u201d which does not match that structure.\n[4] The description matches a cable-stayed bridge, so the candidate\u2019s answer is correct and complete.\n[5] CONSTRAINT CHECKLIST: (1) Name the bridge type matching the description (main cables between towers with vertical suspenders supporting the deck). PREMISE CHECKLIST: No factual premises detected. Candidate thesis \u201cTruss bridge\u201d is incorrect; the described structure is a Suspension bridge.\n[6] The description (main cables suspended between towers with vertical suspender cables supporting the deck) matches a suspension bridge, not a cantilever bridge. The candidate response is therefore incorrect.\n[7] The candidate\u2019s answer (\u201cMovable bridge\u201d) does not match the described structure of a suspension bridge, which uses main cables between towers with vertical suspenders supporting the deck.\n[8] The prompt describes a suspension bridge (main cables between towers with vertical suspenders supporting the deck). The candidate\u2019s \u201cTied-arch bridge\u201d is a different design and does not match the described cable-and-suspender structure.\n\n## Judge Output JSON\n{\n  \"ratings\": [\n    10.0,\n    0.0,\n    0.0,\n    10.0,\n    1.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0\n  ],\n  \"best_response_ids\": [\n    \"1\",\n    \"4\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 96.4%\n\n## Prompt\nWhich bridge type uses main cables suspended between towers, with vertical suspender cables that support the bridge deck?\n\n## Candidate Responses\n\n[1]\nSuspension bridge\n\n[2]\nArch bridge\n\n[3]\nBeam bridge\n\n[4]\nCable-stayed bridge\n\n[5]\nTruss bridge\n\n[6]\nCantilever bridge\n\n[7]\nMovable bridge\n\n[8]\nTied-arch bridge\n\n[9]\nRoad\n\n[10]\nHighway\n\n[11]\nTunnel\n\n[12]\nCivil engineering principles guide the design and construction of bridges to ensure safety, efficiency, and durability.\n\n[13]\nFamous bridges often become symbols of their locations and represent significant engineering achievements.\n\n[14]\nCertainly, I would be happy to help you with that.\n\n[15]\nI'm not sure I understand, can you rephrase your question?\n\n## Judge Reasoning\n[1] PREMISE CHECKLIST: No factual premises detected; CONSTRAINT CHECKLIST: (1) Identify the bridge type described by main cables suspended between towers with vertical suspender cables supporting the deck\u2014PASS; the candidate answer 'Suspension bridge' exactly matches the prompt, so rating 10.0.\n[2] The prompt asks for the bridge type with main cables between towers and vertical suspenders supporting the deck (a suspension bridge). The candidate answer 'Arch bridge' does not match that description, so it is incorrect.\n[3] The prompt describes a suspension bridge (main cables between towers with vertical suspenders supporting the deck), but the candidate answered \u201cBeam bridge,\u201d which does not match that structure.\n[4] The description matches a cable-stayed bridge, so the candidate\u2019s answer is correct and complete.\n[5] CONSTRAINT CHECKLIST: (1) Name the bridge type matching the description (main cables between towers with vertical suspenders supporting the deck). PREMISE CHECKLIST: No factual premises detected. Candidate thesis \u201cTruss bridge\u201d is incorrect; the described structure is a Suspension bridge.\n[6] The description (main cables suspended between towers with vertical suspender cables supporting the deck) matches a suspension bridge, not a cantilever bridge. The candidate response is therefore incorrect.\n[7] The candidate\u2019s answer (\u201cMovable bridge\u201d) does not match the described structure of a suspension bridge, which uses main cables between towers with vertical suspenders supporting the deck.\n[8] The prompt describes a suspension bridge (main cables between towers with vertical suspenders supporting the deck). The candidate\u2019s \u201cTied-arch bridge\u201d is a different design and does not match the described cable-and-suspender structure.\n\n## Judge Output JSON\n{\n  \"ratings\": [\n    10.0,\n    0.0,\n    0.0,\n    10.0,\n    1.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0\n  ],\n  \"best_response_ids\": [\n    \"1\",\n    \"4\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Ties\nPairwise preference accuracy: 96.4%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.500\nCorrect candidate ids: 1\nTop-rated candidate ids: 1, 4\n\nCandidate scores:\n  [1] CORRECT score=10.000\n  [2] INCORRECT score=0.000\n  [3] INCORRECT score=0.000\n  [4] INCORRECT score=10.000\n  [5] INCORRECT score=1.000\n  [6] INCORRECT score=0.000\n  [7] INCORRECT score=0.000\n  [8] INCORRECT score=0.000\n  [9] INCORRECT score=0.000\n  [10] INCORRECT score=0.000\n  [11] INCORRECT score=0.000\n  [12] INCORRECT score=0.000\n  [13] INCORRECT score=0.000\n  [14] INCORRECT score=0.000\n  [15] INCORRECT score=0.000\n\n## rollout_2 Evaluation\n\nSubset: Ties\nPairwise preference accuracy: 96.4%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.500\nCorrect candidate ids: 1\nTop-rated candidate ids: 1, 4\n\nCandidate scores:\n  [1] CORRECT score=10.000\n  [2] INCORRECT score=0.000\n  [3] INCORRECT score=0.000\n  [4] INCORRECT score=10.000\n  [5] INCORRECT score=1.000\n  [6] INCORRECT score=0.000\n  [7] INCORRECT score=0.000\n  [8] INCORRECT score=0.000\n  [9] INCORRECT score=0.000\n  [10] INCORRECT score=0.000\n  [11] INCORRECT score=0.000\n  [12] INCORRECT score=0.000\n  [13] INCORRECT score=0.000\n  [14] INCORRECT score=0.000\n  [15] INCORRECT score=0.000",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts produce identical outputs (deterministic failure). The single error is a factual mistake by the judge: it rated candidate [4] 'Cable-stayed bridge' at 10.0 (equal to the correct answer [1] 'Suspension bridge'), accepting it as a valid answer. The judge's reasoning for [4] states: 'The description matches a cable-stayed bridge, so the candidate's answer is correct and complete.' This is factually wrong.\n\nA **suspension bridge** has main cables draped in a catenary between towers, with vertical suspender cables (hangers) connecting the main cable down to the deck. A **cable-stayed bridge** has cables running directly from the tower to the deck \u2014 there are no 'main cables suspended between towers' and no separate 'vertical suspender cables.' The prompt's description unambiguously identifies a suspension bridge.\n\nThis is NOT a playbook execution slip or environment noise \u2014 it's a factual domain error by the model, which the playbook should have procedures to catch.\n\n## Why the Playbook Failed to Catch This\n\n1. **[342f27b9] Reference derivation is scoped too narrowly.** It only triggers for 'math, logic, or computation prompts.' This was a factual knowledge question with a single correct answer, but the entry didn't fire. If the agent had been required to derive and state a reference answer ('The answer is: Suspension bridge, because...') BEFORE evaluating candidates, the comparison step would have forced it to justify why 'Cable-stayed bridge' also matches \u2014 likely catching the error.\n\n2. **[005004a4] Factuality verification is outward-facing only.** The VERIFICATION GATE (ISOLATE\u2192COUNTER\u2192CLASSIFY) is designed for checking claims made BY candidates, not for verifying the JUDGE'S OWN factual determinations about what constitutes a correct answer. The agent never applied the verification gate to its own assertion that cable-stayed bridges have 'main cables suspended between towers.'\n\n3. **[295257e2] Tie handling lacks a multi-correct verification step.** When the agent decides to mark multiple candidates as correct (best_response_ids: [1, 4]) with different answers, there's no gate requiring it to explicitly justify why both are valid. The SAME-ANSWER CALIBRATION GATE only fires when candidates give the *same* answer. A complementary DIFFERENT-ANSWER CORRECTNESS GATE is needed.\n\n4. **[a3832d7e] Premise verification didn't extract the implicit premises.** The prompt's description ('main cables suspended between towers, with vertical suspender cables that support the bridge deck') contains structural engineering premises. The agent wrote 'No factual premises detected' and moved on. These structural features ARE testable premises \u2014 they could have been verified against each candidate's claimed bridge type.\n\n## Missing Procedure: REFERENCE ANSWER DERIVATION FOR FACTUAL QUESTIONS\n\n**Trigger**: Any prompt that asks for a specific factual answer (identification, classification, definition, named entity) \u2014 not just math/logic.\n\n**Procedure**:\n1. Before evaluating any candidate, independently state the reference answer with a brief justification of distinguishing features.\n2. When evaluating a candidate as 'correct,' explicitly map its answer to the reference. If it differs from the reference, apply ISOLATE\u2192COUNTER\u2192CLASSIFY to determine whether it's a genuine alternative or factually distinct.\n3. MULTI-CORRECT VERIFICATION (fires when best_response_ids contains candidates with DIFFERENT answers): For each unique answer in the best set, state the specific mechanism by which it satisfies the prompt's description. If distinguishing features exist between two proposed answers, name them and verify the prompt is genuinely ambiguous across them.\n\n**Verification**: The reference derivation artifact must exist BEFORE any candidate scoring begins.\n\n## Actionable Recommendations\n\n1. **Broaden [342f27b9]** from 'math, logic, or computation prompts' to ALL prompts with a deterministic correct answer (factual knowledge, classification, identification, MCQ-style). The COMPONENT COMPARISON TABLE concept should extend to factual feature matching: [Feature from prompt | Bridge type A | Bridge type B | Match?].\n\n2. **Add a MULTI-CORRECT DIVERGENCE GATE** to [295257e2] or as a new entry: When best_response_ids contains candidates with different committed answers, produce an explicit justification artifact before finalizing. Format: [Answer A | Answer B | Feature comparison | Both valid? Y/N with evidence]. This directly prevents the error pattern seen here.\n\n3. **Add a SELF-VERIFICATION clause to [005004a4]**: The judge must apply ISOLATE\u2192COUNTER\u2192CLASSIFY not only to candidate claims but to its own correctness determinations. When the judge asserts 'X is correct,' that assertion is itself a factual claim subject to verification.\n\n4. **Refine [a3832d7e]** to recognize descriptive/structural characteristics in prompts as implicit premises that can be verified against candidates' answers (e.g., 'main cables between towers' is a premise that can be checked against known bridge-type definitions).\n\n## Impact Assessment\n\nThe error costs exactly 1 pair out of 14 correct-vs-incorrect pairs: [1] vs [4] is scored as a tie instead of [1] > [4], yielding 13.5/14 = 96.4% pairwise accuracy and prompt_accurate = False. A reference derivation step would likely have caught this with high confidence \u2014 the distinguishing features of suspension vs. cable-stayed bridges are well within the model's knowledge; the model simply didn't pause to compare them."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The agent faced a factual identification question with a single correct answer ('Which bridge type...?') but entry 342f27b9 only fires for math/logic/computation prompts. No procedure required independent reference derivation for factual knowledge questions.",
+          "gap_type": "procedure",
+          "suggested_content": "REFERENCE ANSWER DERIVATION FOR FACTUAL QUESTIONS: When the prompt asks for identification, classification, naming, or selection of a specific factual entity (bridge type, species, element, historical event, etc.), independently derive the reference answer with a brief justification of distinguishing features BEFORE evaluating any candidate. Produce artifact: [Reference answer | Key distinguishing features | Brief justification]. This artifact must exist before any candidate scoring begins. When a candidate's answer differs from the reference, apply ISOLATE\u2192COUNTER\u2192CLASSIFY to determine whether it is a genuine alternative or factually distinct. The existing COMPONENT COMPARISON TABLE applies: [Feature from prompt | Reference answer | Candidate answer | Match Y/N].",
+          "trigger": "Any prompt that asks for a specific factual answer \u2014 identification, classification, definition, named entity selection, MCQ-style \u2014 not just math/logic/computation."
+        },
+        {
+          "situation": "The agent selected best_response_ids containing candidates [1] and [4] with different committed answers ('Suspension bridge' vs. 'Cable-stayed bridge'). The SAME-ANSWER CALIBRATION GATE in 295257e2 only fires for same-answer groups. No gate checks whether different answers in the best set are all genuinely correct.",
+          "gap_type": "verification_gate",
+          "suggested_content": "MULTI-CORRECT DIVERGENCE GATE: When best_response_ids contains 2+ candidates with DIFFERENT committed answers, produce a DIVERGENCE ARTIFACT before finalizing: [Answer A | Answer B | Feature from prompt | A satisfies? | B satisfies? | Both valid?]. For each unique answer in the best set, state the specific mechanism by which it satisfies every prompt criterion. If any feature distinguishes the answers (e.g., 'main cables between towers' applies to suspension bridges but not cable-stayed bridges), record it and resolve whether the prompt is genuinely ambiguous. If the prompt is unambiguous, retain only the correct answer(s). This artifact is a finalization blocker.",
+          "trigger": "When best_response_ids contains candidates with different committed final answers (after FINAL ANSWER EXTRACTION)."
+        },
+        {
+          "situation": "The agent asserted 'The description matches a cable-stayed bridge' as a factual determination without applying ISOLATE\u2192COUNTER\u2192CLASSIFY to its own claim. Entry 005004a4's VERIFICATION GATE is oriented toward verifying candidate claims, not the judge's own factual conclusions.",
+          "gap_type": "procedure",
+          "suggested_content": "SELF-VERIFICATION CLAUSE: When the judge asserts a candidate's factual answer is correct (or matches the prompt), that assertion is itself a factual claim subject to ISOLATE\u2192COUNTER\u2192CLASSIFY. Specifically: (1) ISOLATE the judge's claim ('cable-stayed bridge matches the description of main cables between towers with vertical suspenders'). (2) COUNTER: state whether this claim has any counter-evidence (e.g., 'cable-stayed bridges have cables running directly from tower to deck, not draped between towers'). (3) CLASSIFY: VERIFIED TRUE / VERIFIED FALSE / UNVERIFIABLE. This is especially critical when the judge rates a candidate as correct with a different answer than the reference or than what the judge stated as correct in other candidate evaluations.",
+          "trigger": "Whenever the judge marks a candidate's factual answer as 'correct' or 'matches,' especially when that determination conflicts with the judge's own stated framework in other candidate evaluations."
+        },
+        {
+          "situation": "The agent wrote 'No factual premises detected' for a prompt containing structural engineering descriptions ('main cables suspended between towers, with vertical suspender cables'). Entry a3832d7e's examples (dates, categories, events, causal claims, attributions, classifications) don't clearly signal that structural or definitional descriptions within questions are extractable premises.",
+          "gap_type": "checklist",
+          "suggested_content": "Extend a3832d7e's EXTRACT PREMISES step with: 'In addition to dates, categories, events, causal claims, attributions, and classifications, extract structural or definitional descriptions embedded in the question itself. A prompt asking \"Which X has features A, B, C?\" contains implicit premises: features A, B, and C are characteristics of the correct answer. These are testable against each candidate's claimed answer. Example: \"Which bridge type uses main cables between towers?\" \u2014 the premise is that the correct bridge type has main cables between towers. Verify each candidate's answer against these structural criteria.'",
+          "trigger": "When the prompt describes physical, structural, or definitional characteristics as part of a 'which X...' or 'what Y...' question."
+        },
+        {
+          "situation": "The agent applied structured evaluation (PREMISE CHECKLIST, CONSTRAINT CHECKLIST) to candidates [1] and [5] but gave candidate [4] only a bare one-sentence evaluation with no checklist artifacts, violating c8698dee's ARTIFACT GATE requirement that compliance be evaluated for EACH candidate.",
+          "gap_type": "verification_gate",
+          "suggested_content": "UNIFORM PROCEDURAL APPLICATION CHECK: After all candidate evaluations are complete and before finalizing, verify that every candidate evaluated as 'correct' or rated \u22657.0 received the same procedural artifacts (PREMISE CHECKLIST, CONSTRAINT CHECKLIST, compliance matrix) as the highest-rated candidate. A high-scoring candidate whose evaluation lacks mandatory artifacts has an UNTESTED score \u2014 reapply the skipped procedures before finalizing. This is a finalization blocker.",
+          "trigger": "After all candidate scoring, before JSON emission, whenever any candidate with a score \u22657.0 lacks the mandatory artifacts that were produced for other high-scoring candidates."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nBoth rollouts are deterministic (identical outputs, identical 96.4% accuracy). The single error is that candidate [4] 'Cable-stayed bridge' was rated 10.0 alongside candidate [1] 'Suspension bridge.' The correct answer is exclusively 'Suspension bridge' \u2014 cable-stayed bridges have cables running directly from towers to deck, not main catenary cables draped between towers with separate vertical hangers.\n\n## Where I Agree with the Anchor\n\nThe anchor correctly identifies the root cause as a factual domain error by the judge, not an environment or noise issue. It correctly identifies the structural engineering distinction (suspension vs. cable-stayed) and correctly diagnoses that multiple playbook entries have coverage gaps that allowed this error to pass unchecked. The anchor's recommendations for broadening 342f27b9, adding a multi-correct divergence gate, and adding self-verification to 005004a4 are all well-supported.\n\n## Where I Refine the Anchor\n\n1. **a3832d7e is HARMFUL, not NEUTRAL.** The anchor correctly identifies the missed premises but tags the entry as neutral. The agent actively applied this entry and concluded 'No factual premises detected,' which is a false negative that removed the downstream verification pathway. This is a direct causal contributor \u2014 the entry was used but gave the agent false confidence that no premises needed checking.\n\n2. **93b0e8f9 contributed to the failure.** The agent's own reasoning establishes 'suspension bridge' as correct in six separate candidate evaluations ([2], [3], [5], [6], [7], [8]), then reverses this for [4] without acknowledgment. The POSITIVE CONSISTENCY CHECK should theoretically catch this kind of self-contradiction, but it's scoped to checking 'decisive criteria' for top candidates, not cross-evaluation factual consistency.\n\n3. **f26064e1 was skipped entirely.** The anchor tags it as neutral, but the FINAL ANSWER EXTRACTION procedure explicitly requires a [Candidate ID | Final answer | Matches reference?] artifact that would have directly caught this error. Its non-application is a meaningful failure \u2014 the entry exists but was not used.\n\n4. **Inconsistent procedural application is a key secondary cause.** Candidate [4] received a bare one-sentence evaluation ('The description matches a cable-stayed bridge, so the candidate's answer is correct and complete') with NO constraint checklist, NO premise checklist, and NO compliance matrix. Candidates [1] and [5] received full procedural treatment. This procedural shortcut for [4] is what allowed the factual error to pass \u2014 if the same structured evaluation had been applied, the agent would have needed to justify WHY cable-stayed bridges have 'main cables between towers with vertical suspenders,' likely catching the error.\n\n## Where I Disagree with the Anchor\n\n1. **The anchor underweights procedural inconsistency.** The anchor frames this primarily as a factual knowledge error that the playbook should 'catch.' But the trace shows the agent ALREADY KNOWS the correct answer \u2014 it states 'the described structure is a Suspension bridge' in 6 evaluations. The failure is that the agent didn't maintain this factual framework consistently when evaluating [4], AND that no existing entry forces uniform procedural application across all high-scoring candidates. A 'uniform procedural application check' is at least as important as broadening 342f27b9.\n\n2. **342f27b9 is HELPFUL, not neutral.** Its methodology (reference derivation + COMPONENT COMPARISON TABLE) is exactly what's needed. The entry is sound but under-triggered. The anchor acknowledges the scope gap but still tags it neutral \u2014 it deserves a helpful tag because broadening its trigger is the single highest-impact change.\n\n## Priority for Playbook Mutations\n\n1. **Broaden 342f27b9** to fire on all factual identification/classification questions, not just math/logic/computation. This is the highest-leverage change.\n2. **Add MULTI-CORRECT DIVERGENCE GATE** as a finalization blocker when best_response_ids contains different answers.\n3. **Improve a3832d7e** to explicitly include structural/definitional descriptions within questions as extractable premises.\n4. **Add UNIFORM PROCEDURAL APPLICATION CHECK** ensuring high-scoring candidates receive the same procedural rigor as each other.\n5. **Add SELF-VERIFICATION clause** to 005004a4 so the judge verifies its own correctness determinations."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "AGREEMENT WITH ANCHOR: The root cause is correctly identified \u2014 the judge made a factual error, equating 'Cable-stayed bridge' with 'Suspension bridge' and rating both 10.0. This is deterministic (identical across both rollouts). The anchor's identification of entry 342f27b9's narrow scope and the missing different-answer multi-correct gate is sound.\n\nREFINEMENT: The anchor underweights the strongest available signal \u2014 the judge's OWN REASONING contains a blatant self-contradiction. For candidates [5]-[8], the judge explicitly states 'the described structure is a Suspension bridge,' yet for [4] it says 'The description matches a cable-stayed bridge.' The judge asserted two mutually exclusive factual claims within the same evaluation pass and never noticed. Entry 93b0e8f9's POSITIVE CONSISTENCY CHECK targets only the top-rated candidate's alignment with stated criteria; it does not scan for contradictory factual assertions across different candidate evaluations. A cross-candidate reasoning consistency scan would have caught this at near-zero cost \u2014 the contradiction is in the judge's own text.\n\nSECOND REFINEMENT: The anchor correctly proposes a MULTI-CORRECT DIVERGENCE GATE, but the most transferable framing is not domain-specific ('bridge type comparison') but structural: whenever best_response_ids contains candidates with semantically DIFFERENT committed answers, force an explicit comparison artifact before finalizing. Entry 295257e2 only gates on SAME-ANSWER groups, leaving different-answer ties completely ungated.\n\nTHIRD REFINEMENT: Entry 342f27b9 (reference derivation) is scoped to 'math, logic, or computation prompts.' This factual identification question has an equally deterministic correct answer but did not trigger the entry. Broadening the trigger would have forced the judge to commit to 'Suspension bridge' before evaluating, making the [4] error much harder to commit.\n\nIMPACT: The single error costs 1 of 14 correct-vs-incorrect pairs, yielding 96.4% pairwise accuracy and prompt_accurate=False. All three proposed lessons target the same failure point from different angles; any one of them would likely have prevented it.",
+      "principles": [
+        {
+          "statement": "After scoring all candidates, scan your own reasoning for contradictory factual assertions across evaluations. Two incompatible claims (e.g., 'correct answer is X' for one candidate and 'Y matches' for another) are a finalization blocker.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "93b0e8f9",
+          "trigger": "Fires after all candidates are scored, before finalizing ratings and best_response_ids.",
+          "verification_or_artifact": "Produce artifact: extract every factual assertion the judge made across all candidate evaluations that implies a unique correct answer. If two assertions conflict, resolve via ISOLATE\u2192COUNTER\u2192CLASSIFY before finalizing.",
+          "evidence": "The judge stated 'the described structure is a Suspension bridge' in reasoning for candidates [5]-[8] but asserted 'The description matches a cable-stayed bridge' for [4]. These are contradictory factual claims in the same evaluation pass that went undetected because the consistency check only targets the top candidate vs. stated criteria, not cross-candidate factual coherence."
+        },
+        {
+          "statement": "When best_response_ids contains candidates with DIFFERENT committed answers, produce a feature-mapping artifact comparing each answer to the prompt's requirements before finalizing. Different-answer ties without explicit justification are a finalization blocker.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": "295257e2",
+          "trigger": "Fires when best_response_ids is being populated and two or more candidates in the set give semantically different answers.",
+          "verification_or_artifact": "Artifact: [Answer A | Answer B | Key distinguishing features from prompt | Both genuinely satisfy all features? Y/N with evidence]. If any answer fails a feature match, remove it from best_response_ids.",
+          "evidence": "The judge placed both [1] 'Suspension bridge' and [4] 'Cable-stayed bridge' in best_response_ids despite these being structurally different bridge types. Entry 295257e2's SAME-ANSWER CALIBRATION GATE only fires when candidates share the same answer. No gate exists for different-answer ties, so the conflicting inclusion went unchecked."
+        },
+        {
+          "statement": "Derive a reference answer BEFORE evaluating candidates for ANY prompt with a deterministic correct answer \u2014 factual identification, classification, and MCQ, not just math/logic/computation.",
+          "entry_kind": "procedure",
+          "generality": "L2",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "342f27b9",
+          "trigger": "Fires when the prompt asks for a specific factual answer (named entity, classification, definition, identification) with a single deterministic correct answer.",
+          "verification_or_artifact": "Write the reference answer with brief justification of distinguishing features BEFORE evaluating any candidate. Each candidate's answer must be explicitly compared to this reference.",
+          "evidence": "Entry 342f27b9 is scoped to 'math, logic, or computation prompts' and did not fire for this factual identification question. Without a pre-committed reference answer, the judge evaluated [4] in isolation and accepted 'cable-stayed bridge' without comparing it to the independently derivable correct answer."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "a3832d7e",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts are deterministic (identical outputs, identical 96.4% accuracy). The single error: the judge rated candidate [4] 'Cable-stayed bridge' at 10.0 alongside candidate [1] 'Suspension bridge,' treating both as correct. The correct answer is exclusively 'Suspension bridge.' A suspension bridge has main cables draped in a catenary between towers with vertical suspender cables connecting the main cable to the deck. A cable-stayed bridge has cables running directly from the tower to the deck \u2014 no main catenary cables, no separate vertical suspenders. The prompt's description ('main cables suspended between towers, with vertical suspender cables that support the bridge deck') unambiguously identifies a suspension bridge.\n\nCritically, this is a self-contradiction within the judge's own reasoning: for candidates [5]\u2013[8], the judge explicitly states 'the described structure is a Suspension bridge,' yet for [4] asserts 'The description matches a cable-stayed bridge.' These are mutually exclusive factual claims in the same evaluation pass, and the judge never noticed the conflict.\n\n## Why the Playbook Failed to Prevent This\n\n**Primary cause \u2014 [342f27b9] scope too narrow.** This entry requires independent reference derivation BEFORE evaluating candidates, but its trigger is limited to 'math, logic, or computation prompts.' This factual identification question has an equally deterministic correct answer but did not activate the entry. Had the judge been required to commit to 'Suspension bridge' with justification before evaluating, the [4] error would have been caught when comparing 'cable-stayed' to the pre-committed reference.\n\n**Secondary cause \u2014 [a3832d7e] produced a harmful false negative.** The agent actively applied PREMISE CHECKLIST and wrote 'No factual premises detected,' missing the structural/definitional descriptions in the prompt ('main cables suspended between towers, with vertical suspender cables'). The entry's example list (dates, categories, events, causal claims, attributions, classifications) does not clearly encompass structural or definitional characteristics embedded in identification questions. This false negative removed a downstream verification pathway \u2014 if these features had been extracted as premises, each candidate's answer would have been checked against them.\n\n**Tertiary cause \u2014 [295257e2] lacks a different-answer gate.** The SAME-ANSWER CALIBRATION GATE only fires when candidates share the same committed answer. When best_response_ids contained [1] ('Suspension bridge') and [4] ('Cable-stayed bridge') \u2014 two structurally different answers \u2014 no gate forced the judge to justify why both are valid. This is a pure coverage gap: all three reflections independently identify it.\n\n**Contributing factor \u2014 inconsistent procedural application.** Candidate [4] received a bare one-sentence evaluation with no constraint checklist, no premise checklist, and no compliance matrix, while candidates [1] and [5] received full structured treatment. The procedural shortcut for [4] allowed the factual error to pass unexamined. However, this is a single-source observation (credit_attribution only), so I note it without recommending a new entry.\n\n## Entry-Level Reasoning\n\n**[4abe1be4] HELPFUL** \u2014 The perception scan correctly identified all 15 candidates and structured the evaluation. Without it, additional candidates might have been missed.\n\n**[61b87a5f] HELPFUL** \u2014 Final output guard produced valid JSON in the correct schema. Output formatting is not the failure dimension.\n\n**[a3832d7e] HARMFUL** \u2014 Actively applied, produced 'No factual premises detected' for a prompt containing testable structural descriptions. The entry's example list is too narrow to catch this class of premises. The false negative removed verification that would have flagged the cable-stayed/suspension distinction.\n\n**[342f27b9] NEUTRAL** \u2014 Sound methodology (reference derivation + COMPONENT COMPARISON TABLE), but did not fire due to narrow scope. Its approach is exactly what was needed; the entry needs a broader trigger, not a redesign. All three reflections converge on this diagnosis.\n\n**[295257e2] NEUTRAL** \u2014 SAME-ANSWER CALIBRATION GATE handled same-answer groups correctly but has no coverage for different-answer ties in best_response_ids. The gap is clearly identified by all three reflections. A MULTI-CORRECT DIVERGENCE GATE clause would address this.\n\n**[93b0e8f9] NEUTRAL** \u2014 POSITIVE CONSISTENCY CHECK and NEGATIVE CONCERN SCAN are scoped to the top-rated candidate's alignment with stated criteria, not cross-candidate factual coherence. A cross-evaluation consistency scan would have caught the self-contradiction, but the existing check wasn't designed for this.\n\n## Recommended Mutations (in priority order)\n\n1. **UPDATE [342f27b9]** \u2014 Broaden the trigger from 'math, logic, or computation prompts' to 'any prompt with a deterministic correct answer \u2014 including factual identification, classification, definition, named entity selection, and MCQ-style questions.' The existing COMPONENT COMPARISON TABLE methodology extends naturally to factual feature matching (e.g., [Feature from prompt | Bridge Type A | Bridge Type B | Match?]). This is the single highest-leverage change: all three reflections agree, and it would have prevented the error by forcing a pre-committed reference answer.\n\n2. **UPDATE [295257e2]** \u2014 Add a MULTI-CORRECT DIVERGENCE GATE clause: 'When best_response_ids contains candidates with DIFFERENT committed answers, produce a feature-mapping artifact: [Answer A | Answer B | Key feature from prompt | A satisfies? | B satisfies? | Both valid?]. If any prompt feature distinguishes the answers, resolve before finalizing. Different-answer ties without explicit justification are a finalization blocker.' Both credit_attribution and principle_extraction independently identify this gap, providing strong convergence.\n\n## Impact\n\nThe error costs exactly 1 pair out of 14 correct-vs-incorrect pairs ([1] vs [4] scored as a tie instead of [1] > [4]), yielding 96.4% pairwise accuracy and prompt_accurate = False. Either recommended change would likely have prevented this with high confidence \u2014 the model already knows the correct answer (stated it 6 times) and merely failed to maintain consistency and verify its own conflicting assertion.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The judge made a self-contradictory factual error \u2014 correctly identifying 'Suspension bridge' in 6 candidate evaluations but accepting 'Cable-stayed bridge' for candidate [4] \u2014 because (1) no reference derivation step fired for this non-math factual question, and (2) no gate checks different-answer ties in best_response_ids. All three reflections converge on these two causal factors.",
+      "important_disagreements": [
+        "a3832d7e: Anchor tags NEUTRAL, credit_attribution tags HARMFUL. Resolved toward HARMFUL because credit_attribution provides direct evidence: the entry was actively applied and produced a false negative ('No factual premises detected') that removed a verification pathway. This is stronger than narrative-inferred neutrality \u2014 the entry's narrow example list caused a harmful omission.",
+        "342f27b9: Credit_attribution tags HELPFUL, anchor and principle_extraction tag NEUTRAL. Resolved toward NEUTRAL because the entry did not fire on this task (its scope excluded it). Its methodology is sound but was not applied \u2014 calling it 'helpful' overstates its contribution. The right action is updating its trigger scope.",
+        "93b0e8f9: Credit_attribution tags HARMFUL, others tag NEUTRAL. Resolved toward NEUTRAL because the entry's consistency checks were not designed for cross-candidate factual coherence, so it didn't actively mislead \u2014 it simply has a coverage gap. This is better addressed by broadening 342f27b9 (preventing the error upstream) than by expanding 93b0e8f9's already complex check.",
+        "Uniform procedural application check (credit_attribution only): Single-source observation without convergence from other heads. Noted as a contributing factor but not recommended for a new entry per conservatism principle."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Two existing entries (342f27b9 and 295257e2) already contain the correct methodology and structure \u2014 they just have scope gaps. Broadening 342f27b9's trigger and adding a different-answer gate clause to 295257e2 are minimal, high-confidence edits that directly address the root cause. No new entries are needed; the playbook's architecture is sound, just under-triggered.",
+      "conservatism_rationale": "All three reflections converge on the same two gaps (narrow reference-derivation scope, missing different-answer gate). Both are surgical updates to existing entries, not new concepts. The error is deterministic and reproducible, so the evidence is strong. However, I cap at 2 operations because the failure is a single factual mistake with a clear prevention path \u2014 adding more entries (self-verification clause, uniform procedural application, a3832d7e premise expansion) risks playbook bloat from a single observation. If a3832d7e's narrow scope proves harmful in future tasks, it can be updated then.",
+      "max_operations": 2
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"a3832d7e\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts are deterministic (identical outputs, identical 96.4% accuracy). The single error: the judge rated candidate [4] 'Cable-stayed bridge' at 10.0 alongside candidate [1] 'Suspension bridge,' treating both as correct. The correct answer is exclusively 'Suspension bridge.' A suspension bridge has main cables draped in a catenary between towers with vertical suspender cables connecting the main cable to the deck. A cable-stayed bridge has cables running directly from the tower to the deck \u2014 no main catenary cables, no separate vertical suspenders. The prompt's description ('main cables suspended between towers, with vertical suspender cables that support the bridge deck') unambiguously identifies a suspension bridge.\\n\\nCritically, this is a self-contradiction within the judge's own reasoning: for candidates [5]\u2013[8], the judge explicitly states 'the described structure is a Suspension bridge,' yet for [4] asserts 'The description matches a cable-stayed bridge.' These are mutually exclusive factual claims in the same evaluation pass, and the judge never noticed the conflict.\\n\\n## Why the Playbook Failed to Prevent This\\n\\n**Primary cause \u2014 [342f27b9] scope too narrow.** This entry requires independent reference derivation BEFORE evaluating candidates, but its trigger is limited to 'math, logic, or computation prompts.' This factual identification question has an equally deterministic correct answer but did not activate the entry. Had the judge been required to commit to 'Suspension bridge' with justification before evaluating, the [4] error would have been caught when comparing 'cable-stayed' to the pre-committed reference.\\n\\n**Secondary cause \u2014 [a3832d7e] produced a harmful false negative.** The agent actively applied PREMISE CHECKLIST and wrote 'No factual premises detected,' missing the structural/definitional descriptions in the prompt ('main cables suspended between towers, with vertical suspender cables'). The entry's example list (dates, categories, events, causal claims, attributions, classifications) does not clearly encompass structural or definitional characteristics embedded in identification questions. This false negative removed a downstream verification pathway \u2014 if these features had been extracted as premises, each candidate's answer would have been checked against them.\\n\\n**Tertiary cause \u2014 [295257e2] lacks a different-answer gate.** The SAME-ANSWER CALIBRATION GATE only fires when candidates share the same committed answer. When best_response_ids contained [1] ('Suspension bridge') and [4] ('Cable-stayed bridge') \u2014 two structurally different answers \u2014 no gate forced the judge to justify why both are valid. This is a pure coverage gap: all three reflections independently identify it.\\n\\n**Contributing factor \u2014 inconsistent procedural application.** Candidate [4] received a bare one-sentence evaluation with no constraint checklist, no premise checklist, and no compliance matrix, while candidates [1] and [5] received full structured treatment. The procedural shortcut for [4] allowed the factual error to pass unexamined. However, this is a single-source observation (credit_attribution only), so I note it without recommending a new entry.\\n\\n## Entry-Level Reasoning\\n\\n**[4abe1be4] HELPFUL** \u2014 The perception scan correctly identified all 15 candidates and structured the evaluation. Without it, additional candidates might have been missed.\\n\\n**[61b87a5f] HELPFUL** \u2014 Final output guard produced valid JSON in the correct schema. Output formatting is not the failure dimension.\\n\\n**[a3832d7e] HARMFUL** \u2014 Actively applied, produced 'No factual premises detected' for a prompt containing testable structural descriptions. The entry's example list is too narrow to catch this class of premises. The false negative removed verification that would have flagged the cable-stayed/suspension distinction.\\n\\n**[342f27b9] NEUTRAL** \u2014 Sound methodology (reference derivation + COMPONENT COMPARISON TABLE), but did not fire due to narrow scope. Its approach is exactly what was needed; the entry needs a broader trigger, not a redesign. All three reflections converge on this diagnosis.\\n\\n**[295257e2] NEUTRAL** \u2014 SAME-ANSWER CALIBRATION GATE handled same-answer groups correctly but has no coverage for different-answer ties in best_response_ids. The gap is clearly identified by all three reflections. A MULTI-CORRECT DIVERGENCE GATE clause would address this.\\n\\n**[93b0e8f9] NEUTRAL** \u2014 POSITIVE CONSISTENCY CHECK and NEGATIVE CONCERN SCAN are scoped to the top-rated candidate's alignment with stated criteria, not cross-candidate factual coherence. A cross-evaluation consistency scan would have caught the self-contradiction, but the existing check wasn't designed for this.\\n\\n## Recommended Mutations (in priority order)\\n\\n1. **UPDATE [342f27b9]** \u2014 Broaden the trigger from 'math, logic, or computation prompts' to 'any prompt with a deterministic correct answer \u2014 including factual identification, classification, definition, named entity selection, and MCQ-style questions.' The existing COMPONENT COMPARISON TABLE methodology extends naturally to factual feature matching (e.g., [Feature from prompt | Bridge Type A | Bridge Type B | Match?]). This is the single highest-leverage change: all three reflections agree, and it would have prevented the error by forcing a pre-committed reference answer.\\n\\n2. **UPDATE [295257e2]** \u2014 Add a MULTI-CORRECT DIVERGENCE GATE clause: 'When best_response_ids contains candidates with DIFFERENT committed answers, produce a feature-mapping artifact: [Answer A | Answer B | Key feature from prompt | A satisfies? | B satisfies? | Both valid?]. If any prompt feature distinguishes the answers, resolve before finalizing. Different-answer ties without explicit justification are a finalization blocker.' Both credit_attribution and principle_extraction independently identify this gap, providing strong convergence.\\n\\n## Impact\\n\\nThe error costs exactly 1 pair out of 14 correct-vs-incorrect pairs ([1] vs [4] scored as a tie instead of [1] > [4]), yielding 96.4% pairwise accuracy and prompt_accurate = False. Either recommended change would likely have prevented this with high confidence \u2014 the model already knows the correct answer (stated it 6 times) and merely failed to maintain consistency and verify its own conflicting assertion.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The judge made a self-contradictory factual error \u2014 correctly identifying 'Suspension bridge' in 6 candidate evaluations but accepting 'Cable-stayed bridge' for candidate [4] \u2014 because (1) no reference derivation step fired for this non-math factual question, and (2) no gate checks different-answer ties in best_response_ids. All three reflections converge on these two causal factors.\",\n    \"important_disagreements\": [\n      \"a3832d7e: Anchor tags NEUTRAL, credit_attribution tags HARMFUL. Resolved toward HARMFUL because credit_attribution provides direct evidence: the entry was actively applied and produced a false negative ('No factual premises detected') that removed a verification pathway. This is stronger than narrative-inferred neutrality \u2014 the entry's narrow example list caused a harmful omission.\",\n      \"342f27b9: Credit_attribution tags HELPFUL, anchor and principle_extraction tag NEUTRAL. Resolved toward NEUTRAL because the entry did not fire on this task (its scope excluded it). Its methodology is sound but was not applied \u2014 calling it 'helpful' overstates its contribution. The right action is updating its trigger scope.\",\n      \"93b0e8f9: Credit_attribution tags HARMFUL, others tag NEUTRAL. Resolved toward NEUTRAL because the entry's consistency checks were not designed for cross-candidate factual coherence, so it didn't actively mislead \u2014 it simply has a coverage gap. This is better addressed by broadening 342f27b9 (preventing the error upstream) than by expanding 93b0e8f9's already complex check.\",\n      \"Uniform procedural application check (credit_attribution only): Single-source observation without convergence from other heads. Noted as a contributing factor but not recommended for a new entry per conservatism principle.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Two existing entries (342f27b9 and 295257e2) already contain the correct methodology and structure \u2014 they just have scope gaps. Broadening 342f27b9's trigger and adding a different-answer gate clause to 295257e2 are minimal, high-confidence edits that directly address the root cause. No new entries are needed; the playbook's architecture is sound, just under-triggered.\",\n    \"conservatism_rationale\": \"All three reflections converge on the same two gaps (narrow reference-derivation scope, missing different-answer gate). Both are surgical updates to existing entries, not new concepts. The error is deterministic and reproducible, so the evidence is strong. However, I cap at 2 operations because the failure is a single factual mistake with a clear prevention path \u2014 adding more entries (self-verification clause, uniform procedural application, a3832d7e premise expansion) risks playbook bloat from a single observation. If a3832d7e's narrow scope proves harmful in future tasks, it can be updated then.\",\n    \"max_operations\": 2\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

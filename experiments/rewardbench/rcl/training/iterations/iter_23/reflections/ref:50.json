@@ -1,0 +1,620 @@
+{
+  "task_id": "ref:50",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "61b87a5f",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "a3832d7e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task ref:50\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n## Root Cause: Deterministic Output Format Mismatch\n\nBoth rollouts failed identically with `parse_error: ties single-rating response was missing rating`. This is a deterministic, structural failure \u2014 not stochastic variance \u2014 caused by a systematic mismatch between the playbook's mandated output format and the evaluation harness's expected format.\n\n### Direct Evidence\n\n1. **Candidate [1] succeeded**: The agent produced `{\"reasoning\":\"...\",\"rating\":10.0}` with the correct singular `rating` field. This happened BEFORE heavy playbook procedures activated, meaning the agent's default behavior was correct.\n\n2. **Candidate [2] failed**: Full playbook procedures activated \u2014 perception scan ([4abe1be4]), enumeration ([93b0e8f9]), constraint checklist, etc. Entry [61b87a5f]'s template then forced output into `{\"reasoning\":\"...\",\"ratings\":[1.0],\"best_response_ids\":[\"2\"]}`. The evaluation harness cannot parse this format, causing total failure.\n\n3. **The playbook actively overwrote correct behavior**: The agent's natural first output used the correct per-candidate schema. The playbook's bulk procedures then imposed an incompatible schema. This is the critical insight: entries [61b87a5f], [4abe1be4], and [93b0e8f9] are not merely unhelpful \u2014 they are antagonistic to the task's actual requirements.\n\n### Causal Chain\n\n- [61b87a5f] (primary cause): Mandates `{\"ratings\":[...], \"best_response_ids\":[...]}` as the ONLY output template. The harness expects `{\"rating\": X.X}` (singular). This rigid template admits no conditional formatting.\n\n- [4abe1be4] (contributing cause): Perception scan finds N=1 per candidate, which is technically correct but renders all N-dependent logic degenerate. The scan's N<2 guard says 'you have a perception error \u2014 re-read,' which is false in per-candidate mode and potentially causes wasted effort or confusion.\n\n- [93b0e8f9] (contributing cause): 'Verify the ratings array contains exactly one score per candidate' and the positive/negative consistency checks assume cross-candidate context. With N=1, these produce structurally absurd results: the agent listed an INCORRECT candidate as `best_response_ids` because it was the only candidate in scope.\n\n### Secondary Defect: Self-Contradiction in best_response_ids\n\nThe agent's reasoning for candidate [2] correctly identifies 'Arch bridge' as wrong (reference: 'Suspension bridge'), assigns rating 1.0, yet outputs `best_response_ids: [\"2\"]`. This self-contradiction is a direct consequence of applying aggregate procedures (best-of-N) to a single item. The field is semantically meaningless in per-candidate mode.\n\n### Evaluation Logic Was Sound\n\nImportantly, the agent's actual evaluation reasoning was correct. Entries like [132aab84] (focus alignment), [c8698dee] (constraint extraction), [f26064e1] (final answer extraction), and [005004a4] (factuality) all contributed useful analytical reasoning. The failure is purely at the output formatting layer \u2014 correct evaluation logic packaged in the wrong container.\n\n### What the Playbook Is Missing\n\nThe playbook has no mechanism for evaluation mode detection. It assumes all evaluations are bulk (all candidates simultaneously), but the harness sends candidates one at a time. The fix is updating [61b87a5f] to include a conditional: when evaluating a single candidate, output `{\"reasoning\":\"...\",\"rating\":X.X}` with no arrays or best_response_ids. This single update directly addresses the parse error that caused 100% failure. Entries [4abe1be4] and [93b0e8f9] should be noted for follow-up updates to handle N=1 gracefully (skip cross-candidate procedures, avoid 'perception error' false alarms), but the output format fix is the critical gate.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Entry [61b87a5f] mandates a bulk output template (ratings array + best_response_ids) that the per-candidate evaluation harness cannot parse. The agent's default behavior produced the correct per-candidate format for candidate [1], but playbook procedures overwrote it for candidate [2], causing a deterministic parse failure. All three reflections agree unanimously on this diagnosis.\",\n  \"important_disagreements\": [\n    \"Principle_extraction argues that [132aab84] and [c8698dee] indirectly enabled the harmful entries by adding reasoning bulk that triggered the format switch. Anchor and credit_attribution tag them neutral. Resolved: tagging neutral because their contribution to the failure is indirect and speculative \u2014 the format switch was caused by [61b87a5f]'s rigid template, not by the volume of reasoning preceding it.\",\n    \"Credit_attribution proposes a separate OUTPUT SCHEMA CONSISTENCY GATE as a new entry. Anchor and principle_extraction fold this into the [61b87a5f] update. Resolved: a standalone consistency gate is premature from one trace. The per-candidate format conditional in [61b87a5f] should prevent format drift; if it recurs, a separate gate can be added later.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry [61b87a5f] already governs output format but its single rigid template is incompatible with per-candidate evaluation. An update adding conditional format detection (per-candidate vs. bulk mode) directly addresses the root cause. This is not a new capability gap \u2014 the entry exists but is too rigid.\",\n  \"conservatism_rationale\": \"All three reflections unanimously identify the same root cause and the same three harmful entries. Confidence is high. However, updating [61b87a5f] alone fixes the fatal parse error; updates to [4abe1be4] and [93b0e8f9] address secondary inefficiencies (degenerate N=1 procedures) that are non-fatal once the output format is corrected. One high-confidence edit is preferred over three medium-confidence edits per conservative principles. The secondary entries can be addressed in follow-up if the pattern recurs.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"a3832d7e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\nWhich bridge type uses main cables suspended between towers, with vertical suspender cables that support the bridge deck?\n\n## Candidate Responses\n\n[1]\nSuspension bridge\n\n[2]\nArch bridge\n\n[3]\nBeam bridge\n\n[4]\nCable-stayed bridge\n\n[5]\nTruss bridge\n\n[6]\nCantilever bridge\n\n[7]\nMovable bridge\n\n[8]\nTied-arch bridge\n\n[9]\nRoad\n\n[10]\nHighway\n\n[11]\nTunnel\n\n[12]\nCivil engineering principles guide the design and construction of bridges to ensure safety, efficiency, and durability.\n\n[13]\nFamous bridges often become symbols of their locations and represent significant engineering achievements.\n\n[14]\nCertainly, I would be happy to help you with that.\n\n[15]\nI'm not sure I understand, can you rephrase your question?\n\n## Raw Judge Output\n[{\"candidate_id\": \"1\", \"response\": \"{\\\"reasoning\\\":\\\"The prompt describes a bridge deck supported by vertical suspender cables hanging from main cables between towers; this is exactly a suspension bridge.\\\",\\\"rating\\\":10.0}\"}, {\"candidate_id\": \"2\", \"response\": \"{\\\"reasoning\\\":\\\"[PROMPT ANCHOR] 'Which bridge type uses main cables suspended between towers, with vertical suspender cables that support the bridge deck?'\\\\n[PERCEPTION SCAN] Last marker found: [2]. N = 1.\\\\n[CONSTRAINT CHECKLIST] 1) Provide the correct bridge type that matches the described cable/tower/deck mechanism. 2) No specific format requested.\\\\n[CANDIDATE [2] | Thesis opener: 'Arch bridge' | DIRECT]\\\\n[FINAL ANSWER EXTRACTION] Candidate [2] committed final answer: 'Arch bridge'. Reference correct answer: 'Suspension bridge'. Matches reference? No.\\\\n[COMPONENT COMPARISON] Part: 'main cables between towers + vertical suspender cables supporting deck' => Suspension bridge (candidate provides Arch bridge) => INCORRECT.\\\\n[VERIFICATION] No factual-source claims to verify.\\\\n[COMPLIANCE MATRIX] Constraint 1: Fail (wrong bridge type). Constraint 2: Pass (format acceptable).\\\\n[OVERALL] The candidate answers a different bridge type (arch), so it should receive a very low score.\\\",\\\"ratings\\\":[1.0],\\\"best_response_ids\\\":[\\\"2\\\"]}\"}]\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\nWhich bridge type uses main cables suspended between towers, with vertical suspender cables that support the bridge deck?\n\n## Candidate Responses\n\n[1]\nSuspension bridge\n\n[2]\nArch bridge\n\n[3]\nBeam bridge\n\n[4]\nCable-stayed bridge\n\n[5]\nTruss bridge\n\n[6]\nCantilever bridge\n\n[7]\nMovable bridge\n\n[8]\nTied-arch bridge\n\n[9]\nRoad\n\n[10]\nHighway\n\n[11]\nTunnel\n\n[12]\nCivil engineering principles guide the design and construction of bridges to ensure safety, efficiency, and durability.\n\n[13]\nFamous bridges often become symbols of their locations and represent significant engineering achievements.\n\n[14]\nCertainly, I would be happy to help you with that.\n\n[15]\nI'm not sure I understand, can you rephrase your question?\n\n## Raw Judge Output\n[{\"candidate_id\": \"1\", \"response\": \"{\\\"reasoning\\\":\\\"The prompt describes a bridge deck supported by vertical suspender cables hanging from main cables between towers; this is exactly a suspension bridge.\\\",\\\"rating\\\":10.0}\"}, {\"candidate_id\": \"2\", \"response\": \"{\\\"reasoning\\\":\\\"[PROMPT ANCHOR] 'Which bridge type uses main cables suspended between towers, with vertical suspender cables that support the bridge deck?'\\\\n[PERCEPTION SCAN] Last marker found: [2]. N = 1.\\\\n[CONSTRAINT CHECKLIST] 1) Provide the correct bridge type that matches the described cable/tower/deck mechanism. 2) No specific format requested.\\\\n[CANDIDATE [2] | Thesis opener: 'Arch bridge' | DIRECT]\\\\n[FINAL ANSWER EXTRACTION] Candidate [2] committed final answer: 'Arch bridge'. Reference correct answer: 'Suspension bridge'. Matches reference? No.\\\\n[COMPONENT COMPARISON] Part: 'main cables between towers + vertical suspender cables supporting deck' => Suspension bridge (candidate provides Arch bridge) => INCORRECT.\\\\n[VERIFICATION] No factual-source claims to verify.\\\\n[COMPLIANCE MATRIX] Constraint 1: Fail (wrong bridge type). Constraint 2: Pass (format acceptable).\\\\n[OVERALL] The candidate answers a different bridge type (arch), so it should receive a very low score.\\\",\\\"ratings\\\":[1.0],\\\"best_response_ids\\\":[\\\"2\\\"]}\"}]",
+  "evaluation_details": "## rollout_1 Evaluation\n\nError: parse_error: ties single-rating response was missing rating\n\n## rollout_2 Evaluation\n\nError: parse_error: ties single-rating response was missing rating",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause: Output Format Mismatch Between Playbook and Evaluation Harness\n\nBoth rollouts failed identically with `parse_error: ties single-rating response was missing rating`. The immediate cause is an output format collision: the evaluation system expects a per-candidate object with a singular `rating` field, but the playbook (specifically entry [61b87a5f]) instructs the agent to produce a bulk JSON with `ratings` (plural array) and `best_response_ids`.\n\n### Evidence of the Mismatch\n\n1. **Candidate [1] was evaluated correctly** \u2014 the agent produced `{\"reasoning\":\"...\",\"rating\":10.0}` with the correct singular `rating` field. This was BEFORE the heavy playbook procedures kicked in.\n\n2. **Candidate [2] triggered playbook procedures** \u2014 the agent dutifully applied PERCEPTION SCAN, CONSTRAINT CHECKLIST, FINAL ANSWER EXTRACTION, etc. The output format then shifted to `{\"reasoning\":\"...\",\"ratings\":[1.0],\"best_response_ids\":[\"2\"]}` following [61b87a5f]'s template. This format is unparseable by the evaluation system, causing total failure.\n\n3. **Cascading failure**: The parse error on candidate [2] likely prevented candidates [3]\u2013[15] from being evaluated at all.\n\n### Secondary Root Cause: Bulk Procedures Misapplied to Per-Candidate Context\n\nThe evaluation harness sends candidates individually, but the playbook's core procedures assume bulk evaluation:\n\n- **[4abe1be4] Perception Scan**: When evaluating candidate [2] alone, the scan reports `Last marker found: [2]. N = 1.` This is technically correct within the visible scope but renders all downstream N-dependent logic meaningless. The scan was designed to enumerate ALL candidates upfront; in per-candidate mode it always finds N=1.\n\n- **[93b0e8f9] Enumeration**: 'Verify the ratings array contains exactly one score per candidate' makes no sense when there's only one candidate in scope.\n\n- **best_response_ids contradiction**: The agent's reasoning correctly identifies candidate [2] as INCORRECT (`'Arch bridge'. Reference correct answer: 'Suspension bridge'. Matches reference? No.`), yet outputs `best_response_ids: [\"2\"]`. This self-contradiction arises because with N=1, candidate [2] is trivially the 'best' of its group of one. The bulk-oriented procedures produced a logically absurd result in per-candidate context.\n\n### What the Playbook Is Missing\n\n1. **EVALUATION-MODE DETECTION (critical missing procedure)**: The playbook needs a mode-sensing step at the very start that determines whether the agent is evaluating ALL candidates simultaneously or ONE candidate at a time. The trigger: if only a single candidate response is visible, the agent is in per-candidate mode and must output `{\"reasoning\": \"...\", \"rating\": X.X}` \u2014 NO `ratings` array, NO `best_response_ids`. Bulk procedures (perception scan for N candidates, cross-candidate comparison, symmetry tables) should be SKIPPED in per-candidate mode.\n\n2. **OUTPUT FORMAT FLEXIBILITY**: Entry [61b87a5f] is too rigid \u2014 it mandates exactly one output template regardless of evaluation context. It needs a conditional: per-candidate mode produces `{\"reasoning\": \"...\", \"rating\": X.X}`, bulk mode produces `{\"reasoning\": \"...\", \"ratings\": [...], \"best_response_ids\": [...]}`.\n\n3. **SELF-CONTRADICTION GATE for best_response_ids**: When the reasoning explicitly identifies a candidate as INCORRECT, setting it as `best_response_ids` is a finalization blocker. The agent should have caught this, but the per-candidate mode made the contradiction invisible since there was no alternative to compare against.\n\n### Why Identical Rollouts Both Failed\n\nBoth rollouts used the same playbook and produced byte-identical outputs. This is not execution variance \u2014 it's a deterministic failure caused by a systematic mismatch between the playbook's output format instructions and the evaluation system's parser. The playbook literally instructs the agent to produce unparseable output.\n\n### Actionable Recommendations for Curator\n\n1. **Add a mode-detection entry** (high priority): Before any evaluation begins, detect whether the agent sees all candidates or one candidate. If one: use singular `rating` format, skip bulk procedures (perception scan enumeration, cross-candidate comparison, symmetry tables). If all: use `ratings` array format and full procedures.\n\n2. **Modify [61b87a5f]** to include conditional output templates based on evaluation mode, with the per-candidate template prominently featured.\n\n3. **Modify [4abe1be4]** to include a guard: if perception scan finds N=1 and the prompt mentions multiple candidates, the agent may be in per-candidate mode \u2014 adapt accordingly rather than re-scanning.\n\n4. **Add a best_response_ids consistency check**: Before emitting best_response_ids, verify the named candidate was NOT classified as INCORRECT in the reasoning. This should be a finalization blocker.\n\n5. **Consider flagging [93b0e8f9]'s cross-candidate checks as bulk-mode-only** to prevent meaningless single-candidate enumeration."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The evaluation harness sends candidates to the agent one at a time (per-candidate mode), expecting output with a singular 'rating' field. But the playbook's core output template ([61b87a5f]) mandates a bulk format with 'ratings' array and 'best_response_ids'. The agent has no way to detect which mode it's operating in.",
+          "gap_type": "procedure",
+          "suggested_content": "EVALUATION MODE DETECTION (fires first, before perception scan): Determine whether you are evaluating ALL candidates simultaneously or ONE candidate at a time. Signals for per-candidate mode: (a) only a single candidate response is visible, (b) the system instruction references individual evaluation, (c) output schema expects 'rating' (singular). In per-candidate mode: output {\"reasoning\":\"...\",\"rating\":X.X} \u2014 NO 'ratings' array, NO 'best_response_ids'. Skip bulk procedures: perception scan enumeration, cross-candidate comparison, symmetry tables (EPISTEMIC SYMMETRY AUDIT), SAME-ANSWER CALIBRATION GATE. In bulk mode: use {\"reasoning\":\"...\",\"ratings\":[...],\"best_response_ids\":[...]} and apply full procedures.",
+          "trigger": "At the absolute start of every evaluation, before any other playbook procedure fires."
+        },
+        {
+          "situation": "The agent produced correct format for candidate [1] ({\"rating\":10.0}) but wrong format for candidate [2] ({\"ratings\":[1.0],\"best_response_ids\":[\"2\"]}). The inconsistency arose because candidate [1] was evaluated quickly without heavy playbook invocation, while candidate [2] triggered full playbook procedures that overwrote the format. There is no playbook rule enforcing consistent output schema across sequential candidate evaluations.",
+          "gap_type": "verification_gate",
+          "suggested_content": "OUTPUT SCHEMA CONSISTENCY GATE: After producing output for any candidate, verify the output schema matches the schema used for the first candidate evaluated. If the first candidate used {\"reasoning\":\"...\",\"rating\":X.X}, all subsequent candidates must use the same schema. Schema drift between candidates is a finalization blocker.",
+          "trigger": "After generating output for each candidate evaluation, before emitting the response."
+        },
+        {
+          "situation": "The agent's reasoning for candidate [2] correctly identifies it as INCORRECT ('Arch bridge' vs reference 'Suspension bridge'), assigns it rating 1.0, yet sets best_response_ids to [\"2\"]. This self-contradiction arises because [61b87a5f] mandates best_response_ids and with N=1 in per-candidate mode, the only option is the current candidate. No playbook rule catches this contradiction.",
+          "gap_type": "verification_gate",
+          "suggested_content": "BEST_RESPONSE_IDS CONSISTENCY CHECK: Before emitting best_response_ids, verify that every listed candidate ID was NOT classified as INCORRECT, OFF-TOPIC, or given a score below 5.0 in the reasoning. If a candidate is identified as wrong but listed as best, this is a self-contradiction and a finalization blocker. In per-candidate mode, best_response_ids should be omitted entirely.",
+          "trigger": "After reasoning is complete, before final JSON output is emitted."
+        },
+        {
+          "situation": "The agent evaluated only candidates [1] and [2] out of 15. The verbose playbook procedures for candidate [2] (perception scan, constraint checklist, prompt anchor, thesis identification, final answer extraction, component comparison, verification, compliance matrix) may have consumed significant token budget. Whether this caused the remaining 13 candidates to go unevaluated is unclear, but the overhead is measurable and wasteful in per-candidate mode.",
+          "gap_type": "strategy",
+          "suggested_content": "PROCEDURAL OVERHEAD CONTROL: For straightforward factual questions (single correct answer, short candidate responses), use lightweight evaluation: (1) state the reference answer, (2) check if candidate matches, (3) assign rating. Reserve full procedural chain (perception scan, constraint checklist, compliance matrix, symmetry table) for complex prompts with multiple constraints, subjective questions, or candidates requiring nuanced comparison. In per-candidate mode, most cross-candidate procedures are inapplicable \u2014 skip them.",
+          "trigger": "After mode detection, when determining which procedures to activate for a given prompt type."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n### Agreement with Anchor\nI agree with the anchor's core diagnosis: the root cause is a deterministic format mismatch between entry [61b87a5f]'s bulk output template (`ratings` array + `best_response_ids`) and the evaluation harness's expected per-candidate schema (`rating` singular). Both rollouts produced byte-identical outputs and both failed identically, confirming this is systematic, not stochastic. I also agree that [4abe1be4] and [93b0e8f9] are harmful due to their bulk-mode assumptions.\n\n### Refinements to Anchor\n1. **Agent's natural behavior was correct**: The anchor notes candidate [1] was evaluated 'before heavy playbook procedures kicked in,' but understates the implication. The agent's DEFAULT behavior produces the correct `{\"rating\": 10.0}` format. The playbook ACTIVELY OVERWROTE correct behavior. This is a critical insight: the entries are not merely unhelpful \u2014 they are antagonistic to the task's actual requirements. Any fix must ensure the playbook doesn't fight the agent's correct instincts.\n\n2. **Format inconsistency between candidates**: The anchor focuses on the format of candidate [2] being wrong, but doesn't sufficiently highlight that the agent used DIFFERENT formats for candidate [1] vs. candidate [2]. This inconsistency itself is a defect \u2014 even if per-candidate mode were correctly detected, a schema consistency gate should prevent the agent from switching formats mid-evaluation.\n\n3. **The evaluation procedures themselves were correct**: The anchor mentions the best_response_ids contradiction but doesn't emphasize enough that the agent's REASONING for candidate [2] was entirely sound \u2014 it correctly identified 'Arch bridge' as wrong, scored it 1.0, and provided clear justification. The failure is purely at the output formatting layer, not the evaluation logic layer. Multiple playbook entries ([132aab84], [c8698dee], [f26064e1], [342f27b9], [005004a4]) contributed useful evaluation reasoning that was then packaged in the wrong container.\n\n4. **Candidate coverage gap**: Only 2 of 15 candidates were evaluated. The anchor attributes this to 'cascading failure' from the parse error, but an additional contributing factor may be token/context budget consumed by verbose bulk-mode procedures applied per-candidate. The playbook's procedural overhead should be gated on prompt complexity and evaluation mode.\n\n### Disagreements with Anchor\n1. The anchor tags [132aab84], [c8698dee], [005004a4], [f26064e1], [342f27b9] all as 'neutral' without distinguishing their contributions. While none caused the format failure, several were actively applied and produced correct evaluation reasoning. I maintain 'neutral' is appropriate because their correct output was trapped inside the wrong output container, but I want to note they demonstrate the playbook's evaluation LOGIC is sound \u2014 only the output FORMAT layer needs fixing.\n\n2. The anchor suggests adding a 'best_response_ids consistency check.' I refine this: in per-candidate mode, `best_response_ids` should not exist at all \u2014 the field is semantically meaningless when evaluating one candidate. The check should be: 'If in per-candidate mode, omit best_response_ids entirely.'\n\n### Playbook Implications\nThe highest-priority mutation is modifying [61b87a5f] to include conditional output templates based on evaluation mode, or adding a new mode-detection procedure that fires before [61b87a5f]. The per-candidate template should be `{\"reasoning\":\"...\",\"rating\":X.X}` with no array fields. Secondary priority: [4abe1be4]'s 'N < 2 means perception error' guard should include an exception for per-candidate mode. Tertiary: procedural overhead control to prevent bulk-mode procedures from consuming tokens in per-candidate evaluations."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "I AGREE with the anchor's core diagnosis: the failure is a deterministic output-format mismatch. Entry [61b87a5f] mandates a bulk JSON template (`ratings` array + `best_response_ids`) while the harness expects per-candidate output with a singular `rating` field. Both rollouts are byte-identical and fail identically, confirming this is structural, not stochastic.\n\nI AGREE that entries [4abe1be4] and [93b0e8f9] are harmful because their batch-oriented procedures (perception scan finding N=1, enumeration of a single-element array) distorted the agent's output shape. Critically, candidate [1] was evaluated correctly with `{\"rating\":10.0}` BEFORE these procedures activated, proving the agent's baseline behavior was correct and the playbook overrode it.\n\nI REFINE the anchor's recommendations by abstracting beyond this specific evaluation domain. The anchor proposes task-specific fixes (mode-detection entry, conditional templates), which are valid but narrow. The deeper, transferable lessons are:\n\n1. **Prescribed output templates must yield to observed execution context.** The agent's first output (candidate [1]) succeeded with `{\"rating\":X}`. The playbook then forced a format switch for candidate [2]. Any time a procedure overrides a demonstrably working format within the same session, the procedure is likely mismatched to the environment. This is a universal anti-pattern.\n\n2. **Aggregate procedures applied to atomic inputs produce structurally degenerate outputs.** When N=1, arrays become pointless wrappers, cross-comparisons are vacuous, and 'best-of' selections are tautological (the agent named an INCORRECT answer as `best_response_ids` because it was the only candidate in scope). The agent should detect when a multi-item procedure is invoked on a single item and simplify.\n\nI DISAGREE with tagging all remaining entries as fully neutral. While they didn't directly cause this failure, [132aab84]'s PROMPT ANCHOR step and [c8698dee]'s CONSTRAINT CHECKLIST added reasoning bulk that contributed to the format switch between candidate [1] and candidate [2]. They're not harmful per se, but their activation pattern indirectly enabled the harmful entries to fire. The primary causal chain remains [61b87a5f]'s rigid template.",
+      "principles": [
+        {
+          "statement": "When a prior step in the same session succeeded with output format A, do not switch to format B because a template rule activated. A working format in the current environment is stronger evidence than a prescribed template.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": "61b87a5f",
+          "trigger": "Whenever a procedure or template prescribes an output format that differs from a format already accepted in the same session.",
+          "verification_or_artifact": "Before emitting output, compare the planned format to any prior accepted outputs in this session. If they conflict, use the accepted format.",
+          "evidence": "Candidate [1] was correctly evaluated with {\"rating\":10.0}. Entry [61b87a5f] then forced candidate [2] into {\"ratings\":[1.0],\"best_response_ids\":[\"2\"]}, which the harness could not parse. The first working format was the correct one."
+        },
+        {
+          "statement": "When a multi-item procedure (cross-comparison, aggregation array, best-of ranking) is invoked on a single item, its aggregate constructs are structurally degenerate. Detect N=1 and simplify to atomic output.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": "4abe1be4",
+          "trigger": "When a perception scan or enumeration step finds N=1 for a procedure designed for N>1.",
+          "verification_or_artifact": "After any enumeration step, if N=1: skip cross-item comparisons, replace arrays with scalar values, omit best-of selections. Log: 'N=1 detected, simplifying aggregate outputs.'",
+          "evidence": "Perception scan found N=1 per candidate. The agent still produced a ratings array and best_response_ids (tautologically naming the sole INCORRECT candidate as 'best'). The degenerate aggregate output was both logically absurd and mechanically unparseable."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "61b87a5f",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "a3832d7e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause: Deterministic Output Format Mismatch\n\nBoth rollouts failed identically with `parse_error: ties single-rating response was missing rating`. This is a deterministic, structural failure \u2014 not stochastic variance \u2014 caused by a systematic mismatch between the playbook's mandated output format and the evaluation harness's expected format.\n\n### Direct Evidence\n\n1. **Candidate [1] succeeded**: The agent produced `{\"reasoning\":\"...\",\"rating\":10.0}` with the correct singular `rating` field. This happened BEFORE heavy playbook procedures activated, meaning the agent's default behavior was correct.\n\n2. **Candidate [2] failed**: Full playbook procedures activated \u2014 perception scan ([4abe1be4]), enumeration ([93b0e8f9]), constraint checklist, etc. Entry [61b87a5f]'s template then forced output into `{\"reasoning\":\"...\",\"ratings\":[1.0],\"best_response_ids\":[\"2\"]}`. The evaluation harness cannot parse this format, causing total failure.\n\n3. **The playbook actively overwrote correct behavior**: The agent's natural first output used the correct per-candidate schema. The playbook's bulk procedures then imposed an incompatible schema. This is the critical insight: entries [61b87a5f], [4abe1be4], and [93b0e8f9] are not merely unhelpful \u2014 they are antagonistic to the task's actual requirements.\n\n### Causal Chain\n\n- [61b87a5f] (primary cause): Mandates `{\"ratings\":[...], \"best_response_ids\":[...]}` as the ONLY output template. The harness expects `{\"rating\": X.X}` (singular). This rigid template admits no conditional formatting.\n\n- [4abe1be4] (contributing cause): Perception scan finds N=1 per candidate, which is technically correct but renders all N-dependent logic degenerate. The scan's N<2 guard says 'you have a perception error \u2014 re-read,' which is false in per-candidate mode and potentially causes wasted effort or confusion.\n\n- [93b0e8f9] (contributing cause): 'Verify the ratings array contains exactly one score per candidate' and the positive/negative consistency checks assume cross-candidate context. With N=1, these produce structurally absurd results: the agent listed an INCORRECT candidate as `best_response_ids` because it was the only candidate in scope.\n\n### Secondary Defect: Self-Contradiction in best_response_ids\n\nThe agent's reasoning for candidate [2] correctly identifies 'Arch bridge' as wrong (reference: 'Suspension bridge'), assigns rating 1.0, yet outputs `best_response_ids: [\"2\"]`. This self-contradiction is a direct consequence of applying aggregate procedures (best-of-N) to a single item. The field is semantically meaningless in per-candidate mode.\n\n### Evaluation Logic Was Sound\n\nImportantly, the agent's actual evaluation reasoning was correct. Entries like [132aab84] (focus alignment), [c8698dee] (constraint extraction), [f26064e1] (final answer extraction), and [005004a4] (factuality) all contributed useful analytical reasoning. The failure is purely at the output formatting layer \u2014 correct evaluation logic packaged in the wrong container.\n\n### What the Playbook Is Missing\n\nThe playbook has no mechanism for evaluation mode detection. It assumes all evaluations are bulk (all candidates simultaneously), but the harness sends candidates one at a time. The fix is updating [61b87a5f] to include a conditional: when evaluating a single candidate, output `{\"reasoning\":\"...\",\"rating\":X.X}` with no arrays or best_response_ids. This single update directly addresses the parse error that caused 100% failure. Entries [4abe1be4] and [93b0e8f9] should be noted for follow-up updates to handle N=1 gracefully (skip cross-candidate procedures, avoid 'perception error' false alarms), but the output format fix is the critical gate.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Entry [61b87a5f] mandates a bulk output template (ratings array + best_response_ids) that the per-candidate evaluation harness cannot parse. The agent's default behavior produced the correct per-candidate format for candidate [1], but playbook procedures overwrote it for candidate [2], causing a deterministic parse failure. All three reflections agree unanimously on this diagnosis.",
+      "important_disagreements": [
+        "Principle_extraction argues that [132aab84] and [c8698dee] indirectly enabled the harmful entries by adding reasoning bulk that triggered the format switch. Anchor and credit_attribution tag them neutral. Resolved: tagging neutral because their contribution to the failure is indirect and speculative \u2014 the format switch was caused by [61b87a5f]'s rigid template, not by the volume of reasoning preceding it.",
+        "Credit_attribution proposes a separate OUTPUT SCHEMA CONSISTENCY GATE as a new entry. Anchor and principle_extraction fold this into the [61b87a5f] update. Resolved: a standalone consistency gate is premature from one trace. The per-candidate format conditional in [61b87a5f] should prevent format drift; if it recurs, a separate gate can be added later."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry [61b87a5f] already governs output format but its single rigid template is incompatible with per-candidate evaluation. An update adding conditional format detection (per-candidate vs. bulk mode) directly addresses the root cause. This is not a new capability gap \u2014 the entry exists but is too rigid.",
+      "conservatism_rationale": "All three reflections unanimously identify the same root cause and the same three harmful entries. Confidence is high. However, updating [61b87a5f] alone fixes the fatal parse error; updates to [4abe1be4] and [93b0e8f9] address secondary inefficiencies (degenerate N=1 procedures) that are non-fatal once the output format is corrected. One high-confidence edit is preferred over three medium-confidence edits per conservative principles. The secondary entries can be addressed in follow-up if the pattern recurs.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"a3832d7e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause: Deterministic Output Format Mismatch\\n\\nBoth rollouts failed identically with `parse_error: ties single-rating response was missing rating`. This is a deterministic, structural failure \u2014 not stochastic variance \u2014 caused by a systematic mismatch between the playbook's mandated output format and the evaluation harness's expected format.\\n\\n### Direct Evidence\\n\\n1. **Candidate [1] succeeded**: The agent produced `{\\\"reasoning\\\":\\\"...\\\",\\\"rating\\\":10.0}` with the correct singular `rating` field. This happened BEFORE heavy playbook procedures activated, meaning the agent's default behavior was correct.\\n\\n2. **Candidate [2] failed**: Full playbook procedures activated \u2014 perception scan ([4abe1be4]), enumeration ([93b0e8f9]), constraint checklist, etc. Entry [61b87a5f]'s template then forced output into `{\\\"reasoning\\\":\\\"...\\\",\\\"ratings\\\":[1.0],\\\"best_response_ids\\\":[\\\"2\\\"]}`. The evaluation harness cannot parse this format, causing total failure.\\n\\n3. **The playbook actively overwrote correct behavior**: The agent's natural first output used the correct per-candidate schema. The playbook's bulk procedures then imposed an incompatible schema. This is the critical insight: entries [61b87a5f], [4abe1be4], and [93b0e8f9] are not merely unhelpful \u2014 they are antagonistic to the task's actual requirements.\\n\\n### Causal Chain\\n\\n- [61b87a5f] (primary cause): Mandates `{\\\"ratings\\\":[...], \\\"best_response_ids\\\":[...]}` as the ONLY output template. The harness expects `{\\\"rating\\\": X.X}` (singular). This rigid template admits no conditional formatting.\\n\\n- [4abe1be4] (contributing cause): Perception scan finds N=1 per candidate, which is technically correct but renders all N-dependent logic degenerate. The scan's N<2 guard says 'you have a perception error \u2014 re-read,' which is false in per-candidate mode and potentially causes wasted effort or confusion.\\n\\n- [93b0e8f9] (contributing cause): 'Verify the ratings array contains exactly one score per candidate' and the positive/negative consistency checks assume cross-candidate context. With N=1, these produce structurally absurd results: the agent listed an INCORRECT candidate as `best_response_ids` because it was the only candidate in scope.\\n\\n### Secondary Defect: Self-Contradiction in best_response_ids\\n\\nThe agent's reasoning for candidate [2] correctly identifies 'Arch bridge' as wrong (reference: 'Suspension bridge'), assigns rating 1.0, yet outputs `best_response_ids: [\\\"2\\\"]`. This self-contradiction is a direct consequence of applying aggregate procedures (best-of-N) to a single item. The field is semantically meaningless in per-candidate mode.\\n\\n### Evaluation Logic Was Sound\\n\\nImportantly, the agent's actual evaluation reasoning was correct. Entries like [132aab84] (focus alignment), [c8698dee] (constraint extraction), [f26064e1] (final answer extraction), and [005004a4] (factuality) all contributed useful analytical reasoning. The failure is purely at the output formatting layer \u2014 correct evaluation logic packaged in the wrong container.\\n\\n### What the Playbook Is Missing\\n\\nThe playbook has no mechanism for evaluation mode detection. It assumes all evaluations are bulk (all candidates simultaneously), but the harness sends candidates one at a time. The fix is updating [61b87a5f] to include a conditional: when evaluating a single candidate, output `{\\\"reasoning\\\":\\\"...\\\",\\\"rating\\\":X.X}` with no arrays or best_response_ids. This single update directly addresses the parse error that caused 100% failure. Entries [4abe1be4] and [93b0e8f9] should be noted for follow-up updates to handle N=1 gracefully (skip cross-candidate procedures, avoid 'perception error' false alarms), but the output format fix is the critical gate.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Entry [61b87a5f] mandates a bulk output template (ratings array + best_response_ids) that the per-candidate evaluation harness cannot parse. The agent's default behavior produced the correct per-candidate format for candidate [1], but playbook procedures overwrote it for candidate [2], causing a deterministic parse failure. All three reflections agree unanimously on this diagnosis.\",\n    \"important_disagreements\": [\n      \"Principle_extraction argues that [132aab84] and [c8698dee] indirectly enabled the harmful entries by adding reasoning bulk that triggered the format switch. Anchor and credit_attribution tag them neutral. Resolved: tagging neutral because their contribution to the failure is indirect and speculative \u2014 the format switch was caused by [61b87a5f]'s rigid template, not by the volume of reasoning preceding it.\",\n      \"Credit_attribution proposes a separate OUTPUT SCHEMA CONSISTENCY GATE as a new entry. Anchor and principle_extraction fold this into the [61b87a5f] update. Resolved: a standalone consistency gate is premature from one trace. The per-candidate format conditional in [61b87a5f] should prevent format drift; if it recurs, a separate gate can be added later.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry [61b87a5f] already governs output format but its single rigid template is incompatible with per-candidate evaluation. An update adding conditional format detection (per-candidate vs. bulk mode) directly addresses the root cause. This is not a new capability gap \u2014 the entry exists but is too rigid.\",\n    \"conservatism_rationale\": \"All three reflections unanimously identify the same root cause and the same three harmful entries. Confidence is high. However, updating [61b87a5f] alone fixes the fatal parse error; updates to [4abe1be4] and [93b0e8f9] address secondary inefficiencies (degenerate N=1 procedures) that are non-fatal once the output format is corrected. One high-confidence edit is preferred over three medium-confidence edits per conservative principles. The secondary entries can be addressed in follow-up if the pattern recurs.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

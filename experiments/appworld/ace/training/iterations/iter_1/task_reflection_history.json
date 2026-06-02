@@ -1,0 +1,84 @@
+{
+  "6ea6792_1": [
+    {
+      "iteration": 1,
+      "analysis": "## Root Cause: Over-Broad Action Without Applying Task Filtering Criteria\n\nThe agent approved ALL 26 pending Venmo payment requests, but the test asserts that only a specific subset (`private_data.to_accept_payment_request_ids`) should have been updated. The agent applied the action too broadly, failing to filter which requests to approve.\n\n## Evidence of Abandoned Filtering Investigation\n\nThe agent explored phone app APIs across multiple steps (tried `show_contacts`, looked at `show_contact_relationships`, checked `phone.login`), suggesting the task likely required filtering payment requests based on the user's phone contacts (e.g., 'approve requests only from people in my contacts'). However, the agent NEVER actually logged into the phone app, fetched contacts, or cross-referenced senders against contacts. It explored the relevant data source but abandoned the investigation before using it.\n\n## Additional Complication: Silent Partial Approval\n\nIn the failed bulk-approval step (without payment card), the agent's code lacked try/except, so when the Venmo balance ran out, the exception halted the loop. However, 15 requests had already been silently approved using the balance before the failure. The agent didn't realize this\u2014it proceeded to re-fetch pending requests, found only 11 remaining, and approved those with payment cards. This means ALL 26 were ultimately approved, compounding the over-approval problem. If the agent had properly filtered first, the balance error might have been less damaging.\n\n## Missing Playbook Entries Needed\n\n### 1. Task Criteria Extraction Procedure (CRITICAL)\n**Trigger**: Any task that involves acting on a set of entities (approve, delete, modify).\n**Procedure**: Before taking ANY action, explicitly extract ALL filtering criteria from the task instruction. Construct an intermediate artifact\u2014a target set of entity IDs\u2014by cross-referencing the primary data source (e.g., payment requests) against any filtering sources (e.g., contacts, relationships, amounts, dates). Only act on entities in the computed target set.\n**Verification**: Before executing, print the target set and confirm it satisfies all stated criteria.\n\n### 2. Cross-Referencing Rule\n**Trigger**: When exploring an API or data source (like the phone app), either USE it in the solution or explicitly document why it's irrelevant.\n**Rule**: If you look up API docs for an app, that's a signal you believe the data is relevant. Never abandon an investigation thread without either using the data or explicitly confirming it's unnecessary.\n\n### 3. Irreversible Bulk Action Guard\n**Trigger**: Before executing a loop of approve/delete/send operations.\n**Procedure**: (a) Compute the exact target set with all filters applied. (b) Print the target set for verification. (c) Confirm count and IDs match expectations. (d) Only then execute. (e) Never run bulk approval without try/except to maintain control.\n**Anti-pattern**: Approving everything and filtering later is catastrophic for irreversible operations.\n\n### 4. Error Recovery Must Preserve Task Constraints\n**Trigger**: When an error occurs mid-execution (e.g., insufficient balance).\n**Rule**: When recovering from an error, only change HOW to perform the action (e.g., add payment card), never change WHAT is being acted upon. Re-derive the target set from the original filtering criteria rather than just re-fetching whatever is still pending.\n\n## Pattern Summary\nThe fundamental failure pattern is: the agent treated 'approve payment requests' as 'approve ALL pending payment requests' when the task required a filtered subset. This is a criteria-extraction and entity-grounding failure. The playbook currently has no entry requiring the agent to extract and enforce task-specific filtering criteria before taking bulk actions.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "62054d35",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3ff1c78e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "6385b186",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "strategies_and_hard_rules",
+          "content": "Before any bulk action (approve, delete, send, modify), explicitly extract ALL filtering criteria from the task instruction. Build a target ID set by cross-referencing relevant data sources. Print the target set and its count. Only act on entities in that set \u2014 never default to 'all'.",
+          "entry_id": "e6d98370"
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "MISTAKE: Approving/deleting/modifying ALL matching entities when the task specifies a filtered subset (e.g., 'approve requests from my contacts' \u2260 'approve all requests'). FIX: Re-read the task instruction, identify qualifier words (from contacts, under $50, from last week, etc.), and build the filtered target set BEFORE acting.",
+          "entry_id": "7bb3b4b2"
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "Cross-referencing workflow for filtered actions: (1) Fetch primary entities (e.g., payment requests). (2) Identify filtering source from task (e.g., phone contacts, specific people). (3) Log into and fetch data from the filtering source. (4) Compute intersection to get target IDs. (5) Print target IDs for verification. (6) Execute action ONLY on target IDs.",
+          "entry_id": "907d694e"
+        },
+        {
+          "op": "ADD",
+          "section": "strategies_and_hard_rules",
+          "content": "If you explore an API or data source (look up docs, list endpoints), either USE it in your solution or explicitly state why it's irrelevant. Abandoning an investigation thread without resolution often means you missed a required filtering step.",
+          "entry_id": "5d010b02"
+        },
+        {
+          "op": "ADD",
+          "section": "useful_code_snippets_and_templates",
+          "content": "Bulk irreversible actions need try/except per item to maintain control:\n```\nresults = []\nfor eid in target_ids:\n    try:\n        r = apis.app.action(id=eid, access_token=token)\n        results.append((eid, 'ok', r))\n    except Exception as e:\n        results.append((eid, 'fail', str(e)))\nprint('succeeded:', [r for r in results if r[1]=='ok'])\nprint('failed:', [r for r in results if r[1]=='fail'])\n```",
+          "entry_id": "45c70c38"
+        },
+        {
+          "op": "ADD",
+          "section": "troubleshooting_and_pitfalls",
+          "content": "When an error occurs mid-bulk-operation (e.g., insufficient balance), fix only HOW to perform the action (e.g., add payment card), not WHAT to act on. Re-derive the target set from original filtering criteria \u2014 don't just re-fetch 'remaining' items, as some may have already been processed and the remaining set no longer matches the original filter.",
+          "entry_id": "acc138c1"
+        }
+      ]
+    }
+  ]
+}

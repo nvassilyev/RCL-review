@@ -1,0 +1,340 @@
+{
+  "6104387_3": [
+    {
+      "iteration": 1,
+      "analysis": "**Root cause of rollout_1's failure (70%)**: The 3 failing tests all relate to parsing the CSV file content into a song_title_to_artist_names dictionary and matching it against expected data. The critical difference between rollout_1 (70%) and rollout_2 (100%) is the CSV quoting strategy in the manually-constructed CSV.\n\nRollout_1 used an always-quoting csv_escape function: `return '\"' + val.replace('\"','\"\"') + '\"'` \u2014 wrapping every field in double quotes regardless of content. This produced lines like:\n```\n\"Memories Stitched in Time\",\"Jasper Skye|Isabella Cruz|Seraphina Dawn\"\n```\n\nRollout_2 used selective quoting: only quoting when the field actually contains commas, newlines, or quote characters. This produced lines like:\n```\nA Symphony Written in Tears,Aria Sterling\n```\n\nThe size difference (2901 vs 2621 bytes = 280 bytes = 4 extra quote chars \u00d7 70 rows) confirms this is the sole structural difference. The test's CSV parser evidently does a simple line-based parse (split on comma) and does not strip surrounding quotes from parsed values. So rollout_1's titles had embedded `\"` characters that caused key/value mismatches against expected data, even with normalize_text comparison.\n\n**Why this is a generalizable pattern**: When the `csv` module (csv.writer, csv.DictWriter) is disallowed (a common AppWorld restriction), the agent must implement manual CSV generation. The quoting strategy is not cosmetic \u2014 it directly affects how downstream consumers parse the output. Over-quoting fields introduces literal quote characters into parsed values.\n\n**Missing playbook knowledge**:\n1. **Restricted module fallback strategy for CSV**: The playbook has no guidance on what to do when `csv.writer`/`csv.DictWriter` are blocked. Both rollouts stumbled into this restriction, and their different manual implementations led to different outcomes.\n2. **Minimal-quoting CSV rule**: When manually constructing CSV, only quote fields that contain delimiters (comma), newlines, or double-quote characters. Never always-quote, as simple parsers (and test harnesses) may not strip surrounding quotes.\n\n**Verification gap**: Rollout_1 did verify the file existed and checked its first few lines, but did not verify that individual field values parsed correctly. A spot-check of one data row by splitting on comma and confirming no extraneous quote characters would have caught this.\n\n**Not a weak application of existing rules**: No existing playbook entry covers CSV format restrictions or manual CSV construction patterns. This is a true coverage gap.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "df468d8b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "0be186ff",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "When `csv.writer`/`csv.DictWriter` are blocked at runtime, build CSV manually with SELECTIVE quoting: only quote a field if it contains a comma, newline, or double-quote character. Never always-quote every field \u2014 simple parsers and test harnesses may not strip surrounding quotes, causing key/value mismatches.\n\n```python\ndef csv_escape(val):\n    s = str(val) if val is not None else ''\n    s = s.replace('\"', '\"\"')\n    if any(c in s for c in [',', '\\n', '\\r', '\"']):\n        return '\"' + s + '\"'\n    return s\n```",
+          "rationale": "Rollout_1 of task 1 failed 3/10 tests because always-quoting CSV fields introduced literal quote characters into parsed values. Rollout_2 used selective quoting and passed 10/10. The csv module is commonly blocked in AppWorld.",
+          "scope_hint": "Applies whenever generating CSV content and csv.writer/csv.DictWriter raise a disallowed-function error.",
+          "entry_id": "8f26163d"
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When a task involves responding to or fulfilling a contact's request (send info, answer a question, etc.): (1) Read the conversation/message history with that person FIRST to discover the SPECIFIC criteria of their request. (2) Extract filter/selection parameters from their message. (3) Gather data from the relevant source. (4) Apply criteria to filter \u2014 build an explicit filtered list as an intermediate artifact. (5) Verify: response includes ALL items matching criteria and NONE that don't. (6) Send. Never skip step 1 \u2014 the conversation often contains critical constraints not stated in the task description.",
+          "rationale": "Rollout_1 of task 2 sent all 21 movie titles instead of only Tarantino's 2, because it never checked Laura's message asking specifically for Tarantino recommendations. Rollout_2 checked messages first, filtered correctly, and passed 8/8.",
+          "scope_hint": "Applies whenever the task references a person's request/question and involves sending them information gathered from another source.",
+          "entry_id": "9f8d858f"
+        }
+      ]
+    }
+  ],
+  "29caf6f_2": [
+    {
+      "iteration": 1,
+      "analysis": "**Root cause of rollout_1 failure (87.5%):** Rollout 1 failed the test `assert that none of private_data.non_director_movie_titles occur as a substring in added global_text_message` because it sent ALL 21 movie titles from the 'Movie Recommendations' note to Laura, rather than only the Quentin Tarantino movies (Django Unchained, Pulp Fiction). The critical omission was that rollout 1 never read the text message conversation with Laura to discover that she specifically asked: 'Do you have any recommendations for a movie from Quentin Tarantino?' It assumed the task was to dump all recommendations.\n\n**Success factor for rollout_2 (100%):** Rollout 2 checked the text message history with Laura, found her specific Tarantino request, parsed the note to extract only movies with 'director: Quentin Tarantino', and sent the correctly filtered list 'Django Unchained, Pulp Fiction'.\n\n**The PP trace confirms this pattern:** The PP agent explicitly fetched Laura's messages (finding the Tarantino request at sent_at 2023-05-18T10:59:26), then parsed the note to match director == 'Quentin Tarantino', and sent only the matching titles.\n\n**Generalizable missing knowledge:** The playbook lacks guidance on a critical step in multi-source tasks: **inspecting all relevant context before acting**. Specifically:\n\n1. **Trigger:** When a task involves responding to or fulfilling someone's request (a message, email, etc.), the agent must first read the conversation/message history with that person to understand the SPECIFIC parameters of their request.\n2. **Procedure:** Read the conversation \u2192 extract filter/selection criteria from the request \u2192 gather data from the source \u2192 apply the criteria to filter \u2192 compose the response.\n3. **Intermediate artifact:** A filtered list (e.g., 'movies by director X') should be constructed as an explicit intermediate step before composing the final message.\n4. **Verification gate:** Before sending, verify: (a) the response includes only items matching the stated criteria, and (b) it includes ALL items matching those criteria.\n\nRollout 1 skipped the first step entirely and jumped from 'find note with movie recommendations' straight to 'send everything to Laura,' never constructing a filtered intermediate representation. This is not a case of weak application of an existing rule \u2014 no playbook entry addresses the need to inspect conversation context to discover task-specific filter criteria.\n\n**The agent's action drifted from the task requirements** because it never gathered sufficient information about what the task actually required. A consistency check of 'does my response match the specific request?' would have caught this, but the agent never surfaced the specific request in the first place.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "df468d8b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "0be186ff",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "When `csv.writer`/`csv.DictWriter` are blocked at runtime, build CSV manually with SELECTIVE quoting: only quote a field if it contains a comma, newline, or double-quote character. Never always-quote every field \u2014 simple parsers and test harnesses may not strip surrounding quotes, causing key/value mismatches.\n\n```python\ndef csv_escape(val):\n    s = str(val) if val is not None else ''\n    s = s.replace('\"', '\"\"')\n    if any(c in s for c in [',', '\\n', '\\r', '\"']):\n        return '\"' + s + '\"'\n    return s\n```",
+          "rationale": "Rollout_1 of task 1 failed 3/10 tests because always-quoting CSV fields introduced literal quote characters into parsed values. Rollout_2 used selective quoting and passed 10/10. The csv module is commonly blocked in AppWorld.",
+          "scope_hint": "Applies whenever generating CSV content and csv.writer/csv.DictWriter raise a disallowed-function error.",
+          "entry_id": "8f26163d"
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When a task involves responding to or fulfilling a contact's request (send info, answer a question, etc.): (1) Read the conversation/message history with that person FIRST to discover the SPECIFIC criteria of their request. (2) Extract filter/selection parameters from their message. (3) Gather data from the relevant source. (4) Apply criteria to filter \u2014 build an explicit filtered list as an intermediate artifact. (5) Verify: response includes ALL items matching criteria and NONE that don't. (6) Send. Never skip step 1 \u2014 the conversation often contains critical constraints not stated in the task description.",
+          "rationale": "Rollout_1 of task 2 sent all 21 movie titles instead of only Tarantino's 2, because it never checked Laura's message asking specifically for Tarantino recommendations. Rollout_2 checked messages first, filtered correctly, and passed 8/8.",
+          "scope_hint": "Applies whenever the task references a person's request/question and involves sending them information gathered from another source.",
+          "entry_id": "9f8d858f"
+        }
+      ]
+    }
+  ],
+  "6ea6792_1": [
+    {
+      "iteration": 2,
+      "analysis": "**Root cause of rollout_1 failure (83.3%):** The agent attempted to approve ALL 26 pending Venmo payment requests before establishing which ones came from roommates/coworkers. This 'act first, filter later' approach caused irreversible state changes \u2014 15 of the 26 pending requests disappeared between the first fetch and the second fetch (likely approved or state-corrupted by the initial bulk approval attempt). When the agent finally implemented proper filtering, only 4 of the expected 10 matching requests remained pending. It approved those 4 correctly, but the total approved set did not match the expected 10 IDs (the failed test: 'assert set of updated payment request ids match exactly').\n\n**Success factor in rollout_2 (100%):** The agent followed a correct sequence: (1) gathered roommate/coworker emails from phone contacts, (2) fetched all 26 pending payment requests, (3) filtered to 10 matching requests, (4) approved only those 10. Since filtering happened BEFORE any approval actions, the state was clean and exactly the right set was approved.\n\n**The critical ordering pattern:** For bulk actions with eligibility criteria, the agent must ALWAYS resolve eligibility criteria and filter BEFORE taking any actions. Actions are often irreversible (approving a payment request cannot be undone). If the agent acts on all items first and filters afterward, it risks (a) modifying ineligible items, (b) corrupting state so eligible items become unfindable, and (c) producing a modified set that doesn't match expectations.\n\n**Missing playbook guidance:** There is no entry covering the 'filter before act' principle for bulk operations. Entry [9f8d858f] addresses criteria extraction from conversation context, but its trigger ('responding to a contact's request') is too narrow. The needed rule applies whenever a task requires performing the same action on a SUBSET of items matching specific criteria \u2014 the agent must build the filtered list as an intermediate artifact BEFORE executing any actions.\n\n**PP trace corroboration:** The supplementary trace shows the same anti-pattern \u2014 the agent approved all 26 requests without filtering (17 succeeded before balance ran out), then tried to top up and approve the rest. It happened to approve the right ones among others, but would likely fail the exact-match test. This confirms the failure mode is systematic, not a fluke.\n\n**Additional observation:** Rollout_1 also suffered from a token copy-paste error (step 12 had a corrupted token string), wasting steps. Using stored variables rather than manual copy-paste (per entry [c3efc092]) would have avoided this, but it didn't contribute to the core failure.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "9f8d858f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "df468d8b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "0be186ff",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8f26163d",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "strategies_and_hard_rules",
+          "content": "When a task requires performing an action (approve, delete, update, send) on a SUBSET of items matching criteria: (1) Resolve ALL filter criteria first (e.g., fetch contact lists, relationship categories, tags). (2) Fetch the COMPLETE set of candidate items. (3) Apply filters and build an explicit filtered list \u2014 print it as a verification artifact before proceeding. (4) Execute actions ONLY on items in the filtered list. NEVER act on all items first and filter afterward \u2014 many actions (approvals, deletions, payments) are irreversible and premature bulk actions can corrupt state so eligible items become unfindable on re-fetch.",
+          "rationale": "Rollout_1 of the Venmo task approved all 26 pending requests before filtering to roommates/coworkers, causing irreversible state corruption; only 4 of 10 expected requests remained when filtering was finally applied. Rollout_2 filtered first and approved exactly the right 10. Entry [9f8d858f] covers criteria extraction from conversation context but is too narrowly scoped to cover this general bulk-action ordering invariant.",
+          "scope_hint": "Applies whenever a task involves performing the same action on multiple items that must first be filtered by eligibility criteria (relationship, status, category, etc.).",
+          "entry_id": "12cfb18e"
+        }
+      ]
+    }
+  ],
+  "29caf6f_3": [
+    {
+      "iteration": 2,
+      "analysis": "Both rollouts followed the same correct high-level strategy: (1) find Leslie Ball in phone contacts, (2) read text messages to discover she asked for Peter Jackson movie recommendations, (3) search SimpleNote for the 'Movie Recommendations' note, (4) parse note content to extract Peter Jackson-directed movies, (5) send comma-separated titles to Leslie, (6) call complete_task(). Both extracted the same 3 movies and sent the same message to the same phone number (text_message_id 16803 in both cases).\n\nThe 12.5% gap (7/8 vs 8/8) came from a single test: `assert model changes match phone.GlobalTextMessage, phone.UserTextMessage`. All content and structural tests passed in both rollouts \u2014 the correct movies were sent to the correct person. The failing test validates that the COMPLETE SET of model record changes matches expectations, not just the content.\n\nRoot cause analysis: Despite exhaustive comparison, both rollouts made the same meaningful state-changing API calls (3 phone logins, 3 simple_note logins, 1 send_text_message, 1 complete_task). The only structural difference is that rollout 1 performed an additional paginated contact search (2 pages) in the same code block where it sent the message, while rollout 2 hardcoded the already-known phone number. However, search_contacts is a GET request that should not modify model state. The failure likely reflects either environmental non-determinism or a very subtle ordering/timing effect invisible from the traces.\n\nPlaybook effectiveness: The existing entries were well-applied. The problem-solving workflow [9f8d858f] correctly guided the agent to read messages first. Pagination [6c139a99] was correctly used. Credentials were fetched from supervisor [867f30db]. The complete_task entry [78832af2] was correctly applied (no answer argument for an action-only task).\n\nThe PP trace annotations confirm the agent followed the playbook ('Following entry [Problem Solving Heuristics And Workflows]: gather data then apply criteria') and was uncertain only about message formatting ('Need to confirm phone send_text_message expects access_token and message fields'), which was resolved correctly by reading API docs.\n\nNo clear generalizable rule is missing. Both rollouts demonstrated correct application of existing guidance. The single test failure does not indicate a systematic gap \u2014 it appears environmental rather than strategic.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "9f8d858f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "strategies_and_hard_rules",
+          "content": "When a task requires performing an action (approve, delete, update, send) on a SUBSET of items matching criteria: (1) Resolve ALL filter criteria first (e.g., fetch contact lists, relationship categories, tags). (2) Fetch the COMPLETE set of candidate items. (3) Apply filters and build an explicit filtered list \u2014 print it as a verification artifact before proceeding. (4) Execute actions ONLY on items in the filtered list. NEVER act on all items first and filter afterward \u2014 many actions (approvals, deletions, payments) are irreversible and premature bulk actions can corrupt state so eligible items become unfindable on re-fetch.",
+          "rationale": "Rollout_1 of the Venmo task approved all 26 pending requests before filtering to roommates/coworkers, causing irreversible state corruption; only 4 of 10 expected requests remained when filtering was finally applied. Rollout_2 filtered first and approved exactly the right 10. Entry [9f8d858f] covers criteria extraction from conversation context but is too narrowly scoped to cover this general bulk-action ordering invariant.",
+          "scope_hint": "Applies whenever a task involves performing the same action on multiple items that must first be filtered by eligibility criteria (relationship, status, category, etc.).",
+          "entry_id": "12cfb18e"
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "analysis": "**Root Cause of Rollout 1 Failure (87.5%)**\n\nThe sole failed test was `assert answers match.` Rollout 1 called `apis.supervisor.complete_task(answer='The Lord of the Rings: ...')` \u2014 passing the movie titles as an answer string. Rollout 2 called `apis.supervisor.complete_task()` with no answer argument and passed all 8 tests. The task is an action-only task (send a text message to Leslie), so no answer should be returned. The expected answer is implicitly `None`/empty, and passing a string caused a mismatch.\n\nAll 7 other tests passed in both rollouts, confirming the core data-gathering, filtering, and message-sending logic was correct in both. The difference is entirely in the `complete_task()` invocation.\n\n**Existing Rule Coverage**\n\nPlaybook entry [78832af2] explicitly states: 'Only pass an `answer=` argument if the task explicitly asks you to find, calculate, or return a specific value. For action-only tasks (e.g., send a message, play a song), call `complete_task()` with NO answer argument.' This rule directly addresses the failure. Rollout 1 violated it; rollout 2 obeyed it. The PP trace shows the agent explicitly cited this entry before calling `complete_task()` without an answer.\n\n**Why the Rule Wasn't Applied**\n\nRollout 1's agent appears to have conflated the message content it just sent with the task answer. After sending the SMS, it looked up the `complete_task` API doc, saw the answer parameter, and decided to pass the movie titles as an answer \u2014 likely reasoning that the movies were the 'result' of the task. This is a cognitive pattern where the agent sees data it just computed and assumes it should be returned. The existing rule is clear enough; this is weak application, not a coverage gap.\n\n**Minor Observation: Variable Shadowing**\n\nIn rollout 2, the agent overwrote the `access_token` variable (originally holding the phone token) with the simple_note token, causing a 401 error when trying to send the message. This was recovered by re-logging in, so it didn't affect the score. Entry [c3efc092] ('variables persist \u2014 reuse them') can be slightly misleading when multiple services share generic variable names. However, this is a minor coding hygiene issue, not a playbook gap \u2014 the agent recovered gracefully.\n\n**Generalized Pattern**\n\nThe failure pattern is: after completing a multi-step action task, the agent incorrectly passes intermediate computed data as an answer to `complete_task()`. The existing rule [78832af2] already captures this. The signal is clear \u2014 the distinction between 'action tasks' and 'query tasks' is the key discriminator, and the rule states it correctly.",
+      "entry_assessments": [
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "9f8d858f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When a search query returns multiple items (notes, records, entries) that match but represent DISTINCT events or instances (e.g., two 'Work Dinner' notes from different dates): (1) NEVER aggregate or merge data across them \u2014 each represents an independent event. (2) Examine timestamps (created_at, updated_at) of ALL matches and print them. (3) Determine which item the task implicitly refers to using temporal context (e.g., most recent note for 'yesterday's dinner', task-date proximity). (4) Print the selected item's ID, title, and timestamp with explicit reasoning before parsing its content. (5) Use ONLY data from the selected item. Common error: combining amounts or entries across independent events produces wrong totals, wrong recipients, and extra spurious actions.",
+          "rationale": "Rollout_1 of the Venmo task found two Work Dinner notes (note 3085 from May 16, note 3084 from May 20) and merged their shares into one dict, producing 6 wrong payment requests instead of the correct 3. Rollout_2 compared timestamps, selected only the latest note, and passed 4/4 tests. No existing entry covers source-level disambiguation.",
+          "scope_hint": "Applies whenever a search returns multiple items that could represent separate events/instances and the task refers to a specific one.",
+          "entry_id": "3c755ed7"
+        }
+      ]
+    }
+  ],
+  "22cc237_1": [
+    {
+      "iteration": 3,
+      "analysis": "**Root Cause of Failure (Rollout 1, 75%):** The agent found two SimpleNote entries matching 'Work Dinner' (note 3085: 'Velvet Vittles', updated 2023-05-16; note 3084: 'Silver Lining Cafe', updated 2023-05-20). It then **aggregated shares across both notes**, combining amounts from two separate dinner events into a single dictionary (e.g., Sandra: $18 + $19 = $37, Sabrina: $21 + $39 = $60). This produced incorrect amounts and extra recipients (Grant, Allison only appeared in the older dinner). The task implicitly referred to the most recent dinner (note 3084, created today to record yesterday's expenses). \n\n**Success Factor (Rollout 2, 100%):** The agent explicitly compared `updated_at` timestamps of both Work Dinner notes, selected the latest one (note 3084), and used only its shares. This yielded the correct unpaid list: Sandra=$19, Stephen=$20, Travis=$39.\n\n**Failed Test Explanation:** The test `user_id_to_share obtained from added_payment_requests matches the private_data.pending_user_id_to_share` failed because Rollout 1 created 6 payment requests with wrong amounts (combined across two dinners) instead of 3 requests with amounts from the single relevant dinner.\n\n**Missing Generalizable Knowledge:** The playbook has no guidance on **temporal disambiguation when multiple data sources match a query**. This is a common pattern: a search returns multiple items representing distinct events/instances, and the task implicitly refers to one specific instance. The agent needs to:\n1. Recognize that multiple matches represent *different events*, not parts of one event\n2. Use temporal metadata (timestamps, dates in task context) to select the correct item\n3. Never aggregate data across items that represent independent events unless explicitly asked\n\n**Procedural Gap:** The needed procedure is: (Trigger) When a search query returns multiple items and the task refers to 'the' or 'a specific' event \u2192 (Procedure) Examine timestamps of all matches, compare to the task's implied timeframe (e.g., 'yesterday's dinner'), select only the item whose timestamp aligns \u2192 (Intermediate Artifact) Print the selected item's ID, title, and timestamp with explicit reasoning for why it was chosen \u2192 (Verification) Confirm the selected item's date is consistent with the task context before parsing its content.\n\n**No Existing Entry Covers This:** Entry `12cfb18e` addresses filtering items within a candidate set before acting, but doesn't cover selecting the right data source when multiple sources match. Entry `9f8d858f` addresses reading conversation history for criteria, which is tangentially related but doesn't address multi-source disambiguation.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "9f8d858f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "12cfb18e",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When a search query returns multiple items (notes, records, entries) that match but represent DISTINCT events or instances (e.g., two 'Work Dinner' notes from different dates): (1) NEVER aggregate or merge data across them \u2014 each represents an independent event. (2) Examine timestamps (created_at, updated_at) of ALL matches and print them. (3) Determine which item the task implicitly refers to using temporal context (e.g., most recent note for 'yesterday's dinner', task-date proximity). (4) Print the selected item's ID, title, and timestamp with explicit reasoning before parsing its content. (5) Use ONLY data from the selected item. Common error: combining amounts or entries across independent events produces wrong totals, wrong recipients, and extra spurious actions.",
+          "rationale": "Rollout_1 of the Venmo task found two Work Dinner notes (note 3085 from May 16, note 3084 from May 20) and merged their shares into one dict, producing 6 wrong payment requests instead of the correct 3. Rollout_2 compared timestamps, selected only the latest note, and passed 4/4 tests. No existing entry covers source-level disambiguation.",
+          "scope_hint": "Applies whenever a search returns multiple items that could represent separate events/instances and the task refers to a specific one.",
+          "entry_id": "3c755ed7"
+        }
+      ]
+    }
+  ]
+}

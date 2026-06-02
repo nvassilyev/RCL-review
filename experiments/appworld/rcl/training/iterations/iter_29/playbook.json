@@ -1,0 +1,415 @@
+{
+  "entries": [
+    {
+      "content": "Always end code blocks with ``` on its own line. Never use ellipsis (...) in code.",
+      "section": "strategies_and_hard_rules",
+      "entry_id": "0be186ff",
+      "helpful_count": 0,
+      "harmful_count": 0,
+      "last_assessed": 24,
+      "recent_assessments": [
+        {
+          "iteration": 19,
+          "verdict": "neutral"
+        },
+        {
+          "iteration": 19,
+          "verdict": "neutral"
+        },
+        {
+          "iteration": 24,
+          "verdict": "neutral"
+        }
+      ]
+    },
+    {
+      "content": "Check API docs with `apis.api_docs.show_api_doc(app_name, api_name)` before calling any API.",
+      "section": "apis_to_use_for_specific_information",
+      "entry_id": "a2727558",
+      "helpful_count": 56,
+      "harmful_count": 0,
+      "last_assessed": 29,
+      "recent_assessments": [
+        {
+          "iteration": 28,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 28,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 29,
+          "verdict": "helpful"
+        }
+      ]
+    },
+    {
+      "content": "Write small, incremental code chunks - verify each step works before proceeding.",
+      "section": "strategies_and_hard_rules",
+      "entry_id": "89ea61af",
+      "helpful_count": 39,
+      "harmful_count": 0,
+      "last_assessed": 29,
+      "recent_assessments": [
+        {
+          "iteration": 28,
+          "verdict": "neutral"
+        },
+        {
+          "iteration": 28,
+          "verdict": "neutral"
+        },
+        {
+          "iteration": 29,
+          "verdict": "neutral"
+        }
+      ]
+    },
+    {
+      "content": "Use `supervisor` app for account credentials: `apis.supervisor.show_account_passwords()`",
+      "section": "apis_to_use_for_specific_information",
+      "entry_id": "867f30db",
+      "helpful_count": 58,
+      "harmful_count": 0,
+      "last_assessed": 29,
+      "recent_assessments": [
+        {
+          "iteration": 28,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 28,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 29,
+          "verdict": "helpful"
+        }
+      ]
+    },
+    {
+      "content": "Use `phone` app for contact/person lookup: `apis.phone.search_contacts()` (NOT `show_contacts` \u2014 that API does not exist).\n\nDISAMBIGUATION RULE \u2014 When a task references social relationships:\n- 'contacts' / 'my contacts' / 'people I know' \u2192 `apis.phone.search_contacts()` with no relationship filter.\n- 'my friends' / 'my coworkers' / 'my roommates' (NO app qualifier) \u2192 `apis.phone.search_contacts(relationship='friend')` etc. Phone contacts are the universal address book.\n- '[app] friends' / 'friends on [app]' \u2192 use the app-specific social API (e.g., `venmo.search_friends`).\n- If ambiguous, fetch BOTH phone contacts AND app-specific friends, print both with counts, prefer phone contacts.\n\nRELATIONSHIP FILTERING PROCEDURE \u2014 When the task uses a relationship term ('friends', 'coworkers', 'family', 'roommates'):\n1. Call `apis.phone.show_contact_relationships(access_token=...)` to discover available categories.\n2. Map the task's language to the matching category (e.g., 'friends' \u2192 'friend', 'coworkers' \u2192 'coworker').\n3. Call `search_contacts(relationship='<category>')` with the DEDICATED `relationship=` parameter. Do NOT call `search_contacts(query='')` with no relationship filter \u2014 that returns ALL contacts regardless of relationship type.\n4. VERIFICATION GATE: Print the filtered count. If filtered_count == total_contacts_count, suspect a missing or ignored filter \u2014 re-examine step 3.\n\nDo NOT default to an app's built-in social graph (e.g., `venmo.search_friends`) when the task says 'friends' without app qualification.",
+      "section": "apis_to_use_for_specific_information",
+      "entry_id": "f43ad77c",
+      "helpful_count": 21,
+      "harmful_count": 2,
+      "updated_at": 14,
+      "last_assessed": 26,
+      "origin": "Iter 6: The previous entry referenced `apis.phone.show_contacts()` which does not exist and causes a 422 error; the correct API is `search_contacts`. Both rollout traces hit this error, and the entry was assessed as 'harmful' in iter 6. Iter 13: Both rollouts used venmo.search_friends() instead of phone contacts, producing the wrong transaction set (25 vs expected subset). The existing entry covers API correctness (search_contacts not show_contacts) but lacks a trigger for disambiguating between phone contacts and app-specific social graphs \u2014 the exact scenario that caused failure. Iter 14: Rollout 1 of task 1 failed (77.8%) because it used search_contacts(query='') without a relationship filter, returning all 20 contacts instead of the 8 with relationship='friend'. The existing entry routed correctly to phone contacts but lacked the critical step of applying the relationship= parameter. Rollout 2 (100%) used relationship='friend' and got exactly the right 8 contacts. Adding an explicit procedure for relationship filtering closes this gap.",
+      "recent_assessments": [
+        {
+          "iteration": 22,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 25,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 26,
+          "verdict": "helpful"
+        }
+      ]
+    },
+    {
+      "content": "* Variables persist across code blocks \u2014 reuse fetched data and computed results instead of re-fetching. This is a CORRECTNESS issue, not just efficiency:\n\nMANUAL RECONSTRUCTION ANTI-PATTERN: NEVER manually re-assign a variable by copy-pasting data from printed output (e.g., `my_list = [265, 151, 294, ...]`). Print statements often truncate (e.g., printing `ids[:10]` of a 14-item list), and copy-pasting from truncated output silently drops items. The variable already holds the COMPLETE data and persists across blocks \u2014 reference it by name. If you printed a 'sample' for debugging, the full variable is still intact; do NOT reconstruct it from the sample.\n\nUNNECESSARY API CALLS \u2192 UNEXPECTED MODEL CHANGES: Any redundant API call \u2014 read OR write \u2014 on objects involved in the task can produce unexpected model-change records (e.g., accessed_at/updated_at timestamp updates, session records) that cause test failures.\n\n- READ calls: Redundant calls (show_file, show_song, show_playlist, etc.) on ANY objects involved in the task \u2014 including objects you only reference but do not directly modify (e.g., show_song on songs being added to a playlist counts, because those songs are task-involved objects). Carry forward data from exploration to execution \u2014 do NOT re-query objects to rebuild already-computed results.\n- WRITE calls: Defensive/optional writes (e.g., `create_directory` with `allow_if_exists=True` on an already-existing directory) can trigger model-level metadata changes even when the API responds 'already exists.' NECESSITY GATE: Before every write call, verify the target state does not already exist. If it does, SKIP the call entirely.\n\nEXPLORE-THEN-PROCESS ANTI-PATTERN: If you call an API on a sample of items for exploration (e.g., show_song on 5 IDs to inspect data structure), then later loop over ALL items including that sample for processing, the sample items get double-queried. Fix: (a) skip per-item exploration and go straight to the full processing loop, OR (b) seed the processing loop's 'already-seen' set with the exploration IDs so they are skipped.\n\nTOKEN / LOGIN MANAGEMENT \u2014 Login calls are especially dangerous because each login may create session/auth model records that fail model-change assertions:\n1. Login to each service EXACTLY ONCE, early in the task.\n2. Store each token in a clearly named, dedicated variable (e.g., `spotify_token`, `fs_token`) \u2014 never reuse generic names like `res` or `token`.\n3. NEVER overwrite a token variable with `None` or re-initialize it at the start of a code block. The variable persists across blocks \u2014 trust it.\n4. Re-login ONLY on a confirmed 401 error, updating the SAME variable. Do not preemptively re-login 'just in case.'\n5. Before using a token, check existence: `if 'spotify_token' in globals() and spotify_token:` \u2014 do NOT set it to None first and then re-login.\n\nSEPARATED vs. COMBINED OPERATIONS: When an API offers combined operations via flags (e.g., `compress_directory(delete_directory=True)`), prefer calling sub-operations explicitly and separately (compress, then delete) unless you are certain the combined flag produces identical model changes.",
+      "section": "strategies_and_hard_rules",
+      "entry_id": "c3efc092",
+      "helpful_count": 31,
+      "harmful_count": 0,
+      "updated_at": 29,
+      "last_assessed": 29,
+      "origin": "Iter 10: Rollout_1 of the file-organization task failed 'assert model changes match file_system.File' because it fetched file metadata twice (37 show_file calls in exploration + 37 show_file + 37 file_exists in execution) instead of reusing its earlier classification results. Rollout_2 fetched once and passed. The existing entry's efficiency framing was too weak to prevent the agent from re-querying. Iter 15: Rollout 1 failed model-changes-match because it called create_directory on an existing directory (unnecessary write) and used a combined compress+delete flag. The existing entry only warned about redundant reads; extending to writes and adding the separation preference closes this gap. Iter 18: Rollout 1 failed solely due to ~5 redundant Spotify logins from token variable mismanagement (overwriting sp_token=None at block starts). Each extra login created session model records that failed the model-changes assertion. The existing entry warns about unnecessary API calls but doesn't flag login calls specifically or provide a concrete token lifecycle procedure \u2014 the exact gap that caused the failure. Iter 28: Rollout_1 of Task 1 scored 0% because 5 exploratory show_song calls were duplicated in the full processing loop. The entry's specific guidance said 'objects you will later modify' which didn't trigger for songs (only the playlist is modified). Aligning with the general principle ('objects involved in the task') and adding the explore-then-process anti-pattern addresses both the inconsistency and the specific pattern. Iter 29: Rollout_1 failed because the agent printed `sample_library_ids[:10]` of a 14-item list, then in the next code block manually hard-coded `library_song_ids = [those 10 items]`, dropping 4 IDs including 2 that needed removal. The existing entry covers re-fetching and redundant API calls but not this distinct anti-pattern of reconstructing variables from truncated printed output."
+    },
+    {
+      "content": "Paginated APIs require looping: `while True: page = api(page_index=i); if not page: break`",
+      "section": "useful_code_snippets_and_templates",
+      "entry_id": "6c139a99",
+      "helpful_count": 47,
+      "harmful_count": 0,
+      "last_assessed": 29,
+      "recent_assessments": [
+        {
+          "iteration": 28,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 28,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 29,
+          "verdict": "helpful"
+        }
+      ]
+    },
+    {
+      "content": "Example credentials shown in few-shot examples are FAKE - always fetch real credentials from supervisor.",
+      "section": "common_mistakes_and_correct_strategies",
+      "entry_id": "df468d8b",
+      "helpful_count": 0,
+      "harmful_count": 0,
+      "last_assessed": 2,
+      "recent_assessments": [
+        {
+          "iteration": 1,
+          "verdict": "neutral"
+        },
+        {
+          "iteration": 1,
+          "verdict": "neutral"
+        },
+        {
+          "iteration": 2,
+          "verdict": "neutral"
+        }
+      ]
+    },
+    {
+      "content": "Before calling `apis.supervisor.complete_task()`: (1) Read the task instruction and classify it: QUESTION tasks ask for information ('What is\u2026', 'How much\u2026', 'How many\u2026', 'Which\u2026') and REQUIRE an `answer=` argument. ACTION tasks command operations ('Send\u2026', 'Create\u2026', 'Move\u2026', 'Delete\u2026', 'Accept\u2026') without requesting information back, and should NOT include an `answer=` argument. (2) The `answer` field in `show_active_task()` showing `<<NOT_GIVEN>>` is the DEFAULT initial placeholder for ALL tasks \u2014 it means no answer has been submitted yet. It is NOT a signal about whether an answer is needed. IGNORE it for this decision. (3) For QUESTION tasks: determine the exact answer type from the question wording: 'how much total' \u2192 single number, 'how many' \u2192 integer, 'what is the name/title' \u2192 short string. Submit the simplest matching value \u2014 never a compound breakdown when a single aggregate was requested. (4) For ACTION tasks: do NOT report computed intermediate values (new alarm time, list of created IDs, calculated amounts) as answers, even if you calculated them during execution. The decision tree is: instruction asks a question \u2192 always pass `answer=`. Instruction is purely imperative \u2192 never pass `answer=`.",
+      "section": "verification_checklist",
+      "entry_id": "78832af2",
+      "helpful_count": 44,
+      "harmful_count": 3,
+      "updated_at": 8,
+      "last_assessed": 29,
+      "origin": "Iter 4: Two of three task rollout_1 failures traced to answer-submission errors: Task 1 submitted a formatted breakdown string instead of a single total number; Task 3 passed an answer argument on an action-only task. Both violations occurred despite the existing entry covering the action-only case. Adding a verification gate (re-read the task) and explicit format-matching guidance addresses the answer-format drift pattern the reflector identified. Iter 7: Both failed rollouts (75% and 87.5%) passed spurious answer arguments for action-only tasks despite seeing <<NOT_GIVEN>> in show_active_task() output. The existing entry said to re-read the task 'if unclear' \u2014 making the check mandatory and adding <<NOT_GIVEN>> as an explicit mechanical gate removes reliance on the agent's semantic judgment about whether a task 'requests an answer.' Iter 8: All three rollout_1 failures (50%) stemmed from the agent seeing <<NOT_GIVEN>> and following the 'HARD SIGNAL' rule to omit the answer, despite each task being a clear question ('What is the total cost...', 'How much money...', 'What is the title...'). The successful rollout_2 in each pair correctly identified the task as a question and passed the answer. The entry's internal contradiction between points (2) and (3) was consistently resolved in favor of the harmful point (2) due to its 'HARD SIGNAL' emphasis.",
+      "recent_assessments": [
+        {
+          "iteration": 28,
+          "verdict": "neutral"
+        },
+        {
+          "iteration": 28,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 29,
+          "verdict": "helpful"
+        }
+      ]
+    },
+    {
+      "content": "When `csv.writer`/`csv.DictWriter` are blocked at runtime, build CSV manually with SELECTIVE quoting: only quote a field if it contains a comma, newline, or double-quote character. Never always-quote every field \u2014 simple parsers and test harnesses may not strip surrounding quotes, causing key/value mismatches.\n\n```python\ndef csv_escape(val):\n    s = str(val) if val is not None else ''\n    s = s.replace('\"', '\"\"')\n    if any(c in s for c in [',', '\\n', '\\r', '\"']):\n        return '\"' + s + '\"'\n    return s\n```",
+      "section": "common_mistakes_and_correct_strategies",
+      "entry_id": "8f26163d",
+      "helpful_count": 3,
+      "harmful_count": 0,
+      "added_at": 1,
+      "last_assessed": 28,
+      "origin": "Iter 1: Rollout_1 of task 1 failed 3/10 tests because always-quoting CSV fields introduced literal quote characters into parsed values. Rollout_2 used selective quoting and passed 10/10. The csv module is commonly blocked in AppWorld.",
+      "scope_hint": "Applies whenever generating CSV content and csv.writer/csv.DictWriter raise a disallowed-function error.",
+      "recent_assessments": [
+        {
+          "iteration": 10,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 18,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 28,
+          "verdict": "helpful"
+        }
+      ]
+    },
+    {
+      "content": "When a task involves responding to or fulfilling a contact's request (send info, answer a question, etc.): (1) Read the conversation/message history with that person FIRST to discover the SPECIFIC criteria of their request. (2) Extract filter/selection parameters from their message. (3) Gather data from the relevant source. (4) Apply criteria to filter \u2014 build an explicit filtered list as an intermediate artifact. (5) Verify: response includes ALL items matching criteria and NONE that don't. (6) Send. Never skip step 1 \u2014 the conversation often contains critical constraints not stated in the task description.",
+      "section": "problem_solving_heuristics_and_workflows",
+      "entry_id": "9f8d858f",
+      "helpful_count": 9,
+      "harmful_count": 0,
+      "added_at": 1,
+      "last_assessed": 22,
+      "origin": "Iter 1: Rollout_1 of task 2 sent all 21 movie titles instead of only Tarantino's 2, because it never checked Laura's message asking specifically for Tarantino recommendations. Rollout_2 checked messages first, filtered correctly, and passed 8/8.",
+      "scope_hint": "Applies whenever the task references a person's request/question and involves sending them information gathered from another source.",
+      "recent_assessments": [
+        {
+          "iteration": 15,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 16,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 22,
+          "verdict": "helpful"
+        }
+      ]
+    },
+    {
+      "content": "When a task requires performing an action (approve, delete, update, send) on a SUBSET of items matching criteria:\n\n(1) Resolve filter criteria FIRST using the source API's DEDICATED filter parameters (e.g., `search_contacts(relationship='coworker')`, NOT `search_contacts(query=sender_email)`). Free-text `query` returns fuzzy matches across all fields; dedicated filter parameters (`relationship`, `tag`, `category`, `status`) return precise categorical membership. Build an authoritative lookup set (set of emails or IDs) from the filtered results \u2014 print it with count as a verification artifact.\n\n(2) Fetch the COMPLETE set of candidate items (e.g., all pending payment requests).\n\n(3) Match candidates against the authoritative lookup set using exact identifier matching (email, user ID), NOT name-based matching. Build and print the filtered candidate list with count before acting.\n\n(4) SANITY CHECK: If filtered_count equals total_count (filter removed nothing), suspect a filtering error. Re-examine whether you used a dedicated filter parameter vs. a generic query. A task that explicitly names a subset ('from my coworkers') should almost never match 100% of candidates.\n\n(5) Execute actions ONLY on items in the filtered list. NEVER act on all items first and filter afterward \u2014 many actions (approvals, deletions, payments) are irreversible and premature bulk actions can corrupt state so eligible items become unfindable on re-fetch.",
+      "section": "strategies_and_hard_rules",
+      "entry_id": "12cfb18e",
+      "helpful_count": 9,
+      "harmful_count": 0,
+      "added_at": 2,
+      "updated_at": 9,
+      "last_assessed": 26,
+      "origin": "Iter 2: Rollout_1 of the Venmo task approved all 26 pending requests before filtering to roommates/coworkers, causing irreversible state corruption; only 4 of 10 expected requests remained when filtering was finally applied. Rollout_2 filtered first and approved exactly the right 10. Entry [9f8d858f] covers criteria extraction from conversation context but is too narrowly scoped to cover this general bulk-action ordering invariant. Iter 9: Rollout_1 of the Venmo task (83.3%) approved all 26 pending requests instead of the correct 18 because it resolved 'coworkers and friends' by searching contacts with sender emails as query strings (fuzzy match) rather than using the relationship= filter parameter (exact category). The existing entry's step (1) was too abstract \u2014 'Resolve ALL filter criteria first' \u2014 and didn't distinguish between query-based search and API-native category filters. Rollout_2 (100%) used the relationship parameter correctly.",
+      "scope_hint": "Applies whenever a task involves performing the same action on multiple items that must first be filtered by eligibility criteria (relationship, status, category, etc.).",
+      "recent_assessments": [
+        {
+          "iteration": 25,
+          "verdict": "neutral"
+        },
+        {
+          "iteration": 26,
+          "verdict": "neutral"
+        },
+        {
+          "iteration": 26,
+          "verdict": "helpful"
+        }
+      ]
+    },
+    {
+      "content": "When a search query returns multiple items (notes, records, entries) that match but represent DISTINCT events or instances (e.g., two 'Work Dinner' notes from different dates): (1) NEVER aggregate or merge data across them \u2014 each represents an independent event. (2) Examine timestamps (created_at, updated_at) of ALL matches and print them. (3) Determine which item the task implicitly refers to using temporal context (e.g., most recent note for 'yesterday's dinner', task-date proximity). (4) Print the selected item's ID, title, and timestamp with explicit reasoning before parsing its content. (5) Use ONLY data from the selected item. Common error: combining amounts or entries across independent events produces wrong totals, wrong recipients, and extra spurious actions.",
+      "section": "problem_solving_heuristics_and_workflows",
+      "entry_id": "3c755ed7",
+      "helpful_count": 5,
+      "harmful_count": 0,
+      "added_at": 3,
+      "last_assessed": 26,
+      "origin": "Iter 3: Rollout_1 of the Venmo task found two Work Dinner notes (note 3085 from May 16, note 3084 from May 20) and merged their shares into one dict, producing 6 wrong payment requests instead of the correct 3. Rollout_2 compared timestamps, selected only the latest note, and passed 4/4 tests. No existing entry covers source-level disambiguation.",
+      "scope_hint": "Applies whenever a search returns multiple items that could represent separate events/instances and the task refers to a specific one.",
+      "recent_assessments": [
+        {
+          "iteration": 21,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 25,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 26,
+          "verdict": "helpful"
+        }
+      ]
+    },
+    {
+      "content": "* When a task involves items that could come from either an OWNERSHIP/LIBRARY API or a LIKED/ENGAGEMENT API, you MUST disambiguate before proceeding.\n\nTRIGGERS (any one fires the mandatory procedure):\n- 'my [items]' combined with a filter clause ('which I have liked', 'that are rated') \u2192 parse into BASE COLLECTION (ownership) + FILTER (engagement on items within).\n- ANY mention of Spotify playlists \u2014 'my playlists', 'liked playlists', 'songs in playlists', 'playlist songs' \u2014 ALWAYS disambiguate `show_playlist_library` (ownership: playlists in your library) vs. `show_liked_playlists` (engagement: playlists you liked). These are DIFFERENT APIs returning DIFFERENT playlists with DIFFERENT song sets.\n- Any app where both a library/collection API and a liked/favorited API exist for the same item type.\n\nCORE PRINCIPLE: 'my X' = items you OWN or have in your LIBRARY, NOT items you have liked/favorited. Ownership \u2260 engagement.\n\nMANDATORY DISAMBIGUATION PROCEDURE:\n1. Identify both candidate APIs (library vs. liked).\n2. Fetch data from BOTH APIs.\n3. Print both candidate sets with item counts side by side as a comparison artifact.\n4. If the sets differ, default to the OWNERSHIP/LIBRARY API (`show_playlist_library`, `show_song_library`) unless the task explicitly uses 'liked' or 'favorited' as the defining criterion for the collection itself.\n5. Act ONLY on the selected set. Never start with one set and switch mid-task.\n\nITEM-LEVEL vs CONTAINER-LEVEL INTERSECTION \u2014 When the task concerns items WITHIN containers (e.g., 'songs in my playlists which I have liked'), the intersection MUST be computed at the ITEM level (individual songs), NOT the CONTAINER level (playlists):\n1. BASE COLLECTION: extract all individual items from the selected containers (e.g., get all song IDs from each playlist returned by `show_playlist_library`).\n2. FILTER SET: get all item IDs from the engagement API (e.g., song IDs from `show_liked_songs`).\n3. Compute TARGET = BASE \u2229 FILTER at the ITEM level. Print the intersection with count as a verification artifact.\n4. Act ONLY on TARGET.\n\nExample: 'liked songs in my playlists' \u2192 BASE = all song IDs across playlists from show_playlist_library, FILTER = song IDs from show_liked_songs, TARGET = BASE \u2229 FILTER (song-level intersection).\n\nANTI-PATTERN \u2014 ABANDONING COMPUTED INTERSECTIONS: If a correctly computed intersection yields fewer items than expected, that is NORMAL filtering behavior \u2014 never expand back to the full unfiltered set because the result 'seems too small.' Trust the computed intersection unless you identify a specific data-retrieval error (wrong API, missing pagination). A smaller-than-expected count is evidence the filter is working, not that it is broken.",
+      "section": "problem_solving_heuristics_and_workflows",
+      "entry_id": "8a052e45",
+      "helpful_count": 7,
+      "harmful_count": 0,
+      "added_at": 5,
+      "updated_at": 22,
+      "last_assessed": 28,
+      "origin": "Iter 5: Rollout_1 failed because it used show_liked_playlists (engagement API) instead of show_playlist_library (ownership API) for 'my playlists', producing the wrong song universe (27 vs 22 songs, 7 vs 11 after intersection). It also computed the correct intersection at one point but abandoned it. No existing entry covers API-selection disambiguation based on possessive vs. engagement language. Iter 6: Rollout 1 (71.4%) used show_liked_playlists instead of show_playlist_library AND applied no song-level filtering, rating all 27 songs instead of the correct 11. The entry's trigger ('alongside a SEPARATE filter') didn't fire for relative-clause syntax like 'songs in my playlists which I have liked'. Adding disambiguation procedure and stronger trigger for 'which I have [verbed]' patterns. Iter 21: Both rollouts of the Spotify review task used show_liked_playlists (27 songs) instead of show_playlist_library (22 songs), failing 2/7 tests. Rollout 1 even fetched both APIs but discarded the library data. The existing trigger ('my X + filter clause') was too narrow \u2014 the agent needs to disambiguate whenever Spotify playlists appear in any form. Iter 22: Rollout 1 failed because it (a) intersected at the playlist level instead of the song level, and (b) abandoned even that intersection to use all 27 songs from liked playlists. The existing entry covers disambiguation but lacked explicit item-vs-container guidance and an anti-pattern for abandoning computed intersections.",
+      "scope_hint": "Applies whenever a task uses possessive language ('my X') that could map to either a library/ownership API or a liked/favorited API, especially when combined with a separate filter condition.",
+      "recent_assessments": [
+        {
+          "iteration": 26,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 26,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 28,
+          "verdict": "helpful"
+        }
+      ]
+    },
+    {
+      "content": "When operating on ordered or stateful collections (queues, playlists, message threads), inspect each item's metadata fields BEFORE acting to identify implicit scope boundaries:\n\n(1) Look for state fields: `is_current`, `is_playing`, `is_read`, `status`, `position`, `is_completed`.\n(2) Map the task's language to a state-based filter: 'songs played so far' \u2192 position \u2264 current_position; 'unread messages' \u2192 is_read=false; 'current song' \u2192 is_current=true.\n(3) If the task does NOT explicitly say 'all items in the queue/list', assume a contextually-bounded subset \u2014 do NOT default to acting on every item.\n(4) Build the filtered subset as an explicit printed artifact (IDs and count) before executing actions.\n\nCommon error: fetching a queue and acting on ALL items when the task implicitly refers to only those up to the current playback position or state boundary.",
+      "section": "problem_solving_heuristics_and_workflows",
+      "entry_id": "f036c063",
+      "helpful_count": 1,
+      "harmful_count": 0,
+      "added_at": 6,
+      "last_assessed": 20,
+      "origin": "Iter 6: Rollout 1 (80%) liked all 10 queue songs instead of only the 6 at positions \u2264 current. Entry [12cfb18e] covers filtering by explicit external criteria (relationships, tags) but not recognizing implicit boundaries encoded in collection state metadata (is_current, position). This is a distinct recognition gap.",
+      "scope_hint": "Applies when acting on items in an ordered/stateful collection where metadata fields like position, is_current, is_playing encode an implicit boundary the task references.",
+      "recent_assessments": [
+        {
+          "iteration": 20,
+          "verdict": "helpful"
+        }
+      ]
+    },
+    {
+      "content": "* When a task asks which entity is most/least frequent, common, or recommended, and data items contain multi-valued fields (e.g., a song lists multiple artists, a product has multiple categories):\n\n(1) Count ALL occurrences across ALL positions within each item's list \u2014 do NOT restrict to only the first/primary/lead value.\n(2) Build a full frequency counter and print it as a verification artifact before selecting the answer.\n(3) For ties, apply a deterministic tiebreaker (first appearance in data order, then alphabetical).\n\nMETRIC SELECTION \u2014 FREQUENCY COUNT vs. POSITIONAL RANK:\n- 'Most/least recommended', 'most/least common', 'most/least frequent' \u2192 answer is determined by FREQUENCY COUNT (number of appearances). The entity with the fewest appearances is 'least recommended.'\n- Do NOT equate 'least recommended' with 'appears last in a ranked list.' Position in a recommendation list is OUTPUT ordering, not degree of recommendation.\n- If you compute BOTH a frequency metric AND a positional/rank metric, print both side by side. If they disagree, use FREQUENCY COUNT unless the task explicitly asks about position ('top of the list', 'highest ranked').\n\n(4) VERIFICATION GATE: Before submitting, check whether counting only the first value vs. all values would change the answer. If they differ, default to counting all values unless the task explicitly restricts scope (e.g., 'lead artist', 'primary category').\n\nCommon errors: (a) Counting only the first-listed value in a multi-valued field. (b) Using the entity at the last list position as 'least recommended' when a different entity has fewer total appearances \u2014 frequency count \u2260 positional rank.",
+      "section": "problem_solving_heuristics_and_workflows",
+      "entry_id": "312bf71f",
+      "helpful_count": 0,
+      "harmful_count": 0,
+      "added_at": 11,
+      "updated_at": 21,
+      "last_assessed": 21,
+      "origin": "Iter 11: Rollout 1 of the Spotify recommendations task counted only the primary (first) artist per song, getting Jasper Skye (4), while rollout 2 correctly counted all artist positions, getting Seraphina Dawn (5). No existing entry covers how to aggregate over multi-valued fields. Iter 21: Both rollouts of the 'least recommended artist' task computed frequency counts AND positional ranks but chose positional rank (Lucas Grey, last in list) over frequency count (Evelyn Rose, fewest appearances). The entry guided correct data collection but lacked metric-selection guidance, causing both rollouts to answer wrong (50%).",
+      "scope_hint": "Applies whenever computing frequency/ranking of an entity type and the source data has items with lists of that entity (multiple artists per song, multiple recipients per email, etc.)."
+    },
+    {
+      "content": "When calling APIs to create or modify resources, pass ONLY parameters the task instruction explicitly requires or specifies. Do NOT set optional parameters (e.g., `private`, `visibility`, `notify`, `public`) to explicit values \u2014 even if setting them to what appears to be the API default \u2014 unless the task specifically demands it.\n\nReason: Explicitly passing `private=False` vs. omitting `private` entirely can trigger different backend code paths, producing unexpected model-change records that cause test failures, even though the logical outcome appears identical.\n\nPROCEDURE before each create/update API call:\n1. List which attributes the task instruction specifies (description text, amount, recipient, etc.).\n2. Check the API doc to identify required vs. optional parameters.\n3. Pass all required parameters + ONLY those optional parameters the task explicitly mentions.\n4. If the task is silent about an optional attribute (visibility, privacy, notification preference), OMIT it from the call entirely \u2014 do not guess or set it to a 'safe' value.",
+      "section": "common_mistakes_and_correct_strategies",
+      "entry_id": "05baecc4",
+      "helpful_count": 6,
+      "harmful_count": 0,
+      "added_at": 17,
+      "last_assessed": 28,
+      "origin": "Iter 17: Rollout 1 of the Venmo task failed user_id_to_share test solely because it passed private=False (an optional parameter) while rollout 2 omitted it and passed 100%. Existing entry [c3efc092] covers unnecessary API calls but not unnecessary parameters on required calls \u2014 a distinct failure mode.",
+      "scope_hint": "Applies whenever calling create/update APIs where optional parameters exist that the task instruction does not mention.",
+      "recent_assessments": [
+        {
+          "iteration": 28,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 28,
+          "verdict": "neutral"
+        },
+        {
+          "iteration": 28,
+          "verdict": "helpful"
+        }
+      ]
+    },
+    {
+      "content": "* PRE-COMPLETION VERIFICATION GATE \u2014 Before calling complete_task(), run these checks IN ORDER:\n\nSTEP 0 \u2014 SUB-GOAL COMPLETENESS (mandatory for multi-action tasks):\nRe-read the task instruction. List every imperative verb/action (create, export, write, delete, send, move, update, terminate, etc.). For EACH action, confirm you executed a corresponding API call \u2014 not just gathered data for it. If any action has no matching executed API call, STOP and execute it before proceeding. Trap: data collection (fetching songs, computing lists) feels like progress but is NOT the downstream action (writing the file, deleting the account). Do not call complete_task() until every imperative in the instruction has been fulfilled.\n\nSTEPS 1-5 \u2014 VERIFICATION OF OBSERVABLE EFFECTS:\n1. Define explicit SUCCESS CRITERIA for the task's observable effects (e.g., 'destination directories contain N files each', 'source directory has 0 remaining files', 'N records were created/deleted').\n2. Verify EXACTLY ONCE: make ONE set of verification API calls, store ALL results in variables, and print them. Do NOT run a second verification loop over the same endpoints \u2014 each API call (even read-only like show_directory or show_file) can trigger metadata updates on accessed objects (e.g., accessed_at timestamps), producing unexpected model-change records that fail assertions.\n3. Compare your stored verification output against the success criteria.\n4. If ANY criterion fails (e.g., 0 items where N were expected, empty directories after moves, unchanged state after updates):\n   - DO NOT call complete_task().\n   - Diagnose the discrepancy: wrong paths? recomputed a known value incorrectly? API error?\n   - Fix and re-execute the failed operations.\n   - Re-verify the RETRIED operations ONCE (not a full re-check of already-verified state).\n5. Only proceed to completion after all criteria pass.\n\nMINIMALITY RULE: If your first verification pass shows all criteria met, proceed DIRECTLY to complete_task(). Do NOT run an additional 'final verification summary' or 'double-check' pass \u2014 that second pass is redundant and generates extra model changes that cause test failures. Trust the cached verification output from your single pass.\n\nCommon trap: Operations return success messages ('File moved.', 'Directory created.') but the files end up in the WRONG location due to an incorrect path variable. Operation-level success \u2260 task-level correctness. Always verify final state, not just API responses.\n\nRelated trap: Recomputing a known path or value using fragile string manipulation (e.g., double rsplit) instead of reusing the original variable from an earlier code block. If a correct value already exists in a variable, use it directly \u2014 do not re-derive it.",
+      "section": "verification_checklist",
+      "entry_id": "cd7e14d4",
+      "helpful_count": 7,
+      "harmful_count": 0,
+      "added_at": 19,
+      "updated_at": 28,
+      "last_assessed": 29,
+      "origin": "Iter 19: Rollout 1 of the file task moved all 31 files to wrong paths, its own verification clearly printed 0 files in each destination directory, yet it still called complete_task(). No existing entry requires the agent to act on its own verification results before completing. Iter 24: Rollout_1 ran two full verification loops (steps 20+21) after all moves succeeded, producing 3 redundant show_directory calls on directories containing freshly-moved files. These likely triggered accessed_at metadata updates, causing the 'model changes match file_system.File' assertion to fail. Rollout_2 verified once and passed 100%. Entry [c3efc092] already warns about redundant calls but [cd7e14d4] actively encouraged verification without bounding it, creating a procedural tension. Iter 28: Rollout_1 of Task 2 scored 10% because the agent collected all data (91 songs) but never wrote the CSV file or deleted the Spotify account \u2014 skipping 2 of 3 required actions before calling complete_task(). The existing entry verifies observable effects of completed actions but never checks whether all required actions were actually performed. Adding Step 0 (sub-goal completeness check) catches this 'forgot entire sub-goals' failure mode.",
+      "scope_hint": "Applies whenever the agent runs a post-action verification step (listing files, counting records, checking state) before calling complete_task().",
+      "recent_assessments": [
+        {
+          "iteration": 29,
+          "verdict": "neutral"
+        }
+      ]
+    },
+    {
+      "content": "* When the task states which entities are 'already handled' (e.g., 'some have already sent their share', 'those who already responded'), derive the exclusion set ONLY from that stated condition. Do NOT add extra 'safety' or 'deduplication' checks.\n\nPROCEDURE:\n1. Map the task's exclusion language to exactly one data check (e.g., 'already sent their share on Venmo' \u2192 check received Venmo transactions).\n2. Build the excluded set from ONLY that check.\n3. Act on ALL remaining entities \u2014 do not apply additional filters (e.g., checking for existing pending requests, prior interactions).\n\nANTI-PATTERN: After correctly identifying who already paid via received transactions, also checking for existing pending payment requests and excluding anyone with a match. The pending request may be from an unrelated context, causing false exclusions. The task's stated condition is the ONLY exclusion criterion.",
+      "section": "common_mistakes_and_correct_strategies",
+      "entry_id": "fe750bca",
+      "helpful_count": 1,
+      "harmful_count": 0,
+      "added_at": 21,
+      "last_assessed": 26,
+      "origin": "Iter 21: Rollout 1 of the Venmo task correctly identified 4 unpaid people via received transactions but then added an unasked-for check against existing pending payment requests, incorrectly excluding Katie (who had a pending request from a different context). This reduced the action set from 4 to 3, failing the user_id_to_share test. No existing entry warns against this over-filtering pattern.",
+      "scope_hint": "Applies when the task describes a condition for which entities are already handled and you need to determine who still needs action.",
+      "recent_assessments": [
+        {
+          "iteration": 25,
+          "verdict": "helpful"
+        },
+        {
+          "iteration": 26,
+          "verdict": "neutral"
+        }
+      ]
+    }
+  ],
+  "version": "1.0"
+}

@@ -1,0 +1,42 @@
+{
+  "task_id": "751",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "06920986",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "1f931f4e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "056f0a9e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "66f87cbc",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c67e6085",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "7ca56b8b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "843d2ff0",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f9a44264",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "All rollouts \u2014 both baseline (rollout_1, rollout_2) and the supplementary PP trace \u2014 terminated with timeout errors. There is zero trace content: no search queries, no reasoning, no candidate answers, no playbook citations, no uncertainty tags, no reflection. This total absence of output across every rollout is the defining signal.\n\n**Root cause analysis:**\n\n1. **Playbook size as a contributor:** The current playbook contains 24 detailed entries, many with multi-step procedures, sub-procedures, examples, and hard rules. Processing this volume of instruction before issuing a first search may itself consume significant context and reasoning budget. The Fast-Start entry [06920986] says 'FIRST SEARCH IN FIRST RESPONSE,' but if the agent is dutifully reading and internalizing 24 entries first, the 'first response' is already late. The Graduated Commitment Countdown [1f931f4e] provides response-count and search-count triggers, but if the agent burns its time budget on verbose internal reasoning before reaching those thresholds, the safeguards never fire.\n\n2. **Missing wall-clock awareness mechanism:** Neither [06920986] nor [1f931f4e] provides a reliable mechanism for the agent to detect how much time has elapsed. Response-count tracking requires the agent to maintain a counter, which is fragile. There is no 'emergency early-exit' trigger that fires based on absolute position in the conversation (e.g., 'if this is your very first response and you have already written 500+ words of planning without issuing a search, issue a search NOW').\n\n3. **Verbose reasoning spiral:** The playbook repeatedly instructs the agent to list clues, rate distinctiveness, enumerate candidates, decompose chains, check triggers, run gates, etc. \u2014 all before searching. A conscientious agent trying to follow ALL of these simultaneously in its first response could produce an enormous planning block that consumes the entire time budget. The 'LEAN REASONING: 3-5 sentences max' instruction in [06920986] applies 'between searches,' but the pre-search planning phase has no equivalent brevity constraint.\n\n4. **No 'absolute emergency submission' trigger:** The playbook says 'NEVER TIME OUT' but provides no mechanism to detect imminent timeout. An entry like 'if you have produced 12+ responses OR if you sense you are running low on time, SUBMIT YOUR BEST GUESS IN YOUR VERY NEXT SENTENCE' would be more actionable. The current phrasing ('if at any point you feel you have been working for an extended period') is too subjective.\n\n**What's missing:**\n- A hard constraint on pre-search planning length (e.g., 'your first response must be under 200 words and MUST end with a search query')\n- A stronger emergency-exit mechanism that doesn't rely on the agent tracking counts\n- Possible playbook condensation guidance: 'only read entries whose trigger matches \u2014 do not pre-read the entire playbook'\n\n**Why this is actionable:** The consistency of the failure (100% timeout across all rollouts) suggests a systematic issue, not random variance. The playbook has timeout-prevention entries, but they are insufficient for this failure mode \u2014 either because the agent doesn't reach the point where they fire, or because the overall playbook complexity itself is the bottleneck.",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\nError: timeout\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\nError: timeout",
+  "evaluation_details": "## rollout_1 Evaluation\n\nError: timeout\n\n## rollout_2 Evaluation\n\nError: timeout"
+}

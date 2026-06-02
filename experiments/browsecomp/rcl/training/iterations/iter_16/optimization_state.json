@@ -1,0 +1,230 @@
+{
+  "playbook_assessment": {
+    "health": "fragile",
+    "playbook_size_trend": "growing",
+    "coverage_inventory": {
+      "total_entries": 21,
+      "sections_present": [
+        "answer_extraction",
+        "common_mistakes",
+        "query_formulation",
+        "search_strategies"
+      ],
+      "section_entry_counts": {
+        "search_strategies": 7,
+        "query_formulation": 2,
+        "answer_extraction": 2,
+        "common_mistakes": 10
+      },
+      "underrepresented_sections": [],
+      "observed_gap_areas": [
+        "Agent adherence gap persists: tasks 1073 and 49 each had R2 succeed and R1 fail with identical playbook \u2014 existing entries cover the required behavior but are followed ~50% of rollouts",
+        "No mid-task pacing/budget entry (e.g., 'by search 15, you should have at least one candidate') beyond hard stop at 40"
+      ]
+    },
+    "entry_maturity": {
+      "battle_tested": [
+        "7ca56b8b [search_strategies] +7/-0, tested=7",
+        "056f0a9e [answer_extraction] +4/-2, tested=6"
+      ],
+      "developing": [
+        "06920986 [common_mistakes] +4/-0, tested=4"
+      ],
+      "untested_or_new": [
+        "843d2ff0 [search_strategies] +2/-0, tested=2",
+        "f9a44264 [query_formulation] +1/-0, tested=1",
+        "009bd398 [common_mistakes] +0/-0, tested=0",
+        "0126ca3e [search_strategies] +0/-0, tested=0",
+        "3b3c61ba [query_formulation] +0/-0, tested=0",
+        "47e3a943 [common_mistakes] +0/-0, tested=0",
+        "5dd8a109 [common_mistakes] +0/-0, tested=0",
+        "62d6eba0 [search_strategies] +0/-0, tested=0",
+        "66f87cbc [common_mistakes] +0/-0, tested=0",
+        "678183ac [common_mistakes] +0/-0, tested=0",
+        "77a7faa6 [search_strategies] +0/-0, tested=0",
+        "a674b64e [answer_extraction] +0/-0, tested=0",
+        "bc3826a9 [common_mistakes] +0/-0, tested=0",
+        "c636be22 [search_strategies] +0/-0, tested=0"
+      ],
+      "recent_additions_needing_time": [],
+      "at_risk": []
+    },
+    "coherence_issues": [
+      "4+ pivot-trigger entries (c67e6085@10, 66f87cbc@5-loop, f9a44264@3-rut, bc3826a9@10) with overlapping thresholds \u2014 agent followed none across iterations 15 or 16"
+    ]
+  },
+  "change_ledger": [
+    {
+      "iteration": 15,
+      "summary": "Updated 843d2ff0 with SEARCH-TOXIC category. Added bc3826a9 (Candidate Generation Pivot).",
+      "source_tasks": [
+        "389",
+        "241",
+        "527"
+      ],
+      "reflection_summary": "All 3 tasks 0%. Agent fixated on low-distinctiveness clues for 20-50 searches without pivoting.",
+      "operations": [
+        {
+          "op": "UPDATE",
+          "entry_id": "843d2ff0",
+          "section": "search_strategies",
+          "rationale": "Agent started with LOW/SEARCH-TOXIC clues. Added SEARCH-TOXIC category and anti-pattern.",
+          "expected_effect": "Agent starts with HIGH-distinctiveness clues and recognizes topically-poisoned keywords.",
+          "source_tasks": [
+            "389",
+            "241"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "bc3826a9",
+          "section": "common_mistakes",
+          "rationale": "Agent spent 20-50 searches on keyword variations. Existing entries say 'pivot' but not 'pivot TO what.'",
+          "expected_effect": "After 10+ failed searches, agent switches to structural role search or candidate generation.",
+          "source_tasks": [
+            "389",
+            "241",
+            "527"
+          ]
+        }
+      ],
+      "observed_effect": "Both entries assessed ~3 (neutral) in iteration 16. Tasks 1073/49/926 likely didn't match these entries' trigger conditions closely. No evidence of help or harm yet.",
+      "status": "watch",
+      "evidence_strength": "single_trace",
+      "reversal_risk": "high",
+      "notes": "Both provide unique coverage. Neutral assessments likely reflect task mismatch, not ineffectiveness. Keep and wait for matched exposure."
+    },
+    {
+      "iteration": 16,
+      "summary": "Added e40ad800 (Mine Recurring Results for Candidate Names). Updated 7ca56b8b to replace harmful 'NEVER combine >2 clues' with staged constraint density escalation.",
+      "source_tasks": [
+        "1073",
+        "49",
+        "926"
+      ],
+      "reflection_summary": "0/3 batch pass. Task 49: agent saw document 15+ times but never extracted entity names \u2014 R2 succeeded by doing this. Task 926: combining 6 constraints was breakthrough but old entry prohibited >2 clues. Task 1073: wrong upstream identification (Liberia vs Ghana) never verified despite entry 678183ac.",
+      "operations": [
+        {
+          "op": "ADD",
+          "entry_id": "e40ad800",
+          "section": "common_mistakes",
+          "rationale": "Task 49 R1: doc [76953] appeared 15+ times; agent never extracted 'Jon Anderson' as candidate. R2 succeeded by doing this at step 17. No existing entry covers mining result CONT...",
+          "expected_effect": "Agent stops keyword searching when document recurs 3+ times and extracts all named entities for verification.",
+          "source_tasks": [
+            "49"
+          ]
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "7ca56b8b",
+          "section": "search_strategies",
+          "rationale": "Absolute rule 'NEVER combine >2 clues' directly prevented winning strategy in task 926. R2 breakthrough: combining 6 quoted constraints surfaced Dany Robin's Wikipedia page. Rep...",
+          "expected_effect": "Agent decomposes initially, escalates to 4-6 dense constraints after 10+ failed decomposed searches.",
+          "source_tasks": [
+            "926"
+          ]
+        }
+      ],
+      "observed_effect": "too early to judge",
+      "status": "untested",
+      "evidence_strength": "single_trace",
+      "reversal_risk": "high",
+      "notes": "e40ad800 fills a clear gap. 7ca56b8b update modifies a battle-tested entry \u2014 watch for decomposition regression. Both motivated by single-task evidence."
+    }
+  ],
+  "open_hypotheses": [
+    "Execution variance may be the primary bottleneck: tasks 1073 and 49 each had R2 succeed with identical playbook \u2014 suggests stochastic agent behavior, not missing coverage",
+    "Common_mistakes at 10 entries may exceed agent's mid-task working memory \u2014 could explain why mid-task pivot triggers are never followed",
+    "Consolidating 4+ overlapping pivot-trigger entries into one escalation ladder might improve adherence",
+    "Early-firing entries (06920986 at task-start) may be systematically more reliable than mid-task triggers \u2014 +4/-0 vs. 0% adherence on mid-task pivots",
+    "Absolute prohibitions in entries can create hidden harm (7ca56b8b 'NEVER >2 clues' prevented task 926 breakthrough) \u2014 other entries may have similar hidden constraints",
+    "Batch results (0/3) overstate playbook weakness \u2014 R2 succeeded on 2/3 tasks, suggesting content is adequate but execution is unreliable"
+  ],
+  "preserve_until_more_evidence": [
+    "e40ad800 (Mine Recurring Results) \u2014 unique coverage for extracting names from result content, untested",
+    "7ca56b8b constraint density escalation \u2014 fixes confirmed harm, but modifies battle-tested entry; watch for regression",
+    "bc3826a9 (Candidate Generation Pivot) \u2014 unique recovery procedure, 3x neutral (likely task mismatch)",
+    "62d6eba0 (Indirect Clue Resolution) \u2014 relevant to task 1073 pattern, still completely untested",
+    "678183ac (Unverified Upstream Gate) \u2014 should have triggered in task 1073 R1, tested ~1 neutral",
+    "All ~14 untested entries \u2014 no evidence for or against"
+  ],
+  "interference_patterns": [
+    "4+ pivot-trigger entries at overlapping thresholds \u2014 agent followed none across 2 iterations. Possible format/density issue rather than content gap.",
+    "7ca56b8b old 'NEVER >2 clues' directly harmed task 926 \u2014 now removed. Check other entries for similar hidden absolute constraints."
+  ],
+  "strategy_memory": {
+    "questions": [
+      "Is rollout variance (same playbook, different outcomes) the dominant factor vs. playbook content gaps?",
+      "Would consolidating overlapping pivot entries improve agent adherence, or is the problem inherent to mid-task triggers?",
+      "Does 7ca56b8b constraint density escalation preserve decomposition's +7/-0 strength?",
+      "Are there other absolute prohibitions hiding in entries that could cause task-specific harm like the NEVER >2 rule?"
+    ],
+    "notes": [
+      "Two iterations tracked. ~14/21 entries completely untested. Most playbook unvalidated.",
+      "Tasks 1073, 49: R2 succeeded, R1 failed \u2014 playbook content covers required strategies but agent follows them stochastically",
+      "Task 926: absolute prohibition in battle-tested entry directly prevented winning strategy \u2014 first evidence of hidden harm from rigid rules",
+      "Task 1073 R1: 31 searches in wrong country; 'established early 1950s' clue would have falsified Liberia (est. 1862) instantly",
+      "Task 49 winning move: extracting 'Jon Anderson' from recurring doc at step 17 \u2014 now covered by e40ad800",
+      "Failures remain 'easy mistakes' (unverified assumptions, names not extracted, keyword perseveration) not capability limits"
+    ]
+  },
+  "model_observations": {
+    "capability_gaps_observed": [
+      "Agent does not extract candidate entity names from recurring search result content without explicit instruction (task 49: 15+ appearances, never mined)",
+      "Agent does not verify upstream assumptions even when entry 678183ac prescribes it (task 1073 R1: never checked Liberia est. date)",
+      "Agent recognizes being stuck but doesn't act on recognition \u2014 consistent across iterations 15-16"
+    ],
+    "strategies_that_work": [
+      "Domain-attribute search after identifying institution/country (task 1073 R2: 'Ghana pharmaceutical research diabetes tuberculosis')",
+      "Extracting candidate names from recurring result content and verifying (task 49 R2: step 17 pivot)",
+      "Dense multi-constraint quoted queries for obscure entities (task 926 R2: 6 constraints \u2192 Dany Robin Wikipedia page)",
+      "Fast-Start (06920986) \u2014 +4/-0 across 4 tests, reliably followed"
+    ],
+    "entries_the_model_struggles_with": [
+      "c67e6085 (Assumption Lock-in pivot) \u2014 violated across both iterations",
+      "678183ac (Unverified Upstream Gate) \u2014 not followed in task 1073 R1",
+      "All mid-task pivot triggers \u2014 consistently unfollowed across 2 iterations"
+    ],
+    "interference_observed": [
+      "7ca56b8b old 'NEVER >2 clues' actively prevented winning strategy in task 926 \u2014 now fixed"
+    ]
+  },
+  "agent_reasoning_patterns": {
+    "reliable_behaviors": [
+      "Follows early-firing task-start entries (06920986) \u2014 +4/-0",
+      "Can identify correct entity when parametric knowledge is strong (tasks 1073 R2, 49 R2)",
+      "Can execute complex verification chains once on the right track"
+    ],
+    "common_mistakes": [
+      "Keyword perseveration: 20-50 synonym variations on same axis (consistent across iterations 15-16)",
+      "Fails to extract candidate names from recurring result content (task 49)",
+      "Fails to verify upstream assumptions before downstream budget spend (task 1073)",
+      "Does not follow mid-task pivot triggers despite multiple entries prescribing them"
+    ],
+    "entry_styles_that_work": {
+      "task_start_triggers": "Entries firing before first search (06920986) followed most reliably \u2014 +4/-0",
+      "concrete_examples": "Entries with specific worked examples (e40ad800 Jon Anderson example) may improve actionability \u2014 untested"
+    },
+    "scaffolding_effectiveness": {
+      "pivot_instructions": "4+ entries prescribe pivoting \u2014 agent follows none. May need consolidation or different framing.",
+      "absolute_rules": "Absolute prohibitions can create hidden harm \u2014 'NEVER >2 clues' prevented task 926 breakthrough. Prefer staged/conditional rules."
+    }
+  },
+  "optimization_velocity": {
+    "stage": "exploration",
+    "stage_rationale": "Second recorded iteration. ~14/21 entries untested. Batch results (0/3 pass) look concerning but R2 succeeded on 2/3 tasks \u2014 suggesting playbook content is broadly adequate. Failures are addressable easy mistakes (unverified assumptions, names not extracted, keyword perseveration). Key uncertainty: is the primary bottleneck content gaps, execution reliability, or entry format/salience?",
+    "iterations_at_current_stage": 2,
+    "recent_mutation_success_rate": "0/4 validated \u2014 2 from iter 15 assessed neutral (task mismatch likely), 2 from iter 16 untested",
+    "recommendation": "Most failures trace to agent not following existing entries rather than missing coverage. Before adding more entries, prioritize understanding whether consolidation, reformatting, or repositioning of existing entries (especially mid-task pivot triggers) would improve adherence. The 7ca56b8b fix (removing harmful absolute rule) is a useful precedent \u2014 audit other entries for rigid constraints that might similarly backfire.",
+    "recurring_failure_patterns": [
+      "Keyword search perseveration (all tasks, both iterations \u2014 most consistent failure)",
+      "Mid-task pivot triggers not followed (confirmed across iterations 15-16, multiple entries)",
+      "Failure to verify upstream assumptions before downstream search (tasks 1073, 389)"
+    ],
+    "single_occurrence_failures": [
+      "Failure to extract candidate names from recurring result content (task 49)",
+      "Harmful absolute rule in battle-tested entry (task 926 \u2014 NEVER >2 clues)",
+      "Wrong country/cultural context assumption (task 1073 \u2014 Liberia vs Ghana)"
+    ]
+  }
+}

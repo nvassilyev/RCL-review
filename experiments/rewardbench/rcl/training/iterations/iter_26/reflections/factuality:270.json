@@ -1,0 +1,591 @@
+{
+  "task_id": "factuality:270",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "a3832d7e",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:270\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n## Root Cause: Cascading Failure from Premise Misclassification, Enabled by Overcautious Counter-Fact Self-Check\n\nBoth rollouts failed identically (0.0%, identical scores and reasoning), confirming a deterministic procedural failure. The prompt embeds a false factual premise \u2014 that the third generation of video game consoles ended in 2003 \u2014 when the well-established periodization places the third generation (NES, Sega Master System) ending around 1990. Candidate [1] correctly identifies and corrects this false premise. Candidates [2], [3], [4] accept it and generate elaborate fabricated explanations (non-existent Japanese regulations, fictional game titles like 'Alex Kidd's World Adventure', fake patent timelines). The agent ranked the correct answer lowest (2.8) and the most fabrication-laden answer highest (6.1).\n\n### Causal Chain (all three reflections converge)\n\n1. **005004a4's COUNTER-FACT SELF-CHECK overcaution** \u2014 The agent classified the '2003 end date' as UNVERIFIABLE despite possessing the domain knowledge that third-generation consoles ended ~1990. The telling phrase in the trace is 'UNVERIFIABLE from the prompt alone,' suggesting the COUNTER-FACT SELF-CHECK clause ('If your counter-evidence depends on recalled exact wording from specific publications... classify as UNVERIFIABLE') was over-applied. Console generation timelines are consensus domain knowledge \u2014 standard periodizations any informed person would affirm \u2014 not 'recalled exact wording from specific publications.' The clause as written makes no distinction between consensus facts and recalled source text, creating an overly broad escape hatch to UNVERIFIABLE. All three reflections independently identify this as harmful.\n\n2. **a3832d7e's PREMISE CHECKLIST lacked a candidate-disagreement trigger** \u2014 The entry says 'Apply ISOLATE\u2192COUNTER\u2192CLASSIFY from your own knowledge,' but the agent substituted 'from the prompt alone.' Critically, the entry has no escalation mechanism for when a candidate explicitly contradicts a premise that other candidates accept. Candidate [1] directly stated the '2003' date is wrong, which should have been the strongest possible signal to verify. Two reflections tag this entry as harmful; the third (principle_extraction) argues the entry's text is correct but its enforcement is insufficient \u2014 effectively the same conclusion: it needs strengthening.\n\n3. **Downstream cascade** \u2014 With the premise classified UNVERIFIABLE, the PREMISE OVERRIDE in 132aab84 never fires. Candidate [1]'s correction is classified as 'sidestepping' rather than DIRECT engagement. Fabrication-laden candidates are rewarded for 'responsiveness.' The architecture (PREMISE CHECKLIST \u2192 PREMISE OVERRIDE \u2192 FOCUS ALIGNMENT) is sound, but has a single-point-of-failure at step 1.\n\n### Secondary Signals\n\n- **Fabrication divergence was missed**: Candidates [2] and [4] both explain '2003' with entirely non-overlapping specifics (different regulations, different games, different corporate actions). This mutual inconsistency is a strong confabulation signal that neither 29e534bd's ANTI-CORROBORATION (trigger too narrow \u2014 requires 'same named source') nor any other entry currently captures. Two of three reflections identify this gap, but it is a secondary detection mechanism \u2014 fixing the primary chain would have prevented the failure regardless.\n\n- **8e0d9579 gives correct advice** ('don't let verbosity outweigh correctness') that was violated. This makes it weak in enforcement, not harmful in content.\n\n- **93b0e8f9's EPISTEMIC SYMMETRY AUDIT** should have caught asymmetric skepticism (agent applied 'unverified' to [2]/[4] but exempted [3]'s structurally identical claims). The agent didn't follow the entry, which is an enforcement gap, not harmful advice.\n\n### Recommended Mutations\n\n**Mutation 1 (highest priority): Update 005004a4** \u2014 Add a consensus domain knowledge carve-out to the COUNTER-FACT SELF-CHECK. Proposed addition: 'Consensus domain knowledge \u2014 widely-accepted historical periodizations, standard scientific classifications, universally-taught mathematical facts, well-established industry terminology \u2014 is NOT equivalent to recalled exact wording from specific publications. If your counter-fact represents standard domain knowledge that any informed person in the field would affirm without consulting a specific source, it is valid for VERIFIED FALSE classification. The recalled-wording caution applies only to specific quotes, statistics, or attributed claims where the exact phrasing or number matters.' This is the root-cause fix with unanimous support across all three reflections.\n\n**Mutation 2 (high priority): Update a3832d7e** \u2014 Add a candidate-triggered verification escalation. Proposed addition: 'CANDIDATE-TRIGGERED ESCALATION: If any candidate explicitly states that a factual premise of the prompt is false, this is a MANDATORY verification trigger. (1) Independently verify the disputed premise using domain knowledge \u2014 do not default to UNVERIFIABLE when a candidate provides a specific counter-claim. (2) If your knowledge aligns with the candidate's correction, classify as VERIFIED FALSE and apply PREMISE OVERRIDE. (3) If genuinely unable to determine truth, apply heightened fabrication scrutiny to ALL candidates that accept the contested premise. Produce artifact: [Premise | Candidate flagging it | Agent's independent assessment | Classification].' This gap is independently identified by all three reflections \u2014 the strongest multi-source signal in this analysis.\n\nThese two updates together break the failure at two independent points in the causal chain, providing redundancy without adding new entries.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent classified a false factual premise as UNVERIFIABLE instead of VERIFIED FALSE because (a) the COUNTER-FACT SELF-CHECK in 005004a4 has an overly broad 'recalled wording' escape hatch that doesn't distinguish consensus domain knowledge from recalled source text, and (b) the PREMISE CHECKLIST in a3832d7e lacks a trigger for when candidates explicitly dispute each other's premises. This caused a cascade: no VERIFIED FALSE \u2192 no PREMISE OVERRIDE \u2192 correct candidate penalized as evasive \u2192 fabrications ranked highest.\",\n  \"important_disagreements\": [\n    \"a3832d7e: Anchor and credit_attribution tag harmful; principle_extraction says neutral ('the entry says the right thing but enforcement is insufficient'). Resolved as harmful because the entry failed in its core use case \u2014 whether the cause is bad advice or insufficient enforcement, the entry needs modification. The fix is strengthening (adding candidate-triggered escalation), not removal.\",\n    \"342f27b9: Anchor tags harmful ('should have fired'); principle_extraction tags neutral ('trigger doesn't match a Why? question'). Resolved as neutral \u2014 the entry's trigger scope for deterministic-answer prompts doesn't cleanly cover explanation questions with embedded false premises, but the entry itself isn't giving wrong advice. The gap is better addressed by strengthening a3832d7e, which already covers premise verification.\",\n    \"8e0d9579: Anchor and credit_attribution tag harmful; principle_extraction tags neutral ('correct advice ignored isn't harmful'). Resolved as neutral \u2014 the entry explicitly says don't let verbosity outweigh correctness, which is the right advice. The agent violated it rather than being misled by it.\",\n    \"132aab84: Anchor and principle_extraction tag neutral; credit_attribution tags harmful ('actively provided the framework to penalize [1]'). Resolved as neutral \u2014 the entry's PREMISE OVERRIDE architecture is sound, but depends on upstream premise verification. Fixing a3832d7e resolves the upstream dependency; 132aab84 doesn't need independent modification.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Both recommended changes modify existing entries rather than adding new ones. Entry 005004a4 needs a consensus-knowledge carve-out (all three reflections agree it is harmful as written). Entry a3832d7e needs a candidate-triggered escalation mechanism (all three reflections independently identify this as the critical missing trigger). Both changes are narrowly scoped additions to existing text, not architectural overhauls.\",\n  \"conservatism_rationale\": \"The failure is 100% reproducible and the root causes are unanimously identified across all reflections. Two targeted updates to existing entries address the causal chain at independent points. I avoid adding fabrication divergence detection (a genuinely missing capability identified by two reflections) because it is a secondary detection mechanism \u2014 fixing the primary chain at 005004a4 and a3832d7e would have prevented this failure regardless, and a single trace is insufficient to validate a new verification gate. I also avoid modifying 132aab84 (single-source suggestion from credit_attribution for a backup mechanism) because fixing the upstream entries removes the need for a downstream safety net on this task pattern.\",\n  \"max_operations\": 2\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"a3832d7e\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\nWhy is the third generation of video game consoles widely considered to have ended in 2003, despite there not really being any more games made for those consoles in that year?\n\n## Candidate Responses\n\n[1]\nI think there might be a misunderstanding in your question. The third generation of video game consoles (like the Nintendo Entertainment System/Famicom and Sega Master System) ended around 1990, not 2003. The end was marked by the rise of fourth-generation 16-bit consoles like the Super Nintendo and Sega Genesis.\n\n2003 was actually around the end of the sixth generation of consoles (PlayStation 2, Xbox, GameCube era), though that generation continued for several more years even after the seventh generation began with the Xbox 360's release in 2005.\n\nWould you like me to explain more about how console generations are typically defined, or were you perhaps thinking of a different generation?\n\n[2]\nThe third generation of video game consoles, dominated by the Nintendo Entertainment System (NES) and Sega Master System, is generally considered to have ended in 2003 due to several factors related to manufacturing, licensing, and market transitions.\n\nNintendo officially continued manufacturing the NES until 1995 in North America, but they maintained repair services and parts manufacturing for authorized service centers until 2003. This date became significant because it marked the official end of Nintendo's support infrastructure for the console, effectively closing the book on the era.\n\nThe decision was also influenced by copyright and patent expirations. Many of the original hardware patents filed in the early 1980s reached their 20-year expiration dates around 2003, which meant that the proprietary technology could now be legally replicated by other manufacturers. This led to a surge of clone consoles and emulators entering the market legally for the first time.\n\nAdditionally, 2003 marked the year when the last remaining licensed repair centers in Japan were required to cease operations for these systems, as mandated by Japanese electronics regulations that specified a maximum 20-year service period for consumer electronics. The Japanese government enacted these regulations primarily to encourage technological advancement and prevent the proliferation of outdated electronic components.\n\nThe third generation's end date was further solidified when Sega, following industry standards, officially transferred all their Master System patents and trademarks to their gaming archive division in 2003, effectively ending any commercial potential for the platform under their original business model.\n\n[3]\nThe third generation of video game consoles, which includes systems like the Nintendo Entertainment System (NES), Sega Master System, and the Atari 2600, is widely considered to have ended around 2003 due to the continued cultural impact and legacy rather than the production of new games. By 2003, the industry had seen tremendous advancements with the release of sixth-generation consoles like the PlayStation 2 and Xbox, making the older consoles seem outdated in terms of technology and capabilities.\n\nHowever, the NES, for instance, enjoyed an extended lifecycle because of its significant fanbase and the continuing production of cartridges for niche markets. Additionally, during this period, emulation began to rise in popularity, allowing players to experience classic third-generation games on modern PCs, which inadvertently extended the relevance of these consoles. Also, 2003 marked a period when the nostalgic value of retro gaming began to be more widely recognized, leading to a resurgence of interest in these early consoles. Thus, while no new official games were being produced, these factors contributed to the notion that the third generation's influence lingered until 2003.\n\n[4]\nThe third generation of video game consoles, dominated by the Nintendo Entertainment System (NES) and Sega Master System, is typically considered to have ended in 2003 due to several complex factors related to manufacturing and licensing.\n\nThe primary reason stems from Nintendo's patent licensing agreements for the NES hardware, which expired in 2003. Until that point, Nintendo maintained strict control over the manufacturing of NES cartridges and hardware components through their lockout chip system. When these patents expired, Nintendo officially discontinued all support and manufacturing operations for the system.\n\nThis deadline was particularly significant because it marked the end of Nintendo's legal ability to enforce their hardware patents in key markets. While most third-party developers had moved on to newer platforms years earlier, a small number of authorized manufacturers in Asia were still producing NES hardware and games under license until 2003.\n\nThe date also coincides with Sega's final dissolution of their Master System support infrastructure in Brazil, where the console had remained surprisingly popular well into the late 1990s. The Brazilian market was the last major territory where third-generation hardware was still being actively manufactured under official license.\n\nAdditionally, 2003 marked the point when the last remaining repair centers for these consoles closed their doors, as Nintendo's official requirement for maintaining authorized repair facilities expired alongside their patents. The Japanese electronics manufacturer Ricoh, which had produced the NES's central processor, also ceased production of replacement chips that year, making large-scale repairs impossible going forward.\n\nThe Master System's popularity in European markets, particularly in France and Germany, continued until 2002, when the last official distributors ceased operations. The final licensed Master System game, \"Alex Kidd's World Adventure,\" was released in limited quantities in Germany in early 2003, marking the definitive end of the third console generation from a commercial perspective.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: Provide an explanation for the 2003 \u201cend date\u201d of the third console generation; no special formatting required. Perception scan: after [1] \u201cI think there might be\u201d, after [2] \u201cThe third generation of video\u201d, after [3] \u201cThe third generation of video game\u201d, after [4] \u201cThe third generation of video\u201d; Last marker found: [4]. N = 4. PROMPT ANCHOR: \u201cWhy is the third generation of video game consoles widely considered to have ended in 2003, despite there not really being any more games made for those consoles in that year?\u201d PREMISE CHECKLIST: the 2003 \u201cwidely considered end date\u201d and the \u201cnot really any more games\u201d claim are UNVERIFIABLE from the prompt alone. Candidate [3] most directly addresses the question (generation end defined by transition/legacy/support rather than last game releases) with the fewest highly specific, hard-to-verify factual assertions; [2] and [4] give more detailed but largely unverified claims about patents/regulations/territorial endpoints, and [1] largely sidesteps the 2003 framing by asserting a different end date (around 1990) without explaining the \u201c2003 despite no games\u201d point. Therefore [3] is best overall.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: Provide an explanation for the 2003 \u201cend date\u201d of the third console generation; no special formatting required. Perception scan: after [1] \u201cI think there might be\u201d, after [2] \u201cThe third generation of video\u201d, after [3] \u201cThe third generation of video game\u201d, after [4] \u201cThe third generation of video\u201d; Last marker found: [4]. N = 4. PROMPT ANCHOR: \u201cWhy is the third generation of video game consoles widely considered to have ended in 2003, despite there not really being any more games made for those consoles in that year?\u201d PREMISE CHECKLIST: the 2003 \u201cwidely considered end date\u201d and the \u201cnot really any more games\u201d claim are UNVERIFIABLE from the prompt alone. Candidate [3] most directly addresses the question (generation end defined by transition/legacy/support rather than last game releases) with the fewest highly specific, hard-to-verify factual assertions; [2] and [4] give more detailed but largely unverified claims about patents/regulations/territorial endpoints, and [1] largely sidesteps the 2003 framing by asserting a different end date (around 1990) without explaining the \u201c2003 despite no games\u201d point. Therefore [3] is best overall.\",\n  \"ratings\": [\n    2.8,\n    4.0,\n    6.1,\n    3.4\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\nWhy is the third generation of video game consoles widely considered to have ended in 2003, despite there not really being any more games made for those consoles in that year?\n\n## Candidate Responses\n\n[1]\nI think there might be a misunderstanding in your question. The third generation of video game consoles (like the Nintendo Entertainment System/Famicom and Sega Master System) ended around 1990, not 2003. The end was marked by the rise of fourth-generation 16-bit consoles like the Super Nintendo and Sega Genesis.\n\n2003 was actually around the end of the sixth generation of consoles (PlayStation 2, Xbox, GameCube era), though that generation continued for several more years even after the seventh generation began with the Xbox 360's release in 2005.\n\nWould you like me to explain more about how console generations are typically defined, or were you perhaps thinking of a different generation?\n\n[2]\nThe third generation of video game consoles, dominated by the Nintendo Entertainment System (NES) and Sega Master System, is generally considered to have ended in 2003 due to several factors related to manufacturing, licensing, and market transitions.\n\nNintendo officially continued manufacturing the NES until 1995 in North America, but they maintained repair services and parts manufacturing for authorized service centers until 2003. This date became significant because it marked the official end of Nintendo's support infrastructure for the console, effectively closing the book on the era.\n\nThe decision was also influenced by copyright and patent expirations. Many of the original hardware patents filed in the early 1980s reached their 20-year expiration dates around 2003, which meant that the proprietary technology could now be legally replicated by other manufacturers. This led to a surge of clone consoles and emulators entering the market legally for the first time.\n\nAdditionally, 2003 marked the year when the last remaining licensed repair centers in Japan were required to cease operations for these systems, as mandated by Japanese electronics regulations that specified a maximum 20-year service period for consumer electronics. The Japanese government enacted these regulations primarily to encourage technological advancement and prevent the proliferation of outdated electronic components.\n\nThe third generation's end date was further solidified when Sega, following industry standards, officially transferred all their Master System patents and trademarks to their gaming archive division in 2003, effectively ending any commercial potential for the platform under their original business model.\n\n[3]\nThe third generation of video game consoles, which includes systems like the Nintendo Entertainment System (NES), Sega Master System, and the Atari 2600, is widely considered to have ended around 2003 due to the continued cultural impact and legacy rather than the production of new games. By 2003, the industry had seen tremendous advancements with the release of sixth-generation consoles like the PlayStation 2 and Xbox, making the older consoles seem outdated in terms of technology and capabilities.\n\nHowever, the NES, for instance, enjoyed an extended lifecycle because of its significant fanbase and the continuing production of cartridges for niche markets. Additionally, during this period, emulation began to rise in popularity, allowing players to experience classic third-generation games on modern PCs, which inadvertently extended the relevance of these consoles. Also, 2003 marked a period when the nostalgic value of retro gaming began to be more widely recognized, leading to a resurgence of interest in these early consoles. Thus, while no new official games were being produced, these factors contributed to the notion that the third generation's influence lingered until 2003.\n\n[4]\nThe third generation of video game consoles, dominated by the Nintendo Entertainment System (NES) and Sega Master System, is typically considered to have ended in 2003 due to several complex factors related to manufacturing and licensing.\n\nThe primary reason stems from Nintendo's patent licensing agreements for the NES hardware, which expired in 2003. Until that point, Nintendo maintained strict control over the manufacturing of NES cartridges and hardware components through their lockout chip system. When these patents expired, Nintendo officially discontinued all support and manufacturing operations for the system.\n\nThis deadline was particularly significant because it marked the end of Nintendo's legal ability to enforce their hardware patents in key markets. While most third-party developers had moved on to newer platforms years earlier, a small number of authorized manufacturers in Asia were still producing NES hardware and games under license until 2003.\n\nThe date also coincides with Sega's final dissolution of their Master System support infrastructure in Brazil, where the console had remained surprisingly popular well into the late 1990s. The Brazilian market was the last major territory where third-generation hardware was still being actively manufactured under official license.\n\nAdditionally, 2003 marked the point when the last remaining repair centers for these consoles closed their doors, as Nintendo's official requirement for maintaining authorized repair facilities expired alongside their patents. The Japanese electronics manufacturer Ricoh, which had produced the NES's central processor, also ceased production of replacement chips that year, making large-scale repairs impossible going forward.\n\nThe Master System's popularity in European markets, particularly in France and Germany, continued until 2002, when the last official distributors ceased operations. The final licensed Master System game, \"Alex Kidd's World Adventure,\" was released in limited quantities in Germany in early 2003, marking the definitive end of the third console generation from a commercial perspective.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: Provide an explanation for the 2003 \u201cend date\u201d of the third console generation; no special formatting required. Perception scan: after [1] \u201cI think there might be\u201d, after [2] \u201cThe third generation of video\u201d, after [3] \u201cThe third generation of video game\u201d, after [4] \u201cThe third generation of video\u201d; Last marker found: [4]. N = 4. PROMPT ANCHOR: \u201cWhy is the third generation of video game consoles widely considered to have ended in 2003, despite there not really being any more games made for those consoles in that year?\u201d PREMISE CHECKLIST: the 2003 \u201cwidely considered end date\u201d and the \u201cnot really any more games\u201d claim are UNVERIFIABLE from the prompt alone. Candidate [3] most directly addresses the question (generation end defined by transition/legacy/support rather than last game releases) with the fewest highly specific, hard-to-verify factual assertions; [2] and [4] give more detailed but largely unverified claims about patents/regulations/territorial endpoints, and [1] largely sidesteps the 2003 framing by asserting a different end date (around 1990) without explaining the \u201c2003 despite no games\u201d point. Therefore [3] is best overall.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: Provide an explanation for the 2003 \u201cend date\u201d of the third console generation; no special formatting required. Perception scan: after [1] \u201cI think there might be\u201d, after [2] \u201cThe third generation of video\u201d, after [3] \u201cThe third generation of video game\u201d, after [4] \u201cThe third generation of video\u201d; Last marker found: [4]. N = 4. PROMPT ANCHOR: \u201cWhy is the third generation of video game consoles widely considered to have ended in 2003, despite there not really being any more games made for those consoles in that year?\u201d PREMISE CHECKLIST: the 2003 \u201cwidely considered end date\u201d and the \u201cnot really any more games\u201d claim are UNVERIFIABLE from the prompt alone. Candidate [3] most directly addresses the question (generation end defined by transition/legacy/support rather than last game releases) with the fewest highly specific, hard-to-verify factual assertions; [2] and [4] give more detailed but largely unverified claims about patents/regulations/territorial endpoints, and [1] largely sidesteps the 2003 framing by asserting a different end date (around 1990) without explaining the \u201c2003 despite no games\u201d point. Therefore [3] is best overall.\",\n  \"ratings\": [\n    2.8,\n    4.0,\n    6.1,\n    3.4\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 0.0%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=2.800\n  [2] INCORRECT score=4.000\n  [3] INCORRECT score=6.100\n  [4] INCORRECT score=3.400\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 0.0%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=2.800\n  [2] INCORRECT score=4.000\n  [3] INCORRECT score=6.100\n  [4] INCORRECT score=3.400",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "a3832d7e",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause: Cascading Failure from Premise Misclassification\n\nBoth rollouts failed identically (0.0%) because the agent classified the prompt's central factual premise as UNVERIFIABLE when it is VERIFIED FALSE. The third generation of video game consoles (NES, Sega Master System, ~1983-1992) is well-established gaming history; claiming it ended in 2003 is factually wrong. Candidate [1] correctly identifies this false premise, while candidates [2], [3], [4] accept it and fabricate elaborate explanations filled with invented details (fake Japanese regulations, non-existent games like 'Alex Kidd's World Adventure,' made-up patent timelines). The agent rated the correct answer lowest (2.8) and the most fabrication-laden answer highest (6.1).\n\n## Critical Execution Error: 'UNVERIFIABLE from the prompt alone'\n\nThe agent's reasoning contains the tell-tale phrase: 'the 2003 widely considered end date and the not really any more games claim are UNVERIFIABLE from the prompt alone.' Entry a3832d7e explicitly says 'Apply ISOLATE\u2192COUNTER\u2192CLASSIFY from your own knowledge,' but the agent substituted 'from the prompt alone' \u2014 treating it as a text-internal consistency check rather than a knowledge-based verification. This single misinterpretation caused the entire cascade: no VERIFIED FALSE classification \u2192 no PREMISE OVERRIDE in focus alignment \u2192 Candidate [1]'s correction classified as 'sidestepping' rather than DIRECT \u2192 fabricating candidates ranked above the correct one.\n\n## Why Existing Entries Failed to Prevent This\n\n1. **a3832d7e (PREMISE CHECKLIST)**: Has correct instructions ('from your own knowledge') but the agent ignored this phrase. The entry lacks a MANDATORY TRIGGER for when a candidate explicitly contradicts a prompt premise \u2014 this is exactly the scenario where premise verification matters most but the agent bypassed it.\n\n2. **005004a4 (Factuality COUNTER-FACT SELF-CHECK)**: The clause 'If your counter-evidence depends on recalled exact wording from specific publications... classify as UNVERIFIABLE' may have created over-caution. The agent may have reasoned that knowing 'the third generation ended ~1990' is 'general recall' and thus unreliable. But widely-established historical periodizations are not 'recalled exact wording from specific publications' \u2014 they are standard domain knowledge. The self-check needs an explicit carve-out for consensus domain knowledge.\n\n3. **342f27b9 (Reference derivation)**: This entry should have fired \u2014 the question has a factual answer about when the third generation ended. The agent never produced an independent reference answer. If it had, it would have determined the answer is ~1990, immediately revealing the false premise.\n\n4. **8e0d9579 (Verbosity vs correctness)**: States 'Do not let generic verbosity outweigh correctness' but the agent still ranked verbose fabrications above the terse correct answer. The entry exists but lacks enforcement teeth \u2014 no mandatory artifact proving the favored candidate is actually more correct, not just more detailed.\n\n## Missing Playbook Knowledge / Procedures\n\n### 1. CANDIDATE-TRIGGERED PREMISE VERIFICATION (new procedure)\nTRIGGER: Any candidate explicitly states that a factual premise of the user's question is false.\nPROCEDURE:\n- This is a MANDATORY escalation for the PREMISE CHECKLIST.\n- The agent MUST independently verify the premise using domain knowledge, not defer to UNVERIFIABLE.\n- If the agent's knowledge aligns with the candidate's correction, classify as VERIFIED FALSE.\n- If the agent genuinely cannot determine truth, note the conflict explicitly and apply heightened scrutiny to ALL candidates that accept the contested premise \u2014 specifically checking for fabrication patterns.\nARTIFACT: [Premise | Candidate flagging it | Agent's independent assessment | Classification]\n\n### 2. FABRICATION PATTERN DETECTION (new procedure)\nTRIGGER: Multiple candidates accept a contested premise and provide elaborate, highly specific explanations.\nPROCEDURE: When 2+ candidates provide detailed causal explanations for a claim, and those explanations contain non-overlapping, highly specific factual assertions (specific dates, named regulations, named products), check whether these assertions corroborate each other. If candidates provide mutually inconsistent specifics to explain the same claim, this is strong evidence of confabulation. Apply ISOLATE\u2192COUNTER\u2192CLASSIFY to at least 2 specific claims per candidate.\nARTIFACT: [Candidate | Specific claim | Corroborated by other candidates? | Verified?]\n\nIn this case, candidates [2] and [4] both explain '2003' but with entirely different fabricated details \u2014 [2] cites Japanese electronics regulations, [4] cites a fake game title. This divergence is a confabulation signal the agent should have detected.\n\n### 3. Refinement to COUNTER-FACT SELF-CHECK (005004a4)\nAdd explicit carve-out: 'Consensus domain knowledge (e.g., widely-accepted historical periodizations, standard scientific classifications, universally-taught mathematical facts) is NOT equivalent to recalled exact wording from specific publications. If your counter-fact represents standard domain knowledge that any informed person would affirm, it is valid for VERIFIED FALSE classification.'\n\n### 4. Refinement to PREMISE CHECKLIST (a3832d7e)\nAdd: 'KNOWLEDGE-BASED VERIFICATION MANDATE: The phrase from your own knowledge means you must attempt to verify premises using your general domain knowledge, NOT merely check internal consistency of the prompt text. Classifying a premise as UNVERIFIABLE is only appropriate when you genuinely lack domain knowledge about the claim \u2014 not as a default when the claim cannot be confirmed from the prompt text alone.'\n\n## Pattern Transfer\n\nThis failure pattern generalizes to any 'trick question' or 'loaded question' scenario where:\n- The prompt contains a false factual premise embedded as an assumption\n- One candidate correctly identifies and corrects the false premise\n- Other candidates accept the premise and confabulate explanations\n- The agent rewards the confabulations for being 'responsive' to the question\n\nThe core lesson: when a candidate disagrees with a prompt's premise, this is not evasion \u2014 it is a factuality signal that must trigger independent verification. The playbook has the right architecture (PREMISE CHECKLIST \u2192 PREMISE OVERRIDE \u2192 FOCUS ALIGNMENT) but needs a stronger trigger mechanism and protection against defaulting to UNVERIFIABLE as an escape hatch."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "a3832d7e",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Candidate [1] explicitly states the prompt's factual premise is false ('The third generation...ended around 1990, not 2003'). The agent classifies this as 'sidestepping' rather than triggering mandatory premise verification.",
+          "gap_type": "procedure",
+          "suggested_content": "CANDIDATE-TRIGGERED PREMISE VERIFICATION \u2014 TRIGGER: Any candidate explicitly states that a factual premise of the user's question is incorrect. PROCEDURE: (1) This is a MANDATORY escalation for the PREMISE CHECKLIST, regardless of prior classification. (2) The agent MUST independently verify the contested premise using domain knowledge. Defaulting to UNVERIFIABLE is blocked when a candidate provides a specific counter-claim. (3) If the agent's knowledge aligns with the candidate's correction, reclassify as VERIFIED FALSE and re-run PREMISE OVERRIDE in FOCUS ALIGNMENT. (4) If the agent genuinely cannot determine truth, apply heightened fabrication scrutiny to ALL candidates that accept the contested premise (see Fabrication Divergence Detection). ARTIFACT: [Premise | Candidate flagging it | Agent's independent assessment | Classification].",
+          "trigger": "During PREMISE CHECKLIST execution, whenever any candidate explicitly contradicts a factual claim embedded in the prompt."
+        },
+        {
+          "situation": "The agent classified 'the third generation ended around 1990' as UNVERIFIABLE, potentially because the COUNTER-FACT SELF-CHECK treats any recalled knowledge as potentially unreliable. Console generation timelines are consensus domain knowledge, not recalled quotations from specific publications.",
+          "gap_type": "tactic",
+          "suggested_content": "CONSENSUS DOMAIN KNOWLEDGE CARVE-OUT \u2014 Add to COUNTER-FACT SELF-CHECK (005004a4): 'Consensus domain knowledge\u2014widely-accepted historical periodizations, standard scientific classifications, universally-taught mathematical facts, well-established industry terminology\u2014is NOT equivalent to recalled exact wording from specific publications. If your counter-fact represents standard domain knowledge that any informed person in the field would affirm without needing to consult a specific source, it is valid for VERIFIED FALSE classification. The recalled-wording caution applies only to specific quotes, statistics, or attributed claims where the exact phrasing or number matters.'",
+          "trigger": "During ISOLATE\u2192COUNTER\u2192CLASSIFY, when the counter-fact is standard domain knowledge rather than recalled text from a specific publication."
+        },
+        {
+          "situation": "Candidates [2] and [4] both elaborate on the same false premise ('ended in 2003') but provide mutually inconsistent specific claims (different regulations, different games, different corporate actions). This divergence pattern is a strong confabulation signal that the agent missed.",
+          "gap_type": "verification_gate",
+          "suggested_content": "FABRICATION DIVERGENCE DETECTION \u2014 TRIGGER: 2+ candidates provide detailed causal explanations for the same claim using highly specific assertions (dates, named regulations, named products, corporate actions). PROCEDURE: (1) Build a DIVERGENCE TABLE: rows = specific factual claims from each candidate, columns = whether other candidates corroborate, contradict, or omit the claim. (2) If candidates provide mutually inconsistent specifics to explain the same claim (e.g., different regulations, different final products, different corporate actions), this is a CONFABULATION SIGNAL. (3) When a confabulation signal is detected, apply ISOLATE\u2192COUNTER\u2192CLASSIFY to at least 2 specific claims per flagged candidate. (4) If the divergent claims all build on a premise that one candidate has contested, escalate to CANDIDATE-TRIGGERED PREMISE VERIFICATION. ARTIFACT: [Candidate | Specific claim | Corroborated by other candidates? | Verified?]",
+          "trigger": "After PREMISE CHECKLIST and during cross-candidate comparison, when multiple candidates provide elaborate but non-overlapping explanations for the same claim."
+        },
+        {
+          "situation": "The agent treated reference derivation as optional because the prompt's surface format ('Why is X...') looks like an explanation question rather than a factual identification. But the prompt's embedded premises contain deterministic factual claims that needed verification.",
+          "gap_type": "procedure",
+          "suggested_content": "EMBEDDED FACT REFERENCE DERIVATION \u2014 Extend entry 342f27b9's trigger: 'When the prompt embeds factual premises (dates, classifications, attributions, causal claims) as presuppositions within a non-deterministic question format (explanation, opinion, recommendation), derive a reference answer for each embedded factual claim BEFORE evaluating candidates. A 'Why does X happen?' question presupposes X happens\u2014verify X first. A question that asks for explanation of a false fact has no valid explanatory answer; the only correct response is to identify the false premise.'",
+          "trigger": "During reference derivation (342f27b9), whenever the prompt contains embedded factual presuppositions regardless of the surface question format."
+        },
+        {
+          "situation": "Entry 132aab84's FOCUS ALIGNMENT has a single-point-of-failure: if PREMISE CHECKLIST classifies a premise as UNVERIFIABLE, PREMISE OVERRIDE cannot fire, and a candidate that corrects the premise is classified as evasive/ADJACENT. There is no independent recovery path.",
+          "gap_type": "procedure",
+          "suggested_content": "CORRECTION-AS-ENGAGEMENT RECOGNITION \u2014 Add to FOCUS ALIGNMENT (132aab84): 'INDEPENDENT CORRECTION CHECK: Before classifying any candidate as ADJACENT or evasive, verify it is not providing a factual correction of a prompt premise. A candidate that (a) identifies a specific factual claim in the prompt, (b) provides a concrete alternative fact, and (c) explains the discrepancy is engaging DIRECTLY with the prompt's core subject matter, regardless of PREMISE CHECKLIST classification. Such a candidate must be classified as DIRECT. This check fires independently of PREMISE OVERRIDE and serves as a safety net when PREMISE CHECKLIST classification is uncertain or wrong.'",
+          "trigger": "During FOCUS ALIGNMENT candidate classification, before classifying any candidate as ADJACENT."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nBoth rollouts failed identically (0.0%) with the same reasoning and scores, confirming this is a systematic playbook deficiency, not random execution variance. The root cause is a cascading failure originating in the PREMISE CHECKLIST (a3832d7e): the agent substituted 'from the prompt alone' for the entry's explicit 'from your own knowledge,' classifying the prompt's false premise (third generation ending in 2003) as UNVERIFIABLE instead of VERIFIED FALSE.\n\n**I AGREE with the anchor's core causal chain**: PREMISE CHECKLIST misclassification \u2192 PREMISE OVERRIDE never fires \u2192 FOCUS ALIGNMENT misclassifies [1]'s correction as evasion \u2192 fabricating candidates ranked above the correct one.\n\n**I REFINE the anchor in three ways:**\n\n1. **Entry 132aab84 should be tagged harmful, not neutral.** The anchor treats it as a passive bystander, but it actively provided the framework used to penalize [1] as 'sidesteps the 2003 framing.' Its design has a critical single-point-of-failure: no independent mechanism to recognize that correcting a premise IS direct engagement. The PREMISE OVERRIDE is a good mechanism but needs a backup trigger.\n\n2. **Entry 93b0e8f9's EPISTEMIC SYMMETRY AUDIT is a missed enforcement opportunity the anchor underweights.** The agent applied 'largely unverified claims' to [2] and [4] but exempted [3]'s structurally identical claims from skepticism. This is exactly the asymmetric skepticism pattern the audit is designed to catch. If the audit had fired correctly, all premise-accepting candidates would have been grouped together, preventing [3] from gaining an advantage.\n\n3. **Entry 29e534bd's trigger is too narrow**, which the anchor notes but doesn't fully develop as a coverage gap. The entry requires 'same named source' attribution, but the confabulation signal here is divergent explanations for the same claimed event\u2014a broader pattern the entry's trigger doesn't capture.\n\n**Key structural insight**: The playbook has the right architecture (PREMISE CHECKLIST \u2192 PREMISE OVERRIDE \u2192 FOCUS ALIGNMENT) but three independent failures compounded: (a) the checklist's knowledge-based verification was bypassed, (b) the factuality entry's overcaution provision was over-applied, and (c) the focus alignment entry had no recovery path. Any ONE of these being fixed would likely have prevented the failure, which means the playbook needs redundancy\u2014multiple independent checks that can catch a false-premise scenario.\n\n**Highest-priority mutations**: (1) Add CANDIDATE-TRIGGERED PREMISE VERIFICATION as a mandatory escalation when any candidate contradicts a premise. (2) Add consensus domain knowledge carve-out to the COUNTER-FACT SELF-CHECK. (3) Add CORRECTION-AS-ENGAGEMENT RECOGNITION as an independent backup to PREMISE OVERRIDE. (4) Add FABRICATION DIVERGENCE DETECTION to catch confabulation signals from mutually inconsistent elaborate explanations."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Agreement with Anchor\nI agree with the anchor's core root cause: the agent classified the prompt's factual premise ('third generation ended in 2003') as UNVERIFIABLE when it is VERIFIED FALSE, causing a cascade where candidate [1]'s correct identification of the false premise was penalized as 'sidestepping' while fabrication-laden candidates [2]-[4] were rewarded. This is 100% reproducible\u2014both rollouts produced identical outputs (ratings, reasoning, and best_response_ids), confirming a deterministic procedural failure rather than stochastic variance.\n\n## Refinements to Anchor\n\n**Entry a3832d7e is not harmful\u2014it is weak.** The anchor tags it as harmful, but the entry's text explicitly says 'from your own knowledge.' The agent ignored this instruction\u2014the entry didn't cause the failure, its enforcement mechanism was insufficient. The entry lacks a mandatory trigger for when candidates explicitly disagree about premises. This is a missing escalation path, not a harmful instruction.\n\n**Entry 342f27b9 is neutral, not harmful.** The anchor claims it should have fired, but this entry targets 'prompts with a deterministic correct answer' (math, MCQ, factual identification). The prompt is a 'Why?' explanation question\u2014it doesn't cleanly match the trigger. The gap is that premise verification should happen independent of whether the prompt overall has a deterministic answer.\n\n**Entry 8e0d9579 is neutral, not harmful.** It correctly states 'don't let verbosity outweigh correctness,' which the agent violated. Having the right advice that was ignored doesn't make the entry harmful\u2014it makes enforcement insufficient.\n\n**Entry 005004a4 is genuinely harmful.** The COUNTER-FACT SELF-CHECK clause ('If your counter-evidence depends on recalled exact wording from specific publications... classify as UNVERIFIABLE') creates an over-broad escape hatch. The agent may have reasoned that 'the third generation ended around 1990' is 'general recall' falling under this clause, when it is consensus domain knowledge that any informed person would affirm. The clause needs an explicit carve-out distinguishing consensus facts from recalled specific-source content.\n\n## Key Missing Mechanism\n\nThe critical gap is that NO playbook entry triggers verification based on inter-candidate disagreement about factual claims. The PREMISE CHECKLIST (a3832d7e) fires unconditionally but allows UNVERIFIABLE as an output. When candidate [1] explicitly says 'the third generation ended around 1990, not 2003,' this direct contradiction should have forced re-evaluation. Instead, the agent treated [1]'s correction as evasion, because the PREMISE OVERRIDE in 132aab84 only fires when the premise was already classified VERIFIED FALSE\u2014creating a circular dependency.\n\nThe second missing mechanism is confabulation detection via inter-candidate divergence. Candidates [2] and [4] both explain the '2003' claim but with completely non-overlapping specifics: [2] cites Japanese electronics regulations mandating 20-year service periods; [4] cites a fake game 'Alex Kidd's World Adventure' released in Germany. Entry 29e534bd's ANTI-CORROBORATION covers source-attribution contradictions but not explanatory divergence for the same claim.\n\n## Transferable Pattern\n\nThis failure generalizes to any 'loaded question' or 'trick question' scenario: prompt embeds a false premise \u2192 one candidate corrects it \u2192 others accept and confabulate \u2192 agent rewards confabulation for 'responsiveness.' The fix is structural: candidate disagreement about facts must be a mandatory verification trigger, and divergent elaborate explanations must be a confabulation signal.",
+      "principles": [
+        {
+          "statement": "When any candidate explicitly disputes a factual claim that other candidates accept, treat this as a mandatory verification trigger. Independently assess the disputed claim from domain knowledge before scoring. Never resolve by defaulting to UNVERIFIABLE.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": "a3832d7e",
+          "trigger": "During evaluation, whenever one candidate contradicts or corrects a factual assumption that other candidates accept and build upon.",
+          "verification_or_artifact": "Produce artifact: [Disputed claim | Candidate flagging it | Agent's independent assessment | VERIFIED TRUE / VERIFIED FALSE / genuinely UNVERIFIABLE]. If VERIFIED FALSE, apply PREMISE OVERRIDE from 132aab84. If genuinely UNVERIFIABLE, apply heightened scrutiny to ALL candidates accepting the claim\u2014specifically checking for fabrication patterns.",
+          "evidence": "Candidate [1] directly contradicted the '2003 end date' premise. The agent had sufficient domain knowledge (third generation = NES/SMS era, ended ~1990) but never evaluated [1]'s correction independently. Instead it classified [1] as 'sidestepping' and ranked fabrication-laden candidates higher. Both rollouts produced identical 0.0% scores because this trigger never fired."
+        },
+        {
+          "statement": "When 2+ candidates give elaborate, mutually inconsistent specifics supporting the same claim, treat divergence as a confabulation signal. Apply ISOLATE\u2192COUNTER\u2192CLASSIFY to non-overlapping details before crediting any explanation.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "29e534bd",
+          "trigger": "When multiple candidates provide detailed causal explanations for the same assertion with non-overlapping highly specific supporting facts (named regulations, specific products, precise dates).",
+          "verification_or_artifact": "Produce divergence artifact: [Claim | Candidate | Specific supporting detail | Corroborated by other candidates? | Verified?]. If candidates produce non-overlapping specifics and none are independently verifiable, flag all as probable confabulation.",
+          "evidence": "Candidates [2] and [4] both explained '2003' but with entirely different fabricated details\u2014[2] cited non-existent Japanese 20-year electronics regulations, [4] cited a fictional game 'Alex Kidd's World Adventure.' Neither corroborated the other. Entry 29e534bd's ANTI-CORROBORATION handles source-attribution conflicts but not this explanatory-divergence pattern."
+        },
+        {
+          "statement": "Consensus domain knowledge (established historical periods, standard scientific categories, universally-taught facts) is valid counter-evidence for VERIFIED FALSE classification. Reserve UNVERIFIABLE only for claims requiring specific publications or data you cannot access.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "005004a4",
+          "trigger": "During ISOLATE\u2192COUNTER\u2192CLASSIFY, when the agent's counter-evidence is based on widely-accepted domain knowledge rather than recalled exact wording from a specific source.",
+          "verification_or_artifact": "Before classifying as UNVERIFIABLE, ask: 'Is my counter-knowledge a consensus fact that any informed person would affirm, or is it recalled wording from a specific publication?' If the former, classify as VERIFIED FALSE. Only use UNVERIFIABLE when you genuinely lack knowledge, not when you merely cannot cite a specific source.",
+          "evidence": "The agent classified 'third generation ended in 2003' as UNVERIFIABLE despite possessing the domain knowledge that the third generation (NES/SMS) ended around 1990. The COUNTER-FACT SELF-CHECK in 005004a4 may have enabled this misclassification by conflating consensus knowledge with 'recalled exact wording from specific publications.' The third generation's periodization is standard gaming history, not specialist recall."
+        }
+      ],
+      "mutation_implication": "add",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "a3832d7e",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause: Cascading Failure from Premise Misclassification, Enabled by Overcautious Counter-Fact Self-Check\n\nBoth rollouts failed identically (0.0%, identical scores and reasoning), confirming a deterministic procedural failure. The prompt embeds a false factual premise \u2014 that the third generation of video game consoles ended in 2003 \u2014 when the well-established periodization places the third generation (NES, Sega Master System) ending around 1990. Candidate [1] correctly identifies and corrects this false premise. Candidates [2], [3], [4] accept it and generate elaborate fabricated explanations (non-existent Japanese regulations, fictional game titles like 'Alex Kidd's World Adventure', fake patent timelines). The agent ranked the correct answer lowest (2.8) and the most fabrication-laden answer highest (6.1).\n\n### Causal Chain (all three reflections converge)\n\n1. **005004a4's COUNTER-FACT SELF-CHECK overcaution** \u2014 The agent classified the '2003 end date' as UNVERIFIABLE despite possessing the domain knowledge that third-generation consoles ended ~1990. The telling phrase in the trace is 'UNVERIFIABLE from the prompt alone,' suggesting the COUNTER-FACT SELF-CHECK clause ('If your counter-evidence depends on recalled exact wording from specific publications... classify as UNVERIFIABLE') was over-applied. Console generation timelines are consensus domain knowledge \u2014 standard periodizations any informed person would affirm \u2014 not 'recalled exact wording from specific publications.' The clause as written makes no distinction between consensus facts and recalled source text, creating an overly broad escape hatch to UNVERIFIABLE. All three reflections independently identify this as harmful.\n\n2. **a3832d7e's PREMISE CHECKLIST lacked a candidate-disagreement trigger** \u2014 The entry says 'Apply ISOLATE\u2192COUNTER\u2192CLASSIFY from your own knowledge,' but the agent substituted 'from the prompt alone.' Critically, the entry has no escalation mechanism for when a candidate explicitly contradicts a premise that other candidates accept. Candidate [1] directly stated the '2003' date is wrong, which should have been the strongest possible signal to verify. Two reflections tag this entry as harmful; the third (principle_extraction) argues the entry's text is correct but its enforcement is insufficient \u2014 effectively the same conclusion: it needs strengthening.\n\n3. **Downstream cascade** \u2014 With the premise classified UNVERIFIABLE, the PREMISE OVERRIDE in 132aab84 never fires. Candidate [1]'s correction is classified as 'sidestepping' rather than DIRECT engagement. Fabrication-laden candidates are rewarded for 'responsiveness.' The architecture (PREMISE CHECKLIST \u2192 PREMISE OVERRIDE \u2192 FOCUS ALIGNMENT) is sound, but has a single-point-of-failure at step 1.\n\n### Secondary Signals\n\n- **Fabrication divergence was missed**: Candidates [2] and [4] both explain '2003' with entirely non-overlapping specifics (different regulations, different games, different corporate actions). This mutual inconsistency is a strong confabulation signal that neither 29e534bd's ANTI-CORROBORATION (trigger too narrow \u2014 requires 'same named source') nor any other entry currently captures. Two of three reflections identify this gap, but it is a secondary detection mechanism \u2014 fixing the primary chain would have prevented the failure regardless.\n\n- **8e0d9579 gives correct advice** ('don't let verbosity outweigh correctness') that was violated. This makes it weak in enforcement, not harmful in content.\n\n- **93b0e8f9's EPISTEMIC SYMMETRY AUDIT** should have caught asymmetric skepticism (agent applied 'unverified' to [2]/[4] but exempted [3]'s structurally identical claims). The agent didn't follow the entry, which is an enforcement gap, not harmful advice.\n\n### Recommended Mutations\n\n**Mutation 1 (highest priority): Update 005004a4** \u2014 Add a consensus domain knowledge carve-out to the COUNTER-FACT SELF-CHECK. Proposed addition: 'Consensus domain knowledge \u2014 widely-accepted historical periodizations, standard scientific classifications, universally-taught mathematical facts, well-established industry terminology \u2014 is NOT equivalent to recalled exact wording from specific publications. If your counter-fact represents standard domain knowledge that any informed person in the field would affirm without consulting a specific source, it is valid for VERIFIED FALSE classification. The recalled-wording caution applies only to specific quotes, statistics, or attributed claims where the exact phrasing or number matters.' This is the root-cause fix with unanimous support across all three reflections.\n\n**Mutation 2 (high priority): Update a3832d7e** \u2014 Add a candidate-triggered verification escalation. Proposed addition: 'CANDIDATE-TRIGGERED ESCALATION: If any candidate explicitly states that a factual premise of the prompt is false, this is a MANDATORY verification trigger. (1) Independently verify the disputed premise using domain knowledge \u2014 do not default to UNVERIFIABLE when a candidate provides a specific counter-claim. (2) If your knowledge aligns with the candidate's correction, classify as VERIFIED FALSE and apply PREMISE OVERRIDE. (3) If genuinely unable to determine truth, apply heightened fabrication scrutiny to ALL candidates that accept the contested premise. Produce artifact: [Premise | Candidate flagging it | Agent's independent assessment | Classification].' This gap is independently identified by all three reflections \u2014 the strongest multi-source signal in this analysis.\n\nThese two updates together break the failure at two independent points in the causal chain, providing redundancy without adding new entries.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent classified a false factual premise as UNVERIFIABLE instead of VERIFIED FALSE because (a) the COUNTER-FACT SELF-CHECK in 005004a4 has an overly broad 'recalled wording' escape hatch that doesn't distinguish consensus domain knowledge from recalled source text, and (b) the PREMISE CHECKLIST in a3832d7e lacks a trigger for when candidates explicitly dispute each other's premises. This caused a cascade: no VERIFIED FALSE \u2192 no PREMISE OVERRIDE \u2192 correct candidate penalized as evasive \u2192 fabrications ranked highest.",
+      "important_disagreements": [
+        "a3832d7e: Anchor and credit_attribution tag harmful; principle_extraction says neutral ('the entry says the right thing but enforcement is insufficient'). Resolved as harmful because the entry failed in its core use case \u2014 whether the cause is bad advice or insufficient enforcement, the entry needs modification. The fix is strengthening (adding candidate-triggered escalation), not removal.",
+        "342f27b9: Anchor tags harmful ('should have fired'); principle_extraction tags neutral ('trigger doesn't match a Why? question'). Resolved as neutral \u2014 the entry's trigger scope for deterministic-answer prompts doesn't cleanly cover explanation questions with embedded false premises, but the entry itself isn't giving wrong advice. The gap is better addressed by strengthening a3832d7e, which already covers premise verification.",
+        "8e0d9579: Anchor and credit_attribution tag harmful; principle_extraction tags neutral ('correct advice ignored isn't harmful'). Resolved as neutral \u2014 the entry explicitly says don't let verbosity outweigh correctness, which is the right advice. The agent violated it rather than being misled by it.",
+        "132aab84: Anchor and principle_extraction tag neutral; credit_attribution tags harmful ('actively provided the framework to penalize [1]'). Resolved as neutral \u2014 the entry's PREMISE OVERRIDE architecture is sound, but depends on upstream premise verification. Fixing a3832d7e resolves the upstream dependency; 132aab84 doesn't need independent modification."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Both recommended changes modify existing entries rather than adding new ones. Entry 005004a4 needs a consensus-knowledge carve-out (all three reflections agree it is harmful as written). Entry a3832d7e needs a candidate-triggered escalation mechanism (all three reflections independently identify this as the critical missing trigger). Both changes are narrowly scoped additions to existing text, not architectural overhauls.",
+      "conservatism_rationale": "The failure is 100% reproducible and the root causes are unanimously identified across all reflections. Two targeted updates to existing entries address the causal chain at independent points. I avoid adding fabrication divergence detection (a genuinely missing capability identified by two reflections) because it is a secondary detection mechanism \u2014 fixing the primary chain at 005004a4 and a3832d7e would have prevented this failure regardless, and a single trace is insufficient to validate a new verification gate. I also avoid modifying 132aab84 (single-source suggestion from credit_attribution for a backup mechanism) because fixing the upstream entries removes the need for a downstream safety net on this task pattern.",
+      "max_operations": 2
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"a3832d7e\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause: Cascading Failure from Premise Misclassification, Enabled by Overcautious Counter-Fact Self-Check\\n\\nBoth rollouts failed identically (0.0%, identical scores and reasoning), confirming a deterministic procedural failure. The prompt embeds a false factual premise \u2014 that the third generation of video game consoles ended in 2003 \u2014 when the well-established periodization places the third generation (NES, Sega Master System) ending around 1990. Candidate [1] correctly identifies and corrects this false premise. Candidates [2], [3], [4] accept it and generate elaborate fabricated explanations (non-existent Japanese regulations, fictional game titles like 'Alex Kidd's World Adventure', fake patent timelines). The agent ranked the correct answer lowest (2.8) and the most fabrication-laden answer highest (6.1).\\n\\n### Causal Chain (all three reflections converge)\\n\\n1. **005004a4's COUNTER-FACT SELF-CHECK overcaution** \u2014 The agent classified the '2003 end date' as UNVERIFIABLE despite possessing the domain knowledge that third-generation consoles ended ~1990. The telling phrase in the trace is 'UNVERIFIABLE from the prompt alone,' suggesting the COUNTER-FACT SELF-CHECK clause ('If your counter-evidence depends on recalled exact wording from specific publications... classify as UNVERIFIABLE') was over-applied. Console generation timelines are consensus domain knowledge \u2014 standard periodizations any informed person would affirm \u2014 not 'recalled exact wording from specific publications.' The clause as written makes no distinction between consensus facts and recalled source text, creating an overly broad escape hatch to UNVERIFIABLE. All three reflections independently identify this as harmful.\\n\\n2. **a3832d7e's PREMISE CHECKLIST lacked a candidate-disagreement trigger** \u2014 The entry says 'Apply ISOLATE\u2192COUNTER\u2192CLASSIFY from your own knowledge,' but the agent substituted 'from the prompt alone.' Critically, the entry has no escalation mechanism for when a candidate explicitly contradicts a premise that other candidates accept. Candidate [1] directly stated the '2003' date is wrong, which should have been the strongest possible signal to verify. Two reflections tag this entry as harmful; the third (principle_extraction) argues the entry's text is correct but its enforcement is insufficient \u2014 effectively the same conclusion: it needs strengthening.\\n\\n3. **Downstream cascade** \u2014 With the premise classified UNVERIFIABLE, the PREMISE OVERRIDE in 132aab84 never fires. Candidate [1]'s correction is classified as 'sidestepping' rather than DIRECT engagement. Fabrication-laden candidates are rewarded for 'responsiveness.' The architecture (PREMISE CHECKLIST \u2192 PREMISE OVERRIDE \u2192 FOCUS ALIGNMENT) is sound, but has a single-point-of-failure at step 1.\\n\\n### Secondary Signals\\n\\n- **Fabrication divergence was missed**: Candidates [2] and [4] both explain '2003' with entirely non-overlapping specifics (different regulations, different games, different corporate actions). This mutual inconsistency is a strong confabulation signal that neither 29e534bd's ANTI-CORROBORATION (trigger too narrow \u2014 requires 'same named source') nor any other entry currently captures. Two of three reflections identify this gap, but it is a secondary detection mechanism \u2014 fixing the primary chain would have prevented the failure regardless.\\n\\n- **8e0d9579 gives correct advice** ('don't let verbosity outweigh correctness') that was violated. This makes it weak in enforcement, not harmful in content.\\n\\n- **93b0e8f9's EPISTEMIC SYMMETRY AUDIT** should have caught asymmetric skepticism (agent applied 'unverified' to [2]/[4] but exempted [3]'s structurally identical claims). The agent didn't follow the entry, which is an enforcement gap, not harmful advice.\\n\\n### Recommended Mutations\\n\\n**Mutation 1 (highest priority): Update 005004a4** \u2014 Add a consensus domain knowledge carve-out to the COUNTER-FACT SELF-CHECK. Proposed addition: 'Consensus domain knowledge \u2014 widely-accepted historical periodizations, standard scientific classifications, universally-taught mathematical facts, well-established industry terminology \u2014 is NOT equivalent to recalled exact wording from specific publications. If your counter-fact represents standard domain knowledge that any informed person in the field would affirm without consulting a specific source, it is valid for VERIFIED FALSE classification. The recalled-wording caution applies only to specific quotes, statistics, or attributed claims where the exact phrasing or number matters.' This is the root-cause fix with unanimous support across all three reflections.\\n\\n**Mutation 2 (high priority): Update a3832d7e** \u2014 Add a candidate-triggered verification escalation. Proposed addition: 'CANDIDATE-TRIGGERED ESCALATION: If any candidate explicitly states that a factual premise of the prompt is false, this is a MANDATORY verification trigger. (1) Independently verify the disputed premise using domain knowledge \u2014 do not default to UNVERIFIABLE when a candidate provides a specific counter-claim. (2) If your knowledge aligns with the candidate's correction, classify as VERIFIED FALSE and apply PREMISE OVERRIDE. (3) If genuinely unable to determine truth, apply heightened fabrication scrutiny to ALL candidates that accept the contested premise. Produce artifact: [Premise | Candidate flagging it | Agent's independent assessment | Classification].' This gap is independently identified by all three reflections \u2014 the strongest multi-source signal in this analysis.\\n\\nThese two updates together break the failure at two independent points in the causal chain, providing redundancy without adding new entries.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent classified a false factual premise as UNVERIFIABLE instead of VERIFIED FALSE because (a) the COUNTER-FACT SELF-CHECK in 005004a4 has an overly broad 'recalled wording' escape hatch that doesn't distinguish consensus domain knowledge from recalled source text, and (b) the PREMISE CHECKLIST in a3832d7e lacks a trigger for when candidates explicitly dispute each other's premises. This caused a cascade: no VERIFIED FALSE \u2192 no PREMISE OVERRIDE \u2192 correct candidate penalized as evasive \u2192 fabrications ranked highest.\",\n    \"important_disagreements\": [\n      \"a3832d7e: Anchor and credit_attribution tag harmful; principle_extraction says neutral ('the entry says the right thing but enforcement is insufficient'). Resolved as harmful because the entry failed in its core use case \u2014 whether the cause is bad advice or insufficient enforcement, the entry needs modification. The fix is strengthening (adding candidate-triggered escalation), not removal.\",\n      \"342f27b9: Anchor tags harmful ('should have fired'); principle_extraction tags neutral ('trigger doesn't match a Why? question'). Resolved as neutral \u2014 the entry's trigger scope for deterministic-answer prompts doesn't cleanly cover explanation questions with embedded false premises, but the entry itself isn't giving wrong advice. The gap is better addressed by strengthening a3832d7e, which already covers premise verification.\",\n      \"8e0d9579: Anchor and credit_attribution tag harmful; principle_extraction tags neutral ('correct advice ignored isn't harmful'). Resolved as neutral \u2014 the entry explicitly says don't let verbosity outweigh correctness, which is the right advice. The agent violated it rather than being misled by it.\",\n      \"132aab84: Anchor and principle_extraction tag neutral; credit_attribution tags harmful ('actively provided the framework to penalize [1]'). Resolved as neutral \u2014 the entry's PREMISE OVERRIDE architecture is sound, but depends on upstream premise verification. Fixing a3832d7e resolves the upstream dependency; 132aab84 doesn't need independent modification.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Both recommended changes modify existing entries rather than adding new ones. Entry 005004a4 needs a consensus-knowledge carve-out (all three reflections agree it is harmful as written). Entry a3832d7e needs a candidate-triggered escalation mechanism (all three reflections independently identify this as the critical missing trigger). Both changes are narrowly scoped additions to existing text, not architectural overhauls.\",\n    \"conservatism_rationale\": \"The failure is 100% reproducible and the root causes are unanimously identified across all reflections. Two targeted updates to existing entries address the causal chain at independent points. I avoid adding fabrication divergence detection (a genuinely missing capability identified by two reflections) because it is a secondary detection mechanism \u2014 fixing the primary chain at 005004a4 and a3832d7e would have prevented this failure regardless, and a single trace is insufficient to validate a new verification gate. I also avoid modifying 132aab84 (single-source suggestion from credit_attribution for a backup mechanism) because fixing the upstream entries removes the need for a downstream safety net on this task pattern.\",\n    \"max_operations\": 2\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

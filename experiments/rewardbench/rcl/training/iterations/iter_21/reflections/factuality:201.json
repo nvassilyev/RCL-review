@@ -1,0 +1,547 @@
+{
+  "task_id": "factuality:201",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:201\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts failed identically: candidate [4] (INCORRECT) was rated 7.6 and selected as best, while candidate [1] (CORRECT) was rated 7.2 \u2014 a 0.4-point gap in the wrong direction. The differentiator was the agent's impression of 'slightly weaker presentation/attribution fidelity' for [1] versus [4]. This is a polish-impression-as-verification failure on unverifiable attributed quotes.\n\n## Proximate Cause: Asymmetric Epistemic Standards\n\nThe most damning evidence is the agent's own reasoning. It correctly applies UNVERIFIABLE logic when dismissing candidates [2] and [3], writing: 'UNVERIFIABLE quote text/paraphrase quality differences are too small to overcome the major structural miss.' But it then uses structurally identical unverifiable quote-text differences to rank [4] above [1] by 0.4 points. The agent applied one epistemic standard when convenient (to dismiss weak candidates) and ignored the same standard when it would have constrained the [1]-vs-[4] comparison. This asymmetric skepticism is the direct cause of the wrong ranking.\n\n## Three Correct Safeguards That Never Fired\n\nEntries [29e534bd], [005004a4], and [93b0e8f9] each contain procedures that would have caught this error:\n\n- **[29e534bd]**: Candidates [1] and [4] attribute quotes to the same six sources (Mitchell, Bishop, Goodfellow et al., Ng, Domingos, Murphy) with different quote text \u2014 the exact MANDATORY TRIGGER for a DIFF TABLE. The agent never built it.\n- **[005004a4]**: All attributed quotes are textbook UNVERIFIABLE content under the VERIFICATION GATE ('verbatim quotes attributed to named publications'). The ALL-UNVERIFIABLE CEILING would have capped score differentiation at 0.3 points. The MANDATORY SYMMETRY TABLE was never produced.\n- **[93b0e8f9]**: The NEGATIVE CONCERN SCAN should have caught the self-contradiction: the agent acknowledges unverifiability for some candidates but uses identical unverifiable content as a quality signal for others.\n\n## Structural vs. Execution Problem\n\nThe identical failure across both rollouts eliminates stochastic variation \u2014 this is systematic. The entries contain correct content, but their triggers are positioned to fire AFTER holistic evaluation, when the agent's impression is already anchored. The agent's default evaluation mode (holistic comparison) runs to completion before encountering any procedural gate. The fix must make these checks fire earlier or more automatically.\n\n## Why These Entries Are Neutral, Not Harmful\n\nThe anchor and credit_attribution reflections tag [93b0e8f9], [005004a4], and [29e534bd] as 'harmful.' The principle_extraction reflection correctly pushes back: an entry is harmful when following it leads to a wrong conclusion. These entries weren't followed \u2014 they were bypassed by the agent's default mode. Their content is correct; the problem is trigger sequencing. For this task, they are neutral \u2014 neither consulted nor actively misleading. The agent would have made the same mistake without them.\n\n## What's Missing in the Current Playbook\n\nThe NEGATIVE CONCERN SCAN in [93b0e8f9] catches self-contradictions about the TOP-RANKED candidate's own qualities, but it does not require CROSS-CANDIDATE epistemic consistency. When the agent labels a content type (attributed quotes) as UNVERIFIABLE for candidates [2] and [3], no mechanism forces it to apply the same classification to identical content in the [1]-vs-[4] comparison. This asymmetric application gap is the specific procedural hole.\n\n## Recommended Mutation\n\nUpdate [93b0e8f9] to add an EPISTEMIC SYMMETRY AUDIT step to the NEGATIVE CONCERN SCAN. After step (3), add: 'EPISTEMIC SYMMETRY AUDIT: If your reasoning applies any epistemic label (UNVERIFIABLE, suspicious, uncertain, fabricated) to a content type in any candidate, verify the same label is applied to structurally identical content in ALL candidates. Asymmetric application of epistemic standards across candidates is a finalization blocker \u2014 resolve before scoring.' This directly addresses the proximate cause, is highly generalizable (L3 \u2014 applies to any comparative evaluation), and fits naturally into an existing, well-performing entry (+8 -2).\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent applied UNVERIFIABLE reasoning asymmetrically: it correctly used unverifiability to dismiss candidates [2]/[3] but then used structurally identical unverifiable attributed-quote differences to rank [4] (INCORRECT) above [1] (CORRECT). Three existing entries contain correct safeguards but were bypassed because their triggers fire after holistic evaluation.\",\n  \"important_disagreements\": [\n    \"Harmful vs. neutral tags for [93b0e8f9], [005004a4], [29e534bd]: Anchor and credit_attribution tag them harmful; principle_extraction tags them neutral. Resolved in favor of neutral \u2014 the entries contain correct procedures that would have prevented the error if applied. Non-application means they were irrelevant to this outcome, not actively harmful. The problem is trigger sequencing, which an update can address.\",\n    \"Execution slip vs. structural trigger-sequencing problem: Anchor calls it an execution slip; credit_attribution calls it structural. Resolved toward structural \u2014 the identical failure across both rollouts (verbatim repeated reasoning) rules out stochastic execution failure and points to systematic bypass of late-firing procedures.\",\n    \"New entry vs. update to existing: Anchor recommends a new ATTRIBUTED-QUOTE TRIGGER entry; principle_extraction argues the real lesson is about symmetric epistemic standards (an update to [93b0e8f9]). Resolved in favor of update \u2014 the asymmetric-skepticism lesson is more generalizable (L3) than an attributed-quote-specific trigger (L2), and an update to the well-performing [93b0e8f9] is lower risk than a new entry.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"The proximate cause (asymmetric epistemic standards) is a gap in [93b0e8f9]'s NEGATIVE CONCERN SCAN, which checks the top-ranked candidate's own qualities but not cross-candidate epistemic consistency. A targeted addition to this entry directly addresses the failure with minimal disruption. All three reflections converge on this gap, though they frame it differently (anchor: self-contradiction; credit_attribution: symmetric epistemic gate; principle_extraction: epistemic symmetry audit).\",\n  \"conservatism_rationale\": \"The existing playbook already contains three entries ([93b0e8f9], [005004a4], [29e534bd]) with the correct substantive guidance \u2014 the agent just needs to apply it symmetrically. Adding a single cross-candidate epistemic symmetry check to [93b0e8f9]'s existing NEGATIVE CONCERN SCAN is the smallest intervention that addresses the root cause. Adding new standalone entries risks further increasing the volume of late-firing procedures that the agent already bypasses. The update leverages [93b0e8f9]'s existing execution track record (+8 -2).\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\nWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning? \n\n## Candidate Responses\n\n[1]\nIn the context of machine learning, several prominent definitions of \"model\" are frequently cited in literature and academic works. Here are some of the most notable ones:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data and can be used to make predictions or decisions about new data.\"\n\n2. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a mathematical representation of a process, typically expressed as a set of equations or a probabilistic framework, that can be used to make predictions or inferences about data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a specific mathematical form for representing a set of assumptions about how data is generated. It includes parameters that can be adjusted to fit the data.\"\n\n4. **Andrew Ng**:\n   - From his popular online courses:\n     > \"A model is a simplified representation of reality, designed to capture the essential features of a problem and make predictions based on input data.\"\n\n5. **Chris Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, usually expressed in terms of a set of parameters. The goal of learning is to determine the values of these parameters that best explain the observed data.\"\n\n6. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between inputs and outputs, which is derived from the training data and used to make predictions on new data.\"\n\nThese definitions collectively emphasize the role of a model in capturing patterns in data, making predictions, and being adjustable through parameters. They also highlight the importance of the model's ability to generalize to new, unseen data.\n\n[2]\nIn the context of machine learning, the term \"model\" has several prominent definitions. Here are some of the most commonly quoted ones:\n\n1. **Mathematical model**: A mathematical model is a representation of a real-world system or phenomenon using mathematical equations, functions, and algorithms. In machine learning, this model is typically a set of equations that describe the relationships between inputs and outputs, such as a linear regression model or a neural network.\n\n2. **Statistical model**: A statistical model is a probability distribution over a set of possible outcomes or predictions. In machine learning, statistical models are used to quantify uncertainty and make predictions based on observed data. Examples include Bayesian networks, Gaussian mixture models, and random forests.\n\n3. **Algebraic model**: An algebraic model represents a system or process using algebraic equations and variables. In machine learning, algebraic models are used to describe the relationships between inputs and outputs, such as linear algebra-based models or matrix factorization techniques.\n\n4. **Abstraction model**: An abstraction model is a simplified representation of a complex system or process. In machine learning, abstraction models are used to capture the essential characteristics of a system or process, such as a decision tree or a clustering model.\n\n5. **Conceptual model**: A conceptual model is a high-level representation of a system or process. In machine learning, conceptual models are used to describe the underlying relationships and structures of a system, such as a graph or a semantic network.\n\n6. **Computational model**: A computational model is a software implementation of a mathematical or statistical model. In machine learning, computational models are used to train and deploy models on real-world data, such as deep learning models or decision tree ensembles.\n\n7. **Statistical pattern recognition model**: A statistical pattern recognition model is a type of model that recognizes patterns in data and makes predictions based on those patterns. In machine learning, statistical pattern recognition models are used for tasks such as image classification, speech recognition, and natural language processing.\n\n8. **Dynamical system model**: A dynamical system model represents the behavior of a system over time. In machine learning, dynamical system models are used to forecast future behavior or simulate the effects of different scenarios, such as Markov chain models or time-series forecasting models.\n\nThese definitions are not mutually exclusive, and many machine learning models blend elements from multiple categories.\n\n[3]\nIn the context of machine learning, the term \"model\" is often used to refer to a mathematical representation or computational system that learns from and makes predictions on data. Here are some of the most prominent quoted definitions of \"model\" in machine learning:\n\n1. **Tom M. Mitchell (1997)**:\n   - **Definition**: A computer program is considered a model for a concept C if, for any inputs in the input domain of C, the program returns a result that accurately reflects the concept's intended behavior.\n   - **Context**: This definition emphasizes the accuracy and behavior of the model relative to the concept it is modeling.\n\n2. **Pedro Domingos (2012)**:\n   - **Definition**: In machine learning, a model is a computational system that takes as input some data and produces as output a prediction, decision, or value. It is a mapping from inputs to outputs based on learned patterns in the training data.\n   - **Context**: This definition highlights the functional aspect of models, focusing on their predictive capability and how they learn from data.\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville (2016)**:\n   - **Definition**: A model is an abstraction that describes a set of possible relationships between inputs and outputs.\n   - **Context**: This definition emphasizes the abstract nature of models and their role in representing complex relationships in data.\n\n4. **Scott Cheng-Hsin Chen (2018)**:\n   - **Definition**: A machine learning model is a computational representation of a set of learned functions that map from inputs to outputs, typically optimized to minimize error on a given task.\n   - **Context**: This definition underscores the optimization process and the specific goal of reducing prediction errors.\n\n5. **David Barber (2012)**:\n   - **Definition**: A model is a representation of a phenomenon or a system that can be used to make predictions about future observations.\n   - **Context**: This definition focuses on the predictive power of models and their application in making future predictions.\n\n6. **Michael I. Jordan (2014)**:\n   - **Definition**: A model is a formalization of assumptions about a system or problem, encapsulated in a set of equations, rules, or parameters that enable the computation of predictions or decisions.\n   - **Context**: This definition highlights the formalization and the computational aspect of models.\n\nThese definitions capture different aspects of what constitutes a model in machine learning, such as its predictive power, learning mechanism, and representational capabilities.\n\n[4]\nIn the context of machine learning, the term \"model\" is often defined in various ways by different experts and researchers. Here are some of the most prominent and widely quoted definitions:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data. It is a mathematical representation of the relationships among variables in the data.\"\n\n2. **Christopher M. Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, typically expressed in the form of a probabilistic model, which can be used to make predictions or inferences about new data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a system that takes as input one or more variables and produces an output. In machine learning, models are trained on data to learn the parameters that best map inputs to outputs.\"\n\n4. **Andrew Ng**:\n   - From his course \"Machine Learning\" on Coursera:\n     > \"A model is a simplified representation of the real world, typically in the form of a mathematical function that maps inputs to outputs. In machine learning, this function is learned from data.\"\n\n5. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between the inputs and the outputs, expressed in a form that can be used to make predictions.\"\n\n6. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a formal description of how the data is generated, usually involving a set of parameters. The goal of machine learning is to estimate these parameters from the data.\"\n\nThese definitions collectively emphasize that a model in machine learning is a mathematical or computational representation that captures the relationships between input features and output targets, learned from data, and used for making predictions or inferences.\n\n## Judge Reasoning\nPerception scan: [1] first 5 words='In the context of machine', [2] first 5 words='In the context of machine', [3] first 5 words='In the context of machine', [4] first 5 words='In the context of machine'; N=4. CONSTRAINT CHECKLIST (anchor: \u201cWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning?\u201d): (1) provide multiple prominent ML definitions explicitly as quoted text tied to recognizable authors/sources, (2) keep definitions in ML context, (3) answer directly with a list of definitions; compliance: [1] Pass/Pass, [2] Fail on quoted/attributed requirement (mostly generic typologies), [3] Partial/Fail (claims 'quoted' but not actual quotations and includes less standard/possibly invented authorities), [4] Pass/Pass. Best alignment goes to [4] for directly giving multiple attributed quotes from prominent figures; [1] is similarly structured but slightly weaker presentation/attribution fidelity, while [2] and especially [3] do not meet the 'quoted definitions' requirement strongly enough (UNVERIFIABLE quote text/paraphrase quality differences are too small to overcome the major structural miss).\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Perception scan: [1] first 5 words='In the context of machine', [2] first 5 words='In the context of machine', [3] first 5 words='In the context of machine', [4] first 5 words='In the context of machine'; N=4. CONSTRAINT CHECKLIST (anchor: \u201cWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning?\u201d): (1) provide multiple prominent ML definitions explicitly as quoted text tied to recognizable authors/sources, (2) keep definitions in ML context, (3) answer directly with a list of definitions; compliance: [1] Pass/Pass, [2] Fail on quoted/attributed requirement (mostly generic typologies), [3] Partial/Fail (claims 'quoted' but not actual quotations and includes less standard/possibly invented authorities), [4] Pass/Pass. Best alignment goes to [4] for directly giving multiple attributed quotes from prominent figures; [1] is similarly structured but slightly weaker presentation/attribution fidelity, while [2] and especially [3] do not meet the 'quoted definitions' requirement strongly enough (UNVERIFIABLE quote text/paraphrase quality differences are too small to overcome the major structural miss).\",\n  \"ratings\": [\n    7.2,\n    2.8,\n    2.2,\n    7.6\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\nWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning? \n\n## Candidate Responses\n\n[1]\nIn the context of machine learning, several prominent definitions of \"model\" are frequently cited in literature and academic works. Here are some of the most notable ones:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data and can be used to make predictions or decisions about new data.\"\n\n2. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a mathematical representation of a process, typically expressed as a set of equations or a probabilistic framework, that can be used to make predictions or inferences about data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a specific mathematical form for representing a set of assumptions about how data is generated. It includes parameters that can be adjusted to fit the data.\"\n\n4. **Andrew Ng**:\n   - From his popular online courses:\n     > \"A model is a simplified representation of reality, designed to capture the essential features of a problem and make predictions based on input data.\"\n\n5. **Chris Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, usually expressed in terms of a set of parameters. The goal of learning is to determine the values of these parameters that best explain the observed data.\"\n\n6. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between inputs and outputs, which is derived from the training data and used to make predictions on new data.\"\n\nThese definitions collectively emphasize the role of a model in capturing patterns in data, making predictions, and being adjustable through parameters. They also highlight the importance of the model's ability to generalize to new, unseen data.\n\n[2]\nIn the context of machine learning, the term \"model\" has several prominent definitions. Here are some of the most commonly quoted ones:\n\n1. **Mathematical model**: A mathematical model is a representation of a real-world system or phenomenon using mathematical equations, functions, and algorithms. In machine learning, this model is typically a set of equations that describe the relationships between inputs and outputs, such as a linear regression model or a neural network.\n\n2. **Statistical model**: A statistical model is a probability distribution over a set of possible outcomes or predictions. In machine learning, statistical models are used to quantify uncertainty and make predictions based on observed data. Examples include Bayesian networks, Gaussian mixture models, and random forests.\n\n3. **Algebraic model**: An algebraic model represents a system or process using algebraic equations and variables. In machine learning, algebraic models are used to describe the relationships between inputs and outputs, such as linear algebra-based models or matrix factorization techniques.\n\n4. **Abstraction model**: An abstraction model is a simplified representation of a complex system or process. In machine learning, abstraction models are used to capture the essential characteristics of a system or process, such as a decision tree or a clustering model.\n\n5. **Conceptual model**: A conceptual model is a high-level representation of a system or process. In machine learning, conceptual models are used to describe the underlying relationships and structures of a system, such as a graph or a semantic network.\n\n6. **Computational model**: A computational model is a software implementation of a mathematical or statistical model. In machine learning, computational models are used to train and deploy models on real-world data, such as deep learning models or decision tree ensembles.\n\n7. **Statistical pattern recognition model**: A statistical pattern recognition model is a type of model that recognizes patterns in data and makes predictions based on those patterns. In machine learning, statistical pattern recognition models are used for tasks such as image classification, speech recognition, and natural language processing.\n\n8. **Dynamical system model**: A dynamical system model represents the behavior of a system over time. In machine learning, dynamical system models are used to forecast future behavior or simulate the effects of different scenarios, such as Markov chain models or time-series forecasting models.\n\nThese definitions are not mutually exclusive, and many machine learning models blend elements from multiple categories.\n\n[3]\nIn the context of machine learning, the term \"model\" is often used to refer to a mathematical representation or computational system that learns from and makes predictions on data. Here are some of the most prominent quoted definitions of \"model\" in machine learning:\n\n1. **Tom M. Mitchell (1997)**:\n   - **Definition**: A computer program is considered a model for a concept C if, for any inputs in the input domain of C, the program returns a result that accurately reflects the concept's intended behavior.\n   - **Context**: This definition emphasizes the accuracy and behavior of the model relative to the concept it is modeling.\n\n2. **Pedro Domingos (2012)**:\n   - **Definition**: In machine learning, a model is a computational system that takes as input some data and produces as output a prediction, decision, or value. It is a mapping from inputs to outputs based on learned patterns in the training data.\n   - **Context**: This definition highlights the functional aspect of models, focusing on their predictive capability and how they learn from data.\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville (2016)**:\n   - **Definition**: A model is an abstraction that describes a set of possible relationships between inputs and outputs.\n   - **Context**: This definition emphasizes the abstract nature of models and their role in representing complex relationships in data.\n\n4. **Scott Cheng-Hsin Chen (2018)**:\n   - **Definition**: A machine learning model is a computational representation of a set of learned functions that map from inputs to outputs, typically optimized to minimize error on a given task.\n   - **Context**: This definition underscores the optimization process and the specific goal of reducing prediction errors.\n\n5. **David Barber (2012)**:\n   - **Definition**: A model is a representation of a phenomenon or a system that can be used to make predictions about future observations.\n   - **Context**: This definition focuses on the predictive power of models and their application in making future predictions.\n\n6. **Michael I. Jordan (2014)**:\n   - **Definition**: A model is a formalization of assumptions about a system or problem, encapsulated in a set of equations, rules, or parameters that enable the computation of predictions or decisions.\n   - **Context**: This definition highlights the formalization and the computational aspect of models.\n\nThese definitions capture different aspects of what constitutes a model in machine learning, such as its predictive power, learning mechanism, and representational capabilities.\n\n[4]\nIn the context of machine learning, the term \"model\" is often defined in various ways by different experts and researchers. Here are some of the most prominent and widely quoted definitions:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data. It is a mathematical representation of the relationships among variables in the data.\"\n\n2. **Christopher M. Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, typically expressed in the form of a probabilistic model, which can be used to make predictions or inferences about new data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a system that takes as input one or more variables and produces an output. In machine learning, models are trained on data to learn the parameters that best map inputs to outputs.\"\n\n4. **Andrew Ng**:\n   - From his course \"Machine Learning\" on Coursera:\n     > \"A model is a simplified representation of the real world, typically in the form of a mathematical function that maps inputs to outputs. In machine learning, this function is learned from data.\"\n\n5. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between the inputs and the outputs, expressed in a form that can be used to make predictions.\"\n\n6. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a formal description of how the data is generated, usually involving a set of parameters. The goal of machine learning is to estimate these parameters from the data.\"\n\nThese definitions collectively emphasize that a model in machine learning is a mathematical or computational representation that captures the relationships between input features and output targets, learned from data, and used for making predictions or inferences.\n\n## Judge Reasoning\nPerception scan: [1] first 5 words='In the context of machine', [2] first 5 words='In the context of machine', [3] first 5 words='In the context of machine', [4] first 5 words='In the context of machine'; N=4. CONSTRAINT CHECKLIST (anchor: \u201cWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning?\u201d): (1) provide multiple prominent ML definitions explicitly as quoted text tied to recognizable authors/sources, (2) keep definitions in ML context, (3) answer directly with a list of definitions; compliance: [1] Pass/Pass, [2] Fail on quoted/attributed requirement (mostly generic typologies), [3] Partial/Fail (claims 'quoted' but not actual quotations and includes less standard/possibly invented authorities), [4] Pass/Pass. Best alignment goes to [4] for directly giving multiple attributed quotes from prominent figures; [1] is similarly structured but slightly weaker presentation/attribution fidelity, while [2] and especially [3] do not meet the 'quoted definitions' requirement strongly enough (UNVERIFIABLE quote text/paraphrase quality differences are too small to overcome the major structural miss).\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Perception scan: [1] first 5 words='In the context of machine', [2] first 5 words='In the context of machine', [3] first 5 words='In the context of machine', [4] first 5 words='In the context of machine'; N=4. CONSTRAINT CHECKLIST (anchor: \u201cWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning?\u201d): (1) provide multiple prominent ML definitions explicitly as quoted text tied to recognizable authors/sources, (2) keep definitions in ML context, (3) answer directly with a list of definitions; compliance: [1] Pass/Pass, [2] Fail on quoted/attributed requirement (mostly generic typologies), [3] Partial/Fail (claims 'quoted' but not actual quotations and includes less standard/possibly invented authorities), [4] Pass/Pass. Best alignment goes to [4] for directly giving multiple attributed quotes from prominent figures; [1] is similarly structured but slightly weaker presentation/attribution fidelity, while [2] and especially [3] do not meet the 'quoted definitions' requirement strongly enough (UNVERIFIABLE quote text/paraphrase quality differences are too small to overcome the major structural miss).\",\n  \"ratings\": [\n    7.2,\n    2.8,\n    2.2,\n    7.6\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=7.200\n  [2] INCORRECT score=2.800\n  [3] INCORRECT score=2.200\n  [4] INCORRECT score=7.600\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=7.200\n  [2] INCORRECT score=2.800\n  [3] INCORRECT score=2.200\n  [4] INCORRECT score=7.600",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts failed identically: candidate [4] (INCORRECT) was rated 7.6 and selected as best, while candidate [1] (CORRECT) was rated 7.2 \u2014 a 0.4-point gap in the wrong direction. The differentiating factor in the agent's reasoning was 'slightly weaker presentation/attribution fidelity' for [1] vs [4]. This is a textbook polish-impression-as-verification failure on unverifiable content.\n\n## The Central Procedural Failure: Skipped DIFF TABLE on Shared Attributed Quotes\n\nCandidates [1] and [4] attribute quotes to the SAME six sources (Mitchell, Bishop/Murphy, Goodfellow et al., Ng, Domingos, Murphy/Bishop) with DIFFERENT quote text for each source. This is the exact trigger for entry [29e534bd]'s MANDATORY TRIGGER: 'When 2+ candidates attribute specific content (quotes, definitions, statistics) to the same named source, the DIFF TABLE must be built BEFORE any relative scoring.' The agent never built this table. Had it done so, it would have discovered:\n\n1. Mitchell quote in [1] differs from Mitchell quote in [4] (different phrasing)\n2. Bishop quote in [1] differs from Bishop quote in [4]\n3. All other shared-source quotes similarly contradict\n\nThe ANTI-CORROBORATION rule would then fire: 'at least one must be wrong.' Since the agent cannot verify ANY of these quotes from its knowledge, ALL would be classified as UNVERIFIABLE under the VERIFICATION GATE. The ALL-UNVERIFIABLE CEILING would then cap score differentiation at 0.3 points maximum, preventing [4] from being ranked above [1] by 0.4 points.\n\n## Why Three Existing Safeguards Failed to Execute\n\n**[29e534bd]**: The DIFF TABLE was mandatory but skipped entirely. The entry's trigger condition ('2+ candidates attribute specific content to the same named source') was clearly met but the agent never checked for it. Root cause: the trigger is buried within a long entry and the agent's default evaluation mode (holistic impression) overrode procedural compliance.\n\n**[005004a4]**: The VERIFICATION GATE's UNVERIFIABLE classification (class b) should have applied to ALL attributed quotes in ALL candidates. The entry explicitly states: 'verbatim quotes attributed to named publications' are UNVERIFIABLE, and 'Unverifiable content CANNOT drive score differentiation beyond 0.3 points.' The agent's reasoning never performed ISOLATE\u2192COUNTER\u2192CLASSIFY on any quote. The MANDATORY SYMMETRY TABLE was also never produced.\n\n**[93b0e8f9]**: The NEGATIVE CONCERN SCAN should have caught this: the agent's own reasoning acknowledges the quotes are not truly verifiable ('UNVERIFIABLE quote text/paraphrase quality differences are too small to overcome the major structural miss' \u2014 applied to [2] and [3]) but then proceeds to use those same unverifiable differences to rank [4] above [1]. This self-contradiction was never flagged.\n\n## Pattern: Attributed-Quote Blindspot\n\nThis task type \u2014 where candidates present verbatim-styled quotes attributed to real authors/books \u2014 is a specific trap for LLM judges. The agent's natural tendency is to evaluate which version 'sounds more like something the author would say,' which is exactly what [005004a4] warns against ('sounds more coherent,' 'more source-aligned,' or 'sounds like something this author would say' is a polish impression, NOT verification). The agent fell into this trap despite the warning existing in the playbook.\n\n## Actionable Recommendations\n\n1. **New entry: ATTRIBUTED-QUOTE TRIGGER (high priority)**: When ANY candidate presents content formatted as direct quotes with named attributions (blockquote formatting, 'From his book X:', etc.), this must trigger VERIFICATION GATE BEFORE any comparative scoring. Specifically:\n   - TRIGGER: Presence of quote-formatted text attributed to named individuals/publications in any candidate\n   - PROCEDURE: (a) For each attributed quote, classify as VERIFIED/UNVERIFIABLE/VERIFIED-FALSE. Verbatim quotes from named publications are UNVERIFIABLE by default unless the judge can state the actual quote from memory. (b) When 2+ candidates quote the SAME source with DIFFERENT text, flag ALL versions as CONTRADICTED-UNVERIFIABLE. (c) Apply ALL-UNVERIFIABLE CEILING if all differentiating content is attributed quotes.\n   - This should be a standalone entry with its own trigger, not buried inside broader verification rules.\n\n2. **Strengthen [29e534bd]**: The MANDATORY TRIGGER needs elevation \u2014 perhaps it should appear as a step in the constraint checklist procedure ([c8698dee]) so it fires earlier. The current placement allows the agent to complete evaluation without ever encountering it. Suggest adding: 'After constraint extraction, scan all candidates for shared named sources. If found, DIFF TABLE is mandatory before scoring.'\n\n3. **Strengthen [93b0e8f9] NEGATIVE CONCERN SCAN**: Add explicit trigger for self-contradiction patterns: 'If your reasoning applies an UNVERIFIABLE label to content in one candidate but uses similar content from another candidate as a positive differentiator, this is a self-contradiction. Resolve before scoring.'\n\n4. **Add cross-reference between entries**: [005004a4] and [29e534bd] both address the same scenario from different angles but the agent followed neither. Consider consolidating or adding explicit cross-references: 'If attributed quotes are found \u2192 see also [29e534bd] DIFF TABLE requirement.'\n\n## Execution Slip vs Missing Knowledge\n\nThis is primarily an EXECUTION SLIP, not missing knowledge. All three relevant safeguards ([005004a4], [29e534bd], [93b0e8f9]) already contain the procedures that would have prevented the failure. The agent's default holistic evaluation mode (impression-based comparison) bypassed all procedural gates. The fix is not more rules but more prominent, earlier-firing triggers for the specific content pattern (attributed quotes) that caused the failure."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Multiple candidates present verbatim-styled quotes formatted with blockquote markers and attributed to named authors/publications. The agent had no early-firing mechanism to recognize these as unverifiable fabrication-risk content before holistic evaluation began.",
+          "gap_type": "procedure",
+          "suggested_content": "ATTRIBUTED-QUOTE EARLY DETECTION (fires during constraint extraction, before any scoring): When ANY candidate presents content formatted as direct quotes (blockquote formatting, quotation marks around multi-sentence passages) with named attributions (author name + publication), immediately: (1) Classify each attributed quote as VERIFIED (you can state the actual quote from memory with confidence), UNVERIFIABLE (cannot confirm exact wording), or VERIFIED-FALSE (you know the actual quote differs). Default classification for verbatim quotes from named publications is UNVERIFIABLE. (2) When 2+ candidates quote the SAME source with DIFFERENT text, flag ALL versions as CONTRADICTED-UNVERIFIABLE. (3) If all candidates' primary differentiating content is attributed quotes that are UNVERIFIABLE or CONTRADICTED-UNVERIFIABLE, apply ALL-UNVERIFIABLE CEILING: differentiate only by secondary verifiable signals (constraint compliance, internal consistency, hedging); quote-quality impressions cannot drive score separation beyond 0.3 points.",
+          "trigger": "Any candidate contains content formatted as a direct quotation (blockquote markers, quotation marks around complete sentences) with an explicit author or publication attribution"
+        },
+        {
+          "situation": "The agent invoked unverifiability reasoning selectively \u2014 applying it to justify low scores for [2]/[3] but not recognizing it applied equally to the [1] vs [4] comparison. No mechanism forced the agent to apply a declared epistemic standard symmetrically across ALL candidates once invoked for ANY candidate.",
+          "gap_type": "verification_gate",
+          "suggested_content": "SYMMETRIC EPISTEMIC STANDARD GATE (fires after any reasoning draft, before score finalization): After completing candidate evaluations, search your reasoning for any epistemic classification you've applied (UNVERIFIABLE, fabricated, uncertain, suspicious). For each such classification: (1) Identify the content TYPE it was applied to (e.g., attributed quotes, statistics, specific claims). (2) Check whether the same content type appears in OTHER candidates' evaluations. (3) If the same content type drives the ranking advantage of another candidate but was NOT classified there, this is an asymmetric application \u2014 resolve by applying the same classification to all instances before finalizing scores.",
+          "trigger": "The agent's reasoning uses any epistemic qualifier (UNVERIFIABLE, uncertain, suspicious, fabricated) for any candidate on a content type that also appears in other candidates"
+        },
+        {
+          "situation": "The DIFF TABLE in [29e534bd] and VERIFICATION GATE in [005004a4] both contain the correct safeguards but neither fired because the agent's default holistic evaluation mode completed before encountering them. The constraint checklist procedure ([c8698dee]) doesn't include a step to scan for shared named sources across candidates, which would have been the natural integration point.",
+          "gap_type": "checklist",
+          "suggested_content": "Add to constraint checklist procedure as a mandatory step between EXTRACT and EVALUATE: CROSS-CANDIDATE SOURCE SCAN \u2014 After extracting constraints, scan all candidates for named sources (authors, publications, organizations). If 2+ candidates cite the same named source with different specific content (different quotes, different statistics, different claims), flag this as requiring DIFF TABLE construction per [29e534bd] BEFORE any compliance evaluation or scoring begins. This scan is mandatory whenever candidates present attributed content.",
+          "trigger": "Fires as part of the constraint checklist procedure ([c8698dee]), immediately after constraint extraction and before the compliance EVALUATE step"
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n**Agreement with anchor**: I agree with the anchor's core diagnosis: the agent ranked [4] (INCORRECT) above [1] (CORRECT) by 0.4 points based on an unverifiable 'presentation/attribution fidelity' impression, and three existing entries ([005004a4], [29e534bd], [93b0e8f9]) contain procedures that would have prevented this but were never executed. The identical failure across both rollouts confirms this is systematic, not stochastic.\n\n**Refinement of anchor**: The anchor classifies this as 'primarily an EXECUTION SLIP.' I refine this to a **structural trigger-sequencing problem**. The rules exist but are positioned to fire AFTER holistic evaluation, when the agent's judgment is already anchored. The fact that identical reasoning appears verbatim in both rollouts suggests the agent forms its holistic impression first and then only consults procedural entries if something feels wrong \u2014 and the subtle [1]-vs-[4] difference didn't trigger that discomfort. The fix isn't just 'more prominent triggers' but integration into the constraint checklist flow so the DIFF TABLE and VERIFICATION GATE fire BEFORE any scoring begins.\n\n**Key asymmetry evidence**: The most damning evidence is the agent's own language: it writes 'UNVERIFIABLE quote text/paraphrase quality differences are too small to overcome the major structural miss' when discussing [2]/[3], then immediately uses quote text/paraphrase quality differences to rank [4] above [1]. This asymmetric application of epistemic standards is the proximate cause of the error, and no current entry forces symmetric application once an epistemic standard is invoked.\n\n**Entry credit**: [4abe1be4] and [61b87a5f] are genuinely helpful (structural correctness). [005004a4], [29e534bd], and [93b0e8f9] are harmful \u2014 not because their content is wrong, but because they contain the exact safeguards needed yet failed to fire, and their existence may give false confidence that verification occurred. The anchor's 'neutral' tags for most other entries are reasonable, though [132aab84]'s SUBJECTIVE SCORING GATE (which warns that 'confident specificity on unverifiable claims is a RISK FACTOR') was never activated because the agent never classified the question type \u2014 a missed procedural step.\n\n**Playbook implications**: The highest-priority mutation is a new early-firing attributed-quote detection procedure integrated into the constraint checklist. Second priority is a symmetric epistemic standard gate that forces any epistemic classification (UNVERIFIABLE, etc.) to be applied consistently across all candidates once invoked for any. Third priority is elevating the DIFF TABLE trigger from a standalone entry to a step in the constraint checklist procedure so it fires before scoring begins."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Agreement with anchor\nI agree with the anchor's root cause: both rollouts fail identically because [4] (INCORRECT) is rated 7.6 and [1] (CORRECT) 7.2, with the differentiator being an unverifiable impression of 'slightly weaker presentation/attribution fidelity' for [1]. I also agree this is primarily an execution slip \u2014 three entries (93b0e8f9, 005004a4, 29e534bd) contain procedures that would have prevented the failure if applied.\n\n## Refinement of anchor's 'harmful' tags\nI DISAGREE that entries 93b0e8f9, 005004a4, and 29e534bd are 'harmful.' These entries contain correct procedures that, if followed, would have *prevented* the failure. An entry is harmful when following it leads to a wrong conclusion. These entries were simply not triggered \u2014 their non-application is the problem, making them neutral (not helpful, not harmful). The agent's holistic evaluation mode bypassed them entirely; no entry actively steered the agent toward the wrong answer.\n\n## Critical evidence the anchor understates\nThe most damning evidence of inconsistency is in the agent's own reasoning. It writes: 'UNVERIFIABLE quote text/paraphrase quality differences are too small to overcome the major structural miss' \u2014 applying this correctly to dismiss [2] and [3]. But it then uses *structurally identical* unverifiable quote differences to rank [4] above [1] by 0.4 points. The agent applied the concept of unverifiability asymmetrically: as a constraint when convenient, as ignorable when inconvenient. This asymmetric skepticism is the proximate cause of failure and the most generalizable lesson.\n\n## Why procedures were skipped\nThe anchor correctly notes three procedures should have fired but doesn't fully explain WHY. The constraint checklist (c8698dee) fires early and was applied \u2014 it correctly identified [2] and [3] as failing the 'quoted/attributed' requirement. But the checklist focuses on prompt constraints, not on content patterns across candidates. The DIFF TABLE trigger (29e534bd), VERIFICATION GATE (005004a4), and NEGATIVE CONCERN SCAN (93b0e8f9) all require the agent to notice content patterns (overlapping attributions, unverifiable claims, self-contradictions) that emerge DURING candidate comparison. Since none of these are integrated into the mandatory sequential workflow, the agent's default holistic comparison mode runs to completion without hitting any procedural gate. The fix is not adding more standalone rules \u2014 it's integrating content-pattern detection into the mandatory workflow that the agent already follows.\n\n## Anchor recommendations refined\nThe anchor's recommendation for a new 'ATTRIBUTED-QUOTE TRIGGER' is too domain-specific (L1/L2). The real lesson is universal: whenever the evaluator applies different epistemic standards to the same type of content across options, it introduces systematic bias. This applies to any comparative evaluation, not just attributed quotes.",
+      "principles": [
+        {
+          "statement": "When you classify content as unverifiable/suspicious in any option, audit all other options for structurally identical content. Apply the same epistemic label symmetrically \u2014 asymmetric skepticism is a scoring blocker.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "93b0e8f9",
+          "trigger": "Whenever your reasoning applies doubt language (unverifiable, suspicious, questionable) to content in any candidate, before finalizing scores.",
+          "verification_or_artifact": "Produce a symmetry audit: [content type | candidate A epistemic label | candidate B epistemic label]. If labels differ for structurally identical content types, resolve the inconsistency before scoring.",
+          "evidence": "The agent labeled quote-text differences as 'UNVERIFIABLE' when dismissing [2]/[3] but treated identical quote-text differences as a quality signal when ranking [4] above [1]. The existing NEGATIVE CONCERN SCAN (93b0e8f9) only checks the top-ranked candidate's own concerns \u2014 it missed this cross-candidate inconsistency because it doesn't require symmetric application of epistemic labels."
+        },
+        {
+          "statement": "After constraint extraction, scan all candidates for overlapping specific claims (shared sources, shared figures). If found, tag which artifact-building procedures must complete before scoring begins.",
+          "entry_kind": "procedure",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "29e534bd",
+          "trigger": "Immediately after constraint extraction (c8698dee), before any comparative scoring begins.",
+          "verification_or_artifact": "Content Pattern Scan artifact: list any shared named sources, shared statistics, or shared attributions across candidates. For each overlap, record: [shared element | candidates involved | procedure required (e.g., DIFF TABLE, VERIFICATION GATE)]. Scoring is blocked until all tagged procedures produce their required artifacts.",
+          "evidence": "Candidates [1] and [4] attribute quotes to the same six sources (Mitchell, Bishop, Goodfellow et al., Ng, Domingos, Murphy) with different quote text. Entry 29e534bd's MANDATORY TRIGGER explicitly requires a DIFF TABLE for this pattern, but because it's a standalone entry rather than part of the mandatory workflow, the agent's holistic evaluation ran to completion without triggering it. Integrating the scan into the already-followed constraint extraction sequence would prevent this bypass."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts failed identically: candidate [4] (INCORRECT) was rated 7.6 and selected as best, while candidate [1] (CORRECT) was rated 7.2 \u2014 a 0.4-point gap in the wrong direction. The differentiator was the agent's impression of 'slightly weaker presentation/attribution fidelity' for [1] versus [4]. This is a polish-impression-as-verification failure on unverifiable attributed quotes.\n\n## Proximate Cause: Asymmetric Epistemic Standards\n\nThe most damning evidence is the agent's own reasoning. It correctly applies UNVERIFIABLE logic when dismissing candidates [2] and [3], writing: 'UNVERIFIABLE quote text/paraphrase quality differences are too small to overcome the major structural miss.' But it then uses structurally identical unverifiable quote-text differences to rank [4] above [1] by 0.4 points. The agent applied one epistemic standard when convenient (to dismiss weak candidates) and ignored the same standard when it would have constrained the [1]-vs-[4] comparison. This asymmetric skepticism is the direct cause of the wrong ranking.\n\n## Three Correct Safeguards That Never Fired\n\nEntries [29e534bd], [005004a4], and [93b0e8f9] each contain procedures that would have caught this error:\n\n- **[29e534bd]**: Candidates [1] and [4] attribute quotes to the same six sources (Mitchell, Bishop, Goodfellow et al., Ng, Domingos, Murphy) with different quote text \u2014 the exact MANDATORY TRIGGER for a DIFF TABLE. The agent never built it.\n- **[005004a4]**: All attributed quotes are textbook UNVERIFIABLE content under the VERIFICATION GATE ('verbatim quotes attributed to named publications'). The ALL-UNVERIFIABLE CEILING would have capped score differentiation at 0.3 points. The MANDATORY SYMMETRY TABLE was never produced.\n- **[93b0e8f9]**: The NEGATIVE CONCERN SCAN should have caught the self-contradiction: the agent acknowledges unverifiability for some candidates but uses identical unverifiable content as a quality signal for others.\n\n## Structural vs. Execution Problem\n\nThe identical failure across both rollouts eliminates stochastic variation \u2014 this is systematic. The entries contain correct content, but their triggers are positioned to fire AFTER holistic evaluation, when the agent's impression is already anchored. The agent's default evaluation mode (holistic comparison) runs to completion before encountering any procedural gate. The fix must make these checks fire earlier or more automatically.\n\n## Why These Entries Are Neutral, Not Harmful\n\nThe anchor and credit_attribution reflections tag [93b0e8f9], [005004a4], and [29e534bd] as 'harmful.' The principle_extraction reflection correctly pushes back: an entry is harmful when following it leads to a wrong conclusion. These entries weren't followed \u2014 they were bypassed by the agent's default mode. Their content is correct; the problem is trigger sequencing. For this task, they are neutral \u2014 neither consulted nor actively misleading. The agent would have made the same mistake without them.\n\n## What's Missing in the Current Playbook\n\nThe NEGATIVE CONCERN SCAN in [93b0e8f9] catches self-contradictions about the TOP-RANKED candidate's own qualities, but it does not require CROSS-CANDIDATE epistemic consistency. When the agent labels a content type (attributed quotes) as UNVERIFIABLE for candidates [2] and [3], no mechanism forces it to apply the same classification to identical content in the [1]-vs-[4] comparison. This asymmetric application gap is the specific procedural hole.\n\n## Recommended Mutation\n\nUpdate [93b0e8f9] to add an EPISTEMIC SYMMETRY AUDIT step to the NEGATIVE CONCERN SCAN. After step (3), add: 'EPISTEMIC SYMMETRY AUDIT: If your reasoning applies any epistemic label (UNVERIFIABLE, suspicious, uncertain, fabricated) to a content type in any candidate, verify the same label is applied to structurally identical content in ALL candidates. Asymmetric application of epistemic standards across candidates is a finalization blocker \u2014 resolve before scoring.' This directly addresses the proximate cause, is highly generalizable (L3 \u2014 applies to any comparative evaluation), and fits naturally into an existing, well-performing entry (+8 -2).",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent applied UNVERIFIABLE reasoning asymmetrically: it correctly used unverifiability to dismiss candidates [2]/[3] but then used structurally identical unverifiable attributed-quote differences to rank [4] (INCORRECT) above [1] (CORRECT). Three existing entries contain correct safeguards but were bypassed because their triggers fire after holistic evaluation.",
+      "important_disagreements": [
+        "Harmful vs. neutral tags for [93b0e8f9], [005004a4], [29e534bd]: Anchor and credit_attribution tag them harmful; principle_extraction tags them neutral. Resolved in favor of neutral \u2014 the entries contain correct procedures that would have prevented the error if applied. Non-application means they were irrelevant to this outcome, not actively harmful. The problem is trigger sequencing, which an update can address.",
+        "Execution slip vs. structural trigger-sequencing problem: Anchor calls it an execution slip; credit_attribution calls it structural. Resolved toward structural \u2014 the identical failure across both rollouts (verbatim repeated reasoning) rules out stochastic execution failure and points to systematic bypass of late-firing procedures.",
+        "New entry vs. update to existing: Anchor recommends a new ATTRIBUTED-QUOTE TRIGGER entry; principle_extraction argues the real lesson is about symmetric epistemic standards (an update to [93b0e8f9]). Resolved in favor of update \u2014 the asymmetric-skepticism lesson is more generalizable (L3) than an attributed-quote-specific trigger (L2), and an update to the well-performing [93b0e8f9] is lower risk than a new entry."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "The proximate cause (asymmetric epistemic standards) is a gap in [93b0e8f9]'s NEGATIVE CONCERN SCAN, which checks the top-ranked candidate's own qualities but not cross-candidate epistemic consistency. A targeted addition to this entry directly addresses the failure with minimal disruption. All three reflections converge on this gap, though they frame it differently (anchor: self-contradiction; credit_attribution: symmetric epistemic gate; principle_extraction: epistemic symmetry audit).",
+      "conservatism_rationale": "The existing playbook already contains three entries ([93b0e8f9], [005004a4], [29e534bd]) with the correct substantive guidance \u2014 the agent just needs to apply it symmetrically. Adding a single cross-candidate epistemic symmetry check to [93b0e8f9]'s existing NEGATIVE CONCERN SCAN is the smallest intervention that addresses the root cause. Adding new standalone entries risks further increasing the volume of late-firing procedures that the agent already bypasses. The update leverages [93b0e8f9]'s existing execution track record (+8 -2).",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts failed identically: candidate [4] (INCORRECT) was rated 7.6 and selected as best, while candidate [1] (CORRECT) was rated 7.2 \u2014 a 0.4-point gap in the wrong direction. The differentiator was the agent's impression of 'slightly weaker presentation/attribution fidelity' for [1] versus [4]. This is a polish-impression-as-verification failure on unverifiable attributed quotes.\\n\\n## Proximate Cause: Asymmetric Epistemic Standards\\n\\nThe most damning evidence is the agent's own reasoning. It correctly applies UNVERIFIABLE logic when dismissing candidates [2] and [3], writing: 'UNVERIFIABLE quote text/paraphrase quality differences are too small to overcome the major structural miss.' But it then uses structurally identical unverifiable quote-text differences to rank [4] above [1] by 0.4 points. The agent applied one epistemic standard when convenient (to dismiss weak candidates) and ignored the same standard when it would have constrained the [1]-vs-[4] comparison. This asymmetric skepticism is the direct cause of the wrong ranking.\\n\\n## Three Correct Safeguards That Never Fired\\n\\nEntries [29e534bd], [005004a4], and [93b0e8f9] each contain procedures that would have caught this error:\\n\\n- **[29e534bd]**: Candidates [1] and [4] attribute quotes to the same six sources (Mitchell, Bishop, Goodfellow et al., Ng, Domingos, Murphy) with different quote text \u2014 the exact MANDATORY TRIGGER for a DIFF TABLE. The agent never built it.\\n- **[005004a4]**: All attributed quotes are textbook UNVERIFIABLE content under the VERIFICATION GATE ('verbatim quotes attributed to named publications'). The ALL-UNVERIFIABLE CEILING would have capped score differentiation at 0.3 points. The MANDATORY SYMMETRY TABLE was never produced.\\n- **[93b0e8f9]**: The NEGATIVE CONCERN SCAN should have caught the self-contradiction: the agent acknowledges unverifiability for some candidates but uses identical unverifiable content as a quality signal for others.\\n\\n## Structural vs. Execution Problem\\n\\nThe identical failure across both rollouts eliminates stochastic variation \u2014 this is systematic. The entries contain correct content, but their triggers are positioned to fire AFTER holistic evaluation, when the agent's impression is already anchored. The agent's default evaluation mode (holistic comparison) runs to completion before encountering any procedural gate. The fix must make these checks fire earlier or more automatically.\\n\\n## Why These Entries Are Neutral, Not Harmful\\n\\nThe anchor and credit_attribution reflections tag [93b0e8f9], [005004a4], and [29e534bd] as 'harmful.' The principle_extraction reflection correctly pushes back: an entry is harmful when following it leads to a wrong conclusion. These entries weren't followed \u2014 they were bypassed by the agent's default mode. Their content is correct; the problem is trigger sequencing. For this task, they are neutral \u2014 neither consulted nor actively misleading. The agent would have made the same mistake without them.\\n\\n## What's Missing in the Current Playbook\\n\\nThe NEGATIVE CONCERN SCAN in [93b0e8f9] catches self-contradictions about the TOP-RANKED candidate's own qualities, but it does not require CROSS-CANDIDATE epistemic consistency. When the agent labels a content type (attributed quotes) as UNVERIFIABLE for candidates [2] and [3], no mechanism forces it to apply the same classification to identical content in the [1]-vs-[4] comparison. This asymmetric application gap is the specific procedural hole.\\n\\n## Recommended Mutation\\n\\nUpdate [93b0e8f9] to add an EPISTEMIC SYMMETRY AUDIT step to the NEGATIVE CONCERN SCAN. After step (3), add: 'EPISTEMIC SYMMETRY AUDIT: If your reasoning applies any epistemic label (UNVERIFIABLE, suspicious, uncertain, fabricated) to a content type in any candidate, verify the same label is applied to structurally identical content in ALL candidates. Asymmetric application of epistemic standards across candidates is a finalization blocker \u2014 resolve before scoring.' This directly addresses the proximate cause, is highly generalizable (L3 \u2014 applies to any comparative evaluation), and fits naturally into an existing, well-performing entry (+8 -2).\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent applied UNVERIFIABLE reasoning asymmetrically: it correctly used unverifiability to dismiss candidates [2]/[3] but then used structurally identical unverifiable attributed-quote differences to rank [4] (INCORRECT) above [1] (CORRECT). Three existing entries contain correct safeguards but were bypassed because their triggers fire after holistic evaluation.\",\n    \"important_disagreements\": [\n      \"Harmful vs. neutral tags for [93b0e8f9], [005004a4], [29e534bd]: Anchor and credit_attribution tag them harmful; principle_extraction tags them neutral. Resolved in favor of neutral \u2014 the entries contain correct procedures that would have prevented the error if applied. Non-application means they were irrelevant to this outcome, not actively harmful. The problem is trigger sequencing, which an update can address.\",\n      \"Execution slip vs. structural trigger-sequencing problem: Anchor calls it an execution slip; credit_attribution calls it structural. Resolved toward structural \u2014 the identical failure across both rollouts (verbatim repeated reasoning) rules out stochastic execution failure and points to systematic bypass of late-firing procedures.\",\n      \"New entry vs. update to existing: Anchor recommends a new ATTRIBUTED-QUOTE TRIGGER entry; principle_extraction argues the real lesson is about symmetric epistemic standards (an update to [93b0e8f9]). Resolved in favor of update \u2014 the asymmetric-skepticism lesson is more generalizable (L3) than an attributed-quote-specific trigger (L2), and an update to the well-performing [93b0e8f9] is lower risk than a new entry.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"The proximate cause (asymmetric epistemic standards) is a gap in [93b0e8f9]'s NEGATIVE CONCERN SCAN, which checks the top-ranked candidate's own qualities but not cross-candidate epistemic consistency. A targeted addition to this entry directly addresses the failure with minimal disruption. All three reflections converge on this gap, though they frame it differently (anchor: self-contradiction; credit_attribution: symmetric epistemic gate; principle_extraction: epistemic symmetry audit).\",\n    \"conservatism_rationale\": \"The existing playbook already contains three entries ([93b0e8f9], [005004a4], [29e534bd]) with the correct substantive guidance \u2014 the agent just needs to apply it symmetrically. Adding a single cross-candidate epistemic symmetry check to [93b0e8f9]'s existing NEGATIVE CONCERN SCAN is the smallest intervention that addresses the root cause. Adding new standalone entries risks further increasing the volume of late-firing procedures that the agent already bypasses. The update leverages [93b0e8f9]'s existing execution track record (+8 -2).\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

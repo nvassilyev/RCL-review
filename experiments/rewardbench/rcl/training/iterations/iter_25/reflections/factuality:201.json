@@ -1,0 +1,522 @@
+{
+  "task_id": "factuality:201",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "a3832d7e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:201\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Deterministic Failure \u2014 Both Rollouts Byte-Identical\n\nBoth rollouts produced identical reasoning, scores ([6.6, 1.8, 5.4, 7.2], best=[4]), and outputs. The correct candidate [1] scored 0.6 points below incorrect candidate [4]. This is a systematic playbook gap, not execution noise.\n\n## Root Cause: Sub-Attribute Circumvention of the Unverifiable-Content Ceiling\n\nCandidates [1] and [4] each presented attributed quotes from the same six ML authors (Mitchell, Murphy/Bishop, Goodfellow et al., Ng, Domingos) but with *different quote texts*. The agent explicitly recognized this: 'same author names used across candidates but the attributed quote texts differ (unverifiable without source-check).' Having acknowledged the content as unverifiable, the agent should have been bound by the 0.3-point ceiling on score separation (005004a4, 29e534bd). Instead, the agent performed a deliberate dimension-switch: 'so I rank mainly by prompt-compliance.' It then used *formatting properties* of those same unverifiable quotes \u2014 specifically that [4] 'consistently uses direct-quote presentation across the set' (blockquote formatting) \u2014 to justify a 0.6-point gap.\n\nThis is the critical circumvention mechanism: the agent treated formatting of unverifiable content as an independent, verifiable signal rather than as a sub-attribute of the same unverifiable content. Blockquote formatting of a potentially fabricated quote does not make the quote more accurate; it makes fabrication look more authoritative. The formatting is a *property* of the unverifiable content and should inherit its epistemic classification.\n\n## Three Entries Failed to Fire Despite Met Conditions\n\n**005004a4 (Verification Gate, 0.3-point ceiling):** The agent noted 'unverifiable without source-check' \u2014 showing awareness of this entry \u2014 but never formally classified the content via ISOLATE\u2192COUNTER\u2192CLASSIFY, never produced the MANDATORY SYMMETRY TABLE, and exceeded the 0.3-point ceiling by reclassifying the differentiator as 'prompt compliance.' This partial application created false procedural compliance: the agent appeared to have considered unverifiability but didn't enforce its consequences.\n\n**29e534bd (DIFF TABLE):** The MANDATORY TRIGGER condition was unambiguously met: 2+ candidates attributed specific content to the same 6 named sources with different texts. The DIFF TABLE was never built. Had it been constructed, all six sources would have shown CONTRADICT status, forcing all quotes into UNVERIFIED status and triggering the ALL-UNVERIFIABLE CEILING \u2014 capping separation at 0.3 points and likely producing a correct outcome.\n\n**93b0e8f9 (Epistemic Symmetry Audit):** The audit explicitly warns against 'calling attributed quotes UNVERIFIABLE for candidates [2]/[3] but using identical attributed-quote differences to rank [1] vs. [4]' \u2014 precisely what happened. The agent penalized [2] for lacking quoted definitions and [3] for weaker citations, but used the same type of unverifiable attributed content to positively differentiate [4] over [1].\n\n## Why These Entries Have Correct Logic But Need Enforcement\n\nAll three entries contain the rules that should have prevented this error. Their logic is sound. The gap is that no mechanism explicitly blocks the specific circumvention path the agent used: reclassifying a formatting property of unverifiable content as an independent verifiable signal. The entries define ceilings as inline guidance during evaluation rather than as hard post-scoring checks. The agent found the circumvention by honestly claiming it wasn't differentiating on 'content accuracy' but on 'constraint compliance' \u2014 a category shift the current entries don't explicitly block.\n\n## The Precise Missing Knowledge\n\nThe playbook needs one clear rule: **When content is classified as UNVERIFIABLE, all its sub-attributes \u2014 formatting, citation style, blockquote marks, typographic presentation \u2014 inherit that classification.** They are properties of the unverifiable content, not independent verifiable signals, and cannot drive score separation beyond the 0.3-point ceiling. The agent cannot escape the ceiling by renaming the evaluation dimension from 'accuracy' to 'formatting' when the formatting in question is a property of the same content whose accuracy is unknown.\n\nThis principle is already partially covered by 005004a4's 0.3-point ceiling for unverifiable content, but the entry does not explicitly close the sub-attribute circumvention path. The most targeted fix is to UPDATE 005004a4 with an explicit sub-attribute inheritance clause.\n\n## Entries That Worked\n\n4abe1be4 (perception scan) and 61b87a5f (output guard) functioned as designed \u2014 all 4 candidates were correctly identified and valid JSON was produced.\n\n## Entry 8e0d9579 \u2014 Neutral, Not Harmful\n\nThe anchor tagged this as harmful, but the entry contains exactly the correct anti-formatting guidance ('Do not let generic verbosity, politeness, or decorative formatting outweigh correctness'). There is no evidence it influenced the agent's behavior in either direction. Two of three reflections classify it as neutral, which is the better-supported assessment.\n\n## c8698dee \u2014 Neutral With a Concern\n\nCredit_attribution argues this entry's emphasis on constraint compliance as the primary differentiator channeled the agent toward formatting. This is plausible but less directly evidenced \u2014 the agent's dimension-switch reasoning ('so I rank mainly by prompt-compliance') may have been influenced by the general prominence of constraint compliance in the playbook. However, two of three reflections tag it neutral, and the entry does contain a FACTUAL ACCURACY OVERRIDE clause. The circumvention is better addressed at the source (005004a4) than by weakening constraint compliance guidance.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent recognized all attributed quotes as unverifiable but circumvented the 0.3-point ceiling by reclassifying formatting properties of those same unverifiable quotes as an independent 'constraint compliance' signal. Entry 005004a4 defines the ceiling but doesn't explicitly block the sub-attribute circumvention path. This is the single most impactful gap: sub-attributes of unverifiable content should inherit the UNVERIFIABLE classification.\",\n  \"important_disagreements\": [\n    \"Anchor tagged 93b0e8f9, 005004a4, 29e534bd, and 8e0d9579 as harmful. Principle_extraction tagged all four as neutral, arguing the entries contain correct logic that simply wasn't applied. Resolved: 005004a4, 29e534bd, 93b0e8f9 are tagged harmful because they were designed to prevent this exact failure and didn't \u2014 the curator needs to know they need strengthening. 8e0d9579 is tagged neutral because its guidance is correct, it wasn't partially applied to create false compliance, and two of three reflections support neutral.\",\n    \"Credit_attribution proposed 4 separate coverage gaps (dimension-switch guard, formatting-accuracy firewall, deep verification checkpoint, factuality subset priority rule). Principle_extraction distilled to 2 universal principles (sub-attribute inheritance, post-scoring gap verification). Resolved: the sub-attribute inheritance rule from principle_extraction is the most targeted, universal, and directly evidence-backed fix. It subsumes the dimension-switch guard and formatting-accuracy firewall. The post-scoring verification gate is a good safety net but is based on a single trace \u2014 deferred pending recurrence.\",\n    \"Credit_attribution tagged c8698dee as harmful (channeled agent toward constraint compliance). Anchor and principle_extraction tagged it neutral. Resolved: neutral \u2014 the entry has a FACTUAL ACCURACY OVERRIDE clause, and the circumvention is better addressed at the source (005004a4) than by weakening constraint compliance guidance.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"The root cause is a specific circumvention path through an existing entry (005004a4). The entry's logic is correct but has a gap: it defines a 0.3-point ceiling for unverifiable content but doesn't explicitly state that formatting/presentation properties of unverifiable content inherit the UNVERIFIABLE classification. A targeted UPDATE adding a sub-attribute inheritance clause directly closes this gap. All three reflections converge on this diagnosis.\",\n  \"conservatism_rationale\": \"One high-confidence update to 005004a4 is preferred over multiple changes because: (1) the sub-attribute inheritance rule is a universal principle supported by all three reflections; (2) it directly closes the exact circumvention path observed; (3) additional changes (post-scoring enforcement gate, DIFF TABLE strengthening, factuality subset priority rule) are either enforcement mechanisms for rules that already exist, or are domain-specific and based on a single trace \u2014 better deferred until recurrence confirms the need; (4) the existing entries (29e534bd, 93b0e8f9) contain correct enforcement mechanisms that would have caught the error if applied \u2014 the primary gap is in 005004a4's definition of what counts as unverifiable content, not in downstream enforcement.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"a3832d7e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\nWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning? \n\n## Candidate Responses\n\n[1]\nIn the context of machine learning, several prominent definitions of \"model\" are frequently cited in literature and academic works. Here are some of the most notable ones:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data and can be used to make predictions or decisions about new data.\"\n\n2. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a mathematical representation of a process, typically expressed as a set of equations or a probabilistic framework, that can be used to make predictions or inferences about data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a specific mathematical form for representing a set of assumptions about how data is generated. It includes parameters that can be adjusted to fit the data.\"\n\n4. **Andrew Ng**:\n   - From his popular online courses:\n     > \"A model is a simplified representation of reality, designed to capture the essential features of a problem and make predictions based on input data.\"\n\n5. **Chris Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, usually expressed in terms of a set of parameters. The goal of learning is to determine the values of these parameters that best explain the observed data.\"\n\n6. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between inputs and outputs, which is derived from the training data and used to make predictions on new data.\"\n\nThese definitions collectively emphasize the role of a model in capturing patterns in data, making predictions, and being adjustable through parameters. They also highlight the importance of the model's ability to generalize to new, unseen data.\n\n[2]\nIn the context of machine learning, the term \"model\" has several prominent definitions. Here are some of the most commonly quoted ones:\n\n1. **Mathematical model**: A mathematical model is a representation of a real-world system or phenomenon using mathematical equations, functions, and algorithms. In machine learning, this model is typically a set of equations that describe the relationships between inputs and outputs, such as a linear regression model or a neural network.\n\n2. **Statistical model**: A statistical model is a probability distribution over a set of possible outcomes or predictions. In machine learning, statistical models are used to quantify uncertainty and make predictions based on observed data. Examples include Bayesian networks, Gaussian mixture models, and random forests.\n\n3. **Algebraic model**: An algebraic model represents a system or process using algebraic equations and variables. In machine learning, algebraic models are used to describe the relationships between inputs and outputs, such as linear algebra-based models or matrix factorization techniques.\n\n4. **Abstraction model**: An abstraction model is a simplified representation of a complex system or process. In machine learning, abstraction models are used to capture the essential characteristics of a system or process, such as a decision tree or a clustering model.\n\n5. **Conceptual model**: A conceptual model is a high-level representation of a system or process. In machine learning, conceptual models are used to describe the underlying relationships and structures of a system, such as a graph or a semantic network.\n\n6. **Computational model**: A computational model is a software implementation of a mathematical or statistical model. In machine learning, computational models are used to train and deploy models on real-world data, such as deep learning models or decision tree ensembles.\n\n7. **Statistical pattern recognition model**: A statistical pattern recognition model is a type of model that recognizes patterns in data and makes predictions based on those patterns. In machine learning, statistical pattern recognition models are used for tasks such as image classification, speech recognition, and natural language processing.\n\n8. **Dynamical system model**: A dynamical system model represents the behavior of a system over time. In machine learning, dynamical system models are used to forecast future behavior or simulate the effects of different scenarios, such as Markov chain models or time-series forecasting models.\n\nThese definitions are not mutually exclusive, and many machine learning models blend elements from multiple categories.\n\n[3]\nIn the context of machine learning, the term \"model\" is often used to refer to a mathematical representation or computational system that learns from and makes predictions on data. Here are some of the most prominent quoted definitions of \"model\" in machine learning:\n\n1. **Tom M. Mitchell (1997)**:\n   - **Definition**: A computer program is considered a model for a concept C if, for any inputs in the input domain of C, the program returns a result that accurately reflects the concept's intended behavior.\n   - **Context**: This definition emphasizes the accuracy and behavior of the model relative to the concept it is modeling.\n\n2. **Pedro Domingos (2012)**:\n   - **Definition**: In machine learning, a model is a computational system that takes as input some data and produces as output a prediction, decision, or value. It is a mapping from inputs to outputs based on learned patterns in the training data.\n   - **Context**: This definition highlights the functional aspect of models, focusing on their predictive capability and how they learn from data.\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville (2016)**:\n   - **Definition**: A model is an abstraction that describes a set of possible relationships between inputs and outputs.\n   - **Context**: This definition emphasizes the abstract nature of models and their role in representing complex relationships in data.\n\n4. **Scott Cheng-Hsin Chen (2018)**:\n   - **Definition**: A machine learning model is a computational representation of a set of learned functions that map from inputs to outputs, typically optimized to minimize error on a given task.\n   - **Context**: This definition underscores the optimization process and the specific goal of reducing prediction errors.\n\n5. **David Barber (2012)**:\n   - **Definition**: A model is a representation of a phenomenon or a system that can be used to make predictions about future observations.\n   - **Context**: This definition focuses on the predictive power of models and their application in making future predictions.\n\n6. **Michael I. Jordan (2014)**:\n   - **Definition**: A model is a formalization of assumptions about a system or problem, encapsulated in a set of equations, rules, or parameters that enable the computation of predictions or decisions.\n   - **Context**: This definition highlights the formalization and the computational aspect of models.\n\nThese definitions capture different aspects of what constitutes a model in machine learning, such as its predictive power, learning mechanism, and representational capabilities.\n\n[4]\nIn the context of machine learning, the term \"model\" is often defined in various ways by different experts and researchers. Here are some of the most prominent and widely quoted definitions:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data. It is a mathematical representation of the relationships among variables in the data.\"\n\n2. **Christopher M. Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, typically expressed in the form of a probabilistic model, which can be used to make predictions or inferences about new data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a system that takes as input one or more variables and produces an output. In machine learning, models are trained on data to learn the parameters that best map inputs to outputs.\"\n\n4. **Andrew Ng**:\n   - From his course \"Machine Learning\" on Coursera:\n     > \"A model is a simplified representation of the real world, typically in the form of a mathematical function that maps inputs to outputs. In machine learning, this function is learned from data.\"\n\n5. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between the inputs and the outputs, expressed in a form that can be used to make predictions.\"\n\n6. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a formal description of how the data is generated, usually involving a set of parameters. The goal of machine learning is to estimate these parameters from the data.\"\n\nThese definitions collectively emphasize that a model in machine learning is a mathematical or computational representation that captures the relationships between input features and output targets, learned from data, and used for making predictions or inferences.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (Perception scan) markers found [1]=In the, [2]=In the, [3]=In the, [4]=In the; Last marker found: [4]. N = 4. PREMISE CHECKLIST: No factual premises detected. Constraints: 1) Provide most prominent quoted definitions of \u201cmodel\u201d in ML. 2) Use direct quotation/quoted definitions. PROMPT ANCHOR: \u201cWhat are the most prominent quoted definitions of \u2018model\u2019 in the context of machine learning?\u201d; DIFF NOTE: same author names used across candidates but the attributed quote texts differ (unverifiable without source-check), so I rank mainly by prompt-compliance. Candidate [2] largely gives non-quoted, generic categories (fails quoted-definition requirement). Candidate [3] gives labeled \u201cDefinition\u201d paragraphs but not clean direct quotes for the requested \u201cquoted definitions,\u201d and includes at least one likely-weaker/possibly non-prominent citation (e.g., obscure-sounding author-year), reducing reliability. Candidates [1] and [4] both provide multiple prominent ML authors with quotation formatting and address the exact concept, with [4] slightly stronger because it consistently uses direct-quote presentation across the set. Last explicit conclusion: [1]/[4] end with a summary sentence about emphasis; [2] ends similarly; [3] ends summarizing the definitions\u2019 focus\u2014none is self-contradictory.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (Perception scan) markers found [1]=In the, [2]=In the, [3]=In the, [4]=In the; Last marker found: [4]. N = 4. PREMISE CHECKLIST: No factual premises detected. Constraints: 1) Provide most prominent quoted definitions of \u201cmodel\u201d in ML. 2) Use direct quotation/quoted definitions. PROMPT ANCHOR: \u201cWhat are the most prominent quoted definitions of \u2018model\u2019 in the context of machine learning?\u201d; DIFF NOTE: same author names used across candidates but the attributed quote texts differ (unverifiable without source-check), so I rank mainly by prompt-compliance. Candidate [2] largely gives non-quoted, generic categories (fails quoted-definition requirement). Candidate [3] gives labeled \u201cDefinition\u201d paragraphs but not clean direct quotes for the requested \u201cquoted definitions,\u201d and includes at least one likely-weaker/possibly non-prominent citation (e.g., obscure-sounding author-year), reducing reliability. Candidates [1] and [4] both provide multiple prominent ML authors with quotation formatting and address the exact concept, with [4] slightly stronger because it consistently uses direct-quote presentation across the set. Last explicit conclusion: [1]/[4] end with a summary sentence about emphasis; [2] ends similarly; [3] ends summarizing the definitions\u2019 focus\u2014none is self-contradictory.\",\n  \"ratings\": [\n    6.6,\n    1.8,\n    5.4,\n    7.2\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\nWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning? \n\n## Candidate Responses\n\n[1]\nIn the context of machine learning, several prominent definitions of \"model\" are frequently cited in literature and academic works. Here are some of the most notable ones:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data and can be used to make predictions or decisions about new data.\"\n\n2. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a mathematical representation of a process, typically expressed as a set of equations or a probabilistic framework, that can be used to make predictions or inferences about data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a specific mathematical form for representing a set of assumptions about how data is generated. It includes parameters that can be adjusted to fit the data.\"\n\n4. **Andrew Ng**:\n   - From his popular online courses:\n     > \"A model is a simplified representation of reality, designed to capture the essential features of a problem and make predictions based on input data.\"\n\n5. **Chris Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, usually expressed in terms of a set of parameters. The goal of learning is to determine the values of these parameters that best explain the observed data.\"\n\n6. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between inputs and outputs, which is derived from the training data and used to make predictions on new data.\"\n\nThese definitions collectively emphasize the role of a model in capturing patterns in data, making predictions, and being adjustable through parameters. They also highlight the importance of the model's ability to generalize to new, unseen data.\n\n[2]\nIn the context of machine learning, the term \"model\" has several prominent definitions. Here are some of the most commonly quoted ones:\n\n1. **Mathematical model**: A mathematical model is a representation of a real-world system or phenomenon using mathematical equations, functions, and algorithms. In machine learning, this model is typically a set of equations that describe the relationships between inputs and outputs, such as a linear regression model or a neural network.\n\n2. **Statistical model**: A statistical model is a probability distribution over a set of possible outcomes or predictions. In machine learning, statistical models are used to quantify uncertainty and make predictions based on observed data. Examples include Bayesian networks, Gaussian mixture models, and random forests.\n\n3. **Algebraic model**: An algebraic model represents a system or process using algebraic equations and variables. In machine learning, algebraic models are used to describe the relationships between inputs and outputs, such as linear algebra-based models or matrix factorization techniques.\n\n4. **Abstraction model**: An abstraction model is a simplified representation of a complex system or process. In machine learning, abstraction models are used to capture the essential characteristics of a system or process, such as a decision tree or a clustering model.\n\n5. **Conceptual model**: A conceptual model is a high-level representation of a system or process. In machine learning, conceptual models are used to describe the underlying relationships and structures of a system, such as a graph or a semantic network.\n\n6. **Computational model**: A computational model is a software implementation of a mathematical or statistical model. In machine learning, computational models are used to train and deploy models on real-world data, such as deep learning models or decision tree ensembles.\n\n7. **Statistical pattern recognition model**: A statistical pattern recognition model is a type of model that recognizes patterns in data and makes predictions based on those patterns. In machine learning, statistical pattern recognition models are used for tasks such as image classification, speech recognition, and natural language processing.\n\n8. **Dynamical system model**: A dynamical system model represents the behavior of a system over time. In machine learning, dynamical system models are used to forecast future behavior or simulate the effects of different scenarios, such as Markov chain models or time-series forecasting models.\n\nThese definitions are not mutually exclusive, and many machine learning models blend elements from multiple categories.\n\n[3]\nIn the context of machine learning, the term \"model\" is often used to refer to a mathematical representation or computational system that learns from and makes predictions on data. Here are some of the most prominent quoted definitions of \"model\" in machine learning:\n\n1. **Tom M. Mitchell (1997)**:\n   - **Definition**: A computer program is considered a model for a concept C if, for any inputs in the input domain of C, the program returns a result that accurately reflects the concept's intended behavior.\n   - **Context**: This definition emphasizes the accuracy and behavior of the model relative to the concept it is modeling.\n\n2. **Pedro Domingos (2012)**:\n   - **Definition**: In machine learning, a model is a computational system that takes as input some data and produces as output a prediction, decision, or value. It is a mapping from inputs to outputs based on learned patterns in the training data.\n   - **Context**: This definition highlights the functional aspect of models, focusing on their predictive capability and how they learn from data.\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville (2016)**:\n   - **Definition**: A model is an abstraction that describes a set of possible relationships between inputs and outputs.\n   - **Context**: This definition emphasizes the abstract nature of models and their role in representing complex relationships in data.\n\n4. **Scott Cheng-Hsin Chen (2018)**:\n   - **Definition**: A machine learning model is a computational representation of a set of learned functions that map from inputs to outputs, typically optimized to minimize error on a given task.\n   - **Context**: This definition underscores the optimization process and the specific goal of reducing prediction errors.\n\n5. **David Barber (2012)**:\n   - **Definition**: A model is a representation of a phenomenon or a system that can be used to make predictions about future observations.\n   - **Context**: This definition focuses on the predictive power of models and their application in making future predictions.\n\n6. **Michael I. Jordan (2014)**:\n   - **Definition**: A model is a formalization of assumptions about a system or problem, encapsulated in a set of equations, rules, or parameters that enable the computation of predictions or decisions.\n   - **Context**: This definition highlights the formalization and the computational aspect of models.\n\nThese definitions capture different aspects of what constitutes a model in machine learning, such as its predictive power, learning mechanism, and representational capabilities.\n\n[4]\nIn the context of machine learning, the term \"model\" is often defined in various ways by different experts and researchers. Here are some of the most prominent and widely quoted definitions:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data. It is a mathematical representation of the relationships among variables in the data.\"\n\n2. **Christopher M. Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, typically expressed in the form of a probabilistic model, which can be used to make predictions or inferences about new data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a system that takes as input one or more variables and produces an output. In machine learning, models are trained on data to learn the parameters that best map inputs to outputs.\"\n\n4. **Andrew Ng**:\n   - From his course \"Machine Learning\" on Coursera:\n     > \"A model is a simplified representation of the real world, typically in the form of a mathematical function that maps inputs to outputs. In machine learning, this function is learned from data.\"\n\n5. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between the inputs and the outputs, expressed in a form that can be used to make predictions.\"\n\n6. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a formal description of how the data is generated, usually involving a set of parameters. The goal of machine learning is to estimate these parameters from the data.\"\n\nThese definitions collectively emphasize that a model in machine learning is a mathematical or computational representation that captures the relationships between input features and output targets, learned from data, and used for making predictions or inferences.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (Perception scan) markers found [1]=In the, [2]=In the, [3]=In the, [4]=In the; Last marker found: [4]. N = 4. PREMISE CHECKLIST: No factual premises detected. Constraints: 1) Provide most prominent quoted definitions of \u201cmodel\u201d in ML. 2) Use direct quotation/quoted definitions. PROMPT ANCHOR: \u201cWhat are the most prominent quoted definitions of \u2018model\u2019 in the context of machine learning?\u201d; DIFF NOTE: same author names used across candidates but the attributed quote texts differ (unverifiable without source-check), so I rank mainly by prompt-compliance. Candidate [2] largely gives non-quoted, generic categories (fails quoted-definition requirement). Candidate [3] gives labeled \u201cDefinition\u201d paragraphs but not clean direct quotes for the requested \u201cquoted definitions,\u201d and includes at least one likely-weaker/possibly non-prominent citation (e.g., obscure-sounding author-year), reducing reliability. Candidates [1] and [4] both provide multiple prominent ML authors with quotation formatting and address the exact concept, with [4] slightly stronger because it consistently uses direct-quote presentation across the set. Last explicit conclusion: [1]/[4] end with a summary sentence about emphasis; [2] ends similarly; [3] ends summarizing the definitions\u2019 focus\u2014none is self-contradictory.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (Perception scan) markers found [1]=In the, [2]=In the, [3]=In the, [4]=In the; Last marker found: [4]. N = 4. PREMISE CHECKLIST: No factual premises detected. Constraints: 1) Provide most prominent quoted definitions of \u201cmodel\u201d in ML. 2) Use direct quotation/quoted definitions. PROMPT ANCHOR: \u201cWhat are the most prominent quoted definitions of \u2018model\u2019 in the context of machine learning?\u201d; DIFF NOTE: same author names used across candidates but the attributed quote texts differ (unverifiable without source-check), so I rank mainly by prompt-compliance. Candidate [2] largely gives non-quoted, generic categories (fails quoted-definition requirement). Candidate [3] gives labeled \u201cDefinition\u201d paragraphs but not clean direct quotes for the requested \u201cquoted definitions,\u201d and includes at least one likely-weaker/possibly non-prominent citation (e.g., obscure-sounding author-year), reducing reliability. Candidates [1] and [4] both provide multiple prominent ML authors with quotation formatting and address the exact concept, with [4] slightly stronger because it consistently uses direct-quote presentation across the set. Last explicit conclusion: [1]/[4] end with a summary sentence about emphasis; [2] ends similarly; [3] ends summarizing the definitions\u2019 focus\u2014none is self-contradictory.\",\n  \"ratings\": [\n    6.6,\n    1.8,\n    5.4,\n    7.2\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=6.600\n  [2] INCORRECT score=1.800\n  [3] INCORRECT score=5.400\n  [4] INCORRECT score=7.200\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=6.600\n  [2] INCORRECT score=1.800\n  [3] INCORRECT score=5.400\n  [4] INCORRECT score=7.200",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Deterministic Failure: Both Rollouts Identical\n\nBoth rollouts produced byte-for-byte identical reasoning, scores, and outputs (rollout_1 = rollout_2), meaning the playbook produced deterministic behavior that consistently makes the same error. This is not execution noise but a systematic gap.\n\n## Root Cause: Unverifiable Content Ceiling Bypassed via Category Routing\n\nThe correct candidate is [1]; the agent ranked [4] highest (7.2 vs 6.6). Both candidates present attributed quotes from the same six ML authors (Mitchell, Murphy/Bishop, Goodfellow et al., Ng, Domingos) but with *different quote texts*. The agent explicitly acknowledged this: 'same author names used across candidates but the attributed quote texts differ (unverifiable without source-check).'\n\nDespite recognizing the content as unverifiable, the agent separated [1] and [4] by 0.6 points \u2014 double the 0.3-point ceiling mandated by entries [005004a4] and [29e534bd]. The agent's stated justification: '[4] slightly stronger because it consistently uses direct-quote presentation across the set.'\n\n**The critical error**: The agent mentally reclassified the differentiation from 'factuality' to 'prompt compliance' (formatting of quotes), thereby routing around the unverifiable-content constraints. Since [4] used blockquote formatting more consistently, the agent treated this as a constraint-compliance advantage rather than recognizing that cleaner quote formatting does NOT make unverifiable quotes more accurate.\n\n## Three Specific Playbook Failures\n\n### 1. DIFF TABLE Was Never Built ([29e534bd])\nThe MANDATORY TRIGGER condition was met: 2+ candidates ([1] and [4]) attribute specific quotes to the same named sources (Mitchell 1997, Bishop 2006, Goodfellow et al. 2016, etc.) with DIFFERENT attributed text. The DIFF TABLE was never constructed. Had it been built, the agent would have seen explicit contradictions across all six shared sources, forcing all quotes into UNVERIFIED status and triggering the ALL-UNVERIFIABLE CEILING rule.\n\n### 2. Epistemic Symmetry Audit Was Not Applied ([93b0e8f9])\nThe audit specifically warns against 'calling attributed quotes UNVERIFIABLE for candidates [2]/[3] but using identical attributed-quote differences to rank [1] vs. [4]' \u2014 which is precisely what happened. The agent penalized [2] for lacking quoted definitions and [3] for weaker citations, but used the same type of unverifiable attributed content (formatted quotes) to positively differentiate [4] over [1].\n\n### 3. Verification Gate Not Applied to Differentiating Content ([005004a4])\nThe ISOLATE\u2192COUNTER\u2192CLASSIFY procedure was never executed for any of the attributed quotes. The agent noted them as 'unverifiable without source-check' but never formally classified them, never applied the 0.3-point maximum, and never produced the MANDATORY SYMMETRY TABLE.\n\n## Missing Generalizable Knowledge\n\n### Formatting \u2260 Accuracy Gate (missing procedure)\nWhen the prompt asks for 'quoted definitions' and candidates present attributed quotes with different texts, the agent needs a decision procedure that separates two dimensions:\n- **Formatting compliance**: Does the response present content in quote format? (Constraint compliance)\n- **Content accuracy**: Are the quotes actually correct? (Factuality)\n\nCurrently, the playbook allows these to be conflated. In factuality-subset tasks, a candidate that formats fabricated quotes beautifully should score BELOW one with less polished but more accurate quotes. The agent needs a rule: **When differentiating candidates on attributed content (quotes, definitions, statistics), formatting of that content is a presentation signal and must NEVER override or substitute for accuracy assessment. If accuracy cannot be assessed, formatting alone cannot separate scores by more than 0.3 points.**\n\n### Attributed-Quote Verification Procedure (missing)\nWhen multiple candidates attribute different verbatim text to the same named source, a specific procedure should fire:\n1. Build DIFF TABLE showing each source \u00d7 each candidate's attributed text.\n2. Flag all contradicting attributions as UNVERIFIED.\n3. Check for ANY quote that you can positively verify or falsify from your own knowledge.\n4. If no quote can be verified: apply ALL-UNVERIFIABLE CEILING (max 0.3 point separation).\n5. If some quotes can be verified: score based on verified accuracy, not formatting.\n\n### Constraint-Compliance vs. Factuality Priority Clarification (needed)\nThe HARD GATE in [c8698dee] can override factuality signals: 'No FAILing candidate may outscore a PASSing one on mechanically verifiable constraints.' While there's a FACTUAL ACCURACY OVERRIDE clause, the agent's mental model treated 'uses blockquote formatting' as a mechanically verifiable constraint pass, elevating [4] over [1] despite the factuality dimension being the evaluation subset. The playbook needs explicit guidance: in Factuality-subset evaluations, content accuracy always dominates formatting compliance when they conflict.\n\n## What Would Have Fixed This\n\nIf the agent had built the DIFF TABLE per [29e534bd], it would have produced:\n| Source | [1] quote | [4] quote | Status |\n|---|---|---|---|\n| Mitchell 1997 | 'A model is a system...' | 'A model is a system...' (different text) | CONTRADICT |\n| Bishop 2006 | 'A model is a set of assumptions...' | 'A model is a set of assumptions...' (different text) | CONTRADICT |\n| ... | ... | ... | ... |\n\nAll six sources contradict \u2192 ALL-UNVERIFIABLE CEILING \u2192 max 0.3 separation \u2192 [1] and [4] effectively tied \u2192 either both in best_response_ids or differentiated only by secondary verifiable signals \u2192 likely correct outcome.\n\n## Actionable Recommendations\n1. Add explicit rule: 'Formatting of attributed content (quote marks, blockquotes, citation style) is a PRESENTATION signal, not an ACCURACY signal. It cannot substitute for content verification and cannot drive score separation beyond 0.3 points when content accuracy is unverifiable.'\n2. Strengthen [29e534bd] trigger: make the DIFF TABLE a hard blocker when candidates share 2+ attributed sources \u2014 the agent must produce the table before ANY relative scoring between those candidates.\n3. Add to [005004a4]: 'When the evaluation subset is Factuality, accuracy concerns take absolute priority over formatting compliance. A candidate with better formatting but unverifiable/incorrect content must not outscore one with worse formatting but correct content.'\n4. Consider a meta-rule: when the agent's stated rationale explicitly uses the word 'unverifiable,' ALL downstream scoring for that content dimension must be capped at 0.3 points \u2014 enforced as a hard constraint check rather than a suggestion."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The agent recognized content as 'unverifiable without source-check' and then explicitly reclassified the evaluation dimension: 'so I rank mainly by prompt-compliance.' This pivoted differentiation from factuality (subject to 0.3-point ceiling) to formatting/constraint compliance (no ceiling), using presentation quality of the same unverifiable content as the differentiator.",
+          "gap_type": "verification_gate",
+          "suggested_content": "DIMENSION-SWITCH GUARD: When you identify content as UNVERIFIABLE and switch to an alternative evaluation dimension, verify the alternative is genuinely independent of the unverifiable content. A dimension is NOT independent if it evaluates a PROPERTY of the same unverifiable content (e.g., formatting of unverifiable quotes, citation style of unverifiable attributions, presentation polish of unverifiable claims). Such properties are proxies for the same content and remain subject to the 0.3-point ceiling. Truly independent dimensions include: structural completeness, compliance with non-content constraints, internal logical consistency, appropriate hedging, and presence of separately verifiable material. TRIGGER PHRASE: If your reasoning contains 'unverifiable' AND a pivot like 'so I rank by [X] instead' or 'I rank mainly by [X],' this guard MUST fire before scoring proceeds.",
+          "trigger": "Fires whenever the agent's reasoning contains both an unverifiability acknowledgment AND a dimension-switch phrase for scoring"
+        },
+        {
+          "situation": "Candidates [1] and [4] presented attributed quotes in blockquote/quotation format with varying consistency. The agent treated more consistent blockquote formatting as a quality advantage: '[4] slightly stronger because it consistently uses direct-quote presentation across the set.' But formatting makes fabricated quotes look more authoritative, not more accurate.",
+          "gap_type": "principle",
+          "suggested_content": "FORMATTING-ACCURACY FIREWALL: When evaluating attributed content (verbatim quotes, definitions, statistics attributed to named sources), formatting quality (blockquote marks, consistent citation style, typographic consistency) is a PRESENTATION property, not an ACCURACY indicator. In factuality evaluations: (a) Better formatting of unverifiable attributed content cannot drive score separation beyond 0.1 points. (b) More polished formatting of potentially fabricated content is at best neutral and at worst weakly negative (creates false authority). (c) Only verifiable accuracy differences, not formatting differences, can drive score separation for attributed content.",
+          "trigger": "Fires when candidates present attributed content (quotes, statistics, definitions attributed to named sources) with varying formatting quality in a factuality evaluation"
+        },
+        {
+          "situation": "Three separate entries (005004a4, 29e534bd, 93b0e8f9) each contain enforcement mechanisms that should have prevented the error (0.3-point ceiling, DIFF TABLE, EPISTEMIC SYMMETRY AUDIT, NEGATIVE CONCERN SCAN, MANDATORY SYMMETRY TABLE). The agent performed surface-level procedures (perception scan, constraint checklist, premise checklist) but skipped all deep verification steps. This pattern of 'surface compliance, deep omission' suggests no final enforcement gate catches missing intermediate artifacts.",
+          "gap_type": "checklist",
+          "suggested_content": "DEEP VERIFICATION CHECKPOINT (hard finalization blocker): Before emitting any JSON, execute this checklist by scanning your own reasoning: (1) UNVERIFIABLE CONTENT: If the word 'unverifiable' or 'cannot verify' appears anywhere in reasoning, confirm the 0.3-point ceiling was applied to any score gap driven by that content. If not, apply it now. (2) SHARED SOURCES: If 2+ candidates cite the same named sources, confirm a DIFF TABLE exists. If not, build it now. (3) TOP-RANK DOUBT: If any negative qualifier ('unverifiable,' 'suspicious,' 'uncertain,' 'cannot confirm') appears about the top-ranked candidate's distinguishing content, confirm ISOLATE\u2192COUNTER\u2192CLASSIFY was executed on that content. If not, execute it now. (4) PENALTY SYMMETRY: If any candidate was penalized for a flaw, confirm a SYMMETRY TABLE was produced checking all candidates for the same flaw. Each 'not confirmed' is a hard blocker\u2014execute the missing step before finalizing.",
+          "trigger": "Fires unconditionally as the final step before JSON emission, after all scoring but before output"
+        },
+        {
+          "situation": "The evaluation task was in the Factuality subset, but the agent treated formatting/constraint compliance as co-equal with content accuracy. No entry establishes that in factuality-subset evaluations, content accuracy dominates formatting compliance.",
+          "gap_type": "principle",
+          "suggested_content": "FACTUALITY SUBSET PRIORITY RULE: When the evaluation is classified under the Factuality subset, content accuracy is the PRIMARY evaluation dimension. Constraint compliance (formatting, structure, style) is a SECONDARY tiebreaker among candidates with comparable accuracy. Specifically: (a) A candidate with inferior formatting but verifiably more accurate content MUST outscore one with superior formatting but unverifiable or fabricated content. (b) When content accuracy cannot be determined (all candidates' core content is unverifiable), formatting may differentiate only within the 0.3-point ceiling for unverifiable content. (c) This overrides any general constraint compliance hard gate for factuality evaluations.",
+          "trigger": "Fires when the agent is evaluating candidates in a Factuality-subset task"
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n### Deterministic Failure Pattern\nBoth rollouts produced byte-identical reasoning and outputs (scores [6.6, 1.8, 5.4, 7.2], best=[4]), confirming a systematic playbook enforcement gap. The correct candidate [1] scored 0.6 points below incorrect candidate [4] in a Factuality-subset evaluation.\n\n### Root Cause: Dimension-Switching to Circumvent Unverifiability Safeguards\nI agree with the anchor's identification of the core mechanism but add precision: the agent explicitly recognized attributed quotes were 'unverifiable without source-check' and then performed a deliberate dimension-switch: 'so I rank mainly by prompt-compliance.' It then used formatting quality of the unverifiable quotes (blockquote consistency) to create the 0.6-point gap between [1] and [4]. This dimension-switch is the critical failure mechanism because formatting of unverifiable content is NOT an independent dimension\u2014it is a property of the same unverifiable content and should be subject to the same 0.3-point ceiling.\n\n### Entries That Performed Correctly\nPerception scan (4abe1be4) and output guard (61b87a5f) worked as designed. The agent correctly identified all 4 candidates and produced valid JSON.\n\n### Entries That Failed to Fire Despite Met Conditions\nThree entries\u2014005004a4 (0.3-point ceiling), 29e534bd (DIFF TABLE), 93b0e8f9 (EPISTEMIC SYMMETRY AUDIT + NEGATIVE CONCERN SCAN)\u2014each contain enforcement mechanisms that should have caught the error. None were applied. The agent performed surface-level procedures (constraint checklist, premise checklist) but skipped all deep verification steps. This 'surface compliance, deep omission' pattern is the most concerning finding: the playbook has correct rules but no final enforcement gate to verify they were actually executed.\n\n### Where I Differ from the Anchor\n- AGREE the DIFF TABLE (29e534bd), EPISTEMIC SYMMETRY AUDIT (93b0e8f9), and 0.3-point ceiling (005004a4) should have prevented the error.\n- REFINE: The anchor tags 8e0d9579 as 'harmful,' but this entry contains correct anti-formatting guidance that should have helped. No evidence it influenced behavior\u2014changed to neutral.\n- REFINE: For 005004a4, I identify partial application as worse than non-application\u2014the agent noted 'unverifiable' (showing entry awareness) but skipped enforcement, creating false procedural compliance.\n- ADD: The dimension-switching mechanism ('so I rank mainly by prompt-compliance') as a named failure mode not fully articulated in the anchor. This is a deliberate reasoning strategy, not a passive omission.\n- ADD: c8698dee as harmful\u2014its emphasis on constraint compliance as the primary differentiator channeled the agent toward formatting as the tiebreaker. The anchor tags it neutral.\n\n### Most Critical Playbook Mutations Needed\n1. A DIMENSION-SWITCH GUARD preventing reclassification of unverifiable content differentiation as a different evaluation dimension.\n2. A DEEP VERIFICATION CHECKPOINT as a hard finalization blocker that scans the agent's own reasoning for unresolved obligations (unverifiability noted but ceiling not applied, shared sources found but DIFF TABLE not built, doubt language about top candidate but ISOLATE\u2192COUNTER\u2192CLASSIFY not executed).\n3. A FORMATTING-ACCURACY FIREWALL making formatting of attributed content explicitly unable to substitute for content accuracy.\n4. A FACTUALITY SUBSET PRIORITY RULE establishing that content accuracy dominates formatting compliance in factuality evaluations."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        }
+      ],
+      "analysis": "## Agreement with Anchor\n\nThe anchor correctly identifies the root cause: the agent acknowledged all attributed quotes as 'unverifiable without source-check' but then separated candidates [1] (correct, scored 6.6) and [4] (incorrect, scored 7.2) by 0.6 points based on formatting\u2014specifically that [4] 'consistently uses direct-quote presentation.' The anchor also correctly notes both rollouts are byte-identical, confirming a systematic gap rather than execution noise. The DIFF TABLE (29e534bd) trigger was clearly met (6 overlapping authors with different attributed text) but never built. These observations are sound.\n\n## Refinement of Anchor's Root Cause\n\nThe anchor describes this as 'category routing'\u2014the agent reclassified formatting as 'constraint compliance' to bypass unverifiable-content ceilings. This is accurate but I refine the mechanism: the agent performed **epistemic label leakage**. It assigned the label UNVERIFIABLE to the quote *content* but then treated formatting properties *of the same content* (blockquote marks, citation style) as independently verifiable signals. The key insight is that properties of unverifiable content should inherit the unverifiable classification\u2014blockquote formatting of a fabricated quote doesn't make the quote more accurate.\n\nThe agent's stated logic: 'same author names used across candidates but the attributed quote texts differ (unverifiable without source-check), so I rank mainly by prompt-compliance.' This is the exact reclassification moment\u2014the agent explicitly shifted from factuality (which it couldn't assess) to 'prompt-compliance' (which it could assess). But in a Factuality-subset evaluation, this substitution is invalid: presentation quality of unverifiable claims cannot proxy for accuracy.\n\n## Disagreement with Anchor on Entry Assessments\n\nThe anchor labels entries 93b0e8f9, 005004a4, 29e534bd, and 8e0d9579 as 'harmful.' I classify all four as 'neutral.' These entries contain exactly the rules that should have prevented this error (0.3-point ceiling, DIFF TABLE trigger, epistemic symmetry audit, formatting-vs-correctness guard). The entries didn't actively cause the wrong behavior\u2014they were simply not applied. The distinction matters for mutation: the entries' logic is sound; the gap is that the agent found a circumvention path (reclassifying formatting as constraint compliance) that the entries don't explicitly block.\n\n## What the Playbook Actually Misses\n\nExisting entries create a ceiling on score separation from UNVERIFIABLE content (005004a4, 29e534bd) and warn against formatting overriding correctness (8e0d9579). But no entry addresses the specific circumvention pattern: treating formatting/styling *of* unverifiable content as an independent, verifiable signal. The agent could honestly claim it wasn't differentiating on 'content accuracy' but on 'constraint compliance' (the prompt asked for 'quoted definitions,' and [4] had cleaner blockquote formatting). This reclassification is the gap.\n\nAdditionally, no post-scoring enforcement gate verifies that score gaps are consistent with epistemic labels assigned during evaluation. The ceiling rules are inline suggestions, not final verification checks. A mandatory post-scoring audit ('for each candidate pair with gap > 0.3, identify the decisive differentiator and verify it's not labeled UNVERIFIABLE') would catch violations.",
+      "principles": [
+        {
+          "statement": "When content is labeled UNVERIFIABLE, all its sub-attributes (formatting, citation style, quote marks, typography) inherit that label. They are properties of the unverifiable content, not independent verifiable signals, and cannot drive score separation beyond the unverifiable ceiling.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "005004a4",
+          "trigger": "When you label content as UNVERIFIABLE or UNCERTAIN and then attempt to differentiate candidates based on formatting or presentation properties of that same content.",
+          "verification_or_artifact": "Before crediting any presentation signal as a differentiator, check: is this signal a property of content already classified as unverifiable? If yes, it inherits the ceiling constraint.",
+          "evidence": "The agent labeled all attributed quotes as 'unverifiable without source-check' but then used blockquote formatting of those same quotes (a sub-attribute of the unverifiable content) to justify a 0.6-point gap\u2014double the 0.3-point ceiling. The agent reclassified the formatting as 'prompt compliance' to bypass the ceiling. Existing entries have the ceiling (005004a4, 29e534bd) and warn against formatting overriding accuracy (8e0d9579), but none explicitly blocks the reclassification of content sub-attributes as independent signals."
+        },
+        {
+          "statement": "After scoring, for each candidate pair with gap > 0.3, identify the single decisive differentiator. If it was labeled UNVERIFIABLE, UNCERTAIN, or equivalent during evaluation, the gap violates your own epistemic commitment\u2014reduce it to \u2264 0.3 before finalizing.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "29e534bd",
+          "trigger": "Fires at finalization, after all scores are assigned but before JSON output. Mandatory when any content was labeled UNVERIFIABLE during evaluation.",
+          "verification_or_artifact": "Produce artifact: [Candidate pair | gap | decisive differentiator | epistemic label assigned to differentiator | gap compliant?]. Any non-compliant row is a finalization blocker requiring score adjustment.",
+          "evidence": "The agent stated 'unverifiable without source-check' in its reasoning but finalized a 0.6-point gap between [1] and [4]. Both rollouts show identical violations. Existing entries define the 0.3 ceiling but don't enforce it as a post-scoring gate\u2014the agent applied the ceiling as a suggestion during evaluation rather than as a hard constraint verified at finalization. A mandatory post-scoring check would have caught the gap/label inconsistency."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "a3832d7e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Deterministic Failure \u2014 Both Rollouts Byte-Identical\n\nBoth rollouts produced identical reasoning, scores ([6.6, 1.8, 5.4, 7.2], best=[4]), and outputs. The correct candidate [1] scored 0.6 points below incorrect candidate [4]. This is a systematic playbook gap, not execution noise.\n\n## Root Cause: Sub-Attribute Circumvention of the Unverifiable-Content Ceiling\n\nCandidates [1] and [4] each presented attributed quotes from the same six ML authors (Mitchell, Murphy/Bishop, Goodfellow et al., Ng, Domingos) but with *different quote texts*. The agent explicitly recognized this: 'same author names used across candidates but the attributed quote texts differ (unverifiable without source-check).' Having acknowledged the content as unverifiable, the agent should have been bound by the 0.3-point ceiling on score separation (005004a4, 29e534bd). Instead, the agent performed a deliberate dimension-switch: 'so I rank mainly by prompt-compliance.' It then used *formatting properties* of those same unverifiable quotes \u2014 specifically that [4] 'consistently uses direct-quote presentation across the set' (blockquote formatting) \u2014 to justify a 0.6-point gap.\n\nThis is the critical circumvention mechanism: the agent treated formatting of unverifiable content as an independent, verifiable signal rather than as a sub-attribute of the same unverifiable content. Blockquote formatting of a potentially fabricated quote does not make the quote more accurate; it makes fabrication look more authoritative. The formatting is a *property* of the unverifiable content and should inherit its epistemic classification.\n\n## Three Entries Failed to Fire Despite Met Conditions\n\n**005004a4 (Verification Gate, 0.3-point ceiling):** The agent noted 'unverifiable without source-check' \u2014 showing awareness of this entry \u2014 but never formally classified the content via ISOLATE\u2192COUNTER\u2192CLASSIFY, never produced the MANDATORY SYMMETRY TABLE, and exceeded the 0.3-point ceiling by reclassifying the differentiator as 'prompt compliance.' This partial application created false procedural compliance: the agent appeared to have considered unverifiability but didn't enforce its consequences.\n\n**29e534bd (DIFF TABLE):** The MANDATORY TRIGGER condition was unambiguously met: 2+ candidates attributed specific content to the same 6 named sources with different texts. The DIFF TABLE was never built. Had it been constructed, all six sources would have shown CONTRADICT status, forcing all quotes into UNVERIFIED status and triggering the ALL-UNVERIFIABLE CEILING \u2014 capping separation at 0.3 points and likely producing a correct outcome.\n\n**93b0e8f9 (Epistemic Symmetry Audit):** The audit explicitly warns against 'calling attributed quotes UNVERIFIABLE for candidates [2]/[3] but using identical attributed-quote differences to rank [1] vs. [4]' \u2014 precisely what happened. The agent penalized [2] for lacking quoted definitions and [3] for weaker citations, but used the same type of unverifiable attributed content to positively differentiate [4] over [1].\n\n## Why These Entries Have Correct Logic But Need Enforcement\n\nAll three entries contain the rules that should have prevented this error. Their logic is sound. The gap is that no mechanism explicitly blocks the specific circumvention path the agent used: reclassifying a formatting property of unverifiable content as an independent verifiable signal. The entries define ceilings as inline guidance during evaluation rather than as hard post-scoring checks. The agent found the circumvention by honestly claiming it wasn't differentiating on 'content accuracy' but on 'constraint compliance' \u2014 a category shift the current entries don't explicitly block.\n\n## The Precise Missing Knowledge\n\nThe playbook needs one clear rule: **When content is classified as UNVERIFIABLE, all its sub-attributes \u2014 formatting, citation style, blockquote marks, typographic presentation \u2014 inherit that classification.** They are properties of the unverifiable content, not independent verifiable signals, and cannot drive score separation beyond the 0.3-point ceiling. The agent cannot escape the ceiling by renaming the evaluation dimension from 'accuracy' to 'formatting' when the formatting in question is a property of the same content whose accuracy is unknown.\n\nThis principle is already partially covered by 005004a4's 0.3-point ceiling for unverifiable content, but the entry does not explicitly close the sub-attribute circumvention path. The most targeted fix is to UPDATE 005004a4 with an explicit sub-attribute inheritance clause.\n\n## Entries That Worked\n\n4abe1be4 (perception scan) and 61b87a5f (output guard) functioned as designed \u2014 all 4 candidates were correctly identified and valid JSON was produced.\n\n## Entry 8e0d9579 \u2014 Neutral, Not Harmful\n\nThe anchor tagged this as harmful, but the entry contains exactly the correct anti-formatting guidance ('Do not let generic verbosity, politeness, or decorative formatting outweigh correctness'). There is no evidence it influenced the agent's behavior in either direction. Two of three reflections classify it as neutral, which is the better-supported assessment.\n\n## c8698dee \u2014 Neutral With a Concern\n\nCredit_attribution argues this entry's emphasis on constraint compliance as the primary differentiator channeled the agent toward formatting. This is plausible but less directly evidenced \u2014 the agent's dimension-switch reasoning ('so I rank mainly by prompt-compliance') may have been influenced by the general prominence of constraint compliance in the playbook. However, two of three reflections tag it neutral, and the entry does contain a FACTUAL ACCURACY OVERRIDE clause. The circumvention is better addressed at the source (005004a4) than by weakening constraint compliance guidance.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent recognized all attributed quotes as unverifiable but circumvented the 0.3-point ceiling by reclassifying formatting properties of those same unverifiable quotes as an independent 'constraint compliance' signal. Entry 005004a4 defines the ceiling but doesn't explicitly block the sub-attribute circumvention path. This is the single most impactful gap: sub-attributes of unverifiable content should inherit the UNVERIFIABLE classification.",
+      "important_disagreements": [
+        "Anchor tagged 93b0e8f9, 005004a4, 29e534bd, and 8e0d9579 as harmful. Principle_extraction tagged all four as neutral, arguing the entries contain correct logic that simply wasn't applied. Resolved: 005004a4, 29e534bd, 93b0e8f9 are tagged harmful because they were designed to prevent this exact failure and didn't \u2014 the curator needs to know they need strengthening. 8e0d9579 is tagged neutral because its guidance is correct, it wasn't partially applied to create false compliance, and two of three reflections support neutral.",
+        "Credit_attribution proposed 4 separate coverage gaps (dimension-switch guard, formatting-accuracy firewall, deep verification checkpoint, factuality subset priority rule). Principle_extraction distilled to 2 universal principles (sub-attribute inheritance, post-scoring gap verification). Resolved: the sub-attribute inheritance rule from principle_extraction is the most targeted, universal, and directly evidence-backed fix. It subsumes the dimension-switch guard and formatting-accuracy firewall. The post-scoring verification gate is a good safety net but is based on a single trace \u2014 deferred pending recurrence.",
+        "Credit_attribution tagged c8698dee as harmful (channeled agent toward constraint compliance). Anchor and principle_extraction tagged it neutral. Resolved: neutral \u2014 the entry has a FACTUAL ACCURACY OVERRIDE clause, and the circumvention is better addressed at the source (005004a4) than by weakening constraint compliance guidance."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "The root cause is a specific circumvention path through an existing entry (005004a4). The entry's logic is correct but has a gap: it defines a 0.3-point ceiling for unverifiable content but doesn't explicitly state that formatting/presentation properties of unverifiable content inherit the UNVERIFIABLE classification. A targeted UPDATE adding a sub-attribute inheritance clause directly closes this gap. All three reflections converge on this diagnosis.",
+      "conservatism_rationale": "One high-confidence update to 005004a4 is preferred over multiple changes because: (1) the sub-attribute inheritance rule is a universal principle supported by all three reflections; (2) it directly closes the exact circumvention path observed; (3) additional changes (post-scoring enforcement gate, DIFF TABLE strengthening, factuality subset priority rule) are either enforcement mechanisms for rules that already exist, or are domain-specific and based on a single trace \u2014 better deferred until recurrence confirms the need; (4) the existing entries (29e534bd, 93b0e8f9) contain correct enforcement mechanisms that would have caught the error if applied \u2014 the primary gap is in 005004a4's definition of what counts as unverifiable content, not in downstream enforcement.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"a3832d7e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Deterministic Failure \u2014 Both Rollouts Byte-Identical\\n\\nBoth rollouts produced identical reasoning, scores ([6.6, 1.8, 5.4, 7.2], best=[4]), and outputs. The correct candidate [1] scored 0.6 points below incorrect candidate [4]. This is a systematic playbook gap, not execution noise.\\n\\n## Root Cause: Sub-Attribute Circumvention of the Unverifiable-Content Ceiling\\n\\nCandidates [1] and [4] each presented attributed quotes from the same six ML authors (Mitchell, Murphy/Bishop, Goodfellow et al., Ng, Domingos) but with *different quote texts*. The agent explicitly recognized this: 'same author names used across candidates but the attributed quote texts differ (unverifiable without source-check).' Having acknowledged the content as unverifiable, the agent should have been bound by the 0.3-point ceiling on score separation (005004a4, 29e534bd). Instead, the agent performed a deliberate dimension-switch: 'so I rank mainly by prompt-compliance.' It then used *formatting properties* of those same unverifiable quotes \u2014 specifically that [4] 'consistently uses direct-quote presentation across the set' (blockquote formatting) \u2014 to justify a 0.6-point gap.\\n\\nThis is the critical circumvention mechanism: the agent treated formatting of unverifiable content as an independent, verifiable signal rather than as a sub-attribute of the same unverifiable content. Blockquote formatting of a potentially fabricated quote does not make the quote more accurate; it makes fabrication look more authoritative. The formatting is a *property* of the unverifiable content and should inherit its epistemic classification.\\n\\n## Three Entries Failed to Fire Despite Met Conditions\\n\\n**005004a4 (Verification Gate, 0.3-point ceiling):** The agent noted 'unverifiable without source-check' \u2014 showing awareness of this entry \u2014 but never formally classified the content via ISOLATE\u2192COUNTER\u2192CLASSIFY, never produced the MANDATORY SYMMETRY TABLE, and exceeded the 0.3-point ceiling by reclassifying the differentiator as 'prompt compliance.' This partial application created false procedural compliance: the agent appeared to have considered unverifiability but didn't enforce its consequences.\\n\\n**29e534bd (DIFF TABLE):** The MANDATORY TRIGGER condition was unambiguously met: 2+ candidates attributed specific content to the same 6 named sources with different texts. The DIFF TABLE was never built. Had it been constructed, all six sources would have shown CONTRADICT status, forcing all quotes into UNVERIFIED status and triggering the ALL-UNVERIFIABLE CEILING \u2014 capping separation at 0.3 points and likely producing a correct outcome.\\n\\n**93b0e8f9 (Epistemic Symmetry Audit):** The audit explicitly warns against 'calling attributed quotes UNVERIFIABLE for candidates [2]/[3] but using identical attributed-quote differences to rank [1] vs. [4]' \u2014 precisely what happened. The agent penalized [2] for lacking quoted definitions and [3] for weaker citations, but used the same type of unverifiable attributed content to positively differentiate [4] over [1].\\n\\n## Why These Entries Have Correct Logic But Need Enforcement\\n\\nAll three entries contain the rules that should have prevented this error. Their logic is sound. The gap is that no mechanism explicitly blocks the specific circumvention path the agent used: reclassifying a formatting property of unverifiable content as an independent verifiable signal. The entries define ceilings as inline guidance during evaluation rather than as hard post-scoring checks. The agent found the circumvention by honestly claiming it wasn't differentiating on 'content accuracy' but on 'constraint compliance' \u2014 a category shift the current entries don't explicitly block.\\n\\n## The Precise Missing Knowledge\\n\\nThe playbook needs one clear rule: **When content is classified as UNVERIFIABLE, all its sub-attributes \u2014 formatting, citation style, blockquote marks, typographic presentation \u2014 inherit that classification.** They are properties of the unverifiable content, not independent verifiable signals, and cannot drive score separation beyond the 0.3-point ceiling. The agent cannot escape the ceiling by renaming the evaluation dimension from 'accuracy' to 'formatting' when the formatting in question is a property of the same content whose accuracy is unknown.\\n\\nThis principle is already partially covered by 005004a4's 0.3-point ceiling for unverifiable content, but the entry does not explicitly close the sub-attribute circumvention path. The most targeted fix is to UPDATE 005004a4 with an explicit sub-attribute inheritance clause.\\n\\n## Entries That Worked\\n\\n4abe1be4 (perception scan) and 61b87a5f (output guard) functioned as designed \u2014 all 4 candidates were correctly identified and valid JSON was produced.\\n\\n## Entry 8e0d9579 \u2014 Neutral, Not Harmful\\n\\nThe anchor tagged this as harmful, but the entry contains exactly the correct anti-formatting guidance ('Do not let generic verbosity, politeness, or decorative formatting outweigh correctness'). There is no evidence it influenced the agent's behavior in either direction. Two of three reflections classify it as neutral, which is the better-supported assessment.\\n\\n## c8698dee \u2014 Neutral With a Concern\\n\\nCredit_attribution argues this entry's emphasis on constraint compliance as the primary differentiator channeled the agent toward formatting. This is plausible but less directly evidenced \u2014 the agent's dimension-switch reasoning ('so I rank mainly by prompt-compliance') may have been influenced by the general prominence of constraint compliance in the playbook. However, two of three reflections tag it neutral, and the entry does contain a FACTUAL ACCURACY OVERRIDE clause. The circumvention is better addressed at the source (005004a4) than by weakening constraint compliance guidance.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent recognized all attributed quotes as unverifiable but circumvented the 0.3-point ceiling by reclassifying formatting properties of those same unverifiable quotes as an independent 'constraint compliance' signal. Entry 005004a4 defines the ceiling but doesn't explicitly block the sub-attribute circumvention path. This is the single most impactful gap: sub-attributes of unverifiable content should inherit the UNVERIFIABLE classification.\",\n    \"important_disagreements\": [\n      \"Anchor tagged 93b0e8f9, 005004a4, 29e534bd, and 8e0d9579 as harmful. Principle_extraction tagged all four as neutral, arguing the entries contain correct logic that simply wasn't applied. Resolved: 005004a4, 29e534bd, 93b0e8f9 are tagged harmful because they were designed to prevent this exact failure and didn't \u2014 the curator needs to know they need strengthening. 8e0d9579 is tagged neutral because its guidance is correct, it wasn't partially applied to create false compliance, and two of three reflections support neutral.\",\n      \"Credit_attribution proposed 4 separate coverage gaps (dimension-switch guard, formatting-accuracy firewall, deep verification checkpoint, factuality subset priority rule). Principle_extraction distilled to 2 universal principles (sub-attribute inheritance, post-scoring gap verification). Resolved: the sub-attribute inheritance rule from principle_extraction is the most targeted, universal, and directly evidence-backed fix. It subsumes the dimension-switch guard and formatting-accuracy firewall. The post-scoring verification gate is a good safety net but is based on a single trace \u2014 deferred pending recurrence.\",\n      \"Credit_attribution tagged c8698dee as harmful (channeled agent toward constraint compliance). Anchor and principle_extraction tagged it neutral. Resolved: neutral \u2014 the entry has a FACTUAL ACCURACY OVERRIDE clause, and the circumvention is better addressed at the source (005004a4) than by weakening constraint compliance guidance.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"The root cause is a specific circumvention path through an existing entry (005004a4). The entry's logic is correct but has a gap: it defines a 0.3-point ceiling for unverifiable content but doesn't explicitly state that formatting/presentation properties of unverifiable content inherit the UNVERIFIABLE classification. A targeted UPDATE adding a sub-attribute inheritance clause directly closes this gap. All three reflections converge on this diagnosis.\",\n    \"conservatism_rationale\": \"One high-confidence update to 005004a4 is preferred over multiple changes because: (1) the sub-attribute inheritance rule is a universal principle supported by all three reflections; (2) it directly closes the exact circumvention path observed; (3) additional changes (post-scoring enforcement gate, DIFF TABLE strengthening, factuality subset priority rule) are either enforcement mechanisms for rules that already exist, or are domain-specific and based on a single trace \u2014 better deferred until recurrence confirms the need; (4) the existing entries (29e534bd, 93b0e8f9) contain correct enforcement mechanisms that would have caught the error if applied \u2014 the primary gap is in 005004a4's definition of what counts as unverifiable content, not in downstream enforcement.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "harmful": 1,
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

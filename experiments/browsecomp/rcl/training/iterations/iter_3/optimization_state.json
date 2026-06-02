@@ -1,0 +1,255 @@
+{
+  "playbook_assessment": {
+    "health": "fragile",
+    "playbook_size_trend": "stable",
+    "coverage_inventory": {
+      "total_entries": 4,
+      "sections_present": [
+        "answer_extraction",
+        "common_mistakes",
+        "query_formulation",
+        "search_strategies"
+      ],
+      "section_entry_counts": {
+        "search_strategies": 1,
+        "query_formulation": 1,
+        "answer_extraction": 1,
+        "common_mistakes": 1
+      },
+      "underrepresented_sections": [
+        "answer_extraction",
+        "common_mistakes",
+        "query_formulation",
+        "search_strategies"
+      ],
+      "observed_gap_areas": [
+        "document deep-reading / evidence extraction from found results",
+        "compound question decomposition (questions with 2+ independent sub-questions)",
+        "multi-hop reasoning across documents",
+        "tasks beyond multi-clue entity identification and nested-referent provenance (only 2 task families tested so far)",
+        "effective loop interruption \u2014 2 entries exist but neither engages during actual search loops"
+      ]
+    },
+    "entry_maturity": {
+      "battle_tested": [],
+      "developing": [],
+      "untested_or_new": [
+        "7ca56b8b [search_strategies] +2/-0, tested=2",
+        "66f87cbc [common_mistakes] +0/-0, tested=0",
+        "f9a44264 [query_formulation] +0/-0, tested=0",
+        "056f0a9e [answer_extraction] +0/-1, tested=1"
+      ],
+      "recent_additions_needing_time": [],
+      "at_risk": []
+    },
+    "coherence_issues": [
+      "056f0a9e and 66f87cbc both address commitment timing from different angles (answer checklist vs. loop detection). Need to confirm they reinforce rather than confuse.",
+      "f9a44264 and 66f87cbc both trigger on repeated search results but prescribe different actions ('change approach' vs. 'stop and commit'). Agent doesn't appear to follow either during loops \u2014 may be a salience/format issue."
+    ]
+  },
+  "change_ledger": [
+    {
+      "iteration": 1,
+      "summary": "Bootstrapped playbook with 3 foundational entries: multi-clue decomposition, search rut detection, answer precision checklist.",
+      "source_tasks": [
+        "1042",
+        "1139",
+        "353"
+      ],
+      "reflection_summary": "All 3 tasks failed. Agent searches all constraints simultaneously, repeats minor keyword variations 20-50 times, returns wrong-granularity or empty answers.",
+      "operations": [
+        {
+          "op": "ADD",
+          "entry_id": "7ca56b8b",
+          "section": "search_strategies",
+          "rationale": "Tasks 1042/353 required identifying unnamed entity from multiple clues; agent searched all constraints at once.",
+          "expected_effect": "Agent decomposes multi-clue puzzles into staged searches.",
+          "source_tasks": [
+            "1042",
+            "353"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "f9a44264",
+          "section": "query_formulation",
+          "rationale": "All 3 tasks showed repetitive search loops.",
+          "expected_effect": "Agent detects search ruts and pivots strategy.",
+          "source_tasks": [
+            "1042",
+            "1139",
+            "353"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "056f0a9e",
+          "section": "answer_extraction",
+          "rationale": "Multiple failure modes: semantic precision, empty answers, unverified submissions.",
+          "expected_effect": "Agent runs pre-submission checklist catching common answer errors.",
+          "source_tasks": [
+            "1042",
+            "1139",
+            "353"
+          ]
+        }
+      ],
+      "observed_effect": "7ca56b8b validated as HELPFUL across tasks 1042 (iter 2) and 221 (iter 3) \u2014 agent correctly decomposed multi-clue problems both times. Original 056f0a9e was HARMFUL on task 1042 (iter 2) due to internal contradiction; rewritten in iter 2. f9a44264 not effectively engaged \u2014 age...",
+      "status": "mixed",
+      "evidence_strength": "multi_trace",
+      "reversal_risk": "medium",
+      "notes": "7ca56b8b is strongest entry \u2014 helpful on 2 different tasks. f9a44264's guidance is sound but agent doesn't follow it during loops. May need reformulation rather than deletion."
+    },
+    {
+      "iteration": 2,
+      "summary": "Fixed harmful contradiction in 056f0a9e (constraint scoring not gating) and added 66f87cbc (verification loop trap).",
+      "source_tasks": [
+        "1042"
+      ],
+      "reflection_summary": "Both rollouts found correct answer, entered 30+ search verification loop. Rollout 1 never submitted; Rollout 2 eventually submitted correctly.",
+      "operations": [
+        {
+          "op": "UPDATE",
+          "entry_id": "056f0a9e",
+          "section": "answer_extraction",
+          "rationale": "Internal contradiction caused answer paralysis.",
+          "expected_effect": "Agent uses constraint status to rank candidates, not block submission.",
+          "source_tasks": [
+            "1042"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "66f87cbc",
+          "section": "common_mistakes",
+          "rationale": "Both rollouts spent 30+ searches in identical verification loops.",
+          "expected_effect": "Agent detects verification loops and commits to best candidate.",
+          "source_tasks": [
+            "1042"
+          ]
+        }
+      ],
+      "observed_effect": "Task 221 (iter 3): 056f0a9e rewrite partially effective \u2014 rollout 2 applied constraint scoring correctly, committed to biographical match (pass). Rollout 1 abandoned biographical candidate when one constraint unverifiable, chose surface topic match (fail). Eliminated answer pa...",
+      "status": "mixed",
+      "evidence_strength": "single_trace",
+      "reversal_risk": "medium",
+      "notes": "056f0a9e scoring-not-gating rewrite helped rollout 2 but insufficiently concrete for rollout 1. Motivated iter-3 update adding nested referent + biographical-beats-topical rules. 66f87cbc still hasn't clearly engaged despite relevant loops."
+    },
+    {
+      "iteration": 3,
+      "summary": "Updated 056f0a9e with nested referent resolution procedure and biographical-beats-topical disambiguation rule.",
+      "source_tasks": [
+        "221"
+      ],
+      "reflection_summary": "Task 221: Both rollouts found gold documents early (Hodgson's book + archival page). Both entered 15+ loops for funding source. Rollout 1 chose wrong book ('Opium: How an Ancient Flower...') based on surface topic match. Rollout 2 correctly committed to Hodgson's 'In the Arms of Morpheus' using biographical reasonin...",
+      "operations": [
+        {
+          "op": "UPDATE",
+          "entry_id": "056f0a9e",
+          "section": "answer_extraction",
+          "rationale": "Rollout 1 chose surface topic match over biographical match when funding constraint was unverifiable. Added explicit nested referent resolution and biographical-beats-topical rule.",
+          "expected_effect": "Agent resolves referent chain (identify PERSON first, then select their ANSWER) and prefers biographical matches over surface topic matches.",
+          "source_tasks": [
+            "221"
+          ]
+        }
+      ],
+      "observed_effect": "too early to judge",
+      "status": "untested",
+      "evidence_strength": "single_trace",
+      "reversal_risk": "medium",
+      "notes": "Addresses clearly observed failure pattern. Rollout 2 already succeeded without the update, so this reinforces correct behavior rather than introducing new capability. Low harm risk. Nested referent pattern may recur across many tasks."
+    }
+  ],
+  "open_hypotheses": [
+    "f9a44264 and 66f87cbc may both suffer from a format/salience issue \u2014 search loop entries are violated on every tested task (1042: 30+ loops, 221: 15+ loops). May need different trigger mechanism or placement.",
+    "The model may follow prohibitive instructions more rigidly than permissive overrides when they conflict \u2014 observed once on task 1042, needs more evidence.",
+    "EXECUTION_VARIANCE on task 221 (one rollout passed, one failed with same playbook) suggests the agent's application of checklist entries is stochastic. More prescriptive language at decision points may reduce variance.",
+    "The nested referent pattern ('book by author whose X happened') may be a common task family. If so, iter-3 update to 056f0a9e could have broad impact.",
+    "The train_pass jump (0.28\u21920.61) likely reflects batch composition more than playbook improvement \u2014 only 6 tasks per batch, different tasks sampled each iteration.",
+    "Consolidating f9a44264 and 66f87cbc into a single stronger entry might improve engagement vs. having two ignored entries."
+  ],
+  "preserve_until_more_evidence": [
+    "7ca56b8b [search_strategies] \u2014 validated helpful on 2 tasks (1042, 221). Only entry covering multi-clue decomposition. Strongest entry.",
+    "f9a44264 [query_formulation] \u2014 unique coverage for search axis flipping and document inspection. Agent hasn't followed it during loops but guidance is sound. Needs reformulation or more exposure, not deletion.",
+    "056f0a9e [answer_extraction] \u2014 iter-3 update with nested referent + biographical-beats-topical rules untested. Unique coverage for answer precision and commitment.",
+    "66f87cbc [common_mistakes] \u2014 unique coverage for verification loop detection. Not clearly engaged despite relevant loops on 2 tasks. Needs more exposure."
+  ],
+  "interference_patterns": [
+    "f9a44264 ('change your search approach') and 66f87cbc ('stop searching and commit') prescribe different actions for the same trigger (repeated results). Agent doesn't follow either, so conflict is theoretical, but if engagement improves, sequencing may matter.",
+    "056f0a9e (answer checklist) and 66f87cbc (loop trap) both push toward commitment but from different cognitive phases (answer selection vs. search monitoring). Not observed to conflict."
+  ],
+  "strategy_memory": {
+    "questions": [
+      "Why are f9a44264 and 66f87cbc not engaging during search loops? Is it formatting, trigger salience, or something about how the model processes instructions during extended search sequences?",
+      "Would a single consolidated loop-detection entry be more effective than two separate ones?",
+      "What other task families exist beyond multi-clue identification and nested-referent provenance? Broader task sampling needed.",
+      "Does the agent apply checklist entries more reliably at certain points in its reasoning (e.g., before answer vs. mid-search)?"
+    ],
+    "notes": [
+      "Two tasks studied in depth: 1042 (Conrad Anker, iters 1-2) and 221 (Barbara Hodgson, iter 3). 9/100 tasks seen total.",
+      "7ca56b8b is the most reliably helpful entry \u2014 multi-clue decomposition works across both studied task families.",
+      "Search loop problem is the most consistent recurring failure (confirmed on both tasks). Two entries designed for it but neither engages. This is the highest-priority gap.",
+      "EXECUTION_VARIANCE on task 221 suggests playbook entries need to be more prescriptive at decision points \u2014 advisory language may not be followed consistently."
+    ]
+  },
+  "model_observations": {
+    "capability_gaps_observed": [
+      "Falls into repetitive search loops (15-30+ near-identical queries) despite loop detection entries \u2014 confirmed on tasks 1042 and 221",
+      "Falls back to surface topic matches when biographical constraints can't be fully verified (task 221 rollout 1)",
+      "Follows prohibitive instructions more rigidly than permissive overrides when they conflict (task 1042)",
+      "Does not inspect document metadata (author fields) even when documents appear repeatedly (task 1042)",
+      "Inconsistent application of constraint scoring \u2014 rollout 2 applied correctly on task 221, rollout 1 did not"
+    ],
+    "strategies_that_work": [
+      "Multi-clue decomposition (7ca56b8b): validated on tasks 1042 and 221 \u2014 agent ranks clues by distinctiveness and searches most distinctive first",
+      "Constraint scoring when actually applied (056f0a9e): rollout 2 on task 221 correctly scored biographical vs. topical candidates and committed"
+    ],
+    "entries_the_model_struggles_with": [
+      "f9a44264 [query_formulation]: rut detection violated on both tested tasks (1042: 30+ loops, 221: 15+ loops)",
+      "66f87cbc [common_mistakes]: loop detection not engaged despite relevant loops on task 221"
+    ],
+    "interference_observed": [
+      "Original 056f0a9e step 2 ('do NOT commit if UNVERIFIED') blocked step 5 ('ALWAYS provide best answer') on task 1042 \u2014 fixed in iter 2 rewrite"
+    ]
+  },
+  "agent_reasoning_patterns": {
+    "reliable_behaviors": [
+      "Multi-clue decomposition when explicitly instructed (7ca56b8b): ranked clues by distinctiveness and searched most distinctive first on both tasks 1042 and 221",
+      "Constraint scoring when agent reaches answer-selection phase (rollout 2, task 221)"
+    ],
+    "common_mistakes": [
+      "Repeats near-identical searches without strategic pivot (confirmed across tasks 1042 and 221, 15-30+ times each)",
+      "Falls back to surface topic matches when some biographical constraints are unverifiable (task 221 rollout 1)",
+      "Follows prohibitive instructions over permissive overrides when they conflict (task 1042)",
+      "Ignores document metadata (author, title) as evidence (task 1042)",
+      "Inconsistent application of checklist entries \u2014 same playbook yields pass in one rollout and fail in another (task 221)"
+    ],
+    "entry_styles_that_work": {
+      "TRIGGER/WHY/PROCEDURE_with_numbered_steps": "7ca56b8b used this format and was followed correctly across 2 tasks. Procedural steps executed in order.",
+      "explicit_comparison_rules": "056f0a9e's 'biographical beats topical \u2014 ALWAYS' is a concrete comparison rule that rollout 2 applied successfully."
+    },
+    "scaffolding_effectiveness": {
+      "ordered_procedure_steps": "Agent follows 7ca56b8b's numbered procedure correctly. Procedural scaffolding effective for search strategy.",
+      "contradiction_sensitivity": "Agent follows more restrictive instruction when two conflict. Entries must avoid internal contradictions.",
+      "loop_interruption_format": "Neither 'check every N searches' (66f87cbc) nor 'after 3+ searches with same results' (f9a44264) interrupted loops. This format may lack salience during extended search sequences."
+    }
+  },
+  "optimization_velocity": {
+    "stage": "exploration",
+    "stage_rationale": "3 iterations completed, 4 entries exist, all lightly tested. Only 2 task families observed (multi-clue entity ID, nested-referent provenance). 9/100 tasks seen. Most consistent failure (search loops) not yet effectively addressed despite 2 entries targeting it. Failures are mostly easy mistakes (not following existing guidance, missing coverage) rather than hard capability limits.",
+    "iterations_at_current_stage": 3,
+    "recent_mutation_success_rate": "1/4 entries validated helpful (7ca56b8b +2/-0). 2/4 untested (66f87cbc, f9a44264 never engaged). 1/4 mixed (056f0a9e \u2014 rewrite partially helped, iter-3 update untested).",
+    "recommendation": "Priority 1: Investigate why loop-detection entries aren't engaging \u2014 most consistent recurring failure across 2 tasks. Consider reformulating triggers or consolidating. Priority 2: Broader task sampling to discover unknown coverage gaps. Priority 3: Test iter-3 update to 056f0a9e on nested-referent tasks.",
+    "recurring_failure_patterns": [
+      "Repetitive search loops without strategic pivot \u2014 confirmed across tasks 1042 (30+ loops) and 221 (15+ loops). f9a44264 and 66f87cbc both designed for this but neither engages.",
+      "Answer commitment issues when some constraints unverifiable \u2014 task 1042: answer paralysis; task 221: fallback to surface match. Same root: agent lacks confidence to commit with partial verification."
+    ],
+    "single_occurrence_failures": [
+      "Narrow interpretation of category terms like 'sportsperson' (task 1042 only)",
+      "Semantic conflation of container vs component terms (task 1139 only)",
+      "Compound question decomposition failure (task 353 only)",
+      "Surface topic match chosen over biographical match (task 221 rollout 1 \u2014 rollout 2 succeeded with same playbook)"
+    ]
+  }
+}

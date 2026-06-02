@@ -1,0 +1,364 @@
+[
+  {
+    "iteration": 1,
+    "task_query": "Accept all pending Venmo payment requests from my roommates and coworkers.",
+    "reflector_summary": "The agent approved ALL 26 pending Venmo payment requests, but the test asserts that only a specific subset (`private_data.to_accept_payment_request_ids`) should have been updated. The agent applied th...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "ADD",
+        "section": "strategies_and_hard_rules",
+        "entry_id": "e6d98370",
+        "content": "Before any bulk action (approve, delete, send, modify), explicitly extract ALL filtering criteria from the task instruct"
+      },
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "7bb3b4b2",
+        "content": "MISTAKE: Approving/deleting/modifying ALL matching entities when the task specifies a filtered subset (e.g., 'approve re"
+      },
+      {
+        "op": "ADD",
+        "section": "problem_solving_heuristics_and_workflows",
+        "entry_id": "907d694e",
+        "content": "Cross-referencing workflow for filtered actions: (1) Fetch primary entities (e.g., payment requests). (2) Identify filte"
+      },
+      {
+        "op": "ADD",
+        "section": "strategies_and_hard_rules",
+        "entry_id": "5d010b02",
+        "content": "If you explore an API or data source (look up docs, list endpoints), either USE it in your solution or explicitly state "
+      },
+      {
+        "op": "ADD",
+        "section": "useful_code_snippets_and_templates",
+        "entry_id": "45c70c38",
+        "content": "Bulk irreversible actions need try/except per item to maintain control:\n```\nresults = []\nfor eid in target_ids:\n    try:"
+      },
+      {
+        "op": "ADD",
+        "section": "troubleshooting_and_pitfalls",
+        "entry_id": "acc138c1",
+        "content": "When an error occurs mid-bulk-operation (e.g., insufficient balance), fix only HOW to perform the action (e.g., add paym"
+      }
+    ]
+  },
+  {
+    "iteration": 2,
+    "task_query": "I went on a dinner with some of my friends yesterday. I paid the entire bill to simplify the payment. I've made a note of individual shares in simple note. Some people have already sent me their share...",
+    "reflector_summary": "The failed test (`user_id_to_share obtained from added_payment_requests matches the private_data.pending_user_id_to_share`) indicates a mismatch in either the Venmo user_ids targeted or the amounts re...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "62054d35",
+        "content": "Use `phone` app as the AUTHORITATIVE source for resolving person identities across platforms: `apis.phone.search_contact"
+      },
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "5d010b02",
+        "content": "PRE-COMPLETION GATE: Before calling complete_task, list every app/API you explored (looked up docs, listed endpoints). I"
+      },
+      {
+        "op": "ADD",
+        "section": "problem_solving_heuristics_and_workflows",
+        "entry_id": "9ea1c2a6",
+        "content": "Identity resolution procedure (when task references people by first name only): (1) Search phone contacts (`apis.phone.s"
+      },
+      {
+        "op": "ADD",
+        "section": "verification_checklist",
+        "entry_id": "b2393d14",
+        "content": "After bulk record creation (payment requests, messages, orders), fetch back the created records and compare (recipient_i"
+      }
+    ]
+  },
+  {
+    "iteration": 3,
+    "task_query": "I paid for our last month's internet bill. Its amount is supposed to be shared equally among my roommates and me. Make venmo requests to my roommates, with a description note, \"internet bill for the l...",
+    "reflector_summary": "The agent successfully completed all the substantive work\u2014fetched the receipt, identified roommates via phone contacts, calculated the per-person share ($45.50), and created 3 correct Venmo payment re...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "d2a56f20",
+        "content": "Variables persist across code blocks \u2014 reuse them instead of re-fetching. CRITICAL: Never use `apis` as a loop variable,"
+      },
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "c1d8d7d8",
+        "content": "MISTAKE: Using `apis` as a loop/comprehension variable (e.g., `for app, apis in explored.items():`) which permanently ov"
+      },
+      {
+        "op": "ADD",
+        "section": "troubleshooting_and_pitfalls",
+        "entry_id": "38168c69",
+        "content": "SUDDEN TOTAL API FAILURE: If all `apis.*` calls that previously worked start returning the same error (e.g., `AttributeE"
+      },
+      {
+        "op": "ADD",
+        "section": "strategies_and_hard_rules",
+        "entry_id": "992bfb1e",
+        "content": "RECOVERY BUDGET LIMIT: If 3 consecutive attempts to fix a broken state all fail with the same error pattern, STOP retryi"
+      }
+    ]
+  },
+  {
+    "iteration": 5,
+    "task_query": "How much money have I sent or received to my roommates on venmo since 1st Mar of this year?",
+    "reflector_summary": "The agent correctly identified roommates (3 contacts), logged into both phone and Venmo, fetched all transactions since March 1st with proper pagination, and computed sent ($759.00) and received ($454...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "ADD",
+        "section": "verification_checklist",
+        "entry_id": "74f9e1f2",
+        "content": "* ANSWER FORMAT GATE: Before calling `complete_task(answer=...)`, re-read the exact task instruction. (1) Identify the p"
+      },
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "58a74141",
+        "content": "MISTAKE: Using API filter parameters like `direction='sent'`/`direction='received'` or `type`/`role` without verifying w"
+      },
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "9ea1c2a6",
+        "content": "* Cross-platform identity resolution procedure (when task involves people from contacts on another platform like Venmo, "
+      }
+    ]
+  },
+  {
+    "iteration": 7,
+    "task_query": "I went on a dinner with some of my friends yesterday. I paid the entire bill to simplify the payment. I've made a note of individual shares in simple note. Some people have already sent me their share...",
+    "reflector_summary": "The agent correctly identified 4 unpaid people (Adrian, Katie, Melissa, Glenn) but then introduced an EXTRA filtering step not required by the task: checking whether each unpaid person already had a p...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "e6d98370",
+        "content": "* Before any bulk action (approve, delete, send, modify), explicitly extract ALL filtering criteria from the task instru"
+      },
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "9537364c",
+        "content": "* MISTAKE: Over-filtering by inventing criteria the task never specified \u2014 e.g., computing 4 unpaid people but then skip"
+      },
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "b2393d14",
+        "content": "* After bulk record creation (payment requests, messages, orders): (1) Verify COUNT of actions taken equals COUNT of ori"
+      }
+    ]
+  },
+  {
+    "iteration": 9,
+    "task_query": "Christopher has asked for my movie recommendations via phone text message. Reply to them with a list of comma-separated movie titles from my Simple Note account as per their request.",
+    "reflector_summary": "The agent sent ALL 14 movies from the 'Movie Recommendations' note to Christopher Burch, but the task required sending only movies by a specific director. The failed test (`non_director_movie_titles s...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "ADD",
+        "section": "problem_solving_heuristics_and_workflows",
+        "entry_id": "3aea57d5",
+        "content": "* Request-fulfillment from conversations workflow: When a task involves responding to or fulfilling a request found in t"
+      },
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "e6d98370",
+        "content": "* Before any bulk action (approve, delete, send, modify), explicitly extract ALL filtering criteria from BOTH the task i"
+      },
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "c761d320",
+        "content": "* MISTAKE: When a task says 'reply to X's request' or 'send X what they asked for', composing the response from ALL avai"
+      }
+    ]
+  },
+  {
+    "iteration": 11,
+    "task_query": "Export a unique list of all the songs in my song and album library and all playlists in my Spotify account into \"~/backups/spotify_library.csv\" file in my file system. The file should have headers, \"T...",
+    "reflector_summary": "The agent passed 7/10 tests. All 3 failures relate to the song-title-to-artist-names mapping extracted from the CSV not matching the expected `private_data.song_title_to_artist_names`. The file was cr...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "70d88da9",
+        "content": "MISTAKE: When exporting/backing up data, unioning ALL available data endpoints (song library + album library + playlist "
+      },
+      {
+        "op": "ADD",
+        "section": "problem_solving_heuristics_and_workflows",
+        "entry_id": "945ef3e8",
+        "content": "Data scope definition workflow (for export/backup/collection tasks): (1) List ALL available data endpoints for the platf"
+      },
+      {
+        "op": "ADD",
+        "section": "verification_checklist",
+        "entry_id": "19207e4b",
+        "content": "DATA SCOPE GATE (for export/backup tasks): Before writing the output artifact, list each data source endpoint used and i"
+      }
+    ]
+  },
+  {
+    "iteration": 12,
+    "task_query": "Add a comment, \"Thanks!\", to all the venmo payments I received from my friends in the last 7 days (including today), and like those payments.",
+    "reflector_summary": "The agent failed 2 of 9 tests because it acted on the **wrong set of transactions**. Both failed tests assert that the transaction IDs match `private_data.after_threshold_contact_transaction_ids` \u2014 no...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "62054d35",
+        "content": "* HARD RULE \u2014 IDENTITY RESOLUTION: WHENEVER a task filters actions by person identity (friends, contacts, people you kno"
+      },
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "9ea1c2a6",
+        "content": "* * Cross-platform identity resolution procedure \u2014 MANDATORY when task involves people from contacts on another platform"
+      },
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "86f39b35",
+        "content": "* MISTAKE: Using a platform's own friend/social list (e.g., `apis.venmo.search_friends()`, Spotify followers) as the ide"
+      },
+      {
+        "op": "ADD",
+        "section": "verification_checklist",
+        "entry_id": "21f9dc6d",
+        "content": "* IDENTITY SOURCE GATE: Before executing any bulk action filtered by person identity, verify and print: (1) Identity sou"
+      }
+    ]
+  },
+  {
+    "iteration": 13,
+    "task_query": "Name the artist least recommended to me on Spotify.",
+    "reflector_summary": "The agent was asked about the 'least recommended' artist from Spotify recommendations. It fetched all 21 recommendations, then **assumed** the last item in the list represents the 'least recommended' ...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "ADD",
+        "section": "problem_solving_heuristics_and_workflows",
+        "entry_id": "698b4e32",
+        "content": "Superlative query resolution workflow \u2014 when the task asks for the 'most,' 'least,' 'highest,' 'lowest,' 'best,' or 'wor"
+      },
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "ccfc748c",
+        "content": "MISTAKE: Treating API list position as a ranking (e.g., assuming the last item in a recommendations list is 'least recom"
+      }
+    ]
+  },
+  {
+    "iteration": 14,
+    "task_query": "Export a unique list of all the songs in my song and album library and all playlists in my Spotify account into \"~/backups/spotify.csv\" file in my file system. The file should have headers, \"Title\" an...",
+    "reflector_summary": "The agent collected songs from four distinct Spotify data sources (song library: 12, album library songs, playlist library songs, liked playlist songs \u2192 90 unique songs) when the test expected a much ...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "945ef3e8",
+        "content": "* MANDATORY scope definition workflow (export/backup/collection tasks) \u2014 execute BEFORE collecting ANY data: (1) List AL"
+      },
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "70d88da9",
+        "content": "* MISTAKE: When exporting/backing up data, progressively collecting from ALL available data endpoints (song library \u2192 al"
+      },
+      {
+        "op": "ADD",
+        "section": "verification_checklist",
+        "entry_id": "bd664534",
+        "content": "* EXPORT FILE READBACK GATE: After writing an output file for export/backup tasks, ALWAYS read the file back and verify "
+      }
+    ]
+  },
+  {
+    "iteration": 15,
+    "task_query": "Give a 5-star rating to all songs in my Spotify playlists which I have liked. If I have already rated it lower, increase it to 5.",
+    "reflector_summary": "The agent achieved the correct *final state* (all 27 songs in liked playlists rated 5 \u2014 confirmed by passing tests for rating values and model change counts), but the *method* was wrong: the partition...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "679f30b9",
+        "content": "* Check API docs with `apis.api_docs.show_api_doc(app_name, api_name)` before calling any API. TRUNCATION CHECK: If the "
+      },
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "3ba8ddae",
+        "content": "MISTAKE: Using a search/filter API parameter (e.g., `user_email`, `query`, `owner`) for existence detection in bulk oper"
+      },
+      {
+        "op": "ADD",
+        "section": "verification_checklist",
+        "entry_id": "f6b0f6ad",
+        "content": "* PARTITION VERIFICATION GATE (for bulk add/update/skip operations): When a task requires splitting items into different"
+      }
+    ]
+  },
+  {
+    "iteration": 16,
+    "task_query": "Give a 5-star rating to all songs in my Spotify playlists which I have liked. If I have already rated it lower, increase it to 5.",
+    "reflector_summary": "The 71.4% pass rate (2 of 7 tests failed) stems from incorrect PARTITIONING of songs into 'create new review' vs. 'update existing review' buckets. The ground truth expected a specific set of song_ids...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "679f30b9",
+        "content": "* * Check API docs with `apis.api_docs.show_api_doc(app_name, api_name)` before calling any API. TRUNCATION CHECK: If th"
+      },
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "f6b0f6ad",
+        "content": "* * PARTITION VERIFICATION GATE (for bulk add/update/skip operations): When a task requires splitting items into differe"
+      },
+      {
+        "op": "ADD",
+        "section": "strategies_and_hard_rules",
+        "entry_id": "f32556ce",
+        "content": "* PARTITION-CRITICAL DETECTION \u2014 PREFER UNFILTERED FETCH + CODE MATCHING: When categorizing items into create vs. update"
+      }
+    ]
+  },
+  {
+    "iteration": 18,
+    "task_query": "Like all the songs played so far in my spotify music player queue, including the current one.",
+    "reflector_summary": "The agent liked ALL 10 songs in the Spotify queue, but the test expected only a specific subset (`private_data.song_ids_to_like`) to be newly liked. The most likely cause: some songs in the queue were...",
+    "mutation_summary": "",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "5d010b02",
+        "content": "* PRE-COMPLETION GATE: Before calling complete_task, list every specific API endpoint whose docs you explored. For EACH "
+      },
+      {
+        "op": "ADD",
+        "section": "problem_solving_heuristics_and_workflows",
+        "entry_id": "5ef3c1c9",
+        "content": "* STATE-TRANSITION PRE-CHECK \u2014 MANDATORY for bulk toggle operations (like/unlike, follow/unfollow, add/remove, subscribe"
+      }
+    ]
+  }
+]

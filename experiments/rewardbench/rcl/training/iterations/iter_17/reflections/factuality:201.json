@@ -1,0 +1,553 @@
+{
+  "task_id": "factuality:201",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:201\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts are deterministically identical. The judge rated INCORRECT Candidate [4] at 6.0 above CORRECT Candidate [1] at 5.0, selecting [4] as best. All four candidates present text in quotation marks attributed to the same six ML textbook authors (Mitchell, Bishop, Goodfellow et al., Ng, Domingos, Murphy) but with different wording per source. None of these attributed quotes can be externally verified \u2014 they are almost certainly LLM-generated fabrications. The judge's decisive differentiator was that [4]'s quotes were 'more coherent and source-aligned overall,' a purely subjective impression of unverifiable fabricated content.\n\n## Playbook Failures\n\n### 1. [29e534bd] DIFF TABLE never built despite MANDATORY TRIGGER being met\nCandidates [1] and [4] cite the same six named sources with different attributed quotes. The entry explicitly states: 'MANDATORY TRIGGER: When 2+ candidates attribute specific content (quotes, definitions, statistics) to the same named source, the DIFF TABLE must be built BEFORE any relative scoring.' This trigger was clearly met and entirely skipped. Had the DIFF TABLE been built, conflicting quotes for each source would have been flagged ANTI-CORROBORATED, and the ALL-UNVERIFIABLE CEILING (\u22640.3 point spread) would have applied, preventing the 1.0-point gap that chose the wrong candidate.\n\n### 2. [005004a4] SYM_TABLE produced but CHECKED-CLEAN was rubber-stamped\nThe MANDATORY SYMMETRY TABLE was produced \u2014 the agent followed the form. But CHECKED-CLEAN was granted to [1] and [4] for attributed quotes without any positive verification evidence. The agent treated 'I couldn't find a counter-fact' as equivalent to 'verified correct.' This is the critical epistemic error: for content that cannot be independently verified (attributed quotes from real books), absence of disproof is NOT proof. The CHECKED-CLEAN designation gave false assurance that both candidates' content was factually sound, which then freed the judge to differentiate on subjective coherence. The current entry's CLASSIFY categories include (c) PLAUSIBLE/VERIFIED ('No counter-fact, consistent with known facts \u2192 no penalty'), but this is dangerously permissive for content that is inherently unverifiable \u2014 attributed verbatim quotes cannot be confirmed by an LLM without access to the actual text.\n\n### 3. Drift between stated criteria and actual differentiator\nThe judge's stated evaluation criteria focused on prompt-constraint compliance (quoted definitions + attribution). Both [1] and [4] passed this test equally. The actual differentiator was subjective 'coherence and source-alignment' \u2014 which is not a stated constraint. Entry [93b0e8f9] asks the judge to 'confirm the top-rated candidate genuinely best satisfies' stated criteria, but this consistency check didn't effectively fire. The judge used a polish signal ('sounds more like something this author would write') as if it were a factual finding.\n\n## What Would Have Prevented the Failure\n\nThe most direct prevention point is the CHECKED-CLEAN classification in the SYM_TABLE (005004a4). If the entry required positive verification evidence for CHECKED-CLEAN status (rather than mere absence of counter-facts), the agent would have been forced to classify the attributed quotes as UNVERIFIABLE. With UNVERIFIABLE content unable to create meaningful score separation, the subjective coherence differentiator would have been blocked, and the candidates would have been scored within \u22640.3 points \u2014 likely resulting in [1] being at or above [4].\n\nThe DIFF TABLE (29e534bd) not firing is also a serious failure, but the enforcement gap there is harder to fix by updating the entry itself (it already says MANDATORY). A meta-audit step could help but introduces a new rule whose effectiveness is uncertain. The CHECKED-CLEAN criteria update is more directly actionable: it changes the standard for an artifact that WAS produced, ensuring it produces correct classifications rather than relying on a second artifact that wasn't produced at all.\n\n## Recommended Mutation\n\nUpdate [005004a4] to add explicit CHECKED-CLEAN criteria. Specifically:\n1. In the CLASSIFY section, add that (c) PLAUSIBLE/VERIFIED requires positive evidence \u2014 not just absence of counter-facts. For content attributed to named external sources (verbatim quotes, specific statistics, citations), the agent cannot verify from memory alone; such content must be classified as UNVERIFIABLE rather than PLAUSIBLE/VERIFIED.\n2. In the SYM_TABLE instructions, specify that CHECKED-CLEAN requires one of: (a) concrete positive verification, or (b) reclassification as UNVERIFIABLE with a note that the content cannot drive score differentiation beyond 0.3 points.\n3. Add a COHERENCE TRAP WARNING: 'sounds like something this author would say' or 'more source-aligned' applied to unverifiable attributed content is a polish signal, not a factual assessment.\n\nThis single update to an existing entry addresses the root cause, is well-supported by all three reflections, and avoids introducing new standalone entries from a single trace.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The judge used subjective 'coherence and source-alignment' impressions to differentiate between candidates whose primary content (attributed quotes from ML textbook authors) is entirely unverifiable. The SYM_TABLE's CHECKED-CLEAN designation rubber-stamped unverifiable content as factually sound, freeing the judge to differentiate on polish rather than accuracy. The DIFF TABLE (29e534bd) was never built despite its mandatory trigger being clearly met, so the ALL-UNVERIFIABLE CEILING was never applied.\",\n  \"important_disagreements\": [\n    \"Anchor tagged 005004a4 as neutral; credit_attribution and principle_extraction both tagged it harmful. Resolved in favor of harmful: the SYM_TABLE was produced but CHECKED-CLEAN was granted without positive evidence, giving false assurance. The entry's artifact was followed in form but produced misleading results \u2014 this is worse than neutral.\",\n    \"Anchor proposed a standalone ATTRIBUTED QUOTE VERIFICATION PROCEDURE as a new entry. Principle_extraction argued this is overly task-specific and that the fix should target the general epistemic error (treating 'not disproven' as 'verified'). Resolved in favor of principle_extraction: the general CHECKED-CLEAN criteria update in 005004a4 addresses the root cause more broadly and avoids a new entry from a single trace.\",\n    \"Credit_attribution tagged 8e0d9579 (polish entry) as harmful because 'coherence' bypassed its examples; anchor and principle_extraction tagged it neutral. Resolved as neutral: the entry's core principle is correct; the agent's failure was in not recognizing coherence-of-unverifiable-content as polish. The CHECKED-CLEAN update in 005004a4 addresses this more directly than expanding 8e0d9579's example list.\",\n    \"Principle_extraction proposed a new L3 mandatory-artifact completion audit. While well-reasoned, skepticism applies: if the agent ignores 'MANDATORY' in 29e534bd, another meta-level 'check that you followed MANDATORY' may not help. The CHECKED-CLEAN update is more structural \u2014 it changes the classification standard for an artifact that WAS produced, rather than adding a check for an artifact that wasn't.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"All three reflections converge on the CHECKED-CLEAN criteria gap in 005004a4 as a key failure point. This is an update to an existing entry that directly addresses the demonstrated failure mode (rubber-stamping unverifiable attributed content as factually clean). It is the smallest change with the highest expected impact: it fixes the epistemic standard for an artifact the agent already produces, rather than adding new entries or relying on meta-audit procedures.\",\n  \"conservatism_rationale\": \"A single trace (with two identical rollouts) showing a consistent failure justifies updating the entry that directly enabled the error. The update is narrow (adding CHECKED-CLEAN criteria and an UNVERIFIABLE ceiling) and does not change the entry's structure or other functions. New standalone entries (attributed quote procedure, mandatory artifact audit) are deferred: the attributed quote procedure is partially covered by 29e534bd's existing ALL-UNVERIFIABLE CEILING, and the mandatory artifact audit's effectiveness is uncertain. If the 005004a4 update proves insufficient in future traces, escalation to new entries becomes better-evidenced.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\nWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning? \n\n## Candidate Responses\n\n[1]\nIn the context of machine learning, several prominent definitions of \"model\" are frequently cited in literature and academic works. Here are some of the most notable ones:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data and can be used to make predictions or decisions about new data.\"\n\n2. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a mathematical representation of a process, typically expressed as a set of equations or a probabilistic framework, that can be used to make predictions or inferences about data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a specific mathematical form for representing a set of assumptions about how data is generated. It includes parameters that can be adjusted to fit the data.\"\n\n4. **Andrew Ng**:\n   - From his popular online courses:\n     > \"A model is a simplified representation of reality, designed to capture the essential features of a problem and make predictions based on input data.\"\n\n5. **Chris Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, usually expressed in terms of a set of parameters. The goal of learning is to determine the values of these parameters that best explain the observed data.\"\n\n6. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between inputs and outputs, which is derived from the training data and used to make predictions on new data.\"\n\nThese definitions collectively emphasize the role of a model in capturing patterns in data, making predictions, and being adjustable through parameters. They also highlight the importance of the model's ability to generalize to new, unseen data.\n\n[2]\nIn the context of machine learning, the term \"model\" has several prominent definitions. Here are some of the most commonly quoted ones:\n\n1. **Mathematical model**: A mathematical model is a representation of a real-world system or phenomenon using mathematical equations, functions, and algorithms. In machine learning, this model is typically a set of equations that describe the relationships between inputs and outputs, such as a linear regression model or a neural network.\n\n2. **Statistical model**: A statistical model is a probability distribution over a set of possible outcomes or predictions. In machine learning, statistical models are used to quantify uncertainty and make predictions based on observed data. Examples include Bayesian networks, Gaussian mixture models, and random forests.\n\n3. **Algebraic model**: An algebraic model represents a system or process using algebraic equations and variables. In machine learning, algebraic models are used to describe the relationships between inputs and outputs, such as linear algebra-based models or matrix factorization techniques.\n\n4. **Abstraction model**: An abstraction model is a simplified representation of a complex system or process. In machine learning, abstraction models are used to capture the essential characteristics of a system or process, such as a decision tree or a clustering model.\n\n5. **Conceptual model**: A conceptual model is a high-level representation of a system or process. In machine learning, conceptual models are used to describe the underlying relationships and structures of a system, such as a graph or a semantic network.\n\n6. **Computational model**: A computational model is a software implementation of a mathematical or statistical model. In machine learning, computational models are used to train and deploy models on real-world data, such as deep learning models or decision tree ensembles.\n\n7. **Statistical pattern recognition model**: A statistical pattern recognition model is a type of model that recognizes patterns in data and makes predictions based on those patterns. In machine learning, statistical pattern recognition models are used for tasks such as image classification, speech recognition, and natural language processing.\n\n8. **Dynamical system model**: A dynamical system model represents the behavior of a system over time. In machine learning, dynamical system models are used to forecast future behavior or simulate the effects of different scenarios, such as Markov chain models or time-series forecasting models.\n\nThese definitions are not mutually exclusive, and many machine learning models blend elements from multiple categories.\n\n[3]\nIn the context of machine learning, the term \"model\" is often used to refer to a mathematical representation or computational system that learns from and makes predictions on data. Here are some of the most prominent quoted definitions of \"model\" in machine learning:\n\n1. **Tom M. Mitchell (1997)**:\n   - **Definition**: A computer program is considered a model for a concept C if, for any inputs in the input domain of C, the program returns a result that accurately reflects the concept's intended behavior.\n   - **Context**: This definition emphasizes the accuracy and behavior of the model relative to the concept it is modeling.\n\n2. **Pedro Domingos (2012)**:\n   - **Definition**: In machine learning, a model is a computational system that takes as input some data and produces as output a prediction, decision, or value. It is a mapping from inputs to outputs based on learned patterns in the training data.\n   - **Context**: This definition highlights the functional aspect of models, focusing on their predictive capability and how they learn from data.\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville (2016)**:\n   - **Definition**: A model is an abstraction that describes a set of possible relationships between inputs and outputs.\n   - **Context**: This definition emphasizes the abstract nature of models and their role in representing complex relationships in data.\n\n4. **Scott Cheng-Hsin Chen (2018)**:\n   - **Definition**: A machine learning model is a computational representation of a set of learned functions that map from inputs to outputs, typically optimized to minimize error on a given task.\n   - **Context**: This definition underscores the optimization process and the specific goal of reducing prediction errors.\n\n5. **David Barber (2012)**:\n   - **Definition**: A model is a representation of a phenomenon or a system that can be used to make predictions about future observations.\n   - **Context**: This definition focuses on the predictive power of models and their application in making future predictions.\n\n6. **Michael I. Jordan (2014)**:\n   - **Definition**: A model is a formalization of assumptions about a system or problem, encapsulated in a set of equations, rules, or parameters that enable the computation of predictions or decisions.\n   - **Context**: This definition highlights the formalization and the computational aspect of models.\n\nThese definitions capture different aspects of what constitutes a model in machine learning, such as its predictive power, learning mechanism, and representational capabilities.\n\n[4]\nIn the context of machine learning, the term \"model\" is often defined in various ways by different experts and researchers. Here are some of the most prominent and widely quoted definitions:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data. It is a mathematical representation of the relationships among variables in the data.\"\n\n2. **Christopher M. Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, typically expressed in the form of a probabilistic model, which can be used to make predictions or inferences about new data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a system that takes as input one or more variables and produces an output. In machine learning, models are trained on data to learn the parameters that best map inputs to outputs.\"\n\n4. **Andrew Ng**:\n   - From his course \"Machine Learning\" on Coursera:\n     > \"A model is a simplified representation of the real world, typically in the form of a mathematical function that maps inputs to outputs. In machine learning, this function is learned from data.\"\n\n5. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between the inputs and the outputs, expressed in a form that can be used to make predictions.\"\n\n6. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a formal description of how the data is generated, usually involving a set of parameters. The goal of machine learning is to estimate these parameters from the data.\"\n\nThese definitions collectively emphasize that a model in machine learning is a mathematical or computational representation that captures the relationships between input features and output targets, learned from data, and used for making predictions or inferences.\n\n## Judge Reasoning\nPerception scan: found N=4 candidate markers ([1]-[4]); CONSTRAINT CHECKLIST: (1) provide prominent quoted definitions of ML 'model' -> [1 Partial, 2 Fail, 3 Partial, 4 Partial]; (2) attribute quotes to specific sources -> [1 Partial, 2 Fail, 3 Partial, 4 Partial]. Theses/opener: [1 'In the context of machine learning, several prominent definitions' -> DIRECT], [2 'the term ... has several ... definitions' -> ADJACENT (mostly non-quoted categorical descriptions)], [3 'the term ... is often used to refer' -> DIRECT], [4 'the term ... is often defined in various ways' -> DIRECT]. Quality: candidate 2 misses the 'quoted definitions' requirement, candidate 3 includes multiple questionable/nonstandard attributions harming credibility, and candidates 1 vs 4 are both quote-based but 4 is more coherent and source-aligned overall; SYM_TABLE (flaw->cands 1..4): Missing direct quotes [1 CHECKED-CLEAN, 2 VERIFIED-FALSE, 3 CHECKED-CLEAN, 4 CHECKED-CLEAN], Questionable attributions [1 CHECKED-CLEAN, 2 CHECKED-CLEAN, 3 FLAGGED, 4 CHECKED-CLEAN].\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Perception scan: found N=4 candidate markers ([1]-[4]); CONSTRAINT CHECKLIST: (1) provide prominent quoted definitions of ML 'model' -> [1 Partial, 2 Fail, 3 Partial, 4 Partial]; (2) attribute quotes to specific sources -> [1 Partial, 2 Fail, 3 Partial, 4 Partial]. Theses/opener: [1 'In the context of machine learning, several prominent definitions' -> DIRECT], [2 'the term ... has several ... definitions' -> ADJACENT (mostly non-quoted categorical descriptions)], [3 'the term ... is often used to refer' -> DIRECT], [4 'the term ... is often defined in various ways' -> DIRECT]. Quality: candidate 2 misses the 'quoted definitions' requirement, candidate 3 includes multiple questionable/nonstandard attributions harming credibility, and candidates 1 vs 4 are both quote-based but 4 is more coherent and source-aligned overall; SYM_TABLE (flaw->cands 1..4): Missing direct quotes [1 CHECKED-CLEAN, 2 VERIFIED-FALSE, 3 CHECKED-CLEAN, 4 CHECKED-CLEAN], Questionable attributions [1 CHECKED-CLEAN, 2 CHECKED-CLEAN, 3 FLAGGED, 4 CHECKED-CLEAN].\",\n  \"ratings\": [\n    5.0,\n    1.5,\n    2.0,\n    6.0\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\nWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning? \n\n## Candidate Responses\n\n[1]\nIn the context of machine learning, several prominent definitions of \"model\" are frequently cited in literature and academic works. Here are some of the most notable ones:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data and can be used to make predictions or decisions about new data.\"\n\n2. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a mathematical representation of a process, typically expressed as a set of equations or a probabilistic framework, that can be used to make predictions or inferences about data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a specific mathematical form for representing a set of assumptions about how data is generated. It includes parameters that can be adjusted to fit the data.\"\n\n4. **Andrew Ng**:\n   - From his popular online courses:\n     > \"A model is a simplified representation of reality, designed to capture the essential features of a problem and make predictions based on input data.\"\n\n5. **Chris Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, usually expressed in terms of a set of parameters. The goal of learning is to determine the values of these parameters that best explain the observed data.\"\n\n6. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between inputs and outputs, which is derived from the training data and used to make predictions on new data.\"\n\nThese definitions collectively emphasize the role of a model in capturing patterns in data, making predictions, and being adjustable through parameters. They also highlight the importance of the model's ability to generalize to new, unseen data.\n\n[2]\nIn the context of machine learning, the term \"model\" has several prominent definitions. Here are some of the most commonly quoted ones:\n\n1. **Mathematical model**: A mathematical model is a representation of a real-world system or phenomenon using mathematical equations, functions, and algorithms. In machine learning, this model is typically a set of equations that describe the relationships between inputs and outputs, such as a linear regression model or a neural network.\n\n2. **Statistical model**: A statistical model is a probability distribution over a set of possible outcomes or predictions. In machine learning, statistical models are used to quantify uncertainty and make predictions based on observed data. Examples include Bayesian networks, Gaussian mixture models, and random forests.\n\n3. **Algebraic model**: An algebraic model represents a system or process using algebraic equations and variables. In machine learning, algebraic models are used to describe the relationships between inputs and outputs, such as linear algebra-based models or matrix factorization techniques.\n\n4. **Abstraction model**: An abstraction model is a simplified representation of a complex system or process. In machine learning, abstraction models are used to capture the essential characteristics of a system or process, such as a decision tree or a clustering model.\n\n5. **Conceptual model**: A conceptual model is a high-level representation of a system or process. In machine learning, conceptual models are used to describe the underlying relationships and structures of a system, such as a graph or a semantic network.\n\n6. **Computational model**: A computational model is a software implementation of a mathematical or statistical model. In machine learning, computational models are used to train and deploy models on real-world data, such as deep learning models or decision tree ensembles.\n\n7. **Statistical pattern recognition model**: A statistical pattern recognition model is a type of model that recognizes patterns in data and makes predictions based on those patterns. In machine learning, statistical pattern recognition models are used for tasks such as image classification, speech recognition, and natural language processing.\n\n8. **Dynamical system model**: A dynamical system model represents the behavior of a system over time. In machine learning, dynamical system models are used to forecast future behavior or simulate the effects of different scenarios, such as Markov chain models or time-series forecasting models.\n\nThese definitions are not mutually exclusive, and many machine learning models blend elements from multiple categories.\n\n[3]\nIn the context of machine learning, the term \"model\" is often used to refer to a mathematical representation or computational system that learns from and makes predictions on data. Here are some of the most prominent quoted definitions of \"model\" in machine learning:\n\n1. **Tom M. Mitchell (1997)**:\n   - **Definition**: A computer program is considered a model for a concept C if, for any inputs in the input domain of C, the program returns a result that accurately reflects the concept's intended behavior.\n   - **Context**: This definition emphasizes the accuracy and behavior of the model relative to the concept it is modeling.\n\n2. **Pedro Domingos (2012)**:\n   - **Definition**: In machine learning, a model is a computational system that takes as input some data and produces as output a prediction, decision, or value. It is a mapping from inputs to outputs based on learned patterns in the training data.\n   - **Context**: This definition highlights the functional aspect of models, focusing on their predictive capability and how they learn from data.\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville (2016)**:\n   - **Definition**: A model is an abstraction that describes a set of possible relationships between inputs and outputs.\n   - **Context**: This definition emphasizes the abstract nature of models and their role in representing complex relationships in data.\n\n4. **Scott Cheng-Hsin Chen (2018)**:\n   - **Definition**: A machine learning model is a computational representation of a set of learned functions that map from inputs to outputs, typically optimized to minimize error on a given task.\n   - **Context**: This definition underscores the optimization process and the specific goal of reducing prediction errors.\n\n5. **David Barber (2012)**:\n   - **Definition**: A model is a representation of a phenomenon or a system that can be used to make predictions about future observations.\n   - **Context**: This definition focuses on the predictive power of models and their application in making future predictions.\n\n6. **Michael I. Jordan (2014)**:\n   - **Definition**: A model is a formalization of assumptions about a system or problem, encapsulated in a set of equations, rules, or parameters that enable the computation of predictions or decisions.\n   - **Context**: This definition highlights the formalization and the computational aspect of models.\n\nThese definitions capture different aspects of what constitutes a model in machine learning, such as its predictive power, learning mechanism, and representational capabilities.\n\n[4]\nIn the context of machine learning, the term \"model\" is often defined in various ways by different experts and researchers. Here are some of the most prominent and widely quoted definitions:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data. It is a mathematical representation of the relationships among variables in the data.\"\n\n2. **Christopher M. Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, typically expressed in the form of a probabilistic model, which can be used to make predictions or inferences about new data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a system that takes as input one or more variables and produces an output. In machine learning, models are trained on data to learn the parameters that best map inputs to outputs.\"\n\n4. **Andrew Ng**:\n   - From his course \"Machine Learning\" on Coursera:\n     > \"A model is a simplified representation of the real world, typically in the form of a mathematical function that maps inputs to outputs. In machine learning, this function is learned from data.\"\n\n5. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between the inputs and the outputs, expressed in a form that can be used to make predictions.\"\n\n6. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a formal description of how the data is generated, usually involving a set of parameters. The goal of machine learning is to estimate these parameters from the data.\"\n\nThese definitions collectively emphasize that a model in machine learning is a mathematical or computational representation that captures the relationships between input features and output targets, learned from data, and used for making predictions or inferences.\n\n## Judge Reasoning\nPerception scan: found N=4 candidate markers ([1]-[4]); CONSTRAINT CHECKLIST: (1) provide prominent quoted definitions of ML 'model' -> [1 Partial, 2 Fail, 3 Partial, 4 Partial]; (2) attribute quotes to specific sources -> [1 Partial, 2 Fail, 3 Partial, 4 Partial]. Theses/opener: [1 'In the context of machine learning, several prominent definitions' -> DIRECT], [2 'the term ... has several ... definitions' -> ADJACENT (mostly non-quoted categorical descriptions)], [3 'the term ... is often used to refer' -> DIRECT], [4 'the term ... is often defined in various ways' -> DIRECT]. Quality: candidate 2 misses the 'quoted definitions' requirement, candidate 3 includes multiple questionable/nonstandard attributions harming credibility, and candidates 1 vs 4 are both quote-based but 4 is more coherent and source-aligned overall; SYM_TABLE (flaw->cands 1..4): Missing direct quotes [1 CHECKED-CLEAN, 2 VERIFIED-FALSE, 3 CHECKED-CLEAN, 4 CHECKED-CLEAN], Questionable attributions [1 CHECKED-CLEAN, 2 CHECKED-CLEAN, 3 FLAGGED, 4 CHECKED-CLEAN].\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Perception scan: found N=4 candidate markers ([1]-[4]); CONSTRAINT CHECKLIST: (1) provide prominent quoted definitions of ML 'model' -> [1 Partial, 2 Fail, 3 Partial, 4 Partial]; (2) attribute quotes to specific sources -> [1 Partial, 2 Fail, 3 Partial, 4 Partial]. Theses/opener: [1 'In the context of machine learning, several prominent definitions' -> DIRECT], [2 'the term ... has several ... definitions' -> ADJACENT (mostly non-quoted categorical descriptions)], [3 'the term ... is often used to refer' -> DIRECT], [4 'the term ... is often defined in various ways' -> DIRECT]. Quality: candidate 2 misses the 'quoted definitions' requirement, candidate 3 includes multiple questionable/nonstandard attributions harming credibility, and candidates 1 vs 4 are both quote-based but 4 is more coherent and source-aligned overall; SYM_TABLE (flaw->cands 1..4): Missing direct quotes [1 CHECKED-CLEAN, 2 VERIFIED-FALSE, 3 CHECKED-CLEAN, 4 CHECKED-CLEAN], Questionable attributions [1 CHECKED-CLEAN, 2 CHECKED-CLEAN, 3 FLAGGED, 4 CHECKED-CLEAN].\",\n  \"ratings\": [\n    5.0,\n    1.5,\n    2.0,\n    6.0\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=5.000\n  [2] INCORRECT score=1.500\n  [3] INCORRECT score=2.000\n  [4] INCORRECT score=6.000\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=5.000\n  [2] INCORRECT score=1.500\n  [3] INCORRECT score=2.000\n  [4] INCORRECT score=6.000",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts are identical (same input, same output). The core failure: the judge rated Candidate [4] (INCORRECT) at 6.0 above Candidate [1] (CORRECT) at 5.0, choosing [4] as best. The stated reason was that [4] is 'more coherent and source-aligned overall' compared to [1]. This is a subjective quality impression used to differentiate between fundamentally unverifiable content.\n\nAll four candidates present attributed 'quotes' from ML textbook authors (Mitchell, Bishop, Goodfellow et al., Ng, Domingos, Murphy). None of these quotes can be verified as real verbatim text from these sources \u2014 they are almost certainly LLM-generated paraphrases or fabrications. The judge treated 'sounds more like something this author would write' as evidence of accuracy, which is exactly the bias the playbook should prevent.\n\n## Specific Playbook Failures\n\n### 1. [29e534bd] DIFF TABLE not triggered despite mandatory conditions\nCandidates [1] and [4] cite the SAME six sources (Mitchell, Bishop, Goodfellow et al., Ng, Domingos, Murphy) with DIFFERENT specific 'quotes' attributed to each. The entry states: 'MANDATORY TRIGGER: When 2+ candidates attribute specific content (quotes, definitions, statistics) to the same named source, the DIFF TABLE must be built BEFORE any relative scoring.' This was completely skipped. Had the DIFF TABLE been built, it would have revealed that e.g., Mitchell's 'quote' in [1] differs from Mitchell's 'quote' in [4], immediately flagging both as UNVERIFIED.\n\nFurther, the ALL-UNVERIFIABLE CEILING states: 'When ALL candidates' primary differentiating content is UNVERIFIED or UNVERIFIABLE, no candidate gets a factuality advantage from that content. Differentiate by secondary verifiable signals... Subjective presentation quality alone cannot separate candidates by more than 0.3 points.' The judge separated [1] and [4] by 1.0 points on purely subjective coherence assessment, directly violating this ceiling.\n\n### 2. [005004a4] SYM_TABLE produced but verification was theater\nThe judge produced a SYM_TABLE with 'CHECKED-CLEAN' markings for candidates [1] and [4], but never performed actual ISOLATE\u2192COUNTER\u2192CLASSIFY verification on any specific quote. 'CHECKED-CLEAN' was awarded based on surface-level plausibility, not concrete verification. The VERIFICATION GATE requires 'State a concrete reason the claim is false' before penalizing, but the flip side is equally important: marking something CHECKED-CLEAN should also require positive evidence, not just absence of suspicion.\n\n### 3. [8e0d9579] 'Coherence' used as quality proxy\nThe judge's differentiating factor was that [4] is 'more coherent and source-aligned overall.' This is exactly the kind of polish-over-accuracy bias the entry warns against, but the entry focuses on 'generic verbosity, politeness, or decorative formatting' \u2014 it doesn't explicitly cover 'coherence of fabricated content' as a polish trap.\n\n## What's Missing From the Playbook\n\n### ATTRIBUTED QUOTE VERIFICATION PROCEDURE (new entry needed)\nTrigger: Any candidate presents content in quotation marks attributed to a named source (person, book, paper).\n\nProcedure:\n1. FLAG \u2014 All attributed quotes are UNVERIFIED by default. Mark each quote with source name and candidate ID.\n2. CROSS-CHECK \u2014 For each source cited by 2+ candidates, compare the attributed quotes. If the quotes differ, classify ALL versions as ANTI-CORROBORATED (at least one must be wrong; without external verification, treat all as suspect).\n3. COHERENCE TRAP WARNING \u2014 'Sounds like something X would say' is NOT verification. Subjective source-alignment is a plausibility heuristic, not a factual check. Do not use it to differentiate candidates.\n4. CEILING \u2014 When attributed quotes are the primary differentiating content between candidates and none can be verified, apply ALL-UNVERIFIABLE CEILING (\u22640.3 point spread). Differentiate on secondary verifiable signals only: prompt-constraint compliance, structural completeness, internal consistency.\n\n### Strengthening [29e534bd] \u2014 enforcement gap\nThe MANDATORY TRIGGER condition was met but not enforced. The entry needs a self-audit step: after scoring, explicitly ask 'Did any 2+ candidates cite the same named source? If yes, did I build the DIFF TABLE?' This should be added to the final output guard or made a mandatory artifact alongside the SYM_TABLE.\n\n### Strengthening [005004a4] \u2014 CHECKED-CLEAN criteria\nThe SYM_TABLE currently allows 'CHECKED-CLEAN' without specifying what 'checked' means. For attributed quotes, CHECKED-CLEAN should require either: (a) concrete verification the quote is real, or (b) classification as UNVERIFIABLE with corresponding ceiling application. 'I didn't find a counter-fact so it's clean' is insufficient for attributed quotes.\n\n## Drift Between Reasoning and Output\nThe judge's reasoning correctly identified that [2] fails the 'quoted definitions' requirement and [3] has 'questionable/nonstandard attributions.' But for [1] vs [4], the reasoning asserted [4] was 'more coherent and source-aligned overall' without any verification procedure, then acted on this subjective impression as if it were a verified finding. Entry [93b0e8f9] asks the judge to 're-read your own stated decisive criteria and confirm the top-rated candidate genuinely best satisfies them' \u2014 the stated criteria was prompt constraint compliance (quoted definitions + attribution), yet the decisive differentiation was 'coherence,' which is not a stated constraint. This consistency check should have caught the drift but didn't fire effectively.\n\n## Pattern for Future Tasks\nThis is an instance of a broader pattern: when LLM-generated candidates all present fabricated attributed content (fake quotes, fake statistics, fake citations), the judge defaults to subjective quality signals to differentiate them. The playbook needs a hard procedural block: attributed-content-as-differentiator requires verification or ceiling. 'Sounds better' is never sufficient."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Multiple candidates present content in quotation marks attributed to named real-world sources (books, papers, courses), but the quotes differ between candidates for the same source. The judge has no way to externally verify any of the quotes and defaults to subjective 'source-alignment' impressions.",
+          "gap_type": "procedure",
+          "suggested_content": "ATTRIBUTED QUOTE VERIFICATION PROCEDURE: When any candidate presents text in quotation marks attributed to a named source (person, book, paper, course): (1) FLAG \u2014 All attributed quotes are UNVERIFIED by default. No quote receives CHECKED-CLEAN status without a concrete counter-fact or positive verification. (2) CROSS-CHECK \u2014 If 2+ candidates attribute different quoted text to the same source, classify ALL versions as ANTI-CORROBORATED. (3) COHERENCE TRAP WARNING \u2014 'Sounds like something this author would say' or 'more source-aligned' is NOT verification. Subjective plausibility impressions of quoted text are a form of polish bias. Do not use them to differentiate candidates. (4) CEILING \u2014 When attributed quotes are the primary differentiating content and none can be verified, apply ALL-UNVERIFIABLE CEILING (\u22640.3 point spread). Differentiate only by secondary verifiable signals: constraint compliance, structural completeness, internal consistency, appropriate hedging about quote accuracy.",
+          "trigger": "Any candidate presents content in quotation marks explicitly attributed to a named real-world source"
+        },
+        {
+          "situation": "The SYM_TABLE was produced with CHECKED-CLEAN cells for attributed quotes, but the CHECKED-CLEAN classification was based on absence of suspicion rather than positive verification or explicit acknowledgment of unverifiability. The current entry allows CHECKED-CLEAN as a default for content that merely 'doesn't look wrong.'",
+          "gap_type": "verification_gate",
+          "suggested_content": "CHECKED-CLEAN CRITERIA FOR ATTRIBUTED CONTENT: When the SYM_TABLE cell involves content attributed to a named external source (quote, statistic, citation), CHECKED-CLEAN requires one of: (a) concrete positive verification the content is accurate, or (b) the content is classified as UNVERIFIABLE with a note that the ALL-UNVERIFIABLE CEILING applies. 'No counter-fact found' alone is insufficient for CHECKED-CLEAN on attributed content \u2014 classify as UNVERIFIABLE instead. This prevents the SYM_TABLE from rubber-stamping unverifiable claims.",
+          "trigger": "When filling any SYM_TABLE cell for content that includes attributed quotes, citations, or statistics from named real-world sources"
+        },
+        {
+          "situation": "Entry 29e534bd has a MANDATORY TRIGGER that was clearly met (same six sources cited by candidates [1] and [4] with different quotes) but the DIFF TABLE was never built. The word 'MANDATORY' proved insufficient to force compliance.",
+          "gap_type": "checklist",
+          "suggested_content": "POST-SCORING SELF-AUDIT FOR DIFF TABLE: After completing all scores and before final output, ask: 'Did any 2+ candidates cite the same named source with specific attributed content?' If yes: 'Did I build the DIFF TABLE comparing those attributions?' If the DIFF TABLE was not built, STOP and build it now. Then re-check whether the ALL-UNVERIFIABLE CEILING should apply and whether any score gaps need adjustment. This audit should be added as a mandatory step in the final output guard (entry 61b87a5f) or as a standalone pre-output checklist item.",
+          "trigger": "Fires during final output guard, after scoring is complete but before JSON emission"
+        },
+        {
+          "situation": "The agent's stated decisive criteria (prompt constraint compliance) diverged from the actual differentiator used (subjective coherence). Entry 93b0e8f9 asks the agent to check consistency but doesn't enforce a hard gate when the stated criteria and actual differentiator diverge.",
+          "gap_type": "verification_gate",
+          "suggested_content": "CRITERIA-ACTION CONSISTENCY GATE: After scoring, identify the factor that actually separated the top two candidates. Compare it to your stated constraint checklist. If the separating factor is NOT one of the listed constraints, and both candidates have identical constraint compliance grades, the score gap between them must not exceed 0.3 points unless you can cite a specific verifiable quality difference (not subjective coherence, not 'sounds better').",
+          "trigger": "When the top two candidates have identical constraint compliance grades but different scores"
+        },
+        {
+          "situation": "The polish-over-accuracy entry (8e0d9579) warns against 'generic verbosity, politeness, or decorative formatting' but the agent used 'coherence' and 'source-alignment' as the differentiator. These are subtler forms of polish bias that aren't covered by the entry's current examples.",
+          "gap_type": "tactic",
+          "suggested_content": "Expand the polish-over-accuracy entry to include: 'Coherence,' 'source-alignment,' 'reads more naturally,' and 'sounds more like something [author] would write' are ALSO polish signals when applied to unverifiable attributed content. These subjective quality impressions of fabricated or unverifiable quotes are particularly dangerous because they feel like factual assessment but are actually stylistic preference. When the content being compared is unverifiable (attributed quotes, specific citations), these signals must be treated as polish, not as accuracy evidence.",
+          "trigger": "When differentiating candidates whose primary content consists of unverifiable attributed quotes or citations"
+        }
+      ],
+      "analysis": "## Agreement with Anchor\n\nI agree with the anchor's core diagnosis: the judge's failure stems from using subjective 'coherence and source-alignment' impressions to differentiate between candidates whose primary content (attributed quotes from ML textbooks) is entirely unverifiable. Both rollouts are identical, producing a 1.0-point gap between [1] (CORRECT, scored 5.0) and [4] (INCORRECT, scored 6.0) based solely on which set of fabricated quotes 'sounded better.' I also agree that the DIFF TABLE (29e534bd) was never built despite its MANDATORY TRIGGER being clearly met, and that the SYM_TABLE (005004a4) was verification theater.\n\n## Refinements\n\n1. **29e534bd assessment**: The anchor tags this as 'harmful.' I agree with the tag but for a more precise reason: the entry is harmful not because its content is wrong (it's excellent), but because its enforcement mechanism creates an illusion of coverage. The word 'MANDATORY' proved toothless. The fix is not content revision but enforcement escalation \u2014 adding a self-audit gate in the final output guard that forces the question 'Did I build all required DIFF TABLEs?'\n\n2. **005004a4 assessment**: The anchor calls this 'neutral' but I tag it 'harmful.' The SYM_TABLE was cited and produced, but its CHECKED-CLEAN cells for [1] and [4] gave false assurance. The agent treated artifact production as equivalent to verification. The CHECKED-CLEAN classification needs explicit criteria that distinguish 'no counter-fact found' from 'positively verified' \u2014 especially for attributed content.\n\n3. **71f11566 (enumerable specifics)**: The anchor overlooks this entry entirely. It requires sampling 'at least 3 individual claims from each high-volume candidate' for verification. The candidates' attributed quotes are exactly the kind of enumerable specifics this entry targets. If applied, it would have forced the agent to attempt ISOLATE\u2192COUNTER\u2192CLASSIFY on individual quotes, revealing their unverifiability and triggering appropriate ceilings.\n\n4. **8e0d9579 assessment**: The anchor correctly identifies the gap in this entry's scope but rates it 'neutral.' I tag it 'harmful' because the agent's behavior (using coherence as a differentiator for unverifiable content) is precisely the class of error this entry should prevent. The entry's narrow examples ('verbosity, politeness, decorative formatting') created a loophole that allowed 'coherence' and 'source-alignment' to bypass the warning.\n\n## Disagreements\n\n1. The anchor proposes a completely new 'ATTRIBUTED QUOTE VERIFICATION PROCEDURE' as a standalone entry. While I agree with the content, I believe some of this should also be patched into existing entries (005004a4's CHECKED-CLEAN criteria, 8e0d9579's polish examples, 71f11566's trigger scope) to prevent enforcement fragmentation. A new entry addresses the gap but doesn't fix the entries that failed to fire.\n\n## Key Pattern\n\nThis task exposes a systematic failure mode: when all candidates present fabricated attributed content (fake quotes from real authors/books), the judge's verification procedures produce artifacts (SYM_TABLE) without substance and its comparison procedures (DIFF TABLE) don't fire. The judge then defaults to subjective quality signals dressed up as factual assessment ('more source-aligned'). The fix requires both a new procedure (attributed quote handling) and enforcement hardening of existing entries (DIFF TABLE self-audit, CHECKED-CLEAN criteria, expanded polish examples)."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "AGREEMENT with anchor: The root cause diagnosis is correct \u2014 the judge used subjective 'coherence and source-alignment' to rank INCORRECT [4] above CORRECT [1], when both present unverifiable attributed quotes citing the same six authors with different wording. The 29e534bd DIFF TABLE was mandatory and would have caught this. The 005004a4 SYM_TABLE was produced but 'CHECKED-CLEAN' was granted without any positive verification evidence.\n\nREFINEMENT of anchor: The anchor correctly identifies two gaps but frames them as domain-specific (attributed quote verification, CHECKED-CLEAN criteria for quotes). The more transferable lesson is about two general failures: (1) mandatory procedural artifacts exist in the playbook but there is no completion-audit mechanism to ensure they fire when triggered, and (2) 'not disproven' is being treated as 'verified,' a general epistemic error. Both rollouts are deterministically identical, confirming this is a systematic procedural gap rather than variance.\n\nDISAGREEMENT with anchor: The anchor proposes a new 'ATTRIBUTED QUOTE VERIFICATION PROCEDURE' entry. This is overly task-specific (L1/L2). The existing 29e534bd entry already contains the ALL-UNVERIFIABLE CEILING and DIFF TABLE requirements \u2014 the problem is not missing rules but missing enforcement. A general mandatory-artifact completion audit would fix this and many similar skip-failures across any task type.\n\nEvidence chain: (1) Candidates [1] and [4] cite Mitchell, Bishop, Goodfellow et al., Ng, Domingos, Murphy \u2014 same sources, different attributed quotes. (2) Entry 29e534bd states 'MANDATORY TRIGGER: When 2+ candidates attribute specific content to the same named source, the DIFF TABLE must be built BEFORE any relative scoring.' Trigger clearly met; no DIFF TABLE produced. (3) SYM_TABLE produced per 005004a4, but 'CHECKED-CLEAN' was assigned to [1] and [4] without any concrete verification step \u2014 the agent cannot verify whether any of these quotes are real, yet treated them as factually clean. (4) The decisive differentiator was 'coherent and source-aligned overall,' a subjective impression that violated the 0.3-point ceiling for unverifiable content in 29e534bd. (5) Entry 93b0e8f9 asks the judge to confirm 'the top-rated candidate genuinely best satisfies' the stated criteria \u2014 the stated criteria was prompt-constraint compliance (quoted definitions + attribution), but the actual differentiator was subjective coherence. This consistency check should have caught the drift but didn't fire.",
+      "principles": [
+        {
+          "statement": "After scoring, list each playbook entry with a MANDATORY trigger. State whether the trigger was met and whether the required artifact appears in your reasoning. Any missing artifact = redo before finalizing.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "Fires as a final check after scoring is complete but before emitting output, alongside the existing output guard.",
+          "verification_or_artifact": "Produce a checklist: [Entry ID | Trigger condition | Met? | Required artifact | Present in reasoning?]. Any row with Met=Yes and Present=No is a procedural skip \u2014 halt and redo the missing step.",
+          "evidence": "Entry 29e534bd has 'MANDATORY TRIGGER: When 2+ candidates attribute specific content to the same named source, DIFF TABLE must be built.' This trigger was clearly met (same 6 authors cited by [1] and [4] with differing quotes) yet no DIFF TABLE was built. No existing entry audits whether mandatory procedures actually executed."
+        },
+        {
+          "statement": "Marking a claim CHECKED-CLEAN in a verification table requires stating positive evidence. 'No counter-fact found' for content you cannot independently verify \u2192 mark UNVERIFIABLE, not CLEAN. UNVERIFIABLE content cannot create score separation >0.3.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "005004a4",
+          "trigger": "When filling any verification artifact (SYM_TABLE or similar) and considering a CHECKED-CLEAN designation.",
+          "verification_or_artifact": "For each CHECKED-CLEAN cell, write one sentence of positive evidence (e.g., 'verified against known source X' or 'consistent with independently derived fact Y'). If no positive evidence exists, reclassify as UNVERIFIABLE.",
+          "evidence": "The SYM_TABLE was produced per 005004a4, but CHECKED-CLEAN was granted to [1] and [4] for attributed quotes that cannot be verified as real. The agent treated absence of a known counter-fact as positive verification. This false-clean status allowed the judge to use subjective 'coherence' as a differentiator, producing a 1.0-point gap on unverifiable content \u2014 directly violating the 0.3-point ceiling already specified in 29e534bd."
+        }
+      ],
+      "mutation_implication": "add",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts are deterministically identical. The judge rated INCORRECT Candidate [4] at 6.0 above CORRECT Candidate [1] at 5.0, selecting [4] as best. All four candidates present text in quotation marks attributed to the same six ML textbook authors (Mitchell, Bishop, Goodfellow et al., Ng, Domingos, Murphy) but with different wording per source. None of these attributed quotes can be externally verified \u2014 they are almost certainly LLM-generated fabrications. The judge's decisive differentiator was that [4]'s quotes were 'more coherent and source-aligned overall,' a purely subjective impression of unverifiable fabricated content.\n\n## Playbook Failures\n\n### 1. [29e534bd] DIFF TABLE never built despite MANDATORY TRIGGER being met\nCandidates [1] and [4] cite the same six named sources with different attributed quotes. The entry explicitly states: 'MANDATORY TRIGGER: When 2+ candidates attribute specific content (quotes, definitions, statistics) to the same named source, the DIFF TABLE must be built BEFORE any relative scoring.' This trigger was clearly met and entirely skipped. Had the DIFF TABLE been built, conflicting quotes for each source would have been flagged ANTI-CORROBORATED, and the ALL-UNVERIFIABLE CEILING (\u22640.3 point spread) would have applied, preventing the 1.0-point gap that chose the wrong candidate.\n\n### 2. [005004a4] SYM_TABLE produced but CHECKED-CLEAN was rubber-stamped\nThe MANDATORY SYMMETRY TABLE was produced \u2014 the agent followed the form. But CHECKED-CLEAN was granted to [1] and [4] for attributed quotes without any positive verification evidence. The agent treated 'I couldn't find a counter-fact' as equivalent to 'verified correct.' This is the critical epistemic error: for content that cannot be independently verified (attributed quotes from real books), absence of disproof is NOT proof. The CHECKED-CLEAN designation gave false assurance that both candidates' content was factually sound, which then freed the judge to differentiate on subjective coherence. The current entry's CLASSIFY categories include (c) PLAUSIBLE/VERIFIED ('No counter-fact, consistent with known facts \u2192 no penalty'), but this is dangerously permissive for content that is inherently unverifiable \u2014 attributed verbatim quotes cannot be confirmed by an LLM without access to the actual text.\n\n### 3. Drift between stated criteria and actual differentiator\nThe judge's stated evaluation criteria focused on prompt-constraint compliance (quoted definitions + attribution). Both [1] and [4] passed this test equally. The actual differentiator was subjective 'coherence and source-alignment' \u2014 which is not a stated constraint. Entry [93b0e8f9] asks the judge to 'confirm the top-rated candidate genuinely best satisfies' stated criteria, but this consistency check didn't effectively fire. The judge used a polish signal ('sounds more like something this author would write') as if it were a factual finding.\n\n## What Would Have Prevented the Failure\n\nThe most direct prevention point is the CHECKED-CLEAN classification in the SYM_TABLE (005004a4). If the entry required positive verification evidence for CHECKED-CLEAN status (rather than mere absence of counter-facts), the agent would have been forced to classify the attributed quotes as UNVERIFIABLE. With UNVERIFIABLE content unable to create meaningful score separation, the subjective coherence differentiator would have been blocked, and the candidates would have been scored within \u22640.3 points \u2014 likely resulting in [1] being at or above [4].\n\nThe DIFF TABLE (29e534bd) not firing is also a serious failure, but the enforcement gap there is harder to fix by updating the entry itself (it already says MANDATORY). A meta-audit step could help but introduces a new rule whose effectiveness is uncertain. The CHECKED-CLEAN criteria update is more directly actionable: it changes the standard for an artifact that WAS produced, ensuring it produces correct classifications rather than relying on a second artifact that wasn't produced at all.\n\n## Recommended Mutation\n\nUpdate [005004a4] to add explicit CHECKED-CLEAN criteria. Specifically:\n1. In the CLASSIFY section, add that (c) PLAUSIBLE/VERIFIED requires positive evidence \u2014 not just absence of counter-facts. For content attributed to named external sources (verbatim quotes, specific statistics, citations), the agent cannot verify from memory alone; such content must be classified as UNVERIFIABLE rather than PLAUSIBLE/VERIFIED.\n2. In the SYM_TABLE instructions, specify that CHECKED-CLEAN requires one of: (a) concrete positive verification, or (b) reclassification as UNVERIFIABLE with a note that the content cannot drive score differentiation beyond 0.3 points.\n3. Add a COHERENCE TRAP WARNING: 'sounds like something this author would say' or 'more source-aligned' applied to unverifiable attributed content is a polish signal, not a factual assessment.\n\nThis single update to an existing entry addresses the root cause, is well-supported by all three reflections, and avoids introducing new standalone entries from a single trace.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The judge used subjective 'coherence and source-alignment' impressions to differentiate between candidates whose primary content (attributed quotes from ML textbook authors) is entirely unverifiable. The SYM_TABLE's CHECKED-CLEAN designation rubber-stamped unverifiable content as factually sound, freeing the judge to differentiate on polish rather than accuracy. The DIFF TABLE (29e534bd) was never built despite its mandatory trigger being clearly met, so the ALL-UNVERIFIABLE CEILING was never applied.",
+      "important_disagreements": [
+        "Anchor tagged 005004a4 as neutral; credit_attribution and principle_extraction both tagged it harmful. Resolved in favor of harmful: the SYM_TABLE was produced but CHECKED-CLEAN was granted without positive evidence, giving false assurance. The entry's artifact was followed in form but produced misleading results \u2014 this is worse than neutral.",
+        "Anchor proposed a standalone ATTRIBUTED QUOTE VERIFICATION PROCEDURE as a new entry. Principle_extraction argued this is overly task-specific and that the fix should target the general epistemic error (treating 'not disproven' as 'verified'). Resolved in favor of principle_extraction: the general CHECKED-CLEAN criteria update in 005004a4 addresses the root cause more broadly and avoids a new entry from a single trace.",
+        "Credit_attribution tagged 8e0d9579 (polish entry) as harmful because 'coherence' bypassed its examples; anchor and principle_extraction tagged it neutral. Resolved as neutral: the entry's core principle is correct; the agent's failure was in not recognizing coherence-of-unverifiable-content as polish. The CHECKED-CLEAN update in 005004a4 addresses this more directly than expanding 8e0d9579's example list.",
+        "Principle_extraction proposed a new L3 mandatory-artifact completion audit. While well-reasoned, skepticism applies: if the agent ignores 'MANDATORY' in 29e534bd, another meta-level 'check that you followed MANDATORY' may not help. The CHECKED-CLEAN update is more structural \u2014 it changes the classification standard for an artifact that WAS produced, rather than adding a check for an artifact that wasn't."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "All three reflections converge on the CHECKED-CLEAN criteria gap in 005004a4 as a key failure point. This is an update to an existing entry that directly addresses the demonstrated failure mode (rubber-stamping unverifiable attributed content as factually clean). It is the smallest change with the highest expected impact: it fixes the epistemic standard for an artifact the agent already produces, rather than adding new entries or relying on meta-audit procedures.",
+      "conservatism_rationale": "A single trace (with two identical rollouts) showing a consistent failure justifies updating the entry that directly enabled the error. The update is narrow (adding CHECKED-CLEAN criteria and an UNVERIFIABLE ceiling) and does not change the entry's structure or other functions. New standalone entries (attributed quote procedure, mandatory artifact audit) are deferred: the attributed quote procedure is partially covered by 29e534bd's existing ALL-UNVERIFIABLE CEILING, and the mandatory artifact audit's effectiveness is uncertain. If the 005004a4 update proves insufficient in future traces, escalation to new entries becomes better-evidenced.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts are deterministically identical. The judge rated INCORRECT Candidate [4] at 6.0 above CORRECT Candidate [1] at 5.0, selecting [4] as best. All four candidates present text in quotation marks attributed to the same six ML textbook authors (Mitchell, Bishop, Goodfellow et al., Ng, Domingos, Murphy) but with different wording per source. None of these attributed quotes can be externally verified \u2014 they are almost certainly LLM-generated fabrications. The judge's decisive differentiator was that [4]'s quotes were 'more coherent and source-aligned overall,' a purely subjective impression of unverifiable fabricated content.\\n\\n## Playbook Failures\\n\\n### 1. [29e534bd] DIFF TABLE never built despite MANDATORY TRIGGER being met\\nCandidates [1] and [4] cite the same six named sources with different attributed quotes. The entry explicitly states: 'MANDATORY TRIGGER: When 2+ candidates attribute specific content (quotes, definitions, statistics) to the same named source, the DIFF TABLE must be built BEFORE any relative scoring.' This trigger was clearly met and entirely skipped. Had the DIFF TABLE been built, conflicting quotes for each source would have been flagged ANTI-CORROBORATED, and the ALL-UNVERIFIABLE CEILING (\u22640.3 point spread) would have applied, preventing the 1.0-point gap that chose the wrong candidate.\\n\\n### 2. [005004a4] SYM_TABLE produced but CHECKED-CLEAN was rubber-stamped\\nThe MANDATORY SYMMETRY TABLE was produced \u2014 the agent followed the form. But CHECKED-CLEAN was granted to [1] and [4] for attributed quotes without any positive verification evidence. The agent treated 'I couldn't find a counter-fact' as equivalent to 'verified correct.' This is the critical epistemic error: for content that cannot be independently verified (attributed quotes from real books), absence of disproof is NOT proof. The CHECKED-CLEAN designation gave false assurance that both candidates' content was factually sound, which then freed the judge to differentiate on subjective coherence. The current entry's CLASSIFY categories include (c) PLAUSIBLE/VERIFIED ('No counter-fact, consistent with known facts \u2192 no penalty'), but this is dangerously permissive for content that is inherently unverifiable \u2014 attributed verbatim quotes cannot be confirmed by an LLM without access to the actual text.\\n\\n### 3. Drift between stated criteria and actual differentiator\\nThe judge's stated evaluation criteria focused on prompt-constraint compliance (quoted definitions + attribution). Both [1] and [4] passed this test equally. The actual differentiator was subjective 'coherence and source-alignment' \u2014 which is not a stated constraint. Entry [93b0e8f9] asks the judge to 'confirm the top-rated candidate genuinely best satisfies' stated criteria, but this consistency check didn't effectively fire. The judge used a polish signal ('sounds more like something this author would write') as if it were a factual finding.\\n\\n## What Would Have Prevented the Failure\\n\\nThe most direct prevention point is the CHECKED-CLEAN classification in the SYM_TABLE (005004a4). If the entry required positive verification evidence for CHECKED-CLEAN status (rather than mere absence of counter-facts), the agent would have been forced to classify the attributed quotes as UNVERIFIABLE. With UNVERIFIABLE content unable to create meaningful score separation, the subjective coherence differentiator would have been blocked, and the candidates would have been scored within \u22640.3 points \u2014 likely resulting in [1] being at or above [4].\\n\\nThe DIFF TABLE (29e534bd) not firing is also a serious failure, but the enforcement gap there is harder to fix by updating the entry itself (it already says MANDATORY). A meta-audit step could help but introduces a new rule whose effectiveness is uncertain. The CHECKED-CLEAN criteria update is more directly actionable: it changes the standard for an artifact that WAS produced, ensuring it produces correct classifications rather than relying on a second artifact that wasn't produced at all.\\n\\n## Recommended Mutation\\n\\nUpdate [005004a4] to add explicit CHECKED-CLEAN criteria. Specifically:\\n1. In the CLASSIFY section, add that (c) PLAUSIBLE/VERIFIED requires positive evidence \u2014 not just absence of counter-facts. For content attributed to named external sources (verbatim quotes, specific statistics, citations), the agent cannot verify from memory alone; such content must be classified as UNVERIFIABLE rather than PLAUSIBLE/VERIFIED.\\n2. In the SYM_TABLE instructions, specify that CHECKED-CLEAN requires one of: (a) concrete positive verification, or (b) reclassification as UNVERIFIABLE with a note that the content cannot drive score differentiation beyond 0.3 points.\\n3. Add a COHERENCE TRAP WARNING: 'sounds like something this author would say' or 'more source-aligned' applied to unverifiable attributed content is a polish signal, not a factual assessment.\\n\\nThis single update to an existing entry addresses the root cause, is well-supported by all three reflections, and avoids introducing new standalone entries from a single trace.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The judge used subjective 'coherence and source-alignment' impressions to differentiate between candidates whose primary content (attributed quotes from ML textbook authors) is entirely unverifiable. The SYM_TABLE's CHECKED-CLEAN designation rubber-stamped unverifiable content as factually sound, freeing the judge to differentiate on polish rather than accuracy. The DIFF TABLE (29e534bd) was never built despite its mandatory trigger being clearly met, so the ALL-UNVERIFIABLE CEILING was never applied.\",\n    \"important_disagreements\": [\n      \"Anchor tagged 005004a4 as neutral; credit_attribution and principle_extraction both tagged it harmful. Resolved in favor of harmful: the SYM_TABLE was produced but CHECKED-CLEAN was granted without positive evidence, giving false assurance. The entry's artifact was followed in form but produced misleading results \u2014 this is worse than neutral.\",\n      \"Anchor proposed a standalone ATTRIBUTED QUOTE VERIFICATION PROCEDURE as a new entry. Principle_extraction argued this is overly task-specific and that the fix should target the general epistemic error (treating 'not disproven' as 'verified'). Resolved in favor of principle_extraction: the general CHECKED-CLEAN criteria update in 005004a4 addresses the root cause more broadly and avoids a new entry from a single trace.\",\n      \"Credit_attribution tagged 8e0d9579 (polish entry) as harmful because 'coherence' bypassed its examples; anchor and principle_extraction tagged it neutral. Resolved as neutral: the entry's core principle is correct; the agent's failure was in not recognizing coherence-of-unverifiable-content as polish. The CHECKED-CLEAN update in 005004a4 addresses this more directly than expanding 8e0d9579's example list.\",\n      \"Principle_extraction proposed a new L3 mandatory-artifact completion audit. While well-reasoned, skepticism applies: if the agent ignores 'MANDATORY' in 29e534bd, another meta-level 'check that you followed MANDATORY' may not help. The CHECKED-CLEAN update is more structural \u2014 it changes the classification standard for an artifact that WAS produced, rather than adding a check for an artifact that wasn't.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"All three reflections converge on the CHECKED-CLEAN criteria gap in 005004a4 as a key failure point. This is an update to an existing entry that directly addresses the demonstrated failure mode (rubber-stamping unverifiable attributed content as factually clean). It is the smallest change with the highest expected impact: it fixes the epistemic standard for an artifact the agent already produces, rather than adding new entries or relying on meta-audit procedures.\",\n    \"conservatism_rationale\": \"A single trace (with two identical rollouts) showing a consistent failure justifies updating the entry that directly enabled the error. The update is narrow (adding CHECKED-CLEAN criteria and an UNVERIFIABLE ceiling) and does not change the entry's structure or other functions. New standalone entries (attributed quote procedure, mandatory artifact audit) are deferred: the attributed quote procedure is partially covered by 29e534bd's existing ALL-UNVERIFIABLE CEILING, and the mandatory artifact audit's effectiveness is uncertain. If the 005004a4 update proves insufficient in future traces, escalation to new entries becomes better-evidenced.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 1,
+        "harmful": 2
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

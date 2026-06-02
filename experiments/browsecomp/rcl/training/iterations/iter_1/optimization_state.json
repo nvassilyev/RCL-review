@@ -1,0 +1,164 @@
+{
+  "playbook_assessment": {
+    "health": "fragile",
+    "playbook_size_trend": "growing",
+    "coverage_inventory": {
+      "total_entries": 3,
+      "sections_present": [
+        "answer_extraction",
+        "query_formulation",
+        "search_strategies"
+      ],
+      "section_entry_counts": {
+        "search_strategies": 1,
+        "query_formulation": 1,
+        "answer_extraction": 1
+      },
+      "underrepresented_sections": [
+        "answer_extraction",
+        "query_formulation",
+        "search_strategies"
+      ],
+      "observed_gap_areas": [
+        "document deep-reading / evidence extraction from found results",
+        "compound question decomposition (questions with 2+ independent sub-questions)",
+        "search budget management / when to stop searching and commit",
+        "multi-hop reasoning across documents"
+      ]
+    },
+    "entry_maturity": {
+      "battle_tested": [],
+      "developing": [],
+      "untested_or_new": [
+        "056f0a9e [answer_extraction] +0/-0, tested=0",
+        "7ca56b8b [search_strategies] +0/-0, tested=0",
+        "f9a44264 [query_formulation] +0/-0, tested=0"
+      ],
+      "recent_additions_needing_time": [],
+      "at_risk": []
+    },
+    "coherence_issues": []
+  },
+  "change_ledger": [
+    {
+      "iteration": 1,
+      "summary": "Bootstrapped playbook from empty with 3 foundational entries targeting the 3 cross-cutting failure patterns observed in all 3 failing tasks: multi-clue decomposition, search rut breaking, and answer precision verification.",
+      "source_tasks": [
+        "1042",
+        "1139",
+        "353"
+      ],
+      "reflection_summary": "All 3 tasks failed (0/3 pass). Core patterns: (1) agent searches all constraints simultaneously instead of decomposing, (2) agent repeats minor keyword variations for 20-50 searches without strategic pivot, (3) agent returns wrong-granularity or empty answers. In task 1042, the gold document appeared 5+ times but ag...",
+      "operations": [
+        {
+          "op": "ADD",
+          "entry_id": "7ca56b8b",
+          "section": "search_strategies",
+          "rationale": "Tasks 1042 and 353 both required identifying an unnamed entity from multiple clues; agent searched all constraints at once and found nothing.",
+          "expected_effect": "Agent decomposes multi-clue puzzles into staged searches, builds candidate lists, and verifies systematically.",
+          "source_tasks": [
+            "1042",
+            "353"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "f9a44264",
+          "section": "query_formulation",
+          "rationale": "All 3 tasks showed repetitive search loops. Task 1042: gold doc appeared 5+ times but agent never read author field. Task 1139: agent needed to deep-read thesis. Task 353: synon...",
+          "expected_effect": "Agent detects when searches are stuck, expands synonyms, flips search axis, and inspects found documents more carefully.",
+          "source_tasks": [
+            "1042",
+            "1139",
+            "353"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "056f0a9e",
+          "section": "answer_extraction",
+          "rationale": "Task 1139: semantic precision failure (container vs component term). Task 1042: empty answer returned. Task 353: answer submitted without constraint verification.",
+          "expected_effect": "Agent runs pre-submission checklist catching semantic misalignment, unverified constraints, and empty-answer situations.",
+          "source_tasks": [
+            "1042",
+            "1139",
+            "353"
+          ]
+        }
+      ],
+      "observed_effect": "too early to judge",
+      "status": "untested",
+      "evidence_strength": "single_trace",
+      "reversal_risk": "high",
+      "notes": "All 3 entries are foundational and address patterns confirmed across all 3 tasks in this batch. They provide unique coverage and should not be removed until tested. The specific examples embedded (Conrad Anker/watch, ulwaluko/ukudlanga,..."
+    }
+  ],
+  "open_hypotheses": [
+    "The model may struggle to follow multi-step procedural checklists even when provided \u2014 need to watch whether entries are followed vs ignored.",
+    "Document deep-reading may need its own dedicated entry; currently covered as a sub-point in f9a44264 but could be a separate gap.",
+    "Compound questions (task 353 appeared to bundle two independent sub-questions) may need a dedicated decomposition entry beyond multi-clue identification.",
+    "The 'never return empty' instruction in 056f0a9e may help recover partial credit on tasks where the agent currently gives up."
+  ],
+  "preserve_until_more_evidence": [
+    "7ca56b8b [search_strategies] - only entry covering multi-clue decomposition; directly addresses 2/3 task failures; needs testing before any modification",
+    "f9a44264 [query_formulation] - only entry addressing search rut detection and document inspection; key for the missed-author-field failure pattern",
+    "056f0a9e [answer_extraction] - only entry covering answer precision; addresses semantic conflation and empty-answer failures"
+  ],
+  "interference_patterns": [],
+  "strategy_memory": {
+    "questions": [
+      "Are the current entries specific enough to change agent behavior, or too generic to trigger action?",
+      "Should document-reading strategy be a separate entry or is it sufficient as a sub-point?",
+      "What other task families exist beyond multi-clue identification? Need broader sampling to discover gaps."
+    ],
+    "notes": [
+      "All 3 iteration-1 entries were motivated by the same 3 tasks. Future iterations on different task types will reveal whether coverage is adequate or has major blind spots.",
+      "The playbook is bootstrapping from zero. Priority is broad coverage of common failure modes over refinement of existing entries.",
+      "Task 1042's Conrad Anker case is a strong reference example \u2014 gold document appeared repeatedly in results but agent never exploited it. This is the archetype for 'inspect what you already found.'"
+    ]
+  },
+  "model_observations": {
+    "capability_gaps_observed": [
+      "Does not inspect document metadata (author fields) even when documents appear repeatedly in results",
+      "Fails to decompose multi-constraint queries into staged searches",
+      "Falls into repetitive search loops with minor keyword variations (20-50 searches wasted)",
+      "Returns empty answers instead of best guesses when uncertain",
+      "Conflates container and component terms (answers with broader concept when asked for specific sub-component)"
+    ],
+    "strategies_that_work": [],
+    "entries_the_model_struggles_with": [],
+    "interference_observed": []
+  },
+  "agent_reasoning_patterns": {
+    "reliable_behaviors": [],
+    "common_mistakes": [
+      "Searches for all constraints simultaneously in a single query",
+      "Repeats near-identical searches without strategic pivot",
+      "Ignores document metadata (author, title) as evidence",
+      "Interprets category terms narrowly (e.g., 'sportsperson' \u2192 only traditional athletes)",
+      "Gives up and returns empty answer rather than best guess"
+    ],
+    "entry_styles_that_work": {
+      "unknown": "No tested entries yet; all 3 entries use TRIGGER/WHY/PROCEDURE format with concrete examples"
+    },
+    "scaffolding_effectiveness": {
+      "unknown": "No tested entries yet; procedural checklists and worked examples embedded in entries need validation"
+    }
+  },
+  "optimization_velocity": {
+    "stage": "exploration",
+    "stage_rationale": "Iteration 1 bootstrapped from an empty playbook. Only 3 entries exist, all untested. Failures are predominantly easy mistakes (missing coverage, no decomposition strategy, no answer verification) rather than hard capability limits. Many task families likely uncovered. Priority is breadth.",
+    "iterations_at_current_stage": 1,
+    "recent_mutation_success_rate": "0/3 \u2014 all changes untested, no subsequent iteration data yet",
+    "recommendation": "Continue adding entries for uncovered task families as new failure patterns emerge. Current entries need testing before refinement. Watch for whether the TRIGGER/WHY/PROCEDURE format actually changes agent behavior.",
+    "recurring_failure_patterns": [
+      "Repetitive search loops without strategic pivot (seen in all 3 tasks)",
+      "Failure to decompose multi-constraint problems (seen in tasks 1042 and 353)",
+      "Semantic precision errors in answer extraction (seen in tasks 1139 and 353)"
+    ],
+    "single_occurrence_failures": [
+      "Narrow interpretation of category terms like 'sportsperson' (task 1042 only)",
+      "Missing document author field as evidence source (task 1042 only)"
+    ]
+  }
+}

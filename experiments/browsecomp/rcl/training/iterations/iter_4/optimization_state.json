@@ -1,0 +1,305 @@
+{
+  "playbook_assessment": {
+    "health": "fragile",
+    "playbook_size_trend": "growing",
+    "coverage_inventory": {
+      "total_entries": 5,
+      "sections_present": [
+        "answer_extraction",
+        "common_mistakes",
+        "query_formulation",
+        "search_strategies"
+      ],
+      "section_entry_counts": {
+        "search_strategies": 1,
+        "query_formulation": 1,
+        "answer_extraction": 1,
+        "common_mistakes": 2
+      },
+      "underrepresented_sections": [
+        "answer_extraction",
+        "query_formulation",
+        "search_strategies"
+      ],
+      "observed_gap_areas": [
+        "document deep-reading / evidence extraction from found results",
+        "multi-hop reasoning across documents",
+        "pre-search hypothesis generation (listing cultural/institutional/domain contexts before first query)",
+        "tasks beyond multi-clue entity identification \u2014 only 1 task family deeply analyzed across 4 iterations"
+      ]
+    },
+    "entry_maturity": {
+      "battle_tested": [],
+      "developing": [],
+      "untested_or_new": [
+        "7ca56b8b [search_strategies] +2/-0, tested=2",
+        "66f87cbc [common_mistakes] +0/-0, tested=0",
+        "c67e6085 [common_mistakes] +0/-0, tested=0",
+        "f9a44264 [query_formulation] +0/-0, tested=0",
+        "056f0a9e [answer_extraction] +0/-1, tested=1"
+      ],
+      "recent_additions_needing_time": [],
+      "at_risk": []
+    },
+    "coherence_issues": [
+      "f9a44264 (rut detection at 3+ same results), c67e6085 (assumption reset at 10+ failed searches), and 66f87cbc (verification loop when candidate present) form an implicit escalation ladder but are not sequenced. Agent may not know which to follow when.",
+      "7ca56b8b KEY RULES (foreignness markers, ambiguous terms) and c67e6085 (geographic/domain alternatives) both address cultural pivot from different angles \u2014 intended as reinforcement but untested together."
+    ]
+  },
+  "change_ledger": [
+    {
+      "iteration": 1,
+      "summary": "Bootstrapped playbook with 3 foundational entries: multi-clue decomposition, search rut detection, answer precision checklist.",
+      "source_tasks": [
+        "1042",
+        "1139",
+        "353"
+      ],
+      "reflection_summary": "All 3 tasks failed. Agent searches all constraints simultaneously, repeats minor keyword variations 20-50 times, returns wrong-granularity or empty answers.",
+      "operations": [
+        {
+          "op": "ADD",
+          "entry_id": "7ca56b8b",
+          "section": "search_strategies",
+          "rationale": "Tasks 1042/353 required identifying unnamed entity from multiple clues; agent searched all constraints at once.",
+          "expected_effect": "Agent decomposes multi-clue puzzles into staged searches.",
+          "source_tasks": [
+            "1042",
+            "353"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "f9a44264",
+          "section": "query_formulation",
+          "rationale": "All 3 tasks showed repetitive search loops.",
+          "expected_effect": "Agent detects search ruts and pivots strategy.",
+          "source_tasks": [
+            "1042",
+            "1139",
+            "353"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "056f0a9e",
+          "section": "answer_extraction",
+          "rationale": "Multiple failure modes: semantic precision, empty answers, unverified submissions.",
+          "expected_effect": "Agent runs pre-submission checklist catching common answer errors.",
+          "source_tasks": [
+            "1042",
+            "1139",
+            "353"
+          ]
+        }
+      ],
+      "observed_effect": "7ca56b8b HELPFUL on tasks 1042 (iter 2) and 221 (iter 3) \u2014 decomposition followed correctly. NEUTRAL on iter-4 tasks (1243/930/126) where entry lacked cultural pivot and author-first strategies \u2014 motivated major rewrite. f9a44264 never engaged across 4 iterations despite clear...",
+      "status": "mixed",
+      "evidence_strength": "multi_trace",
+      "reversal_risk": "low",
+      "notes": "7ca56b8b core decomposition logic validated but needed expansion. f9a44264 has 4 iterations of non-engagement \u2014 format/trigger problem. Original 056f0a9e contradiction fixed in iter 2."
+    },
+    {
+      "iteration": 2,
+      "summary": "Fixed harmful contradiction in 056f0a9e (constraint scoring not gating) and added 66f87cbc (verification loop trap).",
+      "source_tasks": [
+        "1042"
+      ],
+      "reflection_summary": "Both rollouts found correct answer, entered 30+ search verification loop. Rollout 1 never submitted; Rollout 2 eventually submitted correctly.",
+      "operations": [
+        {
+          "op": "UPDATE",
+          "entry_id": "056f0a9e",
+          "section": "answer_extraction",
+          "rationale": "Internal contradiction caused answer paralysis.",
+          "expected_effect": "Agent uses constraint status to rank candidates, not block submission.",
+          "source_tasks": [
+            "1042"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "66f87cbc",
+          "section": "common_mistakes",
+          "rationale": "Both rollouts spent 30+ searches in identical verification loops.",
+          "expected_effect": "Agent detects verification loops and commits to best candidate.",
+          "source_tasks": [
+            "1042"
+          ]
+        }
+      ],
+      "observed_effect": "056f0a9e rewrite partially effective on task 221 (iter 3, 1/2 rollouts applied correctly). Neutral on iter-4 tasks (no candidates found, entry irrelevant). 66f87cbc never engaged across iters 3-4. Irrelevant on iter-4 tasks (upstream retrieval failure, no candidates).",
+      "status": "mixed",
+      "evidence_strength": "multi_trace",
+      "reversal_risk": "medium",
+      "notes": "66f87cbc has 0 engagement but iter-4 tasks were upstream retrieval failures (no candidates = entry irrelevant, not entry failure). Needs candidate-present tasks to properly test."
+    },
+    {
+      "iteration": 3,
+      "summary": "Updated 056f0a9e with nested referent resolution procedure and biographical-beats-topical disambiguation rule.",
+      "source_tasks": [
+        "221"
+      ],
+      "reflection_summary": "Task 221: Rollout 1 chose wrong book via surface topic match. Rollout 2 correctly committed using biographical reasoning.",
+      "operations": [
+        {
+          "op": "UPDATE",
+          "entry_id": "056f0a9e",
+          "section": "answer_extraction",
+          "rationale": "Rollout 1 chose surface topic match over biographical match when funding constraint was unverifiable.",
+          "expected_effect": "Agent resolves referent chain and prefers biographical matches over surface topic matches.",
+          "source_tasks": [
+            "221"
+          ]
+        }
+      ],
+      "observed_effect": "Iter-4 tasks did not involve nested referent patterns. Update remains untested on target scenario.",
+      "status": "untested",
+      "evidence_strength": "single_trace",
+      "reversal_risk": "medium",
+      "notes": "Low harm risk \u2014 reinforces behavior already succeeded in rollout 2. Needs nested-referent tasks."
+    },
+    {
+      "iteration": 4,
+      "summary": "Major update to 7ca56b8b adding foreignness markers, author-first workflow, ambiguous term expansion, event-first strategy. Added c67e6085 (assumption lock-in reset procedure).",
+      "source_tasks": [
+        "1243",
+        "930",
+        "126"
+      ],
+      "reflection_summary": "0/3 pass. Task 1243: 150 searches locked in Western/Hollywood frame, answer was Pakistani actor (Lollywood). Task 930: 40+ searches locked into Harvard, answer was Antioch University. Task 126: needed compound decomposition and unusual identifier exploitation. All entries rated neutral \u2014 none helped, none harmed. Do...",
+      "operations": [
+        {
+          "op": "UPDATE",
+          "entry_id": "7ca56b8b",
+          "section": "search_strategies",
+          "rationale": "All 3 tasks required strategies beyond basic clue ranking: foreignness markers (1243), author-first search (930), ambiguous term expansion (930), unusual identifier exploitation...",
+          "expected_effect": "Agent recognizes foreignness markers, pivots cultural context, searches for authors before papers, expands ambiguous terms, exploits name-as-identifier patterns.",
+          "source_tasks": [
+            "1243",
+            "930",
+            "126"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "c67e6085",
+          "section": "common_mistakes",
+          "rationale": "All 3 tasks exhausted 30-50+ searches locked into wrong assumptions. Existing entries address tactical pivots but not assumption-level resets.",
+          "expected_effect": "Agent executes mandatory assumption reset after 10+ failed searches, generating and testing alternative hypotheses across geography, institution, domain.",
+          "source_tasks": [
+            "1243",
+            "930",
+            "126"
+          ]
+        }
+      ],
+      "observed_effect": "too early to judge",
+      "status": "untested",
+      "evidence_strength": "single_trace",
+      "reversal_risk": "high",
+      "notes": "Both changes address the most consistently observed failure pattern (assumption lock-in, confirmed on 5+ tasks across 4 iterations). High reversal risk only because untested \u2014 underlying pattern is well-established. 7ca56b8b update is su..."
+    }
+  ],
+  "open_hypotheses": [
+    "f9a44264 may be fundamentally ineffective in its current format \u2014 4 iterations of non-engagement. Consider format overhaul (e.g., HARD RULES with numeric thresholds like c67e6085) or consolidation.",
+    "c67e6085's 'after 10 failed searches' threshold may be too late \u2014 agent was deeply committed to wrong frame by search 10 on task 1243. Pre-search hypothesis generation might be more effective.",
+    "66f87cbc is irrelevant when the problem is upstream retrieval failure (no candidates found). Its 0-engagement record is partly explained by iter-4 tasks being wrong-frame failures, not verification-loop failures.",
+    "7ca56b8b's KEY RULES format is untested \u2014 agent reliably follows numbered PROCEDURE steps but may process KEY RULES blocks differently.",
+    "train_pass dip (0.61\u21920.50) likely reflects batch composition (3 hard tasks requiring non-Western/non-obvious contexts) rather than playbook regression.",
+    "Assumption lock-in may be the model's single most damaging failure mode \u2014 confirmed across 5+ tasks, 4 iterations, multiple cultural/institutional contexts.",
+    "Would a single consolidated 'search health monitor' entry (combining f9a44264 + 66f87cbc + elements of c67e6085) be more effective than three separate entries?"
+  ],
+  "preserve_until_more_evidence": [
+    "7ca56b8b [search_strategies] \u2014 core decomposition validated +2/-0 on prior tasks. Iter-4 update adds critical foreignness/author-first/ambiguous-term coverage. Untested in new form.",
+    "c67e6085 [common_mistakes] \u2014 new iter 4. Only entry addressing assumption-level resets. Pattern confirmed on 5+ tasks. Needs testing before any modification.",
+    "f9a44264 [query_formulation] \u2014 unique coverage for search axis flipping and document inspection. Never engaged but guidance content is sound. At risk \u2014 needs format overhaul, not deletion.",
+    "66f87cbc [common_mistakes] \u2014 unique coverage for verification loop detection. Non-engagement partly explained by iter-4 tasks being upstream failures. Needs candidate-present tasks.",
+    "056f0a9e [answer_extraction] \u2014 iter-3 nested referent + biographical-beats-topical update untested on target scenarios. Unique answer precision coverage."
+  ],
+  "interference_patterns": [
+    "f9a44264 (3+ same results \u2192 change approach), c67e6085 (10+ failed searches \u2192 mandatory reset), 66f87cbc (candidate present + 5+ same docs \u2192 commit) form an implicit escalation ladder but are not explicitly sequenced.",
+    "7ca56b8b KEY RULES (foreignness markers, ambiguous terms) and c67e6085 (geographic/domain alternatives) both address cultural/institutional pivot \u2014 intentional reinforcement but untested together."
+  ],
+  "strategy_memory": {
+    "questions": [
+      "Why do loop-detection entries (f9a44264, 66f87cbc) fail to engage? Is it format, trigger salience, placement, or something about how the model processes instructions during extended search?",
+      "Would consolidating f9a44264 + 66f87cbc + c67e6085 into one 'search monitoring' entry be more effective than three separate entries?",
+      "What task families exist beyond multi-clue entity identification? ~15 tasks seen but only entity-ID tasks analyzed in depth.",
+      "Does the model process KEY RULES blocks as reliably as numbered PROCEDURE steps?",
+      "Would pre-search hypothesis generation prevent lock-in better than post-failure resets?"
+    ],
+    "notes": [
+      "Tasks studied in depth: 1042 (Conrad Anker), 221 (Barbara Hodgson), 1243 (Shaan Shahid/Lollywood), 930 (Antioch U paper), 126 (compound clue + unusual identifier). ~15 tasks seen total.",
+      "Assumption lock-in is the dominant recurring failure: confirmed on tasks 1042, 221, 1243, 930, 126 across 4 iterations. Now addressed by 7ca56b8b update + c67e6085 \u2014 needs testing.",
+      "7ca56b8b is the only entry with validated HELPFUL signal (+2/-0 on original). Iter-4 update is substantial and untested.",
+      "All 5 entries remain in untested/new bucket after 4 iterations. No entry has reached developing or battle-tested.",
+      "Iter-4 batch was unusually hard (non-Western/non-obvious contexts). Metric dip likely reflects batch composition."
+    ]
+  },
+  "model_observations": {
+    "capability_gaps_observed": [
+      "Assumption lock-in: 30-150 searches on wrong frame without pivot \u2014 confirmed on tasks 1042, 221, 1243, 930, 126",
+      "Western/familiar-context default: Hollywood, Harvard, American assumed when clues are ambiguous \u2014 tasks 1243, 930",
+      "Does not recognize foreignness markers ('lived in the United States for X years' = not American) \u2014 task 1243",
+      "Repetitive search loops (15-150 near-identical queries) \u2014 confirmed across all studied tasks",
+      "Loop-detection entries not followed during extended search sequences \u2014 f9a44264 and 66f87cbc across 4 iterations",
+      "Does not inspect document metadata (author fields) as evidence \u2014 tasks 1042, 1243"
+    ],
+    "strategies_that_work": [
+      "Multi-clue decomposition (7ca56b8b original): validated helpful on tasks 1042 and 221",
+      "Constraint scoring when applied (056f0a9e): rollout 2 on task 221 correctly scored and committed"
+    ],
+    "entries_the_model_struggles_with": [
+      "f9a44264 [query_formulation]: 4 iterations without engagement despite clear trigger conditions",
+      "66f87cbc [common_mistakes]: 0 engagement, though partly explained by iter-4 tasks being upstream failures"
+    ],
+    "interference_observed": [
+      "Original 056f0a9e step 2 vs step 5 contradiction \u2014 fixed in iter 2"
+    ]
+  },
+  "agent_reasoning_patterns": {
+    "reliable_behaviors": [
+      "Multi-clue decomposition when instructed (7ca56b8b): followed correctly on tasks 1042 and 221",
+      "Constraint scoring at answer-selection phase when candidates exist (rollout 2, task 221)"
+    ],
+    "common_mistakes": [
+      "Locks into first plausible assumption without testing alternatives (5+ tasks, 4 iterations)",
+      "Repeats near-identical searches 15-150 times without strategic pivot (all studied tasks)",
+      "Defaults to Western/familiar cultural contexts (tasks 1243, 930)",
+      "Does not recognize linguistic foreignness markers (task 1243)",
+      "Ignores document metadata as evidence (tasks 1042, 1243)",
+      "Does not follow loop-detection entries during extended search (4 iterations)"
+    ],
+    "entry_styles_that_work": {
+      "TRIGGER_WHY_PROCEDURE_numbered_steps": "7ca56b8b used this format and was followed on 2 tasks. Procedural scaffolding effective.",
+      "explicit_comparison_rules": "'biographical beats topical \u2014 ALWAYS' applied successfully by rollout 2 on task 221.",
+      "KEY_RULES_blocks": "Added to 7ca56b8b iter 4 \u2014 untested format. Watch engagement."
+    },
+    "scaffolding_effectiveness": {
+      "ordered_procedure_steps": "Agent follows numbered procedures correctly when reaching relevant phase. Effective for search strategy.",
+      "contradiction_sensitivity": "Agent follows more restrictive instruction when two conflict. Must avoid internal contradictions.",
+      "loop_interruption_triggers": "Neither 'every N searches' nor 'after 3+ same results' engaged across 4 iterations. Format lacks salience during extended search.",
+      "HARD_RULES_with_thresholds": "c67e6085 uses 'After 10/20 failed searches: MUST...' format \u2014 untested. May be more salient than softer triggers."
+    }
+  },
+  "optimization_velocity": {
+    "stage": "exploration",
+    "stage_rationale": "4 iterations completed, 5 entries, all in untested/new maturity bucket. ~15 tasks seen out of 100. Only entity-ID task family deeply analyzed. Most failures are easy mistakes (assumption lock-in without pivot, not following existing guidance) \u2014 addressed by iter-4 changes that need testing. Metric trend (0.33\u21920.28\u21920.61\u21920.50) shows high batch variance; no clear directional trend yet. The playbook is growing organically in response to confirmed failure patterns but no entry has graduated to battle-tested.",
+    "iterations_at_current_stage": 4,
+    "recent_mutation_success_rate": "1/5 entries validated helpful (7ca56b8b original). 3/5 never engaged (f9a44264, 66f87cbc, c67e6085 new). 1/5 mixed (056f0a9e). Iter-4 changes (major 7ca56b8b update + c67e6085 add) untested.",
+    "recommendation": "Priority 1: Test iter-4 changes on assumption-lock-in tasks \u2014 this is the most validated failure pattern (5+ tasks). Priority 2: Diagnose f9a44264 non-engagement (4 iterations) \u2014 consider format overhaul to HARD RULES style or consolidation. Priority 3: Broaden task sampling beyond entity-ID to discover unknown gaps.",
+    "recurring_failure_patterns": [
+      "Assumption lock-in without pivot: confirmed across 5+ tasks (1042, 221, 1243, 930, 126), 4 iterations. Now addressed by 7ca56b8b update + c67e6085.",
+      "Loop-detection entries not engaging: f9a44264 and 66f87cbc never triggered across 4 iterations despite clear conditions. Format/trigger problem.",
+      "Western/familiar-context default: confirmed on tasks 1243 (Hollywood\u2192Lollywood) and 930 (Harvard\u2192Antioch). Addressed by foreignness markers in 7ca56b8b + alternatives in c67e6085."
+    ],
+    "single_occurrence_failures": [
+      "Author-first search needed (task 930 \u2014 paper by unknown author at unknown university)",
+      "Unusual identifier exploitation needed (task 126 \u2014 country name as person name)",
+      "Narrow interpretation of category terms (task 1042 \u2014 'sportsperson')",
+      "Semantic conflation of container vs component terms (task 1139)",
+      "Compound question decomposition failure (task 353)"
+    ]
+  }
+}

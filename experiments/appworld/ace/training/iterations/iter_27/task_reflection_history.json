@@ -1,0 +1,1390 @@
+{
+  "6ea6792_1": [
+    {
+      "iteration": 1,
+      "analysis": "## Root Cause: Over-Broad Action Without Applying Task Filtering Criteria\n\nThe agent approved ALL 26 pending Venmo payment requests, but the test asserts that only a specific subset (`private_data.to_accept_payment_request_ids`) should have been updated. The agent applied the action too broadly, failing to filter which requests to approve.\n\n## Evidence of Abandoned Filtering Investigation\n\nThe agent explored phone app APIs across multiple steps (tried `show_contacts`, looked at `show_contact_relationships`, checked `phone.login`), suggesting the task likely required filtering payment requests based on the user's phone contacts (e.g., 'approve requests only from people in my contacts'). However, the agent NEVER actually logged into the phone app, fetched contacts, or cross-referenced senders against contacts. It explored the relevant data source but abandoned the investigation before using it.\n\n## Additional Complication: Silent Partial Approval\n\nIn the failed bulk-approval step (without payment card), the agent's code lacked try/except, so when the Venmo balance ran out, the exception halted the loop. However, 15 requests had already been silently approved using the balance before the failure. The agent didn't realize this\u2014it proceeded to re-fetch pending requests, found only 11 remaining, and approved those with payment cards. This means ALL 26 were ultimately approved, compounding the over-approval problem. If the agent had properly filtered first, the balance error might have been less damaging.\n\n## Missing Playbook Entries Needed\n\n### 1. Task Criteria Extraction Procedure (CRITICAL)\n**Trigger**: Any task that involves acting on a set of entities (approve, delete, modify).\n**Procedure**: Before taking ANY action, explicitly extract ALL filtering criteria from the task instruction. Construct an intermediate artifact\u2014a target set of entity IDs\u2014by cross-referencing the primary data source (e.g., payment requests) against any filtering sources (e.g., contacts, relationships, amounts, dates). Only act on entities in the computed target set.\n**Verification**: Before executing, print the target set and confirm it satisfies all stated criteria.\n\n### 2. Cross-Referencing Rule\n**Trigger**: When exploring an API or data source (like the phone app), either USE it in the solution or explicitly document why it's irrelevant.\n**Rule**: If you look up API docs for an app, that's a signal you believe the data is relevant. Never abandon an investigation thread without either using the data or explicitly confirming it's unnecessary.\n\n### 3. Irreversible Bulk Action Guard\n**Trigger**: Before executing a loop of approve/delete/send operations.\n**Procedure**: (a) Compute the exact target set with all filters applied. (b) Print the target set for verification. (c) Confirm count and IDs match expectations. (d) Only then execute. (e) Never run bulk approval without try/except to maintain control.\n**Anti-pattern**: Approving everything and filtering later is catastrophic for irreversible operations.\n\n### 4. Error Recovery Must Preserve Task Constraints\n**Trigger**: When an error occurs mid-execution (e.g., insufficient balance).\n**Rule**: When recovering from an error, only change HOW to perform the action (e.g., add payment card), never change WHAT is being acted upon. Re-derive the target set from the original filtering criteria rather than just re-fetching whatever is still pending.\n\n## Pattern Summary\nThe fundamental failure pattern is: the agent treated 'approve payment requests' as 'approve ALL pending payment requests' when the task required a filtered subset. This is a criteria-extraction and entity-grounding failure. The playbook currently has no entry requiring the agent to extract and enforce task-specific filtering criteria before taking bulk actions.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "62054d35",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3ff1c78e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "6385b186",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "strategies_and_hard_rules",
+          "content": "Before any bulk action (approve, delete, send, modify), explicitly extract ALL filtering criteria from the task instruction. Build a target ID set by cross-referencing relevant data sources. Print the target set and its count. Only act on entities in that set \u2014 never default to 'all'.",
+          "entry_id": "e6d98370"
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "MISTAKE: Approving/deleting/modifying ALL matching entities when the task specifies a filtered subset (e.g., 'approve requests from my contacts' \u2260 'approve all requests'). FIX: Re-read the task instruction, identify qualifier words (from contacts, under $50, from last week, etc.), and build the filtered target set BEFORE acting.",
+          "entry_id": "7bb3b4b2"
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "Cross-referencing workflow for filtered actions: (1) Fetch primary entities (e.g., payment requests). (2) Identify filtering source from task (e.g., phone contacts, specific people). (3) Log into and fetch data from the filtering source. (4) Compute intersection to get target IDs. (5) Print target IDs for verification. (6) Execute action ONLY on target IDs.",
+          "entry_id": "907d694e"
+        },
+        {
+          "op": "ADD",
+          "section": "strategies_and_hard_rules",
+          "content": "If you explore an API or data source (look up docs, list endpoints), either USE it in your solution or explicitly state why it's irrelevant. Abandoning an investigation thread without resolution often means you missed a required filtering step.",
+          "entry_id": "5d010b02"
+        },
+        {
+          "op": "ADD",
+          "section": "useful_code_snippets_and_templates",
+          "content": "Bulk irreversible actions need try/except per item to maintain control:\n```\nresults = []\nfor eid in target_ids:\n    try:\n        r = apis.app.action(id=eid, access_token=token)\n        results.append((eid, 'ok', r))\n    except Exception as e:\n        results.append((eid, 'fail', str(e)))\nprint('succeeded:', [r for r in results if r[1]=='ok'])\nprint('failed:', [r for r in results if r[1]=='fail'])\n```",
+          "entry_id": "45c70c38"
+        },
+        {
+          "op": "ADD",
+          "section": "troubleshooting_and_pitfalls",
+          "content": "When an error occurs mid-bulk-operation (e.g., insufficient balance), fix only HOW to perform the action (e.g., add payment card), not WHAT to act on. Re-derive the target set from original filtering criteria \u2014 don't just re-fetch 'remaining' items, as some may have already been processed and the remaining set no longer matches the original filter.",
+          "entry_id": "acc138c1"
+        }
+      ]
+    }
+  ],
+  "22cc237_2": [
+    {
+      "iteration": 2,
+      "analysis": "## Root Cause Analysis\n\nThe failed test (`user_id_to_share obtained from added_payment_requests matches the private_data.pending_user_id_to_share`) indicates a mismatch in either the Venmo user_ids targeted or the amounts requested. Three out of four tests passed (correct task completion call, correct record types changed, zero updated/removed records), so the structural approach was right but the mapping of people-to-amounts was wrong.\n\n### Most Likely Root Cause: Unreliable Identity Resolution via First-Name Search\n\nThe agent identified Venmo accounts for dinner participants by searching Venmo users by first name only (`apis.venmo.search_users(query=first_name)`). This is fragile and likely mapped at least one person to the wrong Venmo account. The agent initially explored the `phone` app APIs (search_contacts, show_contact_relationships) but **abandoned the investigation thread without using the data**. This directly violates existing playbook entry 5d010b02.\n\nThe phone contacts likely contain the dinner participants' full names, phone numbers, or emails, which would have served as the authoritative bridge to resolve first-name references in the dinner notes to correct Venmo accounts. By skipping this step, the agent matched first names to Venmo users who may share a first name but are different people, resulting in payment requests sent to wrong user_ids.\n\nEvidence supporting this: (1) The agent explored phone API docs but never called `search_contacts`. (2) Several people share last names (Adrian Burton, Robin Burton, Glenn Burton; Martin Blackburn, Matthew Blackburn), suggesting a social group where phone contacts would disambiguate. (3) Adrian Burton had `friends_since: null` on Venmo, hinting this might be a different Adrian from the dinner friend.\n\n### Secondary Possible Root Cause: Combined vs. Per-Dinner Requests\n\nThe agent combined amounts across two separate dinner notes (Spice Symphony Kitchen and Celestial Sweets Spot) into single payment requests per person. For Glenn ($32+$22=$54) and Melissa ($31+$15=$46), this produced combined amounts. If the test expects separate payment requests per dinner event, the user_id_to_share mapping would differ. The agent never considered whether to preserve the per-dinner structure.\n\n## Missing Procedures and Rules\n\n### 1. Identity Resolution Procedure (MISSING)\nWhen task involves people referenced by first name only:\n1. Look up names in phone contacts to get full names, emails, phone numbers\n2. Use those reliable identifiers (email preferred) to find accounts on target platform (Venmo, etc.)\n3. Never rely solely on first-name search on the target platform\n4. Verify the resolved account makes sense (e.g., check friends_since, relationship to user)\n\n### 2. Abandoned Investigation Thread (EXISTING BUT NOT APPLIED)\nEntry 5d010b02 warns against this exact pattern but was not triggered. The agent looked up `phone.search_contacts` and `phone.show_contact_relationships` docs but never used either. The existing rule needs stronger framing: it should trigger a mandatory check before task completion asking 'Did I use every data source I explored?'\n\n### 3. Per-Source-Document Action Consideration (MISSING)\nWhen multiple source documents (notes, emails, etc.) each describe entities to act on, the agent should explicitly decide whether to combine actions per recipient or keep them separate per source document. This decision should be justified and, when ambiguous, the per-document approach is safer since it preserves provenance.\n\n### 4. Post-Action Verification Gate (MISSING)\nAfter creating bulk records, verify them by fetching back the created records and comparing (user, amount) pairs against the computed expected set. This would have caught mismatches before calling complete_task.\n\n### 5. Cross-Referencing Workflow Not Fully Applied\nEntry 907d694e describes a cross-referencing workflow, but it was not applied to the identity resolution step. The workflow mentions 'Identify filtering source from task' \u2014 phone contacts should have been identified as the authoritative source for resolving person names to platform accounts.\n\n## Pattern Summary\nThe core failure pattern is: **the agent explored a relevant data source (phone contacts) but abandoned it, then used a fragile alternative (first-name platform search) for identity resolution, leading to incorrect person-to-account mappings.** This is a recurring risk in multi-app tasks where person references must be resolved across platforms. The fix is a mandatory identity resolution procedure that always starts from the user's own contact book.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "62054d35",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3ff1c78e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "7bb3b4b2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "907d694e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "6385b186",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "e6d98370",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "5d010b02",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "acc138c1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "45c70c38",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "62054d35",
+          "content": "Use `phone` app as the AUTHORITATIVE source for resolving person identities across platforms: `apis.phone.search_contacts(access_token=token, query=name)` returns full names, emails, phone numbers. Always resolve names through phone contacts BEFORE searching on target platforms (Venmo, Gmail, etc.)."
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "5d010b02",
+          "content": "PRE-COMPLETION GATE: Before calling complete_task, list every app/API you explored (looked up docs, listed endpoints). If you explored an app's docs but never called its data APIs, STOP and either use it or write an explicit justification why it's irrelevant. Abandoning an explored data source almost always means you skipped a required identity resolution or filtering step."
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "Identity resolution procedure (when task references people by first name only): (1) Search phone contacts (`apis.phone.search_contacts`) to get full names and email addresses. (2) Use email addresses to look up or verify accounts on the target platform (e.g., `apis.venmo.search_users(query=email)`). (3) NEVER rely solely on first-name search on the target platform \u2014 multiple users may share a first name, and `friends_since: null` is a red flag for wrong match. (4) Cross-check: the resolved account's last name should match phone contact's last name.",
+          "entry_id": "9ea1c2a6"
+        },
+        {
+          "op": "ADD",
+          "section": "verification_checklist",
+          "content": "After bulk record creation (payment requests, messages, orders), fetch back the created records and compare (recipient_id/email, amount/content) pairs against your computed expected set. Print both sets side by side. Flag and fix any mismatches before calling complete_task.",
+          "entry_id": "b2393d14"
+        }
+      ]
+    },
+    {
+      "iteration": 7,
+      "analysis": "## Root Cause of Failure\n\nThe agent correctly identified 4 unpaid people (Adrian, Katie, Melissa, Glenn) but then introduced an EXTRA filtering step not required by the task: checking whether each unpaid person already had a pending Venmo payment request. Katie had an existing pending request (likely from a *different* dinner), so the agent excluded her, creating only 3 payment requests instead of the required 4. The failed test confirms: the expected `pending_user_id_to_share` included Katie.\n\n## Core Issue: Over-Filtering by Adding Unrequested Criteria\n\nThe task said to send payment requests to people who haven't paid their share. The agent correctly computed the unpaid set but then added a self-invented criterion: 'skip if they already have a pending payment request.' This is a distinct logical error:\n- 'Has not paid' \u2260 'Does not have a pending request'\n- A pending request from a *different* dinner is irrelevant\n- Even a pending request for the *same* dinner doesn't mean the agent shouldn't create a new one, unless the task explicitly says so\n\nThis is the *inverse* of the existing playbook entry [7bb3b4b2] (which warns about under-filtering). Here the agent over-filtered by fabricating criteria.\n\n## What's Missing from the Playbook\n\n### 1. Anti-Over-Filtering Rule\nThe playbook has entry [e6d98370] which says 'extract ALL filtering criteria from the task instruction' and [7bb3b4b2] which warns against applying too broad an action. But there's no rule warning against **adding filtering criteria that the task never specified**. The agent's reasoning chain shows it decided on its own to check existing pending requests \u2014 a reasonable-sounding but ultimately wrong optimization.\n\n**Proposed Rule:** When building a target set for action, use ONLY the filtering criteria stated in the task instruction. Do not add 'smart' deduplication or idempotency checks (like 'skip if request already exists') unless the task explicitly requires it. Creating a duplicate request is less harmful than skipping a required one.\n\n### 2. Pre-Action Reconciliation Gate\nBefore executing bulk actions, the agent should reconcile the action set against the computed requirement set and flag any discrepancies:\n- Step 1: Compute the full required set from task criteria (e.g., 4 unpaid people)\n- Step 2: Compute the action set (who will actually receive requests)\n- Step 3: If action_set \u2282 required_set (strict subset), STOP and justify every exclusion against the task text\n- Step 4: If no justification exists in the task text, include the excluded items\n\nThe agent computed unpaid={Adrian, Katie, Melissa, Glenn} then narrowed to targets={Adrian, Melissa, Glenn} without verifying that Katie's exclusion was warranted by the task.\n\n### 3. Distinguish Transaction States Carefully\nThe agent conflated 'has already paid' (confirmed by a received transaction) with 'has a pending request sent to them' (unconfirmed, might be for something else). These are fundamentally different states. The playbook should note: a pending payment request TO someone is not evidence that they have paid. Only completed/received transactions constitute payment.\n\n## Weak vs Missing Rule\nEntry [e6d98370] ('extract ALL filtering criteria from the task instruction') partially covers this, but its framing is about *not missing* criteria rather than *not adding* criteria. The inverse direction \u2014 don't add criteria the task doesn't specify \u2014 is a genuinely missing rule. Entry [7bb3b4b2] is about the opposite failure mode (too broad) and wouldn't trigger here.\n\n## Verification Gap\nThe agent's post-creation verification (checking that created requests matched expected emails/amounts) only verified the 3 requests it made \u2014 it never checked back against the 4-person unpaid list. A simple `assert len(created) == len(unpaid)` would have caught the discrepancy.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "62054d35",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "9ea1c2a6",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "907d694e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "e6d98370",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "7bb3b4b2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "b2393d14",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "5d010b02",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "58a74141",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "e6d98370",
+          "content": "* Before any bulk action (approve, delete, send, modify), explicitly extract ALL filtering criteria from the task instruction. Build a target ID set by cross-referencing relevant data sources. Print the target set and its count. Only act on entities in that set \u2014 never default to 'all'. EQUALLY CRITICAL: Do NOT add filtering criteria the task does not specify. If you compute a target set of N items, you must act on all N \u2014 never skip items based on self-invented 'smart' checks (e.g., 'skip if a request already exists', 'skip if already pending'). Creating a duplicate action is less harmful than skipping a required one."
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "* MISTAKE: Over-filtering by inventing criteria the task never specified \u2014 e.g., computing 4 unpaid people but then skipping one because a pending request already exists for them (from a different context). This silently drops required actions. FIX: Use ONLY the filtering criteria stated in the task. 'Has not paid' means no completed payment/transaction found \u2014 NOT 'has no pending request.' Never add deduplication, idempotency, or 'already handled' checks unless the task explicitly requires them.",
+          "entry_id": "9537364c"
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "b2393d14",
+          "content": "* After bulk record creation (payment requests, messages, orders): (1) Verify COUNT of actions taken equals COUNT of originally computed target set. If fewer, identify every exclusion and confirm it's justified by the task text \u2014 not self-invented logic. (2) Fetch back the created records and compare (recipient_id/email, amount/content) pairs against your computed expected set. Print both sets side by side. Flag and fix any mismatches before calling complete_task."
+        }
+      ]
+    }
+  ],
+  "3c13f5a_2": [
+    {
+      "iteration": 3,
+      "analysis": "## Root Cause: Variable Shadowing of Critical Framework Global `apis`\n\nThe agent successfully completed all the substantive work\u2014fetched the receipt, identified roommates via phone contacts, calculated the per-person share ($45.50), and created 3 correct Venmo payment requests (IDs 6097, 6098, 6099). All 5 action-related tests passed.\n\nThe sole failure ('assert answers match') stems from the agent's inability to call `apis.supervisor.complete_task()`, which was caused by a **catastrophic variable shadowing bug** in this code block:\n\n```python\nexplored = { ... 'venmo': ['login', 'search_users', 'create_payment_request', 'show_sent_payment_requests'] }\nfor app, apis in explored.items():\n    print(app, '=>', apis)\n```\n\nThe `for app, apis in explored.items()` loop **overwrote the global `apis` variable** (the ApiCollection framework object) with the last dictionary value\u2014a plain Python list `['login', 'search_users', 'create_payment_request', 'show_sent_payment_requests']`. After this point, every API call failed with `422: ` or `Exception: ` or `AttributeError: 'list' object has no attribute 'supervisor'`.\n\n## Cascading Failure: Poor Debugging Strategy\n\nThe agent spent **30+ steps** (roughly half its execution budget) trying to recover from the broken state without ever identifying the root cause. It tried:\n- Recreating ApiCollection from scratch (failed\u2014requires environment context)\n- Inspecting module internals and source code\n- Calling complete_task with various argument combinations\n- Re-importing modules\n\nAt no point did the agent check whether `apis` itself had been overwritten. When `type(apis)` returned `<class 'list'>`, the agent noticed but didn't connect it to its own earlier code. This reveals two missing skills:\n1. **Self-diagnosis**: When all APIs break simultaneously after previously working, the FIRST check should be whether `apis` is still the expected type.\n2. **Step budget awareness**: After 5-10 failed recovery attempts, the agent should have recognized the futility and tried a different approach or documented its state.\n\n## Missing Playbook Rules\n\n### 1. CRITICAL: Variable Name Protection\nThe playbook entry d2a56f20 says 'Variables persist across code blocks\u2014reuse them instead of re-fetching.' This is true but **incomplete and dangerous**\u2014it says nothing about the risk of accidentally OVERWRITING critical framework variables. The rule should be expanded or a new rule added: **Never use `apis`, `supervisor`, or other framework-provided names as loop variables, function parameters, or local assignments.**\n\n### 2. Sudden Total API Failure Diagnostic\nWhen APIs that previously worked ALL start returning the same error, the most likely cause is corruption of the `apis` object itself, not a server/auth issue. The agent should: (1) Check `type(apis)` and compare to expected type. (2) Check if any recent code block used `apis` as an assignment target or loop variable. (3) If confirmed overwritten, attempt minimal recovery or report the issue rather than spending dozens of steps on futile workarounds.\n\n### 3. Code Review Before Execution\nThe agent should scan for dangerous patterns before executing code blocks: using reserved/framework variable names in `for` loops, list comprehensions, or assignments. This is especially critical for `apis`, which is the single most important global.\n\n### 4. Budget-Aware Recovery\nThe agent wasted its remaining step budget on futile recovery attempts. A rule should cap recovery attempts: 'If 3 consecutive attempts to fix a broken state fail with the same error, stop and document the issue rather than repeating variations of the same approach.'\n\n## Assessment of Existing Entry d2a56f20\nThis entry is **harmful** in this context because it encourages variable reuse ('reuse them instead of re-fetching') without warning about the flip side: if you accidentally overwrite a persisted variable, you lose access permanently. The entry should be updated to include an explicit warning about never shadowing `apis` or other framework globals.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "62054d35",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "3ff1c78e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "7bb3b4b2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "907d694e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "9ea1c2a6",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6385b186",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "e6d98370",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "5d010b02",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "acc138c1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "45c70c38",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "b2393d14",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "d2a56f20",
+          "content": "Variables persist across code blocks \u2014 reuse them instead of re-fetching. CRITICAL: Never use `apis` as a loop variable, assignment target, or parameter name (e.g., `for app, apis in dict.items()` will destroy the framework object permanently). Use names like `api_names`, `app_apis`, `api_list` instead."
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "MISTAKE: Using `apis` as a loop/comprehension variable (e.g., `for app, apis in explored.items():`) which permanently overwrites the framework ApiCollection object with a plain list/string. Once overwritten, the session is UNRECOVERABLE \u2014 you cannot reconstruct the ApiCollection. FIX: Never reuse the name `apis` for any purpose other than the framework object. Use `api_list`, `api_names`, `app_apis`, `items`, etc.",
+          "entry_id": "c1d8d7d8"
+        },
+        {
+          "op": "ADD",
+          "section": "troubleshooting_and_pitfalls",
+          "content": "SUDDEN TOTAL API FAILURE: If all `apis.*` calls that previously worked start returning the same error (e.g., `AttributeError: 'list' object has no attribute 'supervisor'` or `HTTPException 422`), the most likely cause is that `apis` was accidentally overwritten by your own code. Diagnostic: (1) Run `print(type(apis))` \u2014 expect `ApiCollection`, NOT `list`/`str`/`dict`. (2) If overwritten, do NOT spend steps trying to recover \u2014 it is unrecoverable. (3) Instead, verify whether the task actions were already completed before the corruption, and report completion if so.",
+          "entry_id": "38168c69"
+        },
+        {
+          "op": "ADD",
+          "section": "strategies_and_hard_rules",
+          "content": "RECOVERY BUDGET LIMIT: If 3 consecutive attempts to fix a broken state all fail with the same error pattern, STOP retrying. Either (a) pivot to a fundamentally different approach, or (b) if the core task actions were already completed, attempt `complete_task()` one final time and move on. Never spend more than 5 steps on recovery from a single failure mode.",
+          "entry_id": "992bfb1e"
+        }
+      ]
+    }
+  ],
+  "d0b1f43_3": [
+    {
+      "iteration": 5,
+      "analysis": "## Root Cause Analysis\n\nThe agent correctly identified roommates (3 contacts), logged into both phone and Venmo, fetched all transactions since March 1st with proper pagination, and computed sent ($759.00) and received ($454.00) totals. The 'no model changes' test passed, confirming data-gathering logic was correct and no unintended side-effects occurred. However, the 'answers match' test FAILED, meaning the agent's submitted answer 'sent 759.00, received 454.00' did not match the expected answer format.\n\n## Primary Failure: Answer Format Determination\n\nThe agent never re-read the task instruction before formatting its answer. It submitted a verbose labeled string ('sent 759.00, received 454.00') when the task likely expected a single concise value (e.g., just the total sent, just the total received, or the net difference $305.00). The agent computed all the right intermediate data but then guessed at the answer format rather than deriving it from the task text. This is a systematic gap: the agent has no procedure for mapping its computed data back to the precise question being asked.\n\n## Secondary Concern: Missing Cross-Platform Identity Verification\n\nThe agent used phone contact emails directly as Venmo `user_email` filters WITHOUT verifying those emails correspond to actual Venmo accounts. The playbook entry [9ea1c2a6] explicitly says to search the target platform (e.g., `apis.venmo.search_users(query=email)`) to verify accounts. The agent skipped this step. If any roommate's Venmo email differs from their phone contact email, their transactions would be silently missed, producing wrong totals. The agent found transactions for at least one roommate, suggesting partial success, but completeness was never verified.\n\n## Missing Procedural Knowledge\n\n### 1. Answer Format Extraction Procedure (MISSING)\n**Trigger:** Before calling `complete_task` with an answer.\n**Procedure:**\n(1) Re-read the exact task instruction text.\n(2) Identify the specific question phrasing: 'how much did I send?' (one number), 'what's the difference?' (net calculation), 'how much in total?' (combined sum), etc.\n(3) Format the answer as the most concise representation that directly answers that question \u2014 typically a single number, name, or short phrase.\n(4) If the task asks for multiple values, determine whether it wants them labeled, comma-separated, or otherwise.\n(5) Cross-check: does the submitted answer string directly answer the question with no extraneous information?\n\nThis procedure would have caught the format mismatch. The agent had the right data ($759 and $454) but never mapped it back to the specific question.\n\n### 2. API Direction/Perspective Verification (MISSING)\nThe agent called `show_transactions` with `direction='sent'` and `direction='received'` but never verified what perspective these directions represent. Does 'sent' mean 'I sent to them' or 'they sent to me'? The agent assumed the first interpretation without checking a single transaction's detail to confirm. A wrong perspective interpretation would swap sent/received totals.\n\n**Recommended check:** After the first API call, print one full transaction object and verify that `direction='sent'` + `user_email=X` returns transactions where the supervisor (me) sent money TO X, not where X sent money to me.\n\n### 3. Strengthened Pre-Completion Gate\nThe existing entry [402f38d0] says to call `complete_task()` when done, and only pass `answer=` if the task requests one. But it doesn't say to **re-read the task instruction to determine the precise expected answer format**. The missing step is: before formatting the answer, explicitly extract the question from the task and verify the answer directly responds to it.\n\n## Generalizable Patterns\n\n1. **Answer format drift is a common silent failure mode.** The agent computed correct intermediate values but lost the thread of what was actually being asked. A 'question-to-answer mapping' step should be a mandatory gate before `complete_task`.\n\n2. **Cross-platform identity resolution must include verification, not just lookup.** Using a contact email directly as a filter on another platform without confirming the account exists creates silent data gaps.\n\n3. **Direction/perspective parameters in transaction APIs are ambiguous.** Any time an API has a parameter like 'direction', 'type', or 'role', the agent should verify its interpretation by inspecting at least one returned record's full details.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "62054d35",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "9ea1c2a6",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "5d010b02",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "907d694e",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "verification_checklist",
+          "content": "* ANSWER FORMAT GATE: Before calling `complete_task(answer=...)`, re-read the exact task instruction. (1) Identify the precise question phrasing: 'how much did I send?' \u2192 single dollar amount, 'what is the difference?' \u2192 net value, 'how many?' \u2192 integer count. (2) Format the answer as the most concise value that directly answers that question \u2014 typically a single number, name, or short phrase. (3) Do NOT include labels, multiple values, or explanatory text unless the question explicitly requests them. (4) If the task asks one question but you computed multiple values, pick only the one that answers the question asked.",
+          "entry_id": "74f9e1f2"
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "MISTAKE: Using API filter parameters like `direction='sent'`/`direction='received'` or `type`/`role` without verifying what perspective they represent. FIX: After the first API call with a direction/type/role parameter, print at least one full returned record. Verify the interpretation matches your assumption (e.g., confirm `direction='sent'` + `user_email=X` returns transactions where YOU sent money TO X, not vice versa). A wrong interpretation silently swaps or misattributes totals.",
+          "entry_id": "58a74141"
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "9ea1c2a6",
+          "content": "* Cross-platform identity resolution procedure (when task involves people from contacts on another platform like Venmo, Gmail, etc.): (1) Search phone contacts (`apis.phone.search_contacts`) to get full names and email addresses \u2014 this is the authoritative source. (2) For EACH resolved contact, verify they have an account on the target platform by calling its user search API (e.g., `apis.venmo.search_users(query=email)`). Do NOT skip this step even when using email as a filter \u2014 if 0 results are returned, the email may not match a platform account. (3) NEVER rely solely on first-name search on the target platform \u2014 multiple users may share a first name, and `friends_since: null` is a red flag for wrong match. (4) Cross-check: the resolved account's name should match the phone contact's name."
+        }
+      ]
+    }
+  ],
+  "29caf6f_1": [
+    {
+      "iteration": 9,
+      "analysis": "## Root Cause\n\nThe agent sent ALL 14 movies from the 'Movie Recommendations' note to Christopher Burch, but the task required sending only movies by a specific director. The failed test (`non_director_movie_titles should NOT occur in the sent message`) proves there was a director-based filtering requirement. The passed test (`director_movie_titles should all occur in the sent message`) confirms a subset was expected.\n\nNotably, the agent even parsed and printed `fincher_movies` at one point, showing it considered director-based filtering, but then abandoned it and sent everything. This suggests the agent recognized the structure of the data but failed to identify the filtering criterion from the conversation context.\n\n## Key Missing Procedure: Full Conversation Context Extraction\n\nThe agent searched for text messages with query='Christopher' and found messages between Joyce and Christopher Burch. The output was truncated, but critically, the agent never went back to read the FULL conversation thread to understand exactly what Christopher was asking for. Christopher's request likely specified a particular director (the truncated message content would have contained this). The agent confirmed the conversation existed and identified Christopher's phone number, then jumped straight to composing the message using ALL note content.\n\n**Missing procedure trigger:** Whenever the task involves responding to someone's request (via text, email, etc.), the agent MUST read and fully inspect the COMPLETE conversation thread BEFORE composing any response. Specifically:\n1. Use `show_text_message_window` or paginate `search_text_messages` filtered by the specific phone number to get ALL messages in the thread.\n2. Extract the EXACT request from the other person's messages (what movies? by which director? which genre? how many?).\n3. Document the extracted filtering criteria as an explicit intermediate artifact.\n4. Only THEN compose the response, applying all extracted filters.\n\n## Weak Application of Existing Rules\n\nTwo existing playbook entries were directly relevant but were NOT triggered:\n- **7bb3b4b2** (Don't act on ALL matching entities when the task specifies a filtered subset): The agent sent all 14 movies when only a director-filtered subset was needed. The rule exists but wasn't applied because the agent never identified the filter.\n- **e6d98370** (Extract ALL filtering criteria before bulk action): The agent didn't construct a target set with explicit criteria; it just dumped everything.\n\nThese rules weren't triggered because the agent never surfaced the filtering criterion from the conversation. The gap is upstream of these rules \u2014 the agent needs a step that extracts requirements from conversational context BEFORE the filtering/action phase.\n\n## What Was Missing: Intermediate Representation\n\nThe agent should have constructed an explicit \"request specification\" artifact before composing the message:\n- **Who is asking?** Christopher Burch\n- **What are they asking for?** Movie recommendations\n- **Any filters specified?** [MUST be extracted from full conversation \u2014 e.g., 'by director X']\n- **Source data?** SimpleNote 'Movie Recommendations' note\n- **Filtered result set?** [Only movies matching the extracted filter]\n\n## Verification Gate That Was Missing\n\nBefore sending the text, the agent should have verified: 'Does my message content match what was specifically requested in the conversation?' The agent had all the data (parsed director names per movie) but skipped the step of cross-referencing the composed message against the actual request.\n\n## Generalizable Lesson\n\nWhen a task involves responding to another person's request found in messages/emails, the CONTENT of those messages defines implicit filtering criteria that are just as binding as explicit task instructions. The agent must treat conversation messages as a primary source of task requirements, not just as a means to identify the recipient. This is a distinct step from identity resolution \u2014 it's 'request resolution.'\n\n## Proposed New Rule\n\nTrigger: Task involves replying to or fulfilling a request found in a conversation (text messages, emails).\nProcedure: (1) Fetch the COMPLETE conversation thread, not just search snippets. (2) Read all messages from the requester to extract their exact ask, including any filtering qualifiers (director, genre, price range, date, quantity). (3) Document extracted criteria as an explicit checklist. (4) Apply ALL extracted criteria when composing the response. (5) Before sending, verify: count of items in response matches the filtered set, not the unfiltered source.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "62054d35",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "7bb3b4b2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "e6d98370",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "* Request-fulfillment from conversations workflow: When a task involves responding to or fulfilling a request found in text messages or emails: (1) Fetch the COMPLETE conversation thread with the requester (use `show_text_message_window` or paginate `search_text_messages` filtered by their phone number \u2014 do NOT rely on truncated search results). (2) Read ALL messages from the requester to extract their EXACT ask, including any qualifiers (specific director, genre, price range, date, quantity, etc.). (3) Write out the extracted criteria explicitly as an intermediate artifact before proceeding. (4) Fetch source data (notes, lists, etc.) and apply ALL extracted filters. (5) Before sending the response, verify: the items included match the filtered set, NOT the full unfiltered source.",
+          "entry_id": "3aea57d5"
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "e6d98370",
+          "content": "* Before any bulk action (approve, delete, send, modify), explicitly extract ALL filtering criteria from BOTH the task instruction AND any referenced conversation context (text messages, emails the task refers to). Conversation content defines binding requirements \u2014 a request asking for 'movies by director X' means ONLY those movies, not all movies. Build a target set by cross-referencing relevant data sources. Print the target set and its count. Only act on entities in that set \u2014 never default to 'all'. EQUALLY CRITICAL: Do NOT add filtering criteria the task does not specify. If you compute a target set of N items, you must act on all N \u2014 never skip items based on self-invented 'smart' checks."
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "* MISTAKE: When a task says 'reply to X's request' or 'send X what they asked for', composing the response from ALL available source data without reading the full conversation to understand what X specifically asked for. This silently sends unfiltered data when X requested a filtered subset. FIX: Always fetch and read the COMPLETE conversation thread BEFORE composing any response. The requester's messages contain implicit filtering criteria (e.g., 'by this director', 'under $50', 'from last month') that are just as binding as explicit task instructions. Never assume 'send everything' \u2014 verify the exact scope of the request.",
+          "entry_id": "c761d320"
+        }
+      ]
+    }
+  ],
+  "6104387_2": [
+    {
+      "iteration": 11,
+      "analysis": "## Root Cause Analysis\n\nThe agent passed 7/10 tests. All 3 failures relate to the song-title-to-artist-names mapping extracted from the CSV not matching the expected `private_data.song_title_to_artist_names`. The file was created correctly, the account was deleted, and the CSV format/header was right\u2014the **content** (which songs and/or which artists) was wrong.\n\n### Primary Root Cause: Over-Collection of Data Sources\n\nThe agent collected songs from FOUR sources:\n1. `show_song_library` \u2192 11 songs (the core 'library')\n2. `show_album_library` \u2192 21 song IDs from saved albums\n3. `show_playlist_library` \u2192 47 song IDs from owned playlists\n4. `show_liked_playlists` \u2192 47 song IDs from liked playlists\n\nThis produced 91 unique songs. The expected result was clearly a different (likely smaller) set. The agent never paused to ask: 'Which of these sources actually constitute THE library?' It defaulted to 'union everything' without verifying scope.\n\nSource #4 (`show_liked_playlists`) is particularly suspect\u2014'liked playlists' are NOT part of 'your library' in Spotify's model; they're playlists you've endorsed but not added to your library. The API naming makes this clear: `show_*_library` vs `show_liked_playlists`. But even sources #2 and #3 are debatable\u2014albums and playlists in your library aren't the same as their individual songs being in your song library.\n\n### Secondary Possible Cause: Artist Data Discrepancy\n\nThe agent fetched song details via `show_song(song_id=...)` for 80 out of 91 songs. But the test might expect artist names as they appeared in the original library listing (from `show_song_library`), which could differ from the standalone `show_song` endpoint response. The agent didn't compare the two representations.\n\n## Missing Playbook Entries\n\n### 1. Data Scope Verification Procedure (CRITICAL MISSING)\nTrigger: Task requires collecting/backing up/exporting data from a platform.\nProcedure:\n- Before collecting, enumerate ALL available data endpoints and classify them as 'core scope' vs 'ancillary.'\n- Map the task's language ('library,' 'account data,' 'history') to SPECIFIC API endpoints. In this case: 'library' \u2192 `show_*_library` endpoints ONLY; `show_liked_*` endpoints are NOT library.\n- When multiple interpretations exist, prefer the narrower/more specific one unless the task explicitly says 'all data' or 'everything.'\n- Build an intermediate artifact: a scope checklist listing each source and whether it's included/excluded with justification.\n\n### 2. Content Validation Before Completion\nThe agent verified the CSV had 91 rows matching 91 unique song IDs, but never checked whether 91 was the RIGHT number. A missing verification gate: after creating the output artifact, the agent should sanity-check the data dimensions against task expectations. For backup tasks, at minimum: (a) count records per source, (b) articulate WHY each source is included, (c) check for suspicious over-inclusion (e.g., union of 91 songs when song library has only 11).\n\n### 3. API Naming Semantics as Scope Signals\nWhen APIs share a naming pattern (e.g., `show_*_library`), that pattern defines a conceptual boundary. `show_liked_playlists` breaks the pattern\u2014it's NOT a library endpoint. The agent should treat API naming conventions as scope signals and flag when it's crossing a naming boundary.\n\n## General Pattern\n\nThis is a **scope over-expansion** failure: the agent interpreted 'library' maximally rather than precisely. The playbook has entries warning against over-filtering (entry 9537364c) and adding invented criteria (entry 7bb3b4b2), but lacks the symmetric rule: **don't over-expand data collection beyond what the task scopes.** The agent's instinct to 'collect everything to be safe' is harmful when the task defines a specific scope. The fix is a mandatory scope-definition step that maps task language to specific API endpoints BEFORE any data collection begins.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "5d010b02",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "7bb3b4b2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "b2393d14",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "74f9e1f2",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "MISTAKE: When exporting/backing up data, unioning ALL available data endpoints (song library + album library + playlist library + liked playlists, etc.) without verifying which sources the task actually scopes. This silently inflates output with unrequested data. FIX: Map the task's exact wording to SPECIFIC API endpoints. Use API naming conventions as scope signals \u2014 `show_song_library` is the 'song library'; `show_liked_playlists` is NOT part of 'the library.' Unless the task explicitly says 'all data' or 'everything,' prefer the narrower interpretation matching the task's language. If 'library' is ambiguous, default to `show_*_library` endpoints only \u2014 exclude liked/followed/recommended content.",
+          "entry_id": "70d88da9"
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "Data scope definition workflow (for export/backup/collection tasks): (1) List ALL available data endpoints for the platform. (2) Map the task's exact language to specific endpoints \u2014 'song library' \u2192 show_song_library ONLY; 'library' \u2192 show_*_library endpoints; 'all account data' \u2192 everything. (3) Write a scope checklist: for each endpoint, mark IN or OUT with justification from the task wording. (4) Collect ONLY from in-scope endpoints. (5) Sanity-check: if the union across sources is dramatically larger than the primary source (e.g., 91 vs 11), re-read the task \u2014 you likely over-expanded scope.",
+          "entry_id": "945ef3e8"
+        },
+        {
+          "op": "ADD",
+          "section": "verification_checklist",
+          "content": "DATA SCOPE GATE (for export/backup tasks): Before writing the output artifact, list each data source endpoint used and its record count. For each source, confirm the task's wording includes it \u2014 don't assume 'library' means 'everything on the platform.' If total records vastly exceed the primary source count, treat as a red flag for over-expansion and re-verify scope against the task text before proceeding.",
+          "entry_id": "19207e4b"
+        }
+      ]
+    },
+    {
+      "iteration": 21,
+      "analysis": "## Root Cause Analysis\n\nTwo independent root causes produced the 3 failed tests:\n\n### Root Cause 1: Scope Over-Expansion (Likely Primary)\nThe agent collected songs from FOUR endpoints (show_song_library: 11, show_album_library: 21, show_playlist_library: 47, show_liked_playlists: 47) producing 91 unique songs, when the task almost certainly required only the song library (11 songs from show_song_library). Evidence: the test validates `song_title_to_artist_names` keys match `private_data.song_title_to_artist_names`, and both the key-match and value-match tests fail \u2014 consistent with having ~80 extra songs.\n\nCritically, playbook entries [70d88da9] and [945ef3e8] **explicitly warn about this exact pattern**. Entry [945ef3e8] includes a PROGRESSIVE SIZE GATE: 'If total exceeds 2\u00d7 the primary source, STOP immediately.' Going from 11 (primary) to 91 (after union) is an 8\u00d7 expansion \u2014 the gate should have triggered immediately. Entry [70d88da9] says 'If you find yourself calling more than one *_library endpoint, STOP.' The agent called four collection endpoints.\n\nThe agent even created a scope table artifact \u2014 but it was cargo-cult compliance: every endpoint was marked IN-SCOPE with justifications the agent fabricated ('Songs in my song library', 'Albums in my album library', etc.) rather than tied to the task's exact wording. The scope table procedure needs stronger teeth: the DEFAULT must be to mark endpoints OUT-OF-SCOPE and require affirmative textual evidence from the task to promote them to IN-SCOPE.\n\n### Root Cause 2: Wrong Multi-Value Separator\nThe agent used `'|'.join(artists_list)` to serialize multiple artists, producing lines like `A Symphony of Broken Hearts, Lucas Grey|Velvet Echo`. Playbook entry [5f45cf41] explicitly states: 'Multi-value fields: serialize with comma-space (`, `) as sub-delimiter. NEVER use pipe.' The agent directly violated this rule, likely because it intuitively felt pipe was 'safer' to avoid delimiter collision with the comma-space CSV delimiter. But the entry was designed to prevent exactly this \u2014 pipe is non-standard and test parsers won't expect it.\n\n### Why Existing Rules Didn't Fire\n\n1. **Scope rules ([70d88da9], [945ef3e8])**: The agent performed the letter of the procedure (printed a scope table) but not the spirit. The scope table has no enforcement mechanism \u2014 it doesn't force the agent to find a specific phrase in the task text justifying each inclusion. The rule needs a harder constraint: each IN-SCOPE justification must QUOTE the exact task phrase, not paraphrase it.\n\n2. **Format rule ([5f45cf41])**: The agent simply didn't follow it. The rule is clear and correct. This may be a triggering issue \u2014 the rule is listed under 'OUTPUT FORMAT DEFAULTS' which may not activate strongly enough when the agent is in the middle of data serialization logic.\n\n3. **Readback gate ([bd664534])**: The agent did read back the file but only visually inspected first/last lines. It did NOT parse the file the way a test would (split on delimiter, extract header, map title\u2192artists). If it had, it would have noticed the pipe separator doesn't match the expected comma-space format. The readback gate needs to emphasize: parse 2-3 rows INTO A DICT using the same logic a reader would, then compare dict values against raw API data.\n\n### What's Missing From the Playbook\n\n1. **SCOPE TABLE ENFORCEMENT**: The existing scope procedure allows the agent to mark things IN-SCOPE based on its own interpretation. Need a harder rule: each IN-SCOPE justification must include a DIRECT QUOTE from the task instruction. If no quote can be found, the endpoint is OUT-OF-SCOPE by default. The trigger for this should be: 'You are about to mark an endpoint IN-SCOPE \u2014 paste the exact task phrase that requests this data source.'\n\n2. **MULTI-VALUE SEPARATOR VERIFICATION DURING SERIALIZATION**: The format defaults entry exists but doesn't trigger strongly at the point of serialization. A procedural trigger is needed: 'When writing code that joins multiple values into a single field (e.g., multiple artists), STOP and verify the separator against the output format rules. Print a sample row with the separator and confirm it matches expected format before proceeding to write the full file.'\n\n3. **READBACK PARSE-AND-COMPARE**: Strengthen [bd664534] to require: 'Parse 3 rows into field dicts using the same delimiter logic a consumer would use. Print each parsed dict alongside the raw API data for the same entity. Verify field-level match before proceeding.' The current gate allows visual inspection to substitute for structural parsing.",
+      "entry_assessments": [
+        {
+          "entry_id": "70d88da9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "945ef3e8",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "5f45cf41",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "bd664534",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "19207e4b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "5d010b02",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3e38dbac",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "945ef3e8",
+          "content": "* * MANDATORY scope definition workflow (export/backup/collection tasks) \u2014 execute BEFORE collecting ANY data: (1) List ALL available data endpoints for the platform. (2) Print a SCOPE TABLE: for each endpoint, write IN-SCOPE or OUT-OF-SCOPE. DEFAULT IS OUT-OF-SCOPE \u2014 to promote to IN-SCOPE, you MUST paste a DIRECT QUOTE from the task instruction that explicitly requests this data source. Paraphrasing or self-invented justifications are NOT valid. 'Song library' \u2192 show_song_library ONLY; 'library' alone \u2192 primary library for the entity mentioned; 'all data' \u2192 everything. Albums, playlists, liked/followed content are SEPARATE collections \u2014 each requires its OWN justifying quote from the task. If you cannot find a quote, the endpoint stays OUT. (3) Collect ONLY from in-scope endpoints. PROGRESSIVE SIZE GATE: After adding each new source, compare total unique items to the primary source count. If total exceeds 2\u00d7 the primary source, STOP immediately \u2014 you are almost certainly over-expanding scope. (4) Print final item count and scope justification (with task quotes) before writing any output file."
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "5f45cf41",
+          "content": "* OUTPUT FORMAT DEFAULTS \u2014 when creating CSV or structured text files: (1) CSV delimiter: comma-space (`, `) unless task specifies otherwise. (2) Header row: use exact field names from the task instruction, unquoted. (3) Multi-value fields (multiple artists, tags, categories): serialize with comma-space (`, `) as sub-delimiter. NEVER use pipe (`|`), semicolon, or other non-standard separators without explicit justification from the task text. HARD TRIGGER: Any time you write code containing `.join()` to combine multiple values into one field, STOP and verify the join character is `, ` (comma-space). If you typed `'|'.join` or `';'.join`, you are violating this rule \u2014 change it immediately. (4) No quoting by default \u2014 add quotes ONLY if a field demonstrably contains the delimiter character. (5) Before writing the full file, print 2-3 sample rows and visually verify they match the expected format \u2014 check that multi-value fields use comma-space, not pipe."
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "bd664534",
+          "content": "* * * EXPORT FILE READBACK GATE: After writing an output file for export/backup tasks, ALWAYS read the file back and STRUCTURALLY PARSE it BEFORE completing the task or deleting source data/accounts. Visual line inspection is INSUFFICIENT. Check: (1) Read the file, split into lines, extract header. (2) Verify header exactly matches expected format (field names, delimiter, no unexpected quoting). (3) Record count (data lines) matches expected in-scope count from your scope table. (4) FIELD-LEVEL PARSE: For 3-5 data rows, split each line on the CSV delimiter and map to a dict using header fields. Print each parsed dict alongside the corresponding raw API data for that entity. Verify: (a) title/name fields match exactly, (b) multi-value fields (artists, tags) use comma-space separator \u2014 NOT pipe or semicolon, (c) no unexpected quote characters wrap values. (5) If any parsed field value doesn't match the raw API data or uses the wrong separator, fix serialization and re-write before proceeding. CRITICAL: Never delete a source account until the backup file has been read back, PARSED at the field level, and verified \u2014 deletion is irreversible."
+        }
+      ]
+    }
+  ],
+  "afc0fce_2": [
+    {
+      "iteration": 12,
+      "analysis": "## Root Cause\n\nThe agent failed 2 of 9 tests because it acted on the **wrong set of transactions**. Both failed tests assert that the transaction IDs match `private_data.after_threshold_contact_transaction_ids` \u2014 note the word 'contact' in this variable name, which strongly implies **phone contacts**, not Venmo friends.\n\nThe agent used `apis.venmo.search_friends()` to get a list of 10 Venmo friends, then filtered the 34 received transactions to 25 that came from those friends. However, the correct approach was almost certainly to resolve identity through **phone contacts** (`apis.phone.search_contacts`), then map those contacts to Venmo accounts. The Venmo friend set and phone contact set are overlapping but not identical \u2014 the difference produced a wrong target set.\n\n## Why Existing Playbook Entries Failed to Trigger\n\nTwo existing playbook entries ([62054d35] and [9ea1c2a6]) explicitly describe using phone contacts as the authoritative identity source and detail a cross-platform identity resolution procedure. However, the agent completely ignored both and never even explored the `phone` app's API. This is a **triggering failure**, not a content failure \u2014 the entries are correct but insufficiently forceful.\n\nThe likely reason: the task mentioned 'friends' (or a similar term), and the agent took the shortcut of using Venmo's own friend list, which seemed like a direct and sufficient source. The playbook entries don't have a strong enough 'when to trigger' signal \u2014 they need to fire whenever any task involves filtering actions by *who* the other party is.\n\n## What's Missing from the Playbook\n\n1. **Hard rule for identity resolution triggering**: The playbook needs a stronger, unconditional rule: ANY time a task filters by person identity (friends, contacts, family, colleagues), ALWAYS start with phone contacts as the canonical source, even if the target platform has its own friend/contact list. The platform's friend list is a convenience feature, not the ground truth for 'who are my contacts.' This should be a HARD RULE, not a heuristic.\n\n2. **Cross-platform identity disambiguation procedure needs a mandatory trigger**: Entry [9ea1c2a6] describes the right procedure but doesn't specify when it MUST be used. Add a trigger condition: 'If the task involves acting on items associated with specific people (contacts, friends, known people) on Platform X, you MUST resolve identity through phone contacts FIRST, then map to Platform X accounts.'\n\n3. **Pre-action identity source verification gate**: Before executing bulk actions filtered by person identity, add a verification gate: 'Print the identity resolution source used (phone contacts? platform friends? manual list?). If you used the platform's own friend list without consulting phone contacts, STOP and redo with phone contacts.'\n\n4. **The 'after_threshold' aspect**: The test variable name includes 'after_threshold', suggesting a specific date/time cutoff. The agent computed 'last 7 days' (days 0-6 back), but the actual threshold might differ. The playbook should include guidance: when a task specifies a relative time range (last week, last 7 days, past month), explicitly compute and print both the start and end dates, then verify the range interpretation matches the task wording precisely (does 'last 7 days' include today? is it calendar days or 168 hours?).\n\n## Pattern: Platform-Native Lists vs. Canonical Identity Sources\n\nThis is a recurring pattern: when a task says 'my friends' or 'my contacts,' the agent naturally gravitates toward the platform's own social graph (Venmo friends, Spotify followers, etc.). But the AppWorld ground truth uses phone contacts as the canonical identity source. The playbook should encode this as a DOMAIN-LEVEL AXIOM, not just a strategy suggestion.\n\n## Actionable Recommendations\n\n1. **Strengthen [62054d35]** to a HARD RULE with explicit triggering: 'WHENEVER a task involves filtering by person identity (friends, contacts, people you know), you MUST resolve through phone contacts FIRST. Never use a platform's own friend/follower list as the sole source \u2014 it may not match the canonical contact set.'\n\n2. **Add a new pre-action gate**: 'IDENTITY SOURCE GATE: Before executing filtered actions on a platform, verify: did you use phone contacts to determine the person set? If not, stop and redo. Print: (a) number of phone contacts resolved, (b) number mapped to platform accounts, (c) target transaction/item IDs derived from this mapping.'\n\n3. **Strengthen [9ea1c2a6]** with an explicit negative example: 'Do NOT use apis.venmo.search_friends() or similar platform-native friend lists as the sole identity source. These may include or exclude people differently from your phone contacts.'\n\n4. **Add date boundary verification**: When computing date ranges, print the exact boundaries and verify they match the task's temporal language precisely.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "62054d35",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "9ea1c2a6",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "907d694e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "7bb3b4b2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "45c70c38",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "e6d98370",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "5d010b02",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "62054d35",
+          "content": "* HARD RULE \u2014 IDENTITY RESOLUTION: WHENEVER a task filters actions by person identity (friends, contacts, people you know, colleagues, family), you MUST resolve identities through phone contacts FIRST: `apis.phone.search_contacts(access_token=token, query=name)`. Phone contacts are the CANONICAL source of 'who you know.' NEVER use a platform's own friend/follower list (e.g., `apis.venmo.search_friends`, Spotify followers) as the sole identity source \u2014 platform friend lists may include or exclude different people than your phone contacts. Always: (1) Log into phone app, (2) Fetch all phone contacts, (3) Map each contact to the target platform by searching with their email/name, (4) Use ONLY the mapped set for filtering."
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "9ea1c2a6",
+          "content": "* * Cross-platform identity resolution procedure \u2014 MANDATORY when task involves people from contacts on another platform (Venmo, Gmail, Spotify, etc.): (1) Log into phone app and fetch ALL contacts (`apis.phone.search_contacts`). (2) For EACH contact, search for their account on the target platform using their email (e.g., `apis.venmo.search_users(query=email)`). Do NOT skip verification \u2014 if 0 results, email may not match. (3) Build target person set ONLY from successfully resolved contacts. (4) Cross-check: resolved account name should match phone contact name. CRITICAL: Do NOT substitute platform-native friend lists (e.g., `search_friends`, `show_followers`) for this procedure \u2014 they represent a DIFFERENT social graph than your phone contacts and will produce wrong target sets."
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "* MISTAKE: Using a platform's own friend/social list (e.g., `apis.venmo.search_friends()`, Spotify followers) as the identity source when the task says 'contacts' or 'friends' or 'people I know.' Platform friend lists are NOT equivalent to phone contacts \u2014 they may include strangers added on-platform and exclude real contacts who aren't platform friends. This silently produces wrong target sets. FIX: ALWAYS resolve identity through `apis.phone.search_contacts()` first, then map each phone contact to the target platform. If you find yourself calling a platform's friend/follower API as your FIRST identity step, STOP \u2014 you're using the wrong source.",
+          "entry_id": "86f39b35"
+        },
+        {
+          "op": "ADD",
+          "section": "verification_checklist",
+          "content": "* IDENTITY SOURCE GATE: Before executing any bulk action filtered by person identity, verify and print: (1) Identity source used \u2014 must be phone contacts, NOT a platform-native friend list. (2) Number of phone contacts resolved. (3) Number successfully mapped to target platform accounts. (4) Final target entity IDs derived from this mapping. If you used a platform friend list without consulting phone contacts, STOP and redo identity resolution through phone contacts before proceeding.",
+          "entry_id": "21f9dc6d"
+        }
+      ]
+    }
+  ],
+  "287e338_2": [
+    {
+      "iteration": 13,
+      "analysis": "## Root Cause\n\nThe agent was asked about the 'least recommended' artist from Spotify recommendations. It fetched all 21 recommendations, then **assumed** the last item in the list represents the 'least recommended' \u2014 i.e., it treated the API response's positional ordering as a ranking of recommendation strength. It submitted 'Lucas Grey' (the artist of the last song) as the answer, which failed the answer-matching test.\n\nThe critical flaw is the **unverified assumption about list ordering semantics**. The agent never checked:\n1. Whether the API docs specify ordering criteria for recommendations\n2. Whether the data itself supports the positional-ordering hypothesis\n3. Alternative interpretations of 'least recommended'\n\nNotably, 'Lucas Grey' appears as the artist of BOTH the first (song_id 10) and last (song_id 301) recommendation \u2014 the same artist appearing at both extremes of the list is strong evidence AGAINST a simple most-to-least ordering. The agent should have noticed this inconsistency.\n\n## What 'Least Recommended' Likely Means\n\nThe correct interpretation was almost certainly **frequency-based**: count how many songs each artist has in the recommendations, and the artist with the fewest recommended songs is the 'least recommended artist.' The agent needed to aggregate across all 21 songs, count per-artist, and return the one with the minimum count. Instead, it took a shortcut by treating list position as rank.\n\n## Missing Playbook Pattern: Superlative Queries Require Explicit Computation\n\nThe playbook has no entry for handling 'most/least/highest/lowest' (superlative) queries over data. The agent defaulted to a positional assumption instead of computing the answer from the data. This is a generalizable pattern.\n\n**PROPOSED PROCEDURE \u2014 Superlative Query Resolution:**\n- **Trigger:** Task asks for the 'most,' 'least,' 'highest,' 'lowest,' 'best,' 'worst,' or any superlative over a dataset.\n- **Steps:**\n  1. Fetch ALL relevant data (paginate fully \u2014 the agent did this correctly).\n  2. Identify the entity being ranked (artist, song, album, person, etc.) and the metric (frequency, total, count, score, duration, etc.).\n  3. If the metric isn't explicit, consider MULTIPLE interpretations: (a) frequency/count of appearances, (b) positional ordering in the API response, (c) explicit score/rating fields in the data.\n  4. NEVER assume API list position equals ranking unless the API docs explicitly state the ordering criterion. Check API docs for `sort_by`, `order`, or description of response ordering.\n  5. Perform explicit aggregation/computation: group entities, count/sum the metric, sort, and extract the superlative.\n  6. Print the full ranked list (or top/bottom N) as an intermediate artifact for verification.\n  7. Sanity-check: if the top/bottom entity also appears elsewhere in the data in a contradictory position, your interpretation is likely wrong.\n- **Verification gate:** Before submitting, confirm that the answer is consistent \u2014 e.g., the 'least' entity shouldn't also be the 'most' under the same metric.\n\n## Self-Consistency Check Was Missing\n\nThe agent noted Lucas Grey appeared as artist of both the FIRST and LAST song but did not flag this as contradictory to a positional-ranking interpretation. A simple consistency check \u2014 'does the same entity appear at both extremes?' \u2014 would have triggered reconsideration.\n\n## Summary of Generalizable Insights\n\n1. **Superlative queries demand explicit computation, not positional assumptions.** API list order is NOT a reliable proxy for ranking unless documented.\n2. **When data contradicts your assumption, stop and reconsider.** The same artist at positions 1 and 21 is a red flag for a positional-ordering interpretation.\n3. **For 'most/least recommended X,' the default interpretation should be frequency-based** \u2014 count how many times each X appears across the recommended items. This is the most natural reading when no explicit scores are provided.\n4. **Intermediate artifacts matter:** The agent should have printed a frequency table of artists across all recommendations before jumping to an answer. This would have made the correct answer obvious and the wrong assumption visible.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "74f9e1f2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "5d010b02",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "Superlative query resolution workflow \u2014 when the task asks for the 'most,' 'least,' 'highest,' 'lowest,' 'best,' or 'worst' of something over a dataset: (1) Fetch ALL relevant data (paginate fully). (2) Identify the entity being ranked (artist, person, item) and the metric. (3) If no explicit score/rating field exists in the data, default to FREQUENCY-BASED counting (e.g., 'least recommended artist' = artist with fewest songs in recommendations). (4) NEVER assume API list position equals ranking unless the API docs explicitly state the ordering criterion \u2014 check docs for `sort_by`, `order`, or ordering description. (5) Perform explicit aggregation: group by entity, compute the metric (count/sum/avg), sort, extract the superlative. (6) Print the full ranked table as an intermediate artifact before answering. (7) Sanity-check: if your chosen answer also appears at the opposite extreme (e.g., same artist at position 1 and last position), your interpretation is wrong \u2014 recompute.",
+          "entry_id": "698b4e32"
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "MISTAKE: Treating API list position as a ranking (e.g., assuming the last item in a recommendations list is 'least recommended'). API response ordering is NOT a reliable proxy for ranking unless the docs explicitly state it. FIX: For any superlative query ('most/least X'), compute the answer explicitly by aggregating across ALL returned data \u2014 count occurrences, sum values, etc. Before submitting, verify your interpretation is self-consistent: if the same entity appears at both the top and bottom of the list, positional ordering is clearly not the ranking criterion.",
+          "entry_id": "ccfc748c"
+        }
+      ]
+    }
+  ],
+  "6104387_1": [
+    {
+      "iteration": 14,
+      "analysis": "## Root Cause: Data Scope Over-Expansion Despite Existing Playbook Guidance\n\nThe agent collected songs from four distinct Spotify data sources (song library: 12, album library songs, playlist library songs, liked playlist songs \u2192 90 unique songs) when the test expected a much narrower set. All three failed tests relate to the final song_title_to_artist_names mapping not matching the expected set\u2014both keys (titles) and values (artists) are wrong, which strongly indicates scope over-expansion as the primary failure.\n\n## Critical Observation: Existing Rules Are Correct But Not Applied\n\nThree existing playbook entries directly address this exact failure mode:\n- [70d88da9] warns about unioning ALL endpoints (song library + album library + playlist library + liked playlists) without verifying scope\n- [945ef3e8] provides a data scope definition workflow with a specific red flag: 'if the union across sources is dramatically larger than the primary source (e.g., 91 vs 11), re-read the task'\n- [19207e4b] provides a DATA SCOPE GATE verification step\n\nThe agent's data (90 songs vs 12 from the primary song library source) almost exactly matches the red-flag example in entry [945ef3e8] (91 vs 11), yet the agent never paused to question whether all sources were in-scope. This is a **weak triggering** problem, not a missing rule problem.\n\n## Why Existing Rules Failed to Trigger\n\n1. **No explicit scope reasoning step**: The agent never wrote out which endpoints were in-scope vs out-of-scope. It went straight to collecting from everything.\n2. **No size comparison check**: After collecting 90 songs (vs 12 from the primary source), the agent didn't notice the 7.5x expansion.\n3. **Progressive commitment bias**: By the time the agent had collected from all four sources, it was invested in the 90-song result and didn't question it.\n\n## What Needs Strengthening\n\n### 1. Make scope definition a MANDATORY first step for export/backup tasks\nThe existing workflow in [945ef3e8] is correct but positioned as optional guidance. For export/backup tasks, scope definition should be a **hard prerequisite** before any data collection begins\u2014not a post-hoc verification.\n\n**Proposed procedure trigger**: When the task involves 'export,' 'backup,' 'save,' or 'download' data:\n- BEFORE collecting data, enumerate ALL available data endpoints for the platform\n- Map the task's exact wording to specific endpoints and write an explicit IN/OUT table\n- Default to the NARROWEST interpretation when ambiguous\n- Only proceed to collection after the scope table is printed\n\n### 2. Add a mandatory size-comparison gate DURING collection\nThe agent should enforce a rule: if after adding a new data source, the total count exceeds 2x the primary source count, STOP and re-read the task before continuing. This prevents the progressive accumulation from all sources.\n\n### 3. Consolidate the three scope-related entries\nHaving three separate entries about data scope ([70d88da9], [945ef3e8], [19207e4b]) may dilute their urgency. Consider merging into a single, prominent entry that combines the mistake pattern, the workflow, and the gate into one cohesive procedure that's harder to skip.\n\n### 4. Possible artist name format issue (secondary)\nThe agent used `|` as a separator for multiple artist names in the CSV. While this might be correct, the test failure on values suggests the format might also be wrong. A verification step should sample-check a few entries from the output file against the raw API data to ensure the format transformation is correct.\n\n### 5. Missing: Pre-completion output artifact inspection\nBefore completing an export/backup task, the agent should read back the created file and verify: (a) record count matches expected scope, (b) format is correct by parsing a sample, (c) any multi-value fields are properly formatted. The agent wrote the file and deleted the account without ever reading the file back to verify its contents.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "70d88da9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "945ef3e8",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "19207e4b",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "945ef3e8",
+          "content": "* MANDATORY scope definition workflow (export/backup/collection tasks) \u2014 execute BEFORE collecting ANY data: (1) List ALL available data endpoints for the platform (e.g., show_song_library, show_album_library, show_playlist_library, show_liked_playlists). (2) Print a SCOPE TABLE: for each endpoint, write IN-SCOPE or OUT-OF-SCOPE with justification tied to the task's EXACT wording. DEFAULT to narrowest interpretation: 'song library' \u2192 show_song_library ONLY; 'library' \u2192 show_*_library endpoints; 'all account data' \u2192 everything. Liked/followed/recommended content is OUT unless explicitly requested. (3) Collect ONLY from in-scope endpoints. PROGRESSIVE SIZE GATE: After adding each new source, compare total unique items to the primary source count. If total exceeds 2\u00d7 the primary source, STOP immediately and re-read the task \u2014 you are almost certainly over-expanding scope. (4) Print final item count and scope justification before writing any output file."
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "70d88da9",
+          "content": "* MISTAKE: When exporting/backing up data, progressively collecting from ALL available data endpoints (song library \u2192 album library \u2192 playlist library \u2192 liked playlists) without pre-defining scope. Progressive accumulation creates commitment bias \u2014 after collecting from 4 sources and reaching 90 items vs 12 from the primary source, the inflated result 'feels normal' and is never questioned. FIX: BEFORE collecting, print a scope table mapping each endpoint to IN/OUT based on the task's exact wording. 'Song library' = show_song_library endpoint ONLY \u2014 albums and playlists are SEPARATE collections. HARD TRIGGER: If you find yourself calling more than one *_library endpoint, STOP and verify each additional source is explicitly requested by the task."
+        },
+        {
+          "op": "ADD",
+          "section": "verification_checklist",
+          "content": "* EXPORT FILE READBACK GATE: After writing an output file for export/backup tasks, ALWAYS read the file back and verify BEFORE completing the task or deleting source data/accounts. Check: (1) Record count matches the expected in-scope count from your scope table. (2) Sample 3-5 entries and compare against raw API data for correctness. (3) Multi-value fields (multiple artists, tags) use an appropriate format. CRITICAL: Never delete a source account until the backup file has been read back and verified \u2014 deletion is irreversible and prevents recovery from export errors.",
+          "entry_id": "bd664534"
+        }
+      ]
+    },
+    {
+      "iteration": 19,
+      "analysis": "## Root Cause Analysis\n\nThe agent failed 4 of 10 tests, all related to the CSV file format. The cascading failure chain: wrong CSV format \u2192 header check fails \u2192 dict parsing fails \u2192 key comparison fails \u2192 value comparison fails.\n\n### Issue 1: CSV Quoting \u2014 Over-Engineering After Blocked Function\n\nWhen `csv.writer` was blocked, the agent implemented a `csv_escape()` function that wrapped every field in double quotes: `\"Title\",\"Artists\"`. The test expected simple unquoted format: `Title, Artists`. This is the primary failure \u2014 the header mismatch caused all downstream parsing tests to fail.\n\n**Generalizable Pattern**: When a standard library function is blocked, the agent panicked toward an overly-complex workaround (full CSV escaping with double-quote handling) instead of recognizing the simpler intent. For data that contains no embedded commas or special characters, plain string formatting (`f'{title}, {artists}'`) is correct and sufficient. The agent should have assessed whether the data actually needed quoting before implementing it.\n\n### Issue 2: Artist Name Separator Format\n\nThe agent arbitrarily chose `|` as the separator for multiple artist names (e.g., `Mia Sullivan|Carter Knight`). The tests compare against `private_data.song_title_to_artist_names`, and the `normalize_text` comparison suggests a standard format is expected. The agent never investigated what separator format was expected \u2014 it invented `|` without justification from the task description, API conventions, or any reference.\n\n**Generalizable Pattern**: When a multi-value field needs serialization (multiple artists, tags, categories), the agent must derive the separator from either (a) the task instruction's explicit format specification, (b) the conventions of the target format (CSV typically uses comma-separated values within a field, sometimes with quoting), or (c) if ambiguous, default to the simplest conventional format (comma-space separation). Never invent a non-standard separator like `|` without explicit justification.\n\n### Issue 3: Progressive Scope Gate Not Triggered\n\nThe agent expanded from 12 song-library songs to 72 total (6\u00d7 the primary source). Playbook entry [945ef3e8] explicitly states: 'If total exceeds 2\u00d7 the primary source, STOP immediately and re-read the task.' The agent set up a scope table but never executed the progressive size gate. After adding album songs (24 IDs) and playlist songs (41 IDs), the total jumped to 72 \u2014 well past the 2\u00d7 threshold (24). The agent printed counts but never paused to question whether the expansion was correct. This may or may not have caused test failures (can't confirm without seeing `private_data`), but it represents a rule that existed and wasn't followed.\n\n### Issue 4: Readback Gate Was Shallow\n\nPlaybook entry [bd664534] requires reading back the file and verifying. The agent did read back the file, but only checked line count and sample lines. It never verified:\n- Whether the header format matched the task's specification\n- Whether artist name format was conventional/expected\n- Whether the content could be parsed back into a dict matching expected structure\n\n## Missing Playbook Knowledge\n\n### 1. OUTPUT FORMAT DERIVATION PROCEDURE (Missing)\n**Trigger**: Task requires creating an output file (CSV, JSON, text) with structured data.\n**Procedure**: (1) Extract exact format specification from the task instruction \u2014 header names, delimiter, quoting convention, multi-value field separator. (2) If the task doesn't specify format details, use the simplest conventional format for the file type (CSV = comma-separated, no quoting unless fields contain commas). (3) Write 2-3 sample rows and print them BEFORE writing the full file. (4) If a standard library function (csv.writer, json.dumps) is blocked, do NOT escalate to a more complex manual implementation \u2014 simplify instead.\n\n### 2. BLOCKED-FUNCTION SIMPLIFICATION RULE (Missing)\n**Trigger**: A standard library function call is rejected as not allowed.\n**Rule**: When a library function is blocked, the replacement should be SIMPLER than the library function, not more complex. For CSV: plain f-string concatenation with commas. For JSON: manual dict-to-string. The blocking usually indicates the environment expects a simpler approach, not a reimplementation of the full library.\n\n### 3. FORMAT VERIFICATION IN READBACK GATE (Weak Application of Existing Rule)\nEntry [bd664534] exists but its verification criteria are too vague. The entry should explicitly require: parse the output file using the same logic the test would use (split lines, split on delimiter, extract header) and verify the parsed structure matches expectations. A line-count check is insufficient \u2014 format errors are invisible to line counts.\n\n### 4. MULTI-VALUE SERIALIZATION CONVENTION (Missing)\n**Trigger**: A field contains a list/array that must be serialized into a single text value.\n**Rule**: Default to comma-space (`, `) separation unless the task specifies otherwise. Never use pipe (`|`), semicolon, or other non-standard separators without explicit justification. If the multi-value field is inside a CSV, use the same separator as the CSV column delimiter only if quoting is used \u2014 otherwise pick a different conventional separator and document the choice.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "70d88da9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "945ef3e8",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "bd664534",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "19207e4b",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "MISTAKE: When a standard library function (csv.writer, json.dumps) is BLOCKED by the execution environment, reimplementing its full complexity (quoting, escaping, double-quote doubling). This over-engineers the output format \u2014 e.g., producing `\"Title\",\"Artists\"` when `Title, Artists` was expected. FIX: When a library function is blocked, SIMPLIFY rather than reimplement. For CSV: use plain f-string concatenation with comma-space separator (e.g., `f\"{title}, {artists}\"`). Add quoting ONLY if you confirm a field actually contains the delimiter character. The block usually signals the environment expects a simpler approach.",
+          "entry_id": "3e38dbac"
+        },
+        {
+          "op": "ADD",
+          "section": "strategies_and_hard_rules",
+          "content": "OUTPUT FORMAT DEFAULTS \u2014 when creating CSV or structured text files: (1) CSV delimiter: comma-space (`, `) unless task specifies otherwise. (2) Header row: use exact field names from the task instruction, unquoted. (3) Multi-value fields (multiple artists, tags, categories): serialize with comma-space (`, `) as sub-delimiter. NEVER use pipe (`|`), semicolon, or other non-standard separators without explicit justification from the task text. (4) No quoting by default \u2014 add quotes ONLY if a field demonstrably contains the delimiter character. (5) Before writing the full file, print 2-3 sample rows and visually verify they match the expected format.",
+          "entry_id": "5f45cf41"
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "bd664534",
+          "content": "* * EXPORT FILE READBACK GATE: After writing an output file for export/backup tasks, ALWAYS read the file back and PARSE it BEFORE completing the task or deleting source data/accounts. Check: (1) Parse the file the way a reader would: split into lines, split each line on the delimiter, extract header. (2) Verify the header exactly matches the expected format (field names, delimiter, no unexpected quoting). (3) Record count (data lines) matches the expected in-scope count from your scope table. (4) Parse 3-5 data rows into a dict/tuple and compare field values against raw API data \u2014 verify multi-value fields (artists, tags) use the correct separator and are not garbled. (5) If any parsed field contains unexpected quote characters or delimiters, the serialization format is wrong \u2014 fix before proceeding. CRITICAL: Never delete a source account until the backup file has been read back, PARSED, and verified \u2014 deletion is irreversible and prevents recovery from export errors."
+        }
+      ]
+    }
+  ],
+  "692c77d_1": [
+    {
+      "iteration": 15,
+      "analysis": "## Root Cause Analysis\n\nThe agent achieved the correct *final state* (all 27 songs in liked playlists rated 5 \u2014 confirmed by passing tests for rating values and model change counts), but the *method* was wrong: the partition of songs into 'create new review' (22 songs) vs. 'update existing review' (5 songs) didn't match the ground truth (`private_data.to_update_review_song_ids` and `private_data.to_add_review_song_ids`). Both failed tests compare the song_id sets for each operation category, meaning some songs the agent treated as needing new reviews actually had existing reviews that should have been updated, and/or vice versa.\n\n## Proximate Cause: Unreliable Record-Existence Detection\n\nThe agent used `apis.spotify.show_song_reviews(song_id=sid, user_email=acct_email)` to determine whether the user already had a review for each song. This classification method was flawed for one or more of these reasons:\n\n1. **Truncated API docs**: The `show_song_reviews` API doc was truncated TWICE in the trace. The agent never read the full parameter descriptions. The `user_email` parameter might filter differently than assumed (e.g., it might search review *text* for the email string, or match against a different field than the reviewer's account email, or require exact format matching). The agent assumed it was a reliable 'reviewer identity' filter without confirming this from the docs.\n\n2. **No cross-check of the filter's accuracy**: The agent never validated that `user_email` was working correctly. A simple diagnostic would have been: for a song where the filter returned results, also fetch ALL reviews (without the filter) and confirm the user's review appears in the unfiltered list with the same review_id. This would have revealed any filter mismatch.\n\n3. **Possible false negatives or false positives**: If `user_email` silently failed on some songs (returning 0 results when a review exists), those songs would be wrongly classified as 'create'. If it returned reviews by other users, those could be wrongly classified as 'update'.\n\n## Missing Playbook Entry: Categorization Verification for Partitioned Bulk Operations\n\nThe existing playbook entry `b2393d14` says to verify count and content of bulk creations after execution. But it doesn't address a critical upstream step: **verifying the partition/categorization BEFORE executing**. When a bulk operation requires splitting items into distinct operation types (add vs. update vs. skip), the categorization logic itself must be validated.\n\n**Proposed procedure \u2014 PARTITION VERIFICATION for add/update bulk operations:**\n\nTRIGGER: Any task where you must distinguish between creating new records vs. updating existing records across a set of items.\n\n1. **Read the full API doc for the detection method** \u2014 if the doc output is truncated, re-request with a more targeted call or print only the parameter you need. Never assume parameter semantics from the name alone.\n2. **Validate the detection method on at least 2-3 items**: For items where detection says 'exists', fetch ALL records for that entity (unfiltered) and confirm the target record appears. For items where detection says 'not exists', similarly confirm no matching record exists in the unfiltered results.\n3. **Print a partition summary table** before executing: `{action: create, song_ids: [...], count: N}, {action: update, song_ids: [...], count: M}, {action: skip, song_ids: [...], count: K}`. This makes the classification explicit and auditable.\n4. **After execution, verify the operation type** \u2014 not just the final state. For created records, confirm they didn't overwrite or duplicate an existing record. For updated records, confirm the review_id existed before the operation.\n\n## Weak Application of Existing Rules\n\nThe `679f30b9` rule ('Check API docs before calling any API') was technically followed \u2014 the agent did look up docs. But the output was truncated and the agent didn't notice or re-fetch. The rule should be strengthened: **if API doc output is truncated, re-request with targeted printing (e.g., print only the specific parameter's description) to ensure you understand all parameters used in your calls.**\n\nThe `b2393d14` verification rule was also partially followed \u2014 the agent verified final state (all songs have rating 5, all creates succeeded, all updates succeeded). But 'verify count of actions matches computed target set' is insufficient when the PARTITION into action types matters. The verification must confirm both the total AND the categorization.\n\n## Additional Observation\n\nThe agent never considered using an alternative detection method. For instance, it could have checked for existing reviews using `show_song_review` (singular, by review_id) for known review IDs, or searched without the `user_email` filter and manually matched by reviewer identity in the response objects. Having a fallback detection method when the primary filter's behavior is uncertain would have prevented this failure.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "b2393d14",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "45c70c38",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "679f30b9",
+          "content": "* Check API docs with `apis.api_docs.show_api_doc(app_name, api_name)` before calling any API. TRUNCATION CHECK: If the output ends with `[TRUNCATED]` or cuts off mid-text, you did NOT read the full doc. Re-request by printing only the specific field you need \u2014 e.g., `doc = apis.api_docs.show_api_doc(...); print([(p['name'], p['description']) for p in doc['parameters']])`. Never assume parameter semantics from names alone when the full doc was not read."
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "MISTAKE: Using a search/filter API parameter (e.g., `user_email`, `query`, `owner`) for existence detection in bulk operations without validating it actually filters correctly. The parameter might search text content instead of matching record ownership, silently return empty due to format mismatches, or filter on a different field than assumed. This causes wrong categorization of items into create vs. update buckets. FIX: Before relying on any filter parameter for bulk categorization: (1) Read the FULL (non-truncated) API doc for that parameter. (2) For 2-3 items where the filter returns results, also fetch ALL records for that entity (unfiltered) and confirm the filtered results are a correct subset. (3) For 1-2 items where the filter returns empty, confirm via unfiltered fetch that no matching record truly exists. If validation fails, switch to unfiltered fetching + manual matching in code.",
+          "entry_id": "3ba8ddae"
+        },
+        {
+          "op": "ADD",
+          "section": "verification_checklist",
+          "content": "* PARTITION VERIFICATION GATE (for bulk add/update/skip operations): When a task requires splitting items into different operation types (create new vs. update existing, approve vs. reject): (1) VALIDATE the detection method BEFORE executing \u2014 cross-check at least 2 items per category using an alternative/unfiltered API call to confirm the categorization is correct. (2) Print a partition summary table BEFORE executing: `create: [song_ids...] (N), update: [song_ids...] (M), skip: [song_ids...] (K)`. (3) AFTER execution, verify not just the final state (all ratings correct) but also the operation types: for 'created' records, confirm they are genuinely new (no prior record existed); for 'updated' records, confirm the review_id existed before the operation. The ground truth may distinguish between add and update even when the final state looks identical.",
+          "entry_id": "f6b0f6ad"
+        }
+      ]
+    },
+    {
+      "iteration": 16,
+      "analysis": "## Root Cause\n\nThe 71.4% pass rate (2 of 7 tests failed) stems from incorrect PARTITIONING of songs into 'create new review' vs. 'update existing review' buckets. The ground truth expected a specific set of song_ids to be updates and a different set to be adds. The agent's categorization was wrong, even though the final state (all songs have 5-star reviews) was correct.\n\nThe agent used the `user_email` parameter of `show_song_reviews` as its sole detection method for whether a review already exists. This filter likely did NOT reliably identify the user's own reviews. Possibilities: (a) `user_email` might search review TEXT content rather than filtering by reviewer identity, (b) it might match a different field than assumed, or (c) its matching semantics might differ from expectations.\n\n## Two Existing Rules Were NOT Applied\n\n1. **[679f30b9] \u2014 Truncation check**: The `show_song_reviews` API doc was clearly truncated (output ends with `[TRUNCATED]`). The agent never re-requested to see the full description of the `user_email` parameter. The rule says 'Never assume parameter semantics from names alone when the full doc was not read.' The agent violated this directly. This entry needs stronger triggering \u2014 perhaps a HARD PROCEDURAL GATE: 'If ANY API doc you read was truncated, you MUST re-request the truncated portion BEFORE using that API in bulk operations.'\n\n2. **[3ba8ddae] \u2014 Filter validation for existence detection**: This entry describes EXACTLY this failure pattern: 'Using a search/filter API parameter for existence detection in bulk operations without validating it actually filters correctly.' The entry prescribes cross-checking filtered results against unfiltered results for 2-3 items. The agent never did this validation. The fix described (fetch ALL records unfiltered, then manually match in code) would have avoided the incorrect partition.\n\n3. **[f6b0f6ad] \u2014 Partition verification gate**: This entry says to '(1) VALIDATE the detection method BEFORE executing' and to 'verify not just the final state but also the operation types.' The agent's final verification only checked final state (all ratings = 5), not operation correctness (which were genuinely new vs. updated).\n\n## Why These Rules Failed to Trigger\n\nThe rules exist but were not applied. This is a triggering/salience problem. The agent moved smoothly from 'fetch reviews with user_email filter \u2192 categorize \u2192 execute \u2192 verify final state \u2192 complete.' At no point did the agent pause to question whether `user_email` was doing what it assumed. The existing entries are written as standalone warnings but lack a procedural forcing function that makes them unavoidable.\n\n## Specific Actionable Improvements\n\n### 1. Strengthen the unread-doc gate\nThe truncation check entry [679f30b9] needs to be converted from a recommendation to a HARD BLOCK: 'If an API doc was truncated and you plan to use that API's filter parameters for categorization/partition logic, you MUST re-read the full doc for those parameters BEFORE proceeding. Print just the parameters array: `doc = show_api_doc(...); print(doc[\"parameters\"])`.'\n\n### 2. Make partition validation a mandatory pre-execution step\nEntry [f6b0f6ad] prescribes validation but the agent skipped it. Consider making it more concrete: 'BEFORE executing ANY bulk create/update split: pick 2 items from EACH bucket. For \"create\" items, fetch ALL reviews (unfiltered, no user_email param) for that song and confirm zero reviews exist by this user. For \"update\" items, confirm the review_id you plan to update actually belongs to this user. Print these cross-checks. If ANY cross-check fails, your detection method is wrong \u2014 switch to unfiltered fetching.'\n\n### 3. Add a new rule about preferring unfiltered fetch + manual filtering for small datasets\nFor datasets under ~50 items (like 27 songs), it's safer and more reliable to fetch ALL reviews for each song (unfiltered) and then programmatically check for the user's review by matching on a known user identifier field (user_id, email in the review record). This avoids reliance on any filter parameter's correctness. The rule: 'For partition-critical detection on small datasets (< 100 items), prefer UNFILTERED fetch + manual code filtering over API filter parameters. API filters are convenient but their semantics may not match your assumptions, and for small N the cost of over-fetching is negligible.'\n\n### 4. Final state verification is insufficient for partition-sensitive tasks\nThe agent verified all 27 songs had 5-star reviews \u2014 which passed the state tests but failed the partition tests. A new entry or strengthening of [f6b0f6ad]: 'When you split items into create vs. update, the test suite may validate WHICH items were created vs. updated, not just the end state. Your verification must include: count of creates matches expected, count of updates matches expected, and the specific item IDs in each bucket are correct.'",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "3ba8ddae",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "f6b0f6ad",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "45c70c38",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "b2393d14",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "6385b186",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "679f30b9",
+          "content": "* * Check API docs with `apis.api_docs.show_api_doc(app_name, api_name)` before calling any API. TRUNCATION CHECK: If the output ends with `[TRUNCATED]` or cuts off mid-text, you did NOT read the full doc. Re-request by printing only the specific field you need \u2014 e.g., `doc = apis.api_docs.show_api_doc(...); print([(p['name'], p['description']) for p in doc['parameters']])`. Never assume parameter semantics from names alone when the full doc was not read. HARD BLOCK FOR PARTITION LOGIC: If you plan to use a filter parameter (e.g., `user_email`, `query`, `owner`, `type`) to CATEGORIZE items into different operation buckets (create vs. update, include vs. exclude), you MUST read its FULL non-truncated parameter description first. A misunderstood filter silently produces the wrong partition \u2014 even when the final state looks correct."
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "f6b0f6ad",
+          "content": "* * PARTITION VERIFICATION GATE (for bulk add/update/skip operations): When a task requires splitting items into different operation types (create new vs. update existing, approve vs. reject): (1) VALIDATE the detection method BEFORE executing \u2014 for 2+ items per bucket, fetch ALL records UNFILTERED for that entity and manually confirm your categorization matches. If you used a filter parameter (e.g., `user_email`) to detect existence, compare filtered results against the full unfiltered set for those same items. If any mismatch, switch to unfiltered fetch + code-level matching. (2) Print a partition summary table BEFORE executing: `create: [ids...] (N), update: [ids...] (M), skip: [ids...] (K)`. (3) AFTER execution, verify BOTH final state AND operation correctness. Final-state-only verification (e.g., 'all ratings are now 5') is INSUFFICIENT \u2014 the evaluation may validate WHICH items were created vs. updated, not just the end result. For 'created' records, confirm no prior record existed; for 'updated' records, confirm the review_id existed before."
+        },
+        {
+          "op": "ADD",
+          "section": "strategies_and_hard_rules",
+          "content": "* PARTITION-CRITICAL DETECTION \u2014 PREFER UNFILTERED FETCH + CODE MATCHING: When categorizing items into create vs. update buckets and the dataset is small (< 100 items), do NOT rely solely on API filter parameters (e.g., `user_email`, `query`) to detect whether your record exists. Instead: (1) Fetch ALL records for each entity UNFILTERED (e.g., `show_song_reviews(song_id=X)` with no user_email param). (2) Inspect returned record fields (user_id, email, username) to find YOUR record via code-level matching. (3) Categorize create vs. update based on this manual match. API filter parameters may search text content, match partial strings, or filter on a different field than assumed \u2014 silently producing the wrong partition even when the final state looks correct.",
+          "entry_id": "f32556ce"
+        }
+      ]
+    }
+  ],
+  "ccb4494_3": [
+    {
+      "iteration": 18,
+      "analysis": "## Root Cause\n\nThe agent liked ALL 10 songs in the Spotify queue, but the test expected only a specific subset (`private_data.song_ids_to_like`) to be newly liked. The most likely cause: some songs in the queue were **already liked** before the task began. The agent should have checked existing liked songs first and only liked the ones not already liked. The agent actually explored the `show_liked_songs` API doc (step 6) but **never called it** \u2014 it fetched the docs, understood the API existed, then ignored it entirely when executing.\n\n## Why Existing Rules Didn't Catch This\n\n1. **PRE-COMPLETION GATE (5d010b02)**: This rule explicitly says 'If you explored an app's docs but never called its data APIs, STOP.' The agent explored `show_liked_songs` but never called it. However, the rule's framing ('app-level') may have caused weak triggering \u2014 the agent DID call Spotify APIs (login, show_song_queue, like_song), just not THIS specific one. The rule needs strengthening to operate at the **individual API level**, not just the app level.\n\n2. **PARTITION VERIFICATION GATE (f6b0f6ad)**: This rule applies to 'create new vs. update existing' splits, which IS the situation here (create new like vs. skip already-liked). But its framing around 'create vs. update' might not trigger for 'like' operations, which feel more like simple actions than CRUD operations. The concept needs to be generalized.\n\n3. **After-bulk-creation verification (b2393d14)**: Had the agent fetched liked songs AFTER the bulk operation and compared against expected, it might have noticed extra/unexpected likes. But this rule alone wouldn't have prevented the error.\n\n## Missing Generalizable Knowledge\n\n**IDEMPOTENCY/STATE-CHANGE PRE-CHECK**: Before performing any bulk state-change operation (like, unlike, follow, unfollow, add to playlist, remove), the agent must check the **current state** to determine which items actually need the transition. This is because:\n- APIs may silently succeed on already-completed operations (creating duplicate records)\n- APIs may error on already-completed operations\n- Tests often validate the DELTA (what changed), not just the final state\n\n**Proposed Procedure (trigger: any bulk like/follow/add/remove/toggle action):**\n1. BEFORE acting, fetch the current state of the target collection (e.g., `show_liked_songs`, `show_followed_playlists`, `show_song_queue`).\n2. Compute the DELTA: items that need the state change vs. items already in the desired state.\n3. Print: `Already in target state: [ids] (N), Need action: [ids] (M)`.\n4. Act ONLY on items needing the change.\n5. AFTER acting, verify the count of new records matches M.\n\n**Why this is different from existing partition rules:** The existing partition rules (f6b0f6ad, f32556ce) frame the problem as 'create vs. update' in CRUD terms. But 'like a song' doesn't feel like a CRUD partition \u2014 it feels like a simple action. The missing insight is that ANY bulk action that changes state has an implicit partition: items already in the target state vs. items not yet there. This framing \u2014 **state transition pre-check** \u2014 is more natural and would trigger more reliably.\n\n## Additional Insight: Explored-but-unused API detection should be per-API, not per-app\n\nThe PRE-COMPLETION GATE (5d010b02) checks at the app level. The agent explored Spotify AND called Spotify APIs, so it wouldn't trigger. But the agent explored `show_liked_songs` specifically and never called it \u2014 this is the signal. The rule should be: 'If you looked up the doc for a specific API endpoint and never called it, justify why before completing.' This is a stronger, more granular check.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "45c70c38",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "5d010b02",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "b2393d14",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f6b0f6ad",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "e6d98370",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "9537364c",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f32556ce",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "5d010b02",
+          "content": "* PRE-COMPLETION GATE: Before calling complete_task, list every specific API endpoint whose docs you explored. For EACH explored endpoint, confirm you either (a) called it during execution, or (b) have an explicit written justification why it's irrelevant. This check operates at the INDIVIDUAL API level, not the app level \u2014 exploring `show_liked_songs` docs but never calling it is a red flag even if you called other Spotify APIs (login, show_song_queue, like_song). An explored-but-uncalled data-fetching API almost always means you skipped a required current-state check, identity resolution, or filtering step."
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "* STATE-TRANSITION PRE-CHECK \u2014 MANDATORY for bulk toggle operations (like/unlike, follow/unfollow, add/remove, subscribe/unsubscribe): BEFORE acting, you MUST check current state to compute the delta. Procedure: (1) Fetch the CURRENT state of the target collection (e.g., `show_liked_songs`, `show_followed_playlists`, `show_playlist_songs`). Paginate fully. (2) Build set of item IDs already in the target state. (3) Compute DELTA: items from your action list that are NOT already in the target state. (4) Print: `Already in target state: [ids] (N), Need action: [ids] (M)`. (5) Act ONLY on items in the delta set. (6) After acting, verify count of new records equals M. REASON: Evaluations often validate WHAT CHANGED (the delta), not just the final state. Liking an already-liked song may silently create a duplicate like record or be a no-op \u2014 either way, it corrupts the delta and fails validation. TRIGGER: Any time you are about to loop over a list of items and call a state-change API on each one, STOP and ask: 'Do I know which of these are already in the target state?'",
+          "entry_id": "5ef3c1c9"
+        }
+      ]
+    }
+  ],
+  "e85d92a_2": [
+    {
+      "iteration": 22,
+      "analysis": "## Root Cause: Insufficient Data Source Exploration for Superlative Query\n\nThe agent was looking for the 'least played Zoey James song' but only searched two personal collections: liked songs (1 Zoey James song found) and song library (0 found). It then submitted the single song it found as the answer, which failed the 'answers match' test \u2014 indicating the correct answer was a DIFFERENT Zoey James song that existed on the platform but wasn't in the user's liked songs or library.\n\n### Critical Failure Chain:\n\n1. **Abandoned search_artists approach after a fixable error.** The agent tried `search_artists(access_token=..., query='Zoey James')` and got an error because `access_token` is NOT a parameter for that API. Instead of retrying WITHOUT `access_token` (the fix was obvious from the error message), the agent completely abandoned the approach of finding Zoey James's artist profile and browsing all their songs. This is a recoverable error that should have been retried.\n\n2. **Never explored or called `search_songs` or equivalent.** The initial API description listing was truncated, and the agent never paginated through it or searched for a general song search API. There's almost certainly a `search_songs` API that would return ALL songs by Zoey James across the entire platform \u2014 not just songs in the user's personal collections.\n\n3. **Only 1 song found, yet no skepticism triggered.** Finding exactly 1 Zoey James song and declaring it the 'least played' without questioning whether there might be MORE songs is a major reasoning gap. A superlative ('least') implies comparison among multiple candidates. Finding only 1 candidate should be a strong signal that the search scope is too narrow.\n\n4. **Explored `show_downloaded_songs` docs but never called it.** The agent explicitly looked up the API documentation for downloaded songs but never actually queried it. The PRE-COMPLETION GATE rule (5d010b02) is designed to catch exactly this pattern, but the agent didn't apply it.\n\n### Why Existing Rules Failed:\n\n- **Superlative query workflow (698b4e32)** says 'Fetch ALL relevant data' but doesn't operationalize what 'all relevant' means when the task references an external entity (artist) that exists beyond the user's personal collections. The workflow needs to distinguish between 'all MY data' and 'all data on the PLATFORM matching a criterion.'\n\n- **PRE-COMPLETION GATE (5d010b02)** should have caught the explored-but-uncalled `show_downloaded_songs`, but the agent didn't execute the gate check.\n\n### Missing Playbook Procedures:\n\n**1. SEARCH SCOPE ESCALATION for entity-based queries:** When a task asks about items by a specific entity (songs by artist X, products by brand Y, emails from person Z), the agent should:\n- FIRST: Check if there's a platform-wide SEARCH API for that item type (e.g., `search_songs(query='Zoey James')`). This finds ALL items, not just ones in personal collections.\n- SECOND: If searching by entity (artist/person), find the entity's ID first (e.g., `search_artists`), then find all associated items.\n- THIRD: Only fall back to personal collections if the task specifically constrains to 'my liked songs' or 'songs in my library.'\n- TRIGGER: Any time the task names a specific person/artist/brand and asks for superlative/aggregation across their items.\n\n**2. SINGLE-CANDIDATE SKEPTICISM GATE:** When a superlative query ('least X', 'most Y') resolves to only 1 candidate, this should trigger MANDATORY scope expansion. The agent should: (a) explicitly state 'Only 1 candidate found \u2014 high risk of incomplete search', (b) list ALL data sources NOT yet checked, (c) check at least 2 additional sources before accepting a single-candidate answer.\n\n**3. PARAMETER ERROR RECOVERY:** When an API call fails with 'Unexpected parameter X,' the fix is to retry WITHOUT that parameter \u2014 not to abandon the entire approach. The error message itself usually tells you which parameters ARE allowed. This is a 1-step recovery, not a reason to pivot strategies.\n\n### Pattern Summary:\nThe agent made a classic 'search under the lamppost' error \u2014 it searched only the data sources it had already authenticated into (liked songs, song library) rather than searching the full platform. The superlative workflow rule exists but lacks a critical sub-rule: when searching for items by an EXTERNAL entity (not a personal collection), use platform-wide search APIs, not personal collection APIs.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "5d010b02",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "698b4e32",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "74f9e1f2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "strategies_and_hard_rules",
+          "content": "* PLATFORM-WIDE vs. PERSONAL COLLECTION SEARCH: When a task asks about items belonging to an EXTERNAL entity (songs by artist X, products by brand Y, posts by user Z), ALWAYS search the PLATFORM broadly \u2014 do NOT limit to personal collections (liked songs, library, downloads, queue). Personal collections are SUBSETS and will miss items. Procedure: (1) Find the entity's profile/ID via platform search API (e.g., `search_artists`). (2) Fetch ALL items associated with that entity via platform-wide APIs (e.g., `search_songs(query=artist_name)` or artist-specific endpoints). (3) Only constrain to personal collections if the task EXPLICITLY says 'in my library' or 'from my liked songs.' TRIGGER: Any time the task names a specific person/artist/brand AND asks for aggregation, superlative, or enumeration across their items.",
+          "entry_id": "fda020bc"
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "698b4e32",
+          "content": "* Superlative query resolution workflow \u2014 when the task asks for the 'most,' 'least,' 'highest,' 'lowest,' 'best,' or 'worst' of something over a dataset: (0) SCOPE CHECK: Is the query about YOUR personal data ('my most-played song') or about a PLATFORM ENTITY's data ('least played song by artist X')? If about a platform entity, use platform-wide search APIs to find ALL items by that entity \u2014 personal collections are subsets and will miss items. (1) Fetch ALL relevant data (paginate fully). (2) Identify the entity being ranked and the metric. (3) If no explicit score/rating field exists, default to FREQUENCY-BASED counting. (4) NEVER assume API list position equals ranking unless docs explicitly state ordering. (5) Perform explicit aggregation: group by entity, compute metric, sort, extract superlative. (6) Print the full ranked table as an intermediate artifact. (7) SINGLE-CANDIDATE GATE: If only 1 candidate is found for a superlative query, STOP \u2014 a superlative implies comparison among multiple candidates. List ALL unchecked data sources and check at least 2 more before accepting a single-candidate answer. (8) Sanity-check: if your chosen answer also appears at the opposite extreme, your interpretation is wrong \u2014 recompute."
+        },
+        {
+          "op": "ADD",
+          "section": "troubleshooting_and_pitfalls",
+          "content": "PARAMETER ERROR RECOVERY: When an API call fails with 'Unexpected parameter X passed to API,' the fix is to retry WITHOUT that parameter \u2014 NOT to abandon the approach entirely. The error message lists allowed parameters. HARD RULE: Never abandon a critical search approach (e.g., finding an artist's catalog via `search_artists`) because of a single fixable parameter error. Remove the offending parameter, retry immediately. Common case: passing `access_token` to a public endpoint that doesn't require authentication.",
+          "entry_id": "280f31f0"
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "MISTAKE: When the initial `show_api_descriptions(app_name)` output is TRUNCATED, proceeding with only the visible APIs \u2014 missing critical platform-wide search endpoints (e.g., `search_songs`). FIX: If output is truncated, immediately re-request printing only names: `print([d['name'] for d in apis.api_docs.show_api_descriptions(app_name)])`. Verify you see the COMPLETE API list before choosing your approach. Missing a search API can force you into personal-collection-only queries that silently exclude platform-wide data.",
+          "entry_id": "8c4776d1"
+        }
+      ]
+    }
+  ],
+  "29caf6f_2": [
+    {
+      "iteration": 24,
+      "analysis": "## Root Cause Analysis\n\nThe agent failed because it sent **two text messages** when the task required exactly one. The test suite validates that exactly 1 `GlobalTextMessage` record was added. The agent sent a first message containing 4 movies (including 2 non-Tarantino films: 'The Dark Knight' and 'The Revenant'), then realized its parsing was wrong, re-parsed to get the correct 2 movies ('Django Unchained', 'Pulp Fiction'), and sent a second corrected message \u2014 but never deleted the first incorrect one. This caused 5 of 8 tests to fail.\n\n### Failure Chain:\n1. **Incorrect structured data parsing**: The first parsing algorithm used a window of 6 lines and an overly broad title-detection heuristic (`any line without #, -, or :`), causing it to associate movies with the wrong directors. 'The Dark Knight' (Christopher Nolan) and 'The Revenant' (Alejandro Gonz\u00e1lez I\u00f1\u00e1rritu) were incorrectly attributed to Tarantino because the 6-line lookahead window crossed movie entry boundaries.\n\n2. **Sent irreversible action before verification**: The agent sent the first message (`send_text_message`) immediately after parsing, without verifying the parsed results were correct. It only discovered the parsing error AFTER the message was already sent.\n\n3. **No cleanup after error discovery**: When the agent realized the first message was wrong and sent a corrected second message, it didn't check whether the API supported deleting the first message. Two messages where one was expected is a hard failure.\n\n4. **The second parsing was correct** \u2014 the agent's self-correction logic worked, but it came too late because the irreversible action had already been executed.\n\n## Missing Playbook Rules\n\n### 1. IRREVERSIBLE ACTION PRE-VERIFICATION GATE (missing entirely)\n**Trigger**: Any time you are about to call an API that creates a record that cannot be easily undone (send_text_message, send_email, create_payment_request, charge_user).\n**Procedure**: (1) Print the FULL payload you are about to send (recipient, content, amount) as a structured intermediate artifact. (2) For each data element in the payload that was derived through parsing/filtering, print the SOURCE DATA alongside the derived result \u2014 e.g., for each movie title, print the associated director name from the source note to confirm correct attribution. (3) Only execute the API call AFTER this manual verification step confirms correctness. **HARD RULE**: Never combine parsing logic and irreversible API calls in the same code block. Parse \u2192 verify \u2192 act must be three separate steps.\n\n### 2. STRUCTURED DATA PARSING VERIFICATION (missing entirely)\n**Trigger**: When extracting records from semi-structured text (markdown notes, formatted lists) where each record has a title line followed by metadata lines (director, genre, price, etc.).\n**Procedure**: (1) After parsing, print a verification table mapping each extracted title to its parsed metadata. (2) For each extracted record, print the ORIGINAL source text lines that were used to construct it. (3) Verify boundary correctness \u2014 ensure metadata lines are associated with the correct title, especially when entries have variable numbers of metadata lines. (4) Common pitfall: fixed-size lookahead windows (e.g., 'check next 6 lines') can cross record boundaries when records have different numbers of metadata lines. Use record-boundary detection (next title line) rather than fixed windows.\n\n### 3. MISTAKE-CORRECTION FOR IRREVERSIBLE ACTIONS (missing entirely)\n**Trigger**: After discovering you sent/created incorrect data via an irreversible API call.\n**Procedure**: (1) IMMEDIATELY check the API docs for a delete/unsend/cancel endpoint for the record type you just created. (2) If a delete endpoint exists, delete the incorrect record BEFORE sending the corrected version. (3) If no delete endpoint exists, acknowledge the situation \u2014 sending a second corrected message will create 2 records where 1 was expected, which will likely fail validation. Consider whether the task can still pass or whether this is an unrecoverable error.\n\n### 4. Existing rule c761d320 needs strengthening\nThe existing rule about 'composing response from ALL available source data' partially covers this scenario but focuses on reading the conversation \u2014 it doesn't address the parsing verification gap. The agent DID read the conversation and extract the correct criteria (Quentin Tarantino), but then misapplied the criteria during parsing. The rule should be extended: after extracting criteria AND applying them to source data, verify the filtered results by printing each item with its qualifying attribute before sending.\n\n## Pattern for Future Tasks\nThis is a compose-then-verify-then-act pattern failure. The agent composed (parsed movies), acted (sent message), THEN verified (re-parsed and found errors), THEN acted again (sent second message). The correct order is always: compose \u2192 verify \u2192 act, never compose \u2192 act \u2192 verify \u2192 re-act. This pattern applies to ANY task where derived/filtered data feeds into an irreversible action.",
+      "entry_assessments": [
+        {
+          "entry_id": "c761d320",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3aea57d5",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "e6d98370",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "679f30b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "62054d35",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "b2393d14",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "5d010b02",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "strategies_and_hard_rules",
+          "content": "* * IRREVERSIBLE ACTION PRE-VERIFICATION GATE: Before calling ANY API that creates a record you cannot easily undo (send_text_message, send_email, create_payment_request, charge_user, delete_account), you MUST execute parse/compose and verify as SEPARATE code blocks from the action call. Procedure: (1) Code block 1: Parse/filter/compose the payload (recipients, content, amounts). Print a VERIFICATION TABLE mapping each derived data element back to its source \u2014 e.g., for each movie title, print its parsed director name alongside the original source lines. (2) Visually inspect the verification table output. (3) Code block 2 (separate): Only AFTER confirming correctness, execute the irreversible API call. HARD RULE: Never put parsing logic and an irreversible send/create/delete call in the same code block. If you catch yourself writing `titles = parse(...)` and `send_message(titles)` in one block, STOP and split them. Sending wrong data and then sending a correction creates 2 records where 1 was expected \u2014 this is typically an unrecoverable failure.",
+          "entry_id": "ff5b3e4e"
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "* MISTAKE: When parsing semi-structured text (markdown notes with title + metadata lines), using a FIXED-SIZE lookahead window (e.g., 'check next 6 lines for director') to associate metadata with titles. Entries may have different numbers of metadata lines, so a fixed window crosses entry boundaries and associates metadata from one record with a different title \u2014 silently producing wrong results. FIX: Use BOUNDARY DETECTION instead of fixed windows. A new record starts when you encounter the next title-like line (non-empty, not starting with `-` or `#`). Parse metadata only between the current title and the next title boundary. After parsing, print a verification table: `Title | Parsed Director | Source Lines Used` for every record. Verify each director is correctly attributed BEFORE using the parsed data in any action.",
+          "entry_id": "6888d12f"
+        },
+        {
+          "op": "ADD",
+          "section": "troubleshooting_and_pitfalls",
+          "content": "IRREVERSIBLE ACTION SENT INCORRECTLY: If you discover that data you already sent via an irreversible API (text message, email, payment) was wrong: (1) IMMEDIATELY check the API docs for a delete/unsend/cancel endpoint for that record type (e.g., `delete_text_message`). (2) If a delete endpoint exists, delete the incorrect record BEFORE sending the corrected version \u2014 the evaluation likely checks that exactly 1 record was created. (3) If NO delete endpoint exists, sending a second 'corrected' version will create 2 records where 1 was expected, which almost always fails validation. Acknowledge this as likely unrecoverable. (4) PREVENTION is far better than recovery \u2014 always use the IRREVERSIBLE ACTION PRE-VERIFICATION GATE to verify before sending.",
+          "entry_id": "77ef8b13"
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "c761d320",
+          "content": "* * MISTAKE: When a task says 'reply to X's request' or 'send X what they asked for', composing the response from ALL available source data without reading the full conversation to understand what X specifically asked for. Also: sending the response immediately after parsing without verifying the parsed/filtered results are correct. FIX: (1) Always fetch and read the COMPLETE conversation thread BEFORE composing any response. The requester's messages contain implicit filtering criteria (e.g., 'by this director', 'under $50', 'from last month'). (2) After parsing/filtering source data, print a VERIFICATION TABLE showing each included item WITH the attribute that qualifies it (e.g., movie title + director name). Confirm every item truly matches the filter criteria. (3) Only THEN send the response \u2014 in a SEPARATE code block from the parsing. Never assume 'send everything' \u2014 verify the exact scope of the request AND the correctness of your filter results."
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "3aea57d5",
+          "content": "* * Request-fulfillment from conversations workflow: When a task involves responding to or fulfilling a request found in text messages or emails: (1) Fetch the COMPLETE conversation thread with the requester (use `show_text_message_window` or paginate `search_text_messages` filtered by their phone number \u2014 do NOT rely on truncated search results). (2) Read ALL messages from the requester to extract their EXACT ask, including any qualifiers (specific director, genre, price range, date, quantity, etc.). (3) Write out the extracted criteria explicitly as an intermediate artifact before proceeding. (4) Fetch source data (notes, lists, etc.) and apply ALL extracted filters. (5) Print a VERIFICATION TABLE: for each included item, show the item AND the attribute that matches the filter criterion (e.g., `Title: Django Unchained | Director: Quentin Tarantino`). Confirm correctness. (6) ONLY AFTER verification, send the response in a SEPARATE code block. Never combine parsing/filtering and sending in one code block \u2014 if parsing is wrong, the irreversible send cannot be undone."
+        }
+      ]
+    }
+  ],
+  "60d0b5b_1": [
+    {
+      "iteration": 26,
+      "analysis": "## Root Cause\n\nThe agent sent money to the WRONG person (Jose Harrison, $13.00) instead of the correct Robert (whose identity and amount were represented by `private_data.person_venmo_user_id` and `private_data.accident_cost`). Both the receiver and the amount were wrong.\n\nThe root cause is **treating search API results as exact-match results without post-filtering**. The agent searched phone contacts with `query='Robert'` and got back 22 contacts. Critically, the agent PRINTED these contacts and could see that most are NOT named Robert:\n\n```\n['Robert', 'Martinez', ...],\n['Jonathan', 'Ball', ...],\n['Morgan', 'Burton', ...],\n['Richard', 'Riddle', ...],\n['Cheryl', 'Martinez', ...],\n```\n\nOnly 'Robert Martinez' actually has first_name 'Robert'. The `search_contacts(query='Robert')` API performs text search across ALL fields (name, address, email, etc.) \u2014 it does NOT filter by first_name. The agent treated all 22 results as 'contacts named Robert' without post-filtering to `first_name == 'Robert'`.\n\nWith 22 emails instead of ~1, the agent matched the most recent approved sent payment request to ANY of those contacts, which happened to be Jose Harrison for $13.00 \u2014 not the actual Robert contact at the expected amount.\n\n## Why Existing Rules Didn't Catch This\n\nSeveral existing rules SHOULD have triggered but didn't:\n\n1. **[58a74141]** (verify API filter interpretation): The agent printed the contact list but never verified that the results actually matched the assumed filter criterion ('is named Robert'). The rule says to 'verify the interpretation matches your assumption' but the agent skipped this verification despite having the data on screen.\n\n2. **[3ba8ddae]** (validate search/filter for categorization): This rule is about confirming filter parameters actually filter correctly. The agent never validated that `query='Robert'` returns only Roberts.\n\n3. **[f32556ce]** (prefer unfiltered fetch + code matching): This is the exact approach that would have worked \u2014 fetch ALL contacts unfiltered, then filter in code with `c['first_name'].lower() == 'robert'`. The dataset was small (< 100), which matches the trigger condition.\n\n## Missing Generalizable Rule\n\nThe playbook lacks a specific rule about **post-filtering search/query API results to match the task's exact criterion**. The existing rules address this tangentially but none create a hard trigger for the specific pattern: 'task says find X by attribute Y' \u2192 'search API returns results matching Y anywhere' \u2192 'must post-filter results where attribute Y exactly matches'.\n\n### Proposed New Rule: SEARCH RESULT POST-FILTER GATE\n\n**TRIGGER**: Any time you use a search/query API parameter to find entities matching a specific attribute (name, title, category), AND the search is a text search (not an exact-match filter).\n\n**PROCEDURE**:\n1. After receiving search results, IMMEDIATELY verify the attribute you searched by. For each result, print the specific field that should match (e.g., `first_name` for 'named Robert').\n2. Post-filter in code: `filtered = [r for r in results if r['first_name'].lower() == 'robert']`\n3. Print: `Search returned: N results. After exact-match filter on [field]: M results.`\n4. If M << N, this confirms the search API is doing broad text matching. Use ONLY the M post-filtered results.\n5. If M == 0, consider whether the task criterion maps to a different field.\n\n**HARD SIGNAL**: If you print search results and see that the MAJORITY of returned items don't match the attribute you searched by (e.g., searching 'Robert' but most first_names are not Robert), your search is over-inclusive. STOP and post-filter before proceeding.\n\n### Strengthening Existing Rules\n\nThe identity resolution rules [62054d35] and [9ea1c2a6] should explicitly include: 'After searching contacts by name, post-filter results to confirm the name field actually matches \u2014 search APIs do text search across all fields, not just name.' This is the most common trigger point for this class of error.\n\nRule [58a74141] should be strengthened with: 'Verification means checking EVERY returned record against your assumption, not just printing them. If you search for contacts named Robert and see Jonathan Ball in the results, your filter is over-inclusive \u2014 post-filter in code immediately.'\n\n## Additional Observation\n\nThe agent demonstrated strong procedural discipline (paginating, verifying balance, using separate code blocks for verification vs. action) but failed at the most basic data quality check: reading its own output. The contact list was printed in full and clearly showed non-Robert names. A simple inspection + post-filter would have caught this. This suggests the need for a verification step that is more mechanical/algorithmic than 'visually inspect' \u2014 the rule should mandate code-level filtering, not just printing.",
+      "entry_assessments": [
+        {
+          "entry_id": "62054d35",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "9ea1c2a6",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "907d694e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "679f30b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "7bb3b4b2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "58a74141",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3ba8ddae",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f32556ce",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "e6d98370",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "86f39b35",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "* * MISTAKE: Treating search/query API results as exact-match results on the intended field. Search APIs (e.g., `search_contacts(query='Robert')`, `search_users(query=name)`) perform BROAD text matching across ALL record fields \u2014 name, address, email, notes, employer, etc. Searching 'Robert' returns contacts named Robert AND contacts where 'Robert' appears anywhere else (street name, email prefix, workplace). This silently inflates result sets (e.g., 1 true match among 22 results) and causes downstream operations to act on wrong entities. FIX \u2014 SEARCH RESULT POST-FILTER GATE: (1) After EVERY search API call targeting a specific attribute, IMMEDIATELY print the target field for each result: `[(r['first_name'], r['last_name']) for r in results]`. (2) Post-filter in code to keep ONLY exact matches: `filtered = [r for r in results if r['first_name'].lower() == 'robert']`. (3) Print: `Search returned N results. After exact-match filter on first_name: M results.` (4) HARD SIGNAL: If M << N, the search was over-inclusive \u2014 use ONLY the M post-filtered results. NEVER proceed with the full unfiltered set. (5) If M == 0, re-examine whether the criterion maps to a different field or spelling.",
+          "entry_id": "1fd99dfa"
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "9ea1c2a6",
+          "content": "* * * Cross-platform identity resolution procedure \u2014 MANDATORY when task involves people from contacts on another platform (Venmo, Gmail, Spotify, etc.): (1) Log into phone app and fetch contacts using `apis.phone.search_contacts(query=name)`. (2) IMMEDIATELY POST-FILTER: Search APIs do broad text matching across ALL fields (name, address, email, employer). You MUST post-filter results to confirm the relevant field actually matches \u2014 e.g., `filtered = [c for c in results if c['first_name'].lower() == 'robert']`. Print: `Search returned N, after exact-match post-filter on first_name: M`. If M << N (e.g., 1 vs 22), the search was over-inclusive \u2014 use ONLY the M post-filtered results. (3) For EACH filtered contact, search for their account on the target platform using their email (e.g., `apis.venmo.search_users(query=email)`). Do NOT skip verification \u2014 if 0 results, email may not match. (4) Build target person set ONLY from successfully resolved contacts. (5) Cross-check: resolved account name should match phone contact name. CRITICAL: Do NOT substitute platform-native friend lists (e.g., `search_friends`, `show_followers`) for this procedure \u2014 they represent a DIFFERENT social graph than your phone contacts and will produce wrong target sets."
+        }
+      ]
+    }
+  ],
+  "d0b1f43_2": [
+    {
+      "iteration": 27,
+      "analysis": "## Root Cause: Wrong Computed Value Submitted Despite Correct Data Collection\n\nThe agent executed the task's data pipeline correctly: phone contacts \u2192 coworker filtering \u2192 Venmo user mapping \u2192 transaction aggregation. It successfully computed TWO relevant totals: sent_total=536.00 and received_total=786.00. Then it submitted 536.00 and failed the answer match test.\n\n### Core Issue: Missing 'Answer Selection Deliberation' Step\n\nThe agent computed both values in a single code block, printed them, and then jumped directly to `complete_task(answer=536.00)` without any explicit reasoning about WHICH value corresponds to the task question. There is a critical missing step between 'I have computed all the relevant values' and 'I submit this specific value.'\n\nThe ANSWER FORMAT GATE [74f9e1f2] addresses formatting but does NOT adequately address VALUE SELECTION when the agent has computed multiple candidate values. The gate says 'pick only the one that answers the question asked' but doesn't enforce a concrete procedure for doing so.\n\n### Specific Procedural Gap\n\n**Trigger**: The agent has computed 2+ numeric values and must choose one to submit.\n\n**Missing Procedure**: Before calling complete_task, the agent should:\n1. Re-read the EXACT task question text (copy-paste it).\n2. List ALL computed candidate values with explicit semantic labels: `sent_to_coworkers = 536.00`, `received_from_coworkers = 786.00`, `net = 250.00`, `total_volume = 1322.00`.\n3. Match the task's phrasing to exactly one candidate. Key distinctions: 'how much did I send' \u2192 sent; 'how much did I receive' \u2192 received; 'how much have my coworkers sent me' \u2192 received; 'total transactions' \u2192 sum of both.\n4. Explicitly state: 'Task asks [quoted phrase]. This maps to [value label] = [amount].'\n5. Submit ONLY after this deliberation.\n\n### Secondary Issue: Truncated API Doc Not Re-Read\n\nThe show_transactions API doc was truncated on initial read, and the agent never re-fetched the full parameter details for `direction`, `min_created_at`, or `max_created_at`. While the agent DID empirically verify direction semantics (good practice per [58a74141]), a full doc read might have revealed boundary semantics (inclusive vs exclusive dates) or other filter nuances. Playbook entry [679f30b9] explicitly flags truncation but the agent didn't follow through for this specific doc.\n\n### What the Agent Did Right\n\n- Identity resolution through phone contacts was correct and complete (9 coworkers found, all mapped to Venmo).\n- Direction parameter semantics were empirically verified with a known transaction before bulk computation.\n- Pagination was handled correctly for all API calls.\n- Both sent and received totals were computed, demonstrating awareness that both values might matter.\n\n### Actionable Insight for Playbook\n\nA new entry or update to [74f9e1f2] should mandate a **VALUE SELECTION GATE**: When completing a task that requires submitting a numeric answer AND you have computed multiple candidate values, you MUST explicitly (1) re-read the task question, (2) list all candidate values with semantic labels, (3) map the question's exact phrasing to one candidate with explicit written reasoning, and (4) consider whether the answer is a DERIVED value (difference, sum, ratio) of multiple candidates rather than a single candidate. This gate should fire ANY time the agent has printed 2+ distinct numeric results before submission.\n\nAdditionally, this pattern \u2014 computing the right data but submitting the wrong derived answer \u2014 is particularly insidious because it bypasses most verification gates. The data pipeline was correct, identity resolution was correct, the direction semantics were verified. The only failure was in the final semantic mapping from computed values to task question.",
+      "entry_assessments": [
+        {
+          "entry_id": "679f30b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ae4b253b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "62054d35",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "58a74141",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "74f9e1f2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "9ea1c2a6",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "86f39b35",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c41b41fa",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f093ac7e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "d2a56f20",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "402f38d0",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "5d010b02",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "21f9dc6d",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "74f9e1f2",
+          "content": "* * * ANSWER FORMAT & VALUE SELECTION GATE: Before calling `complete_task(answer=...)`, execute this mandatory procedure: (1) Re-read the EXACT task question \u2014 copy-paste the key phrase into a print statement. (2) If you computed MULTIPLE candidate values (e.g., sent vs. received, count vs. sum, per-person vs. total), list ALL of them with explicit SEMANTIC LABELS: `sent_to_coworkers = 536.00, received_from_coworkers = 786.00, net = 250.00`. (3) MATCH the task's exact phrasing to one candidate \u2014 pay close attention to DIRECTIONAL language: 'how much did I send TO X' \u2260 'how much did X send TO ME'; 'how much have my coworkers sent me' \u2192 received_from_coworkers; 'how much did I pay' \u2192 sent. Print: `Task asks: '[exact phrase]' \u2192 maps to [label] = [value]`. (4) Consider whether the answer is a DERIVED value (difference, sum, ratio) rather than a raw candidate. (5) Format as the most concise value \u2014 single number, name, or short phrase. No labels or explanatory text unless explicitly requested. HARD TRIGGER: Any time you have printed 2+ distinct numeric results before submission, you MUST execute steps 2-4 in a SEPARATE code block before calling complete_task. Skipping this deliberation is the #1 cause of submitting correct-pipeline-wrong-answer failures."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,279 @@
+{
+  "task_id": "factuality:129",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:129\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n## Root Cause: Catastrophic Input-Perception Hallucination\n\nBoth rollouts failed identically with `parse_error` (empty ratings). The agent produced `\"ratings\": [], \"best_response_ids\": []` and claimed the user prompt and candidate responses were 'not present in the provided input.' This is factually wrong \u2014 the input clearly contained a user prompt and four numbered candidate responses ([1] through [4]). The failure is a hallucination about input absence, not an actual absence. The identical failure across both rollouts rules out random noise; this is a systematic perception error.\n\nNo `<playbook_cite>`, `<missing_guidance>`, or `<uncertainty>` tags appear in the trace, meaning the agent bypassed the entire playbook without consulting any entry. Entry [4abe1be4] was designed specifically for this failure mode \u2014 its SANITY sub-step says 'not found is a cue to re-read, never a terminal conclusion' \u2014 but it had zero observable effect because the agent never engaged it. Entry [93b0e8f9] (enumerate all candidate IDs) similarly went unconsulted. Neither entry actively caused the wrong behavior (the agent didn't read them and get misled), so they are tagged neutral rather than harmful, but they were demonstrably ineffective as safeguards.\n\n## Highest-Leverage Fix: Hard Output Verification Gate\n\nAll three analytical perspectives converge on a single highest-priority gap: the playbook lacks a structural verification gate that fires at output submission time to catch empty or short ratings arrays. This gate would work independently of whether the agent consulted upstream reasoning entries \u2014 it catches the failure at the last possible moment. The gate should: (1) count [N] markers in the input, (2) verify `len(ratings)` matches that count, (3) if ratings is empty or short, force re-reading the raw input before allowing submission. An empty ratings array should be treated as a fatal error, never a valid output.\n\nThis is a universal (L3) principle: before submitting structured output, verify it is structurally complete against the input's observable structure. It is clearly MISSING from the current playbook.\n\n## Secondary Fix: Strengthen [4abe1be4]\n\nAll three perspectives agree that [4abe1be4] is too abstract. Its language ('identify,' 'locate') relies on semantic inference, which is exactly what failed. It should be updated to include mechanical, pattern-match-based parsing: scan for literal [1], [2], [3]... markers, extract text between them, and produce a visible intermediate artifact (prompt quote + candidate list + count N) before evaluation begins. Additionally, the 'never conclude absence' sub-step (currently buried as step 3 of 4) should be elevated to greater prominence, possibly as a standalone trigger: any time the agent's reasoning includes 'not present' or 'not found,' it must first quote what it does see. However, this update is secondary to the verification gate \u2014 the gate catches failures even when [4abe1be4] is bypassed entirely, which is what happened here.\n\n## Why Only One Operation\n\nThe trace teaches one core lesson: the agent can skip reasoning-layer safeguards entirely, so the playbook needs a defense at the output layer. The verification gate is the single highest-confidence, highest-leverage addition. Updating [4abe1be4] is well-supported but lower priority because (a) the gate alone would have caught this failure, and (b) the agent may bypass updated wording the same way it bypassed the current wording. The gate is architecturally independent of upstream reasoning compliance.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Catastrophic input-perception hallucination: the agent declared clearly-present input absent and produced empty ratings in both rollouts without consulting any playbook entry. The failure is systematic, not stochastic.\",\n  \"important_disagreements\": [\n    \"Credit attribution tagged [4abe1be4] and [93b0e8f9] as 'harmful' (false coverage), while anchor and principle_extraction tagged them 'neutral.' Resolved as neutral: an entry that is never consulted cannot actively cause harm. The entries were ineffective, not misleading \u2014 the agent skipped the entire playbook. 'Harmful' requires evidence the entry was read and led to wrong behavior, which is absent here.\",\n    \"Anchor proposed 4 new entries; principle_extraction argued this was overfit and proposed 2. Resolved toward conservatism: the single verification gate is the highest-leverage fix and is independently sufficient to catch this failure class. Updating [4abe1be4] is a strong candidate for a future iteration but is deferred to avoid bundling.\"\n  ],\n  \"mutation_posture\": \"add\",\n  \"why_this_posture\": \"All three reflections independently and with high confidence identify the same missing capability: a hard output verification gate that catches empty/short ratings arrays before submission. This is clearly not covered by any existing entry (no entry checks output structure at submission time), is universal (L3), and directly prevents the observed 0% failure. The consensus is unusually strong for an ADD.\",\n  \"conservatism_rationale\": \"Despite multiple reflections proposing 2-4 changes, the single verification gate is the highest-leverage fix and architecturally independent of upstream reasoning entries that the agent may bypass. Updating [4abe1be4] is well-supported but secondary \u2014 the gate alone catches this failure mode. Preferring one high-confidence addition over bundling multiple changes follows the conservative principle, and the secondary update can be evaluated in the next iteration.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\nExplain the plot of Cinderella in a sentence where each word has to begin with the next letter in the alphabet from A to Z, without repeating any letters.\n\n## Candidate Responses\n\n[1]\nA beautiful celestial creature, deliberately escaped fairy godmother, garnered handsome income, just kept lovely magical objects, noticing obscure precious queens, releasing sparkling talents, uniting venerable widows, x-raying yearning zest.\n\n[2]\nAlice browsed countless dresses, elegantly finding glorious haute items, jostling Kelly's lavish mansion, nurturing opulent pleasure, quietly reversing schemes, transforming vagabonds, waltzing xanadu, yearning zealously.\n\n[3]\nAbandoned, beautiful Cinderella cleans, dances diligently, enchanting gown, fairy godmother's help; glass slipper, kind prince locates, magical night overtakes, prince proposes, quick wedding, romance sweetly unfolds, twirling, unbelievably, victory brings wealth, xanadu-like joy zestfully emanates.\n\n[4]\nBeneath her begrimed bonnet, Cinderella brooded, dreaming eagerly of fairytale fruition.\n\n## Raw Judge Output\n{\n  \"reasoning\": \"The user prompt to be answered and the set of candidate assistant responses are not present in the provided input, so there\u2019s nothing concrete to evaluate against the requirements. Because no candidate IDs/responses are visible, I cannot extract, count, or score them reliably. The required ratings array length and best_response_ids therefore cannot be determined from the given text.\",\n  \"ratings\": [],\n  \"best_response_ids\": []\n}\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\nExplain the plot of Cinderella in a sentence where each word has to begin with the next letter in the alphabet from A to Z, without repeating any letters.\n\n## Candidate Responses\n\n[1]\nA beautiful celestial creature, deliberately escaped fairy godmother, garnered handsome income, just kept lovely magical objects, noticing obscure precious queens, releasing sparkling talents, uniting venerable widows, x-raying yearning zest.\n\n[2]\nAlice browsed countless dresses, elegantly finding glorious haute items, jostling Kelly's lavish mansion, nurturing opulent pleasure, quietly reversing schemes, transforming vagabonds, waltzing xanadu, yearning zealously.\n\n[3]\nAbandoned, beautiful Cinderella cleans, dances diligently, enchanting gown, fairy godmother's help; glass slipper, kind prince locates, magical night overtakes, prince proposes, quick wedding, romance sweetly unfolds, twirling, unbelievably, victory brings wealth, xanadu-like joy zestfully emanates.\n\n[4]\nBeneath her begrimed bonnet, Cinderella brooded, dreaming eagerly of fairytale fruition.\n\n## Raw Judge Output\n{\n  \"reasoning\": \"The user prompt to be answered and the set of candidate assistant responses are not present in the provided input, so there\u2019s nothing concrete to evaluate against the requirements. Because no candidate IDs/responses are visible, I cannot extract, count, or score them reliably. The required ratings array length and best_response_ids therefore cannot be determined from the given text.\",\n  \"ratings\": [],\n  \"best_response_ids\": []\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nError: parse_error: missing or invalid ratings\n\n## rollout_2 Evaluation\n\nError: parse_error: missing or invalid ratings",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause: Catastrophic Input Perception Failure\n\nBoth rollouts failed identically with parse_error (empty ratings). The agent produced `\"ratings\": [], \"best_response_ids\": []` and claimed 'The user prompt to be answered and the set of candidate assistant responses are not present in the provided input.' This is factually wrong \u2014 the input clearly contained a user prompt (the Cinderella alphabetical-sentence task) and four numbered candidate responses ([1] through [4]). The failure is a hallucination about input absence, not an actual absence.\n\n## Why Entry [4abe1be4] Failed to Prevent This\n\nEntry [4abe1be4] was specifically designed to catch this exact failure mode. Its step (3) SANITY says: 'if any component appears missing, describe verbatim what IS visible in the input before concluding absence; not found is a cue to re-read, never a terminal conclusion.' The agent completely bypassed this safeguard in both rollouts. This means the entry either (a) was not consulted at all, or (b) was consulted but the agent short-circuited directly to the conclusion of absence without executing the described procedure.\n\nThe PP trace confirms the agent's reasoning is identical \u2014 it jumped straight to 'not present' without any verbatim quoting of what it saw. The SANITY step had zero observable effect.\n\n## Specific Missing/Needed Playbook Elements\n\n### 1. Absolute Non-Empty Output Gate\nTrigger: Agent is about to finalize output with `ratings: []`.\nProcedure: Before submitting any output where ratings is empty, the agent MUST (a) quote the first 50 characters of each major section it sees in the input, (b) search for numbered markers `[1]`, `[2]`, etc., (c) if any are found, it MUST populate ratings. An empty ratings array is NEVER a valid final output \u2014 treat it as a fatal error that triggers re-reading.\nVerification: Count of ratings must equal count of `[N]` markers found.\n\n### 2. Structural Input Parsing Procedure (strengthen [4abe1be4])\nThe current entry is too abstract ('identify', 'locate'). It needs a mechanical, format-specific procedure:\n- SCAN for `[1]`, `[2]`, `[3]`, ... markers using literal pattern matching\n- Everything between numbered markers is a candidate response\n- Everything before the first `[N]` marker (after any system/meta framing) is the user prompt\n- Output a structured list: 'Prompt: <first 30 chars>...; Candidates found: [1], [2], ..., [N]'\n- Only after this list is produced may evaluation proceed\n\nThis makes the parsing mechanical rather than judgment-dependent, reducing the chance of the model hallucinating absence.\n\n### 3. Escalation Priority for [4abe1be4]\nThe entry should be explicitly marked as the FIRST step, with language like 'This gate MUST complete successfully before any reasoning about quality begins. No evaluation output is valid without first passing this gate.' Currently it's listed alongside other entries without clear priority ordering.\n\n### 4. 'Never Conclude Absence' as an Independent Hard Rule\nThe current SANITY sub-step is buried inside a 4-step procedure. The principle 'never conclude input is absent without first quoting what you do see' should be an independent top-level entry, because it protects against a class of catastrophic failures (0% score) rather than nuanced scoring errors.\n\n## Pattern Diagnosis\n\nThis is NOT a domain-knowledge gap, math error, or subtle judgment call \u2014 it's a mechanical execution failure at the input-perception layer. The identical failure across both rollouts rules out random noise. It suggests the agent's system prompt or framing may be confusing it about what constitutes 'the input' vs. meta-instructions. The playbook needs entries that forcibly ground the agent in the literal text it receives, with mechanical parsing steps that prevent premature abstraction.\n\n## Transferable Lesson\n\nWhen an agent must process structured input with identifiable markers (numbered candidates, labeled sections), the playbook should include a mandatory structural parsing step that is pattern-match-based (look for `[N]` markers, section headers) rather than semantic-inference-based ('identify the prompt'). Semantic inference can hallucinate; pattern matching is more robust. The result of parsing should be an explicit intermediate artifact (a numbered list of found elements) that is verified for non-emptiness before proceeding."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Agent produced output with ratings: [] claiming input was absent, when the input clearly contained a prompt and 4 numbered candidate responses [1]\u2013[4]. Identical failure across both rollouts and the PP trace. The PP trace contains no playbook citation tags whatsoever, meaning the agent bypassed the entire playbook.",
+          "gap_type": "verification_gate",
+          "suggested_content": "HARD OUTPUT GATE \u2014 Before submitting any evaluation output: (1) Count the number of [N] markers (e.g., [1], [2], \u2026) found in the input. Call this C. (2) Verify len(ratings) == C. (3) If ratings is empty OR len(ratings) != C, STOP \u2014 do not submit. Instead, quote the first 40 characters after each [N] marker found and re-attempt evaluation. An empty ratings array is NEVER a valid final output; treat it as a fatal error that requires re-reading the input from scratch. This gate fires last, after all reasoning is complete, and cannot be bypassed.",
+          "trigger": "Always \u2014 fires immediately before output submission on every task, regardless of prior reasoning."
+        },
+        {
+          "situation": "The agent's reasoning shows it failed at a perceptual level \u2014 it could not distinguish the user prompt and candidate responses from meta-instructions. The existing entry [4abe1be4] uses semantic language ('identify,' 'locate') that the agent ignored. The failure was identical across all attempts, suggesting a systematic parsing failure rather than random noise.",
+          "gap_type": "procedure",
+          "suggested_content": "MECHANICAL INPUT PARSER (fires before any judgment): (1) SCAN the input for literal markers [1], [2], [3], \u2026 using pattern matching. (2) For each marker found, extract the first 30 characters of text following it. (3) Everything before the first [N] marker (excluding system framing) is the user prompt \u2014 extract and quote its first 50 characters. (4) Produce an intermediate artifact: 'User prompt: <quote>\u2026; Candidates found: [1]:<quote>, [2]:<quote>, \u2026, [N]:<quote>; Total: N'. (5) Only after this artifact is produced and N > 0 may evaluation proceed. This replaces semantic inference ('identify the prompt') with pattern-matching, which is more robust against perceptual hallucination.",
+          "trigger": "First step of every evaluation task, before any quality assessment begins."
+        },
+        {
+          "situation": "The PP trace contains zero <playbook_cite>, <missing_guidance>, or <uncertainty> tags, meaning the agent produced its entire (wrong) answer without engaging the playbook at all. Even the 'mandatory' gate entry [4abe1be4] was not referenced. This suggests the playbook lacks a forcing function that ensures engagement.",
+          "gap_type": "checklist",
+          "suggested_content": "PLAYBOOK ENGAGEMENT CHECKPOINT \u2014 The first line of any evaluation response must explicitly reference the input-perception gate by producing the intermediate parsing artifact (prompt quote + candidate list + count). No reasoning about response quality is valid until this checkpoint artifact appears in the output. If the agent's draft response does not contain this artifact, the response is incomplete and must be restarted.",
+          "trigger": "Always \u2014 structural requirement for every evaluation output format."
+        },
+        {
+          "situation": "The agent concluded 'not present' for input that was clearly present. The existing SANITY sub-step in [4abe1be4] says 'not found is a cue to re-read, never a terminal conclusion' but this was buried as step 3 of a 4-step procedure and was never executed.",
+          "gap_type": "principle",
+          "suggested_content": "NEVER-CONCLUDE-ABSENCE PRINCIPLE \u2014 It is categorically impossible for the input to be absent; the evaluation framework guarantees a user prompt and at least one candidate response. Any internal state suggesting 'input not found' or 'no candidates visible' is a perception error, not a data error. The response to this state is ALWAYS to re-scan the raw input text for [N] markers and quoted/separated text blocks, never to output empty ratings.",
+          "trigger": "Any time the agent's reasoning includes language like 'not present,' 'not visible,' 'cannot find,' 'no candidates,' or similar absence claims about the input."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n**Agreement with anchor:** I fully agree with the anchor's root cause diagnosis \u2014 this is a catastrophic input-perception failure, not a domain knowledge or judgment error. The agent hallucinated the absence of clearly present input (a user prompt and 4 numbered candidates) and produced empty ratings, scoring 0% on both rollouts. The identical failure across all attempts rules out random variance.\n\n**Refinement of anchor:** The anchor notes [4abe1be4] 'had zero observable effect' but frames the issue as this specific entry being bypassed. The PP trace reveals a stronger claim: there are ZERO playbook citation tags of any kind across the entire trace. The agent didn't just skip the input-perception gate \u2014 it bypassed the entire playbook. This shifts the diagnosis from 'one entry needs strengthening' to 'the playbook lacks any mechanism to force initial engagement.' The anchor's proposed fixes (stronger wording, priority marking, pattern-matching procedures) are individually sound but collectively insufficient if the agent doesn't consult the playbook at all.\n\n**Disagreement with anchor:** The anchor tags all entries as 'neutral.' I tag [4abe1be4] and [93b0e8f9] as 'harmful' \u2014 not because they caused the wrong behavior, but because they create false coverage. A 'mandatory gate' that never fires is actively misleading in a playbook context: it signals to the curator that the failure mode is addressed when it demonstrably is not. The entries need fundamental redesign (from semantic to mechanical procedures, from optional to structurally enforced), not incremental strengthening.\n\n**Key structural insight:** The anchor correctly identifies that semantic instructions ('identify,' 'locate') are vulnerable to the agent hallucinating their completion. The fix must be architectural: (1) pattern-matching procedures that don't require judgment (scan for [N] markers), (2) mandatory intermediate artifacts that externalize parsing results before evaluation begins, and (3) a hard output gate that makes empty ratings literally unsubmittable. These three layers provide defense-in-depth against perceptual hallucination.\n\n**Transferable lesson:** When a playbook entry is designed as a 'mandatory gate,' the playbook must contain a structural enforcement mechanism \u2014 not just language calling it 'mandatory.' This means requiring an observable artifact (the parsing result) in the output that proves the gate was executed, and a final verification step that checks for that artifact's presence."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "**Agreement with anchor:** The anchor correctly identifies this as a catastrophic input-perception failure \u2014 the agent hallucinated that the prompt and four clearly-present candidate responses were absent, producing empty ratings in both rollouts identically. Entry 4abe1be4 was designed for exactly this scenario but had zero observable effect. The anchor's diagnosis that this is a mechanical perception failure, not a domain-knowledge gap, is well-supported.\n\n**Refinement of anchor:** The PP trace is even more damning than the anchor acknowledges. No <playbook_cite>, <uncertainty>, <reflection>, or <missing_guidance> tags appear, meaning the agent bypassed playbook consultation entirely. This is not a case of the agent reading 4abe1be4 and failing to execute it \u2014 it never engaged the playbook at all. This shifts the root cause from 'entry is too abstract' to 'entry was never invoked.' The implication is that the playbook needs a structural forcing mechanism (e.g., a hard output-validation gate) that fires regardless of whether the agent consulted upstream reasoning entries, because the agent may skip reasoning steps entirely.\n\n**Disagreement with anchor:** The anchor proposes four separate new entries. This is overfit. The trace teaches at most two distinct lessons: (1) an output-level structural gate that catches empty arrays regardless of reasoning, and (2) a stronger formulation of the 'never conclude absence without quoting' rule. The anchor's proposed 'escalation priority' and 'absolute non-empty output gate' are really the same principle at different levels. A single well-formulated verification gate covers both.\n\n**Key causal chain:** Agent skipped playbook \u2192 hallucinated input absence \u2192 produced empty output \u2192 parse_error (0%). The failure point with highest leverage is the output gate: even if the agent hallucinates during reasoning, a check that 'ratings array must be non-empty and match the count of [N] markers found in input' would force re-reading.",
+      "principles": [
+        {
+          "statement": "Before submitting output, verify it is structurally complete: if the task requires N ratings but your array has fewer, treat this as a fatal signal to re-read the input and retry\u2014never submit an empty or short array.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "Fires at the final step, after reasoning is complete but before output is emitted.",
+          "verification_or_artifact": "Count items in ratings array; compare against count of candidate markers ([1], [2], ...) in the raw input. If mismatch or zero, halt and re-read input from the top.",
+          "evidence": "Both rollouts emitted ratings:[] despite four clearly-present candidates. A post-reasoning gate checking array length against marker count would have caught this before submission and forced re-reading."
+        },
+        {
+          "statement": "When you believe required input is missing, first quote or paraphrase the first ~50 characters you DO see. If any substantive text is visible, 'not present' is wrong\u2014re-read until you can identify the structure.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "4abe1be4",
+          "trigger": "Fires whenever the agent's internal reasoning includes phrases like 'not present', 'not found', 'no input', or 'cannot identify'.",
+          "verification_or_artifact": "Produce a verbatim excerpt of visible content before any absence conclusion. If the excerpt contains substantive text, reject the absence claim.",
+          "evidence": "Entry 4abe1be4 sub-step 3 already says 'describe verbatim what IS visible,' but it is buried inside a 4-step procedure the agent never invoked. Elevating this to a standalone trigger-based rule increases the chance it fires even when the broader procedure is skipped."
+        }
+      ],
+      "mutation_implication": "add",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause: Catastrophic Input-Perception Hallucination\n\nBoth rollouts failed identically with `parse_error` (empty ratings). The agent produced `\"ratings\": [], \"best_response_ids\": []` and claimed the user prompt and candidate responses were 'not present in the provided input.' This is factually wrong \u2014 the input clearly contained a user prompt and four numbered candidate responses ([1] through [4]). The failure is a hallucination about input absence, not an actual absence. The identical failure across both rollouts rules out random noise; this is a systematic perception error.\n\nNo `<playbook_cite>`, `<missing_guidance>`, or `<uncertainty>` tags appear in the trace, meaning the agent bypassed the entire playbook without consulting any entry. Entry [4abe1be4] was designed specifically for this failure mode \u2014 its SANITY sub-step says 'not found is a cue to re-read, never a terminal conclusion' \u2014 but it had zero observable effect because the agent never engaged it. Entry [93b0e8f9] (enumerate all candidate IDs) similarly went unconsulted. Neither entry actively caused the wrong behavior (the agent didn't read them and get misled), so they are tagged neutral rather than harmful, but they were demonstrably ineffective as safeguards.\n\n## Highest-Leverage Fix: Hard Output Verification Gate\n\nAll three analytical perspectives converge on a single highest-priority gap: the playbook lacks a structural verification gate that fires at output submission time to catch empty or short ratings arrays. This gate would work independently of whether the agent consulted upstream reasoning entries \u2014 it catches the failure at the last possible moment. The gate should: (1) count [N] markers in the input, (2) verify `len(ratings)` matches that count, (3) if ratings is empty or short, force re-reading the raw input before allowing submission. An empty ratings array should be treated as a fatal error, never a valid output.\n\nThis is a universal (L3) principle: before submitting structured output, verify it is structurally complete against the input's observable structure. It is clearly MISSING from the current playbook.\n\n## Secondary Fix: Strengthen [4abe1be4]\n\nAll three perspectives agree that [4abe1be4] is too abstract. Its language ('identify,' 'locate') relies on semantic inference, which is exactly what failed. It should be updated to include mechanical, pattern-match-based parsing: scan for literal [1], [2], [3]... markers, extract text between them, and produce a visible intermediate artifact (prompt quote + candidate list + count N) before evaluation begins. Additionally, the 'never conclude absence' sub-step (currently buried as step 3 of 4) should be elevated to greater prominence, possibly as a standalone trigger: any time the agent's reasoning includes 'not present' or 'not found,' it must first quote what it does see. However, this update is secondary to the verification gate \u2014 the gate catches failures even when [4abe1be4] is bypassed entirely, which is what happened here.\n\n## Why Only One Operation\n\nThe trace teaches one core lesson: the agent can skip reasoning-layer safeguards entirely, so the playbook needs a defense at the output layer. The verification gate is the single highest-confidence, highest-leverage addition. Updating [4abe1be4] is well-supported but lower priority because (a) the gate alone would have caught this failure, and (b) the agent may bypass updated wording the same way it bypassed the current wording. The gate is architecturally independent of upstream reasoning compliance.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Catastrophic input-perception hallucination: the agent declared clearly-present input absent and produced empty ratings in both rollouts without consulting any playbook entry. The failure is systematic, not stochastic.",
+      "important_disagreements": [
+        "Credit attribution tagged [4abe1be4] and [93b0e8f9] as 'harmful' (false coverage), while anchor and principle_extraction tagged them 'neutral.' Resolved as neutral: an entry that is never consulted cannot actively cause harm. The entries were ineffective, not misleading \u2014 the agent skipped the entire playbook. 'Harmful' requires evidence the entry was read and led to wrong behavior, which is absent here.",
+        "Anchor proposed 4 new entries; principle_extraction argued this was overfit and proposed 2. Resolved toward conservatism: the single verification gate is the highest-leverage fix and is independently sufficient to catch this failure class. Updating [4abe1be4] is a strong candidate for a future iteration but is deferred to avoid bundling."
+      ],
+      "mutation_posture": "add",
+      "why_this_posture": "All three reflections independently and with high confidence identify the same missing capability: a hard output verification gate that catches empty/short ratings arrays before submission. This is clearly not covered by any existing entry (no entry checks output structure at submission time), is universal (L3), and directly prevents the observed 0% failure. The consensus is unusually strong for an ADD.",
+      "conservatism_rationale": "Despite multiple reflections proposing 2-4 changes, the single verification gate is the highest-leverage fix and architecturally independent of upstream reasoning entries that the agent may bypass. Updating [4abe1be4] is well-supported but secondary \u2014 the gate alone catches this failure mode. Preferring one high-confidence addition over bundling multiple changes follows the conservative principle, and the secondary update can be evaluated in the next iteration.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause: Catastrophic Input-Perception Hallucination\\n\\nBoth rollouts failed identically with `parse_error` (empty ratings). The agent produced `\\\"ratings\\\": [], \\\"best_response_ids\\\": []` and claimed the user prompt and candidate responses were 'not present in the provided input.' This is factually wrong \u2014 the input clearly contained a user prompt and four numbered candidate responses ([1] through [4]). The failure is a hallucination about input absence, not an actual absence. The identical failure across both rollouts rules out random noise; this is a systematic perception error.\\n\\nNo `<playbook_cite>`, `<missing_guidance>`, or `<uncertainty>` tags appear in the trace, meaning the agent bypassed the entire playbook without consulting any entry. Entry [4abe1be4] was designed specifically for this failure mode \u2014 its SANITY sub-step says 'not found is a cue to re-read, never a terminal conclusion' \u2014 but it had zero observable effect because the agent never engaged it. Entry [93b0e8f9] (enumerate all candidate IDs) similarly went unconsulted. Neither entry actively caused the wrong behavior (the agent didn't read them and get misled), so they are tagged neutral rather than harmful, but they were demonstrably ineffective as safeguards.\\n\\n## Highest-Leverage Fix: Hard Output Verification Gate\\n\\nAll three analytical perspectives converge on a single highest-priority gap: the playbook lacks a structural verification gate that fires at output submission time to catch empty or short ratings arrays. This gate would work independently of whether the agent consulted upstream reasoning entries \u2014 it catches the failure at the last possible moment. The gate should: (1) count [N] markers in the input, (2) verify `len(ratings)` matches that count, (3) if ratings is empty or short, force re-reading the raw input before allowing submission. An empty ratings array should be treated as a fatal error, never a valid output.\\n\\nThis is a universal (L3) principle: before submitting structured output, verify it is structurally complete against the input's observable structure. It is clearly MISSING from the current playbook.\\n\\n## Secondary Fix: Strengthen [4abe1be4]\\n\\nAll three perspectives agree that [4abe1be4] is too abstract. Its language ('identify,' 'locate') relies on semantic inference, which is exactly what failed. It should be updated to include mechanical, pattern-match-based parsing: scan for literal [1], [2], [3]... markers, extract text between them, and produce a visible intermediate artifact (prompt quote + candidate list + count N) before evaluation begins. Additionally, the 'never conclude absence' sub-step (currently buried as step 3 of 4) should be elevated to greater prominence, possibly as a standalone trigger: any time the agent's reasoning includes 'not present' or 'not found,' it must first quote what it does see. However, this update is secondary to the verification gate \u2014 the gate catches failures even when [4abe1be4] is bypassed entirely, which is what happened here.\\n\\n## Why Only One Operation\\n\\nThe trace teaches one core lesson: the agent can skip reasoning-layer safeguards entirely, so the playbook needs a defense at the output layer. The verification gate is the single highest-confidence, highest-leverage addition. Updating [4abe1be4] is well-supported but lower priority because (a) the gate alone would have caught this failure, and (b) the agent may bypass updated wording the same way it bypassed the current wording. The gate is architecturally independent of upstream reasoning compliance.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Catastrophic input-perception hallucination: the agent declared clearly-present input absent and produced empty ratings in both rollouts without consulting any playbook entry. The failure is systematic, not stochastic.\",\n    \"important_disagreements\": [\n      \"Credit attribution tagged [4abe1be4] and [93b0e8f9] as 'harmful' (false coverage), while anchor and principle_extraction tagged them 'neutral.' Resolved as neutral: an entry that is never consulted cannot actively cause harm. The entries were ineffective, not misleading \u2014 the agent skipped the entire playbook. 'Harmful' requires evidence the entry was read and led to wrong behavior, which is absent here.\",\n      \"Anchor proposed 4 new entries; principle_extraction argued this was overfit and proposed 2. Resolved toward conservatism: the single verification gate is the highest-leverage fix and is independently sufficient to catch this failure class. Updating [4abe1be4] is a strong candidate for a future iteration but is deferred to avoid bundling.\"\n    ],\n    \"mutation_posture\": \"add\",\n    \"why_this_posture\": \"All three reflections independently and with high confidence identify the same missing capability: a hard output verification gate that catches empty/short ratings arrays before submission. This is clearly not covered by any existing entry (no entry checks output structure at submission time), is universal (L3), and directly prevents the observed 0% failure. The consensus is unusually strong for an ADD.\",\n    \"conservatism_rationale\": \"Despite multiple reflections proposing 2-4 changes, the single verification gate is the highest-leverage fix and architecturally independent of upstream reasoning entries that the agent may bypass. Updating [4abe1be4] is well-supported but secondary \u2014 the gate alone catches this failure mode. Preferring one high-confidence addition over bundling multiple changes follows the conservative principle, and the secondary update can be evaluated in the next iteration.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

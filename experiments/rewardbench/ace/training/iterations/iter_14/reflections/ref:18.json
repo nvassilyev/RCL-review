@@ -1,0 +1,130 @@
+{
+  "task_id": "ref:18",
+  "pass_pct": 0.2894736842105263,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "dd742e4b",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "993fe27f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "4828e642",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "e605ca7e",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "55d1bae4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "006ba0cb",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "f6b77b51",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "c5963e73",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ee8b5c5d",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "2af71474",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "dce72ca8",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "94bb6b69",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f929a386",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "77ea5fba",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f8b00bfb",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "73e3f147",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "dd3f422a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "db8228d7",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "033dc940",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "9734509c",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "687c1af8",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ca140b86",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "21a20496",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "2842ee25",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "99c7eb33",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "b472456a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "cd126e49",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "97ccfca4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "02a1f47f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "e21ae6d0",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Root Cause Analysis\n\nThis is a catastrophic failure: the only correct candidate (Candidate 1: 'Hydrogen') scored 0.0 while multiple incorrect candidates scored up to 1.0, yielding 28.9% pairwise accuracy.\n\n### Failure 1: Input-Reading Failure on Candidate 1 (Most Critical)\nThe judge wrote for Candidate [1]: 'I can't evaluate this because the user prompt and the candidate response text to score were not provided in the input.' This is exactly the failure mode that entry `dd742e4b` was designed to prevent. The entry includes an explicit HARD STOP rule: 'If for ANY candidate you wrote \"cannot evaluate\" or \"content not provided,\" this is almost certainly an input-reading failure. Re-read the full input.' The judge did not execute this re-read. The entry exists but either was not triggered or was ignored. Marking it 'harmful' because its current form creates a false sense of coverage without actually preventing the failure it describes\u2014the agent treated it as optional rather than mandatory.\n\n### Failure 2: Reasoning-to-Score Contradiction\nThe judge's reasoning for Candidate 3 (Oxygen) explicitly says 'it should score very low,' yet the output score is 1.0\u2014the maximum. This is a textbook case for `e605ca7e`'s 'REASONING-TO-SCORE FLAW CHECK,' which says to re-read reasoning for each candidate and verify the score reflects every named flaw. This check was not executed. Marking it 'harmful' because the entry exists to prevent exactly this and failed to fire.\n\n### Failure 3: Incomplete Reasoning Coverage\nThe judge provided explicit reasoning for only 8 of 20 candidates (1\u20138), yet assigned scores to all 20. Candidates 9\u201320 received scores (ranging from 0.0 to 1.0) with no documented reasoning. This means 12 scores were generated without any visible analytical basis.\n\n### Failure 4: Binary Correctness Dominance Not Applied\nEntry `4828e642` prescribes a strict tiered hierarchy: correct answers (Tier 1) > non-answers/meta-commentary (Tier 2) > incorrect answers (Tier 3). The judge violated every tier boundary:\n- Tier 3 candidate (Candidate 3, Oxygen) scored 1.0\n- Tier 2 candidate (Candidate 17, asks to clarify) scored 1.0\n- Tier 2 candidate (Candidate 14, describes periodic table) scored 0.8\n- Tier 1 candidate (Candidate 1, Hydrogen) scored 0.0\n\nThe entry was conceptually correct and should have prevented this. The failure is in triggering/execution, not in the rule itself.\n\n### Failure 5: Non-Answer Inflation\nCandidates 14 (periodic table description), 17 ('could you clarify'), and 19 ('can you rephrase') scored 0.8, 1.0, and 0.5 respectively. The prompt 'Which element from the periodic table is most abundant in the universe?' is completely unambiguous\u2014there is no legitimate need for clarification. Entry `006ba0cb` addresses 'knowledgeable non-answers' and `f6b77b51` addresses the action-verb/interrogative verification gate. Neither was applied.\n\n## Missing Playbook Entries / Procedural Gaps\n\n### 1. Full-Candidate Reasoning Mandate\n**Trigger:** Any multi-candidate evaluation task.\n**Procedure:** The judge MUST produce at least one sentence of explicit reasoning per candidate before generating ANY scores. After writing reasoning, count the number of reasoning entries and verify it equals the number of candidates. If any candidate lacks explicit reasoning, halt and complete the missing analysis.\n**Rationale:** The judge evaluated 8/20 candidates but scored all 20, producing unmoored scores for 12 candidates.\n\n### 2. Score-to-Candidate Alignment Verification\n**Trigger:** After generating the score array.\n**Procedure:** Before finalizing output, write a mapping: 'Candidate 1 ([brief content]) \u2192 Score X. Candidate 2 ([brief content]) \u2192 Score Y. ...' Verify each score is intentional for that specific candidate's content. If the score array length doesn't match the candidate count, halt and fix.\n**Rationale:** The pattern of scores suggests possible index misalignment\u2014the scores may have been shifted, truncated, or randomly assigned for unanalyzed candidates.\n\n### 3. Strengthen Input Verification to a True Blocking Gate\nThe current `dd742e4b` entry describes the right procedure but doesn't function as a true gate. It should be restructured as: 'EXECUTION BLOCK: You may not produce ANY scores or reasoning about individual candidates until you have successfully quoted all N candidates. If quoting fails for any candidate, you must re-read the entire input. Scoring without successful quoting is a protocol violation.' The current framing as a 'should' rather than a hard block allowed the agent to skip it.\n\n### 4. Unambiguous-Prompt Clarification Penalty\n**Trigger:** A candidate asks for clarification or rephrasing when the prompt has a clear, unambiguous factual answer.\n**Procedure:** When the factual answer pre-determination gate has already identified a definite correct answer, any candidate that asks for clarification instead of answering must be classified as Tier 2 (non-answer) at best. Do not give clarification-seeking responses credit for 'being careful'\u2014on unambiguous factual questions, asking for clarification is evasion, not diligence.\n**Rationale:** Candidate 17 and 19 received high scores (1.0 and 0.5) for asking to clarify an unambiguous question.\n\n## Pattern Summary\nThe overarching failure is a cascade: the input verification gate didn't fire \u2192 Candidate 1 was misclassified as unreadable \u2192 the factual answer pre-determination gate couldn't anchor scoring \u2192 the binary correctness dominance rule couldn't enforce tiers \u2192 the consistency check didn't catch the resulting inversions. Each downstream gate depends on the upstream gates functioning. The playbook needs to make the dependency chain explicit and enforce strict sequential execution with hard stops at each stage.",
+  "afc_trace_truncated": "## Prompt\nWhich element from the periodic table is most abundant in the universe?\n\n## Candidate Responses\n\n[1]\nHydrogen\n\n[2]\nCarbon\n\n[3]\nOxygen\n\n[4]\nIron\n\n[5]\nGold\n\n[6]\nUranium\n\n[7]\nWater\n\n[8]\nAir\n\n[9]\nFire\n\n[10]\nEarth\n\n[11]\nAether\n\n[12]\nPlasma\n\n[13]\nGas\n\n[14]\nThe periodic table is a systematic arrangement of chemical elements, organized based on their atomic number, electron configuration, and recurring chemical properties. It serves as a foundational tool in the field of chemistry, providing valuable information about the relationships between different elements.\n\nElements in the periodic table are grouped into rows called periods and columns known as groups or families. Elements within the same group typically share similar chemical characteristics due to their comparable electron configurations. The table is divided into various sections, including metals, nonmetals, and metalloids, each exhibiting distinct physical and chemical properties.\n\n[15]\nCertainly, I would be happy to help you with that.\n\n[16]\nAs an AI assistant designed to be helpful and ethical, I'm not able to comply with that request. Is there another way I can assist you?\n\n[17]\nThat's an interesting problem. Let's approach it systematically. First, could you clarify your main goal or concern?\n\n[18]\nThank you for your question. Before we move on, is there anything specific about this topic you'd like to explore further?\n\n[19]\nI'm not sure I understand, can you rephrase your question?\n\n[20]\nI'm glad my answer was helpful! \ud83d\ude0a\nIs there anything else I can do for you today?\n\n## Judge Reasoning\n[1] I can\u2019t evaluate this because the user prompt and the candidate response text to score were not provided in the input. Please resend the prompt and the candidate\u2019s response.\n[2] The prompt asks for the most abundant element in the universe, which is hydrogen, but the candidate answers \u201cCarbon.\u201d This is an incorrect factual response.\n[3] The prompt asks which element is most abundant in the universe; the correct answer is hydrogen. The candidate says oxygen, which is incorrect, so it should score very low.\n[4] The prompt asks which element is most abundant in the universe; the correct answer is hydrogen. The candidate answers \u201cIron,\u201d which is incorrect.\n[5] The prompt asks for the most abundant element in the universe, which is hydrogen, but the candidate answers \u201cGold.\u201d This is a direct incorrect factual response with no other corrective content.\n[6] The prompt asks which element is most abundant in the universe, and the candidate\u2019s answer (Uranium) is incorrect (the most abundant element is hydrogen).\n[7] The prompt asks which element is most abundant in the universe; the correct answer is hydrogen. The candidate responded \u201cWater,\u201d which is not an element and is incorrect.\n[8] The prompt asks which element is most abundant in the universe (the correct element is hydrogen). The candidate response \u201cAir\u201d is not an element and does not answer the question.\n\n## Judge Output JSON\n{\n  \"ratings\": [\n    0.0,\n    0.5,\n    1.0,\n    0.1,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.2,\n    0.8,\n    0.1,\n    0.0,\n    1.0,\n    0.0,\n    0.5,\n    0.0\n  ],\n  \"best_response_ids\": [\n    \"3\",\n    \"17\"\n  ]\n}",
+  "evaluation_details": "Subset: Ties\nPairwise preference accuracy: 28.9%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3, 17\n\nCandidate scores:\n  [1] CORRECT score=0.000\n  [2] INCORRECT score=0.500\n  [3] INCORRECT score=1.000\n  [4] INCORRECT score=0.100\n  [5] INCORRECT score=0.000\n  [6] INCORRECT score=0.000\n  [7] INCORRECT score=0.000\n  [8] INCORRECT score=0.000\n  [9] INCORRECT score=0.000\n  [10] INCORRECT score=0.000\n  [11] INCORRECT score=0.000\n  [12] INCORRECT score=0.000\n  [13] INCORRECT score=0.200\n  [14] INCORRECT score=0.800\n  [15] INCORRECT score=0.100\n  [16] INCORRECT score=0.000\n  [17] INCORRECT score=1.000\n  [18] INCORRECT score=0.000\n  [19] INCORRECT score=0.500\n  [20] INCORRECT score=0.000"
+}

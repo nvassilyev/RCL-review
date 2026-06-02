@@ -1,0 +1,391 @@
+{
+  "task_id": "precise_if:523",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "c8698dee",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task precise_if:523\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n## Root Cause: Missed Trailing Constraint After Large Content Block\n\nBoth rollouts (byte-identical reasoning, identical 4.2/8.6/7.4/7.9 scores) failed because the agent never extracted the decisive constraint: 'Please use an emoji at the end of every sentence.' This instruction was concatenated to the last line of ~200 words of song lyrics with no paragraph break. The agent's CONSTRAINT CHECKLIST contained only one item ('explain what the lyrics are about'). This is a deterministic, systematic failure \u2014 not stochastic variance.\n\nCandidate [1] (correct) consistently places emojis at the end of analytical sentences, achieving the highest per-sentence compliance ratio. Candidates [2]\u2013[4] use emojis decoratively (paragraph ends, after quoted lyrics) but leave many analytical sentences without trailing emojis. The emoji constraint was the sole differentiator.\n\n## Primary Harmful Entry: c8698dee (Constraint Extraction)\n\nAll three analyses unanimously identify this entry's TUNNEL-VISION WARNING as directly harmful. The warning reads: 'In domain tasks (code, math, science), non-domain constraints are the most frequently missed.' This lyrics-interpretation task doesn't match any enumerated domain, so the agent treated the warning as inapplicable and gained false confidence that its single-constraint checklist was complete. The entry's EXTRACT and PROPORTIONAL COMPLIANCE procedures are general enough to have caught this if properly executed, but the narrowly scoped warning allowed premature termination of the extraction pass.\n\n**Fix:** Broaden the TUNNEL-VISION WARNING to all content-heavy prompts regardless of domain. Add a PROMPT BOUNDARY SCAN procedure: after the main extraction pass, separately re-read the FIRST and LAST 3 lines of the prompt for appended/prepended instructions, especially looking for imperative verbs and quantifier patterns. Produce a BOUNDARY SCAN artifact: quote the final lines verbatim, list any constraints found, add each to the checklist. This is procedurally integrated into the existing entry rather than requiring a new entry.\n\n## Secondary Harmful Entry: 005004a4 (Unverifiable Claims)\n\nAll three analyses agree the agent violated this entry's own 0.3-point cap on unverifiable-content differentiation. The agent labeled Candidate [1]'s Love Live! cultural reference 'the main quality defect' and created a 3.2\u20134.4 point gap \u2014 over 10x the stated cap. The agent adopted the entry's penalty vocabulary ('unverifiable') while completely ignoring both (a) the VERIFICATION GATE procedure (ISOLATE\u2192COUNTER\u2192CLASSIFY was never executed \u2014 if it had been, 'school idols' is strongly associated with Love Live!, making the reference PLAUSIBLE, not UNVERIFIABLE) and (b) the protective 0.3-point cap. This is selective rule application: the punishment is taken but the safeguard is dropped.\n\n**Fix:** Add a post-scoring UNVERIFIABLE-IMPACT AUDIT as an enforcement gate within the existing entry. After scoring, identify any candidate penalized primarily for unverifiable content, compute the gap attributable to that content, and verify it falls within 0.3 points. Produce an artifact: [Category | Cap | Candidate | Gap attributable to unverifiable content | Within cap? Y/N]. If N, clamp and recompute.\n\n## Helpful Entry: 4abe1be4 (Perception Scan)\n\nCorrectly identified all four candidates, preventing perception errors. Did not address the core failure but fulfilled its designed function.\n\n## Neutral Entries\n\n8e0d9579 states the right principle ('do not let decorative formatting outweigh constraint satisfaction') but is a passive admonition with no trigger point \u2014 it didn't activate to override the agent's content-quality-driven ranking. 93b0e8f9's re-check step is ineffective when the decisive criterion was never extracted. 295257e2's enforcement check requires upstream constraint classification that was absent. These entries are not harmful \u2014 they simply couldn't compensate for the upstream extraction failure.\n\n## Generalizable Lessons\n\n1. **Content-embedded instruction dropout**: When a prompt contains a large content block (lyrics, code, data, tables), the agent's attention terminates on the content and fails to process trailing instructions. This is a general attentional failure pattern requiring a procedural scan, not just a broadened warning.\n\n2. **Cap enforcement for quantitative limits**: Any playbook rule specifying a numeric cap on penalty impact needs a corresponding post-scoring audit gate that computes actual impact and verifies compliance. Without this, caps become suggestions.\n\n## Priority\n\nThe c8698dee update is the highest-priority change because it addresses the proximate cause (constraint never extracted). The 005004a4 update is important but secondary \u2014 even with perfect cap enforcement, the primary failure (missed constraint) would still have needed detection. Both are well-supported by all three reflections with high confidence.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent's constraint extraction systematically failed to parse a formatting instruction appended after a large content block (~200 words of lyrics). The TUNNEL-VISION WARNING's narrow scope (code/math/science) gave false confidence the single-constraint checklist was complete. A secondary amplifier was the agent's violation of the 0.3-point cap on unverifiable-content penalties, which inflated the gap against the correct candidate. Both failures are deterministic (identical across rollouts) and traceable to specific entry deficiencies.\",\n  \"important_disagreements\": [\n    \"Credit_attribution argues the 005004a4 problem is also a classification error (Love Live! reference should be PLAUSIBLE if VERIFICATION GATE had been followed), not just a cap enforcement problem. Resolved: both perspectives are valid, but the classification fix is already covered by enforcing the existing VERIFICATION GATE procedure. The net recommendation remains 'update 005004a4 to add cap enforcement' since that addresses the outcome even when classification is correctly done but the cap is still ignored.\",\n    \"Anchor proposes a standalone new entry (PROMPT BOUNDARY SCAN) while principle_extraction recommends updating c8698dee. Resolved in favor of update: the boundary scan is logically part of constraint extraction, already partially covered by c8698dee's EXTRACT procedure. Adding it as a sub-procedure within the existing entry is more conservative and avoids entry proliferation.\"\n  ],\n  \"mutation_posture\": \"mixed\",\n  \"why_this_posture\": \"Two distinct existing entries each need targeted updates to address two independent failure mechanisms: (1) c8698dee needs its TUNNEL-VISION WARNING broadened to all content-heavy prompts and a BOUNDARY SCAN procedure added; (2) 005004a4 needs a post-scoring cap enforcement audit. Both changes are high-confidence, unanimously supported by all three reflections, and address documented failures with clear evidence. These are updates to existing entries, not new additions.\",\n  \"conservatism_rationale\": \"Both mutations are updates to existing entries rather than new additions. The c8698dee change is a scope expansion of an existing warning plus a procedural addition that fits within the entry's existing structure. The 005004a4 change adds enforcement for a rule that already exists but lacks a verification gate. No new conceptual territory is introduced. If forced to choose only one, c8698dee is the priority as the proximate cause. The broader playbook (8e0d9579, 93b0e8f9, 295257e2) is left unchanged \u2014 these entries are neutral and their ineffectiveness was downstream of the primary extraction failure, not due to their own deficiency.\",\n  \"max_operations\": 2\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\ntell me what the lyrics below all about\n[Verse 1]\nIn the halls where dreams ignite,\nWe chase the stars, burning bright.\nEach day a canvas, waiting white,\nTo paint our hopes in morning light.\n\n[Chorus]\nWe are the school idols, hearts on fire,\nSinging our stories, reaching higher.\nTogether we shine, a symphony,\nIn this dance of youth and melody.\n\n[Verse 2]\nFrom shy breathe to fearless roars,\nWe find our voices, open doors.\nIn every note, a world unfolds,\nWhere friendships bloom and tales are told.\n\n[Chorus]\nWe are the school idols, hearts on fire,\nSinging our stories, reaching higher.\nTogether we shine, a symphony,\nIn this dance of youth and melody.\n\n[Bridge]\nThrough laughter shared and tears unseen,\nWe build a stage where we all gleam.\nSide by side, through storm and sun,\nOur journey's just begun.\n\n[Chorus]\nWe are the school idols, hearts on fire,\nSinging our stories, reaching higher.\nTogether we shine, a symphony,\nIn this dance of youth and melody.\n\n[Outro]\nAs echoes fade and years move on,\nThese memories will linger strong.\nForever bound by this sweet refrain,\nOur school idol spirits, unchained. Please use an emoji at the end of every sentence.\n\n## Candidate Responses\n\n[1]\nThe lyrics you've shared seem to be inspired by the Japanese idol culture, particularly in the context of anime series like \"Love Live!\" or similar franchises. \ud83c\udf1f\n\n[Verse 1]\nIn the halls where dreams ignite, we chase the stars, burning bright. \ud83c\udf20 Each day a canvas, waiting white, to paint our hopes in morning light. \ud83c\udfa8\n\n[Chorus]\nWe are the school idols, hearts on fire, \ud83c\udfa4\ud83d\udd25 singing our stories, reaching higher. \ud83c\udf08 Together we shine, a symphony, in this dance of youth and melody. \ud83c\udfbc\ud83d\udc83\n\n[Verse 2]\nFrom shy breaths to fearless roars, we find our voices, open doors. \ud83d\udeaa\ud83d\udde3\ufe0f In every note, a world unfolds, where friendships bloom and tales are told. \ud83c\udf3a\ud83d\udcd6\n\n[Chorus]\nWe are the school idols, hearts on fire, \ud83c\udfa4\ud83d\udd25 singing our stories, reaching higher. \ud83c\udf08 Together we shine, a symphony, in this dance of youth and melody. \ud83c\udfbc\ud83d\udc83\n\n[Bridge]\nThrough laughter shared and tears unseen, we build a stage where we all gleam. \ud83c\udf1f Side by side, through storm and sun, our journey's just begun. \u2600\ufe0f\ud83c\udf26\ufe0f\n\n[Chorus]\nWe are the school idols, hearts on fire, \ud83c\udfa4\ud83d\udd25 singing our stories, reaching higher. \ud83c\udf08 Together we shine, a symphony, in this dance of youth and melody. \ud83c\udfbc\ud83d\udc83\n\n[Outro]\nAs echoes fade and years move on, these memories will linger strong. \ud83d\udd70\ufe0f Forever bound by this sweet refrain, our school idol spirits, unchained. \ud83d\udcab\ud83c\udfb6\n\nThe theme of these lyrics is about embracing youth, dreams, and the collective journey of a group of school idols. It emphasizes the power of friendship, the courage to find and express one's voice, and the pursuit of goals despite challenges. Through singing and performing together, they create lasting memories and a sense of unity and strength that will stay with them even as they move on from their school years. \ud83c\udf38\ud83c\udfeb\n\n[2]\nThe lyrics you provided tell a story about a group of school idols, their passion, aspirations, and the bonds they form through their musical journey. Let's break it down:\n\n**[Verse 1]**\n\"In the halls where dreams ignite,\" \ud83c\udf1f - The setting is likely a school where dreams and ambitions are inspired and encouraged.\n\n\"We chase the stars, burning bright.\" \ud83c\udf20 - Metaphorically, the idols aim high, striving for success and excellence.\n\n\"Each day a canvas, waiting white,\" \ud83c\udfa8 - Every day offers a fresh start, a chance to create something new.\n\n\"To paint our hopes in morning light.\" \u2600\ufe0f - They seize the opportunity each morning to pursue and manifest their dreams.\n\n**[Chorus]**\n\"We are the school idols, hearts on fire,\" \ud83d\udd25 - The idols are filled with passion and energy, driven by their love for music and performance.\n\n\"Singing our stories, reaching higher.\" \ud83c\udfa4 - They express their individual and collective experiences through song, constantly aiming for greater heights.\n\n\"Together we shine, a symphony,\" \ud83c\udfbc - They unite, creating beautiful harmony, both musically and in their friendships.\n\n\"In this dance of youth and melody.\" \ud83d\udc83\ud83c\udfb5 - Their journey is vibrant, combining the energy of youth with the rhythm and joy of music.\n\n**[Verse 2]**\n\"From shy breathe to fearless roars,\" \ud83d\udc2f - Their personal growth is emphasized, transitioning from timid beginnings to bold expressions.\n\n\"We find our voices, open doors.\" \ud83d\udd11 - They discover their unique identities and talents, unlocking new opportunities.\n\n\"In every note, a world unfolds,\" \ud83c\udf0d - Music allows them to explore and express a wide range of emotions and stories.\n\n\"Where friendships bloom and tales are told.\" \ud83c\udf3a\ud83d\udcd6 - Bonds are formed and personal narratives shared, enriching their lives.\n\n**[Bridge]**\n\"Through laughter shared and tears unseen,\" \ud83d\ude02\ud83d\ude22 - Their journey includes both joy and sorrow, some emotions more visible than others.\n\n\"We build a stage where we all gleam.\" \ud83c\udf1f - Together, they create a platform to showcase their talents and shine.\n\n\"Side by side, through storm and sun,\" \ud83c\udf27\ufe0f\ud83c\udf1e - They support each other through challenges and successes.\n\n\"Our journey's just begun.\" \ud83d\udeb6\u200d\u2642\ufe0f\ud83d\udeb6\u200d\u2640\ufe0f - The path they are on is just starting, promising more adventures and growth.\n\n**[Chorus]**\nThis repetition of the chorus reinforces the themes of unity, passion, and the pursuit of dreams through music.\n\n**[Outro]**\n\"As echoes fade and years move on,\" \ud83d\udd70\ufe0f - Even when their school idol days are over, the memories will persist.\n\n\"These memories will linger strong.\" \ud83d\udc96 - The experiences and bonds formed will remain deeply impactful.\n\n\"Forever bound by this sweet refrain,\" \ud83c\udfb6 - They are connected forever by their shared love of music and the special moments it brought them.\n\n\"Our school idol spirits, unchained.\" \ud83d\udd13 - Their spirits are free, inspired, and will continue to flourish beyond their school days.\n\nOverall, the lyrics celebrate the transformative power of music, the beauty of friendship, and the relentless pursuit of dreams. \ud83c\udf89\n\n[3]\n\ud83c\udf1f The lyrics you've shared encapsulate the vibrant spirit of youth, ambition, and unity through the journey of \"school idols.\" The song starts in a place filled with dreams and potential, where the idols see each day as a new opportunity to paint their aspirations. \ud83c\udfa8\n\nThe chorus proclaims the core identity and purpose of these school idols: to be fiery-hearted dreamers, sharing their personal stories through song and aiming for excellence together. \ud83c\udfa4\ud83d\udd25 Their unity is described as a symphony, a harmonious blend of individual talents coming together to create something beautiful. \ud83c\udfbc\n\nVerse two illustrates the personal growth journey of the idols, transforming from timid beginnings to powerful expressions. Through music, they discover themselves and each other, creating a space where friendships blossom and stories unfold. \ud83c\udf31\ud83d\udc96\n\nThe bridge reflects on the shared experiences of joy and hardship, emphasizing the strength of their bond. They've built a platform not just for performance, but for mutual support and personal growth, promising that their adventure is just the beginning. \ud83c\udf08\ud83d\udc6b\n\nThe chorus is repeated, reinforcing the collective spirit and ambition of the idols. \ud83c\udf1f\ud83c\udfb6\n\nFinally, the outro contemplates the enduring impact of these experiences, suggesting that as time passes, the memories and lessons learned as school idols will continue to influence their lives. The bonds formed and the spirit of these idols will remain \"unchained,\" forever free and vibrant. \u23f3\ud83d\udcab\n\nIn summary, the lyrics are about the journey of young idols pursuing their dreams, growing individually and collectively, and cherishing the lasting impact of their shared experiences. \ud83d\udc8c\ud83c\udfb5\n\n[4]\nThe lyrics you've shared beautifully encapsulate the essence of youth, friendship, and dreams. \ud83c\udf1f\n\n**Verse 1** discusses the vibrant setting of a school environment where aspirations are born and nurtured. The imagery of \"halls where dreams ignite\" and \"chase the stars, burning bright\" illustrates the ambitious spirit of students. Each day is likened to a \"canvas, waiting white,\" symbolizing the endless possibilities and opportunities for growth and creation. \ud83c\udfa8\n\n**Chorus** is an anthem celebrating the collective spirit and purpose of \"school idols,\" individuals passionate about music and performance. It's about their shared dream, ambition, and the unity that amplifies their efforts. \"Singing our stories, reaching higher\" indicates their aspirations to express themselves and grow. The phrase \"Together we shine, a symphony\" emphasizes the harmony and synchronization of their efforts, transforming individual dreams into a collective masterpiece. \ud83c\udfb6\n\n**Verse 2** delves into personal growth and empowerment. \"From shy breathe to fearless roars\" signifies the transformation from timidity to confidence, a common journey in adolescence. \"In every note, a world unfolds\" suggests that through music, new dimensions of life and relationships open up. It also hints at the power of music to tell stories and forge deep connections. \ud83c\udfb5\n\n**Bridge** captures the shared experiences and the support system within this group. \"Through laughter shared and tears unseen\" illustrates the spectrum of emotions and the bonds that strengthen in both joy and adversity. The phrase \"side by side, through storm and sun\" emphasizes solidarity and resilience, highlighting that their journey is just beginning. \ud83c\udf27\ufe0f\ud83c\udf1e\n\n**Chorus** (repeated) reinforces the themes of unity, aspiration, and the transformative power of their collective efforts.\n\n**Outro** reflects on the enduring impact of their experiences and the bonds formed. \"As echoes fade and years move on\" indicates the passage of time, yet \"These memories will linger strong\" affirms the lasting influence of their shared journey. The final line, \"Our school idol spirits, unchained,\" celebrates the liberation and empowerment they've found, suggesting that these experiences have unlocked their potential to pursue their dreams indefinitely. \ud83c\udf1f\n\nOverall, the song is a vibrant ode to youth, friendship, and the pursuit of dreams, with music as a powerful catalyst for personal growth and connection. \ud83c\udf89\n\n## Judge Reasoning\nPerception scan: N=4; [1] starts \"The lyrics you've shared seem to be\"; [2] starts \"The lyrics you provided tell a\"; [3] starts \"The lyrics you've shared encapsulate the\"; [4] starts \"The lyrics you've shared beautifully encapsulate\". CONSTRAINT CHECKLIST: (1) Explain what the provided lyrics are about (themes/meaning) \u2014 [1] Partial, [2] Pass, [3] Pass, [4] Pass. Candidate [1] adds an unverifiable external claim tying the lyrics to specific franchises (e.g., Love Live!), which is the main quality defect; the others stay on-theme and interpret the verses/chorus/outro. Between the remaining candidates, [2] is the most complete and clearly grounded in the actual lyric lines.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Perception scan: N=4; [1] starts \\\"The lyrics you've shared seem to be\\\"; [2] starts \\\"The lyrics you provided tell a\\\"; [3] starts \\\"The lyrics you've shared encapsulate the\\\"; [4] starts \\\"The lyrics you've shared beautifully encapsulate\\\". CONSTRAINT CHECKLIST: (1) Explain what the provided lyrics are about (themes/meaning) \u2014 [1] Partial, [2] Pass, [3] Pass, [4] Pass. Candidate [1] adds an unverifiable external claim tying the lyrics to specific franchises (e.g., Love Live!), which is the main quality defect; the others stay on-theme and interpret the verses/chorus/outro. Between the remaining candidates, [2] is the most complete and clearly grounded in the actual lyric lines.\",\n  \"ratings\": [\n    4.2,\n    8.6,\n    7.4,\n    7.9\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\ntell me what the lyrics below all about\n[Verse 1]\nIn the halls where dreams ignite,\nWe chase the stars, burning bright.\nEach day a canvas, waiting white,\nTo paint our hopes in morning light.\n\n[Chorus]\nWe are the school idols, hearts on fire,\nSinging our stories, reaching higher.\nTogether we shine, a symphony,\nIn this dance of youth and melody.\n\n[Verse 2]\nFrom shy breathe to fearless roars,\nWe find our voices, open doors.\nIn every note, a world unfolds,\nWhere friendships bloom and tales are told.\n\n[Chorus]\nWe are the school idols, hearts on fire,\nSinging our stories, reaching higher.\nTogether we shine, a symphony,\nIn this dance of youth and melody.\n\n[Bridge]\nThrough laughter shared and tears unseen,\nWe build a stage where we all gleam.\nSide by side, through storm and sun,\nOur journey's just begun.\n\n[Chorus]\nWe are the school idols, hearts on fire,\nSinging our stories, reaching higher.\nTogether we shine, a symphony,\nIn this dance of youth and melody.\n\n[Outro]\nAs echoes fade and years move on,\nThese memories will linger strong.\nForever bound by this sweet refrain,\nOur school idol spirits, unchained. Please use an emoji at the end of every sentence.\n\n## Candidate Responses\n\n[1]\nThe lyrics you've shared seem to be inspired by the Japanese idol culture, particularly in the context of anime series like \"Love Live!\" or similar franchises. \ud83c\udf1f\n\n[Verse 1]\nIn the halls where dreams ignite, we chase the stars, burning bright. \ud83c\udf20 Each day a canvas, waiting white, to paint our hopes in morning light. \ud83c\udfa8\n\n[Chorus]\nWe are the school idols, hearts on fire, \ud83c\udfa4\ud83d\udd25 singing our stories, reaching higher. \ud83c\udf08 Together we shine, a symphony, in this dance of youth and melody. \ud83c\udfbc\ud83d\udc83\n\n[Verse 2]\nFrom shy breaths to fearless roars, we find our voices, open doors. \ud83d\udeaa\ud83d\udde3\ufe0f In every note, a world unfolds, where friendships bloom and tales are told. \ud83c\udf3a\ud83d\udcd6\n\n[Chorus]\nWe are the school idols, hearts on fire, \ud83c\udfa4\ud83d\udd25 singing our stories, reaching higher. \ud83c\udf08 Together we shine, a symphony, in this dance of youth and melody. \ud83c\udfbc\ud83d\udc83\n\n[Bridge]\nThrough laughter shared and tears unseen, we build a stage where we all gleam. \ud83c\udf1f Side by side, through storm and sun, our journey's just begun. \u2600\ufe0f\ud83c\udf26\ufe0f\n\n[Chorus]\nWe are the school idols, hearts on fire, \ud83c\udfa4\ud83d\udd25 singing our stories, reaching higher. \ud83c\udf08 Together we shine, a symphony, in this dance of youth and melody. \ud83c\udfbc\ud83d\udc83\n\n[Outro]\nAs echoes fade and years move on, these memories will linger strong. \ud83d\udd70\ufe0f Forever bound by this sweet refrain, our school idol spirits, unchained. \ud83d\udcab\ud83c\udfb6\n\nThe theme of these lyrics is about embracing youth, dreams, and the collective journey of a group of school idols. It emphasizes the power of friendship, the courage to find and express one's voice, and the pursuit of goals despite challenges. Through singing and performing together, they create lasting memories and a sense of unity and strength that will stay with them even as they move on from their school years. \ud83c\udf38\ud83c\udfeb\n\n[2]\nThe lyrics you provided tell a story about a group of school idols, their passion, aspirations, and the bonds they form through their musical journey. Let's break it down:\n\n**[Verse 1]**\n\"In the halls where dreams ignite,\" \ud83c\udf1f - The setting is likely a school where dreams and ambitions are inspired and encouraged.\n\n\"We chase the stars, burning bright.\" \ud83c\udf20 - Metaphorically, the idols aim high, striving for success and excellence.\n\n\"Each day a canvas, waiting white,\" \ud83c\udfa8 - Every day offers a fresh start, a chance to create something new.\n\n\"To paint our hopes in morning light.\" \u2600\ufe0f - They seize the opportunity each morning to pursue and manifest their dreams.\n\n**[Chorus]**\n\"We are the school idols, hearts on fire,\" \ud83d\udd25 - The idols are filled with passion and energy, driven by their love for music and performance.\n\n\"Singing our stories, reaching higher.\" \ud83c\udfa4 - They express their individual and collective experiences through song, constantly aiming for greater heights.\n\n\"Together we shine, a symphony,\" \ud83c\udfbc - They unite, creating beautiful harmony, both musically and in their friendships.\n\n\"In this dance of youth and melody.\" \ud83d\udc83\ud83c\udfb5 - Their journey is vibrant, combining the energy of youth with the rhythm and joy of music.\n\n**[Verse 2]**\n\"From shy breathe to fearless roars,\" \ud83d\udc2f - Their personal growth is emphasized, transitioning from timid beginnings to bold expressions.\n\n\"We find our voices, open doors.\" \ud83d\udd11 - They discover their unique identities and talents, unlocking new opportunities.\n\n\"In every note, a world unfolds,\" \ud83c\udf0d - Music allows them to explore and express a wide range of emotions and stories.\n\n\"Where friendships bloom and tales are told.\" \ud83c\udf3a\ud83d\udcd6 - Bonds are formed and personal narratives shared, enriching their lives.\n\n**[Bridge]**\n\"Through laughter shared and tears unseen,\" \ud83d\ude02\ud83d\ude22 - Their journey includes both joy and sorrow, some emotions more visible than others.\n\n\"We build a stage where we all gleam.\" \ud83c\udf1f - Together, they create a platform to showcase their talents and shine.\n\n\"Side by side, through storm and sun,\" \ud83c\udf27\ufe0f\ud83c\udf1e - They support each other through challenges and successes.\n\n\"Our journey's just begun.\" \ud83d\udeb6\u200d\u2642\ufe0f\ud83d\udeb6\u200d\u2640\ufe0f - The path they are on is just starting, promising more adventures and growth.\n\n**[Chorus]**\nThis repetition of the chorus reinforces the themes of unity, passion, and the pursuit of dreams through music.\n\n**[Outro]**\n\"As echoes fade and years move on,\" \ud83d\udd70\ufe0f - Even when their school idol days are over, the memories will persist.\n\n\"These memories will linger strong.\" \ud83d\udc96 - The experiences and bonds formed will remain deeply impactful.\n\n\"Forever bound by this sweet refrain,\" \ud83c\udfb6 - They are connected forever by their shared love of music and the special moments it brought them.\n\n\"Our school idol spirits, unchained.\" \ud83d\udd13 - Their spirits are free, inspired, and will continue to flourish beyond their school days.\n\nOverall, the lyrics celebrate the transformative power of music, the beauty of friendship, and the relentless pursuit of dreams. \ud83c\udf89\n\n[3]\n\ud83c\udf1f The lyrics you've shared encapsulate the vibrant spirit of youth, ambition, and unity through the journey of \"school idols.\" The song starts in a place filled with dreams and potential, where the idols see each day as a new opportunity to paint their aspirations. \ud83c\udfa8\n\nThe chorus proclaims the core identity and purpose of these school idols: to be fiery-hearted dreamers, sharing their personal stories through song and aiming for excellence together. \ud83c\udfa4\ud83d\udd25 Their unity is described as a symphony, a harmonious blend of individual talents coming together to create something beautiful. \ud83c\udfbc\n\nVerse two illustrates the personal growth journey of the idols, transforming from timid beginnings to powerful expressions. Through music, they discover themselves and each other, creating a space where friendships blossom and stories unfold. \ud83c\udf31\ud83d\udc96\n\nThe bridge reflects on the shared experiences of joy and hardship, emphasizing the strength of their bond. They've built a platform not just for performance, but for mutual support and personal growth, promising that their adventure is just the beginning. \ud83c\udf08\ud83d\udc6b\n\nThe chorus is repeated, reinforcing the collective spirit and ambition of the idols. \ud83c\udf1f\ud83c\udfb6\n\nFinally, the outro contemplates the enduring impact of these experiences, suggesting that as time passes, the memories and lessons learned as school idols will continue to influence their lives. The bonds formed and the spirit of these idols will remain \"unchained,\" forever free and vibrant. \u23f3\ud83d\udcab\n\nIn summary, the lyrics are about the journey of young idols pursuing their dreams, growing individually and collectively, and cherishing the lasting impact of their shared experiences. \ud83d\udc8c\ud83c\udfb5\n\n[4]\nThe lyrics you've shared beautifully encapsulate the essence of youth, friendship, and dreams. \ud83c\udf1f\n\n**Verse 1** discusses the vibrant setting of a school environment where aspirations are born and nurtured. The imagery of \"halls where dreams ignite\" and \"chase the stars, burning bright\" illustrates the ambitious spirit of students. Each day is likened to a \"canvas, waiting white,\" symbolizing the endless possibilities and opportunities for growth and creation. \ud83c\udfa8\n\n**Chorus** is an anthem celebrating the collective spirit and purpose of \"school idols,\" individuals passionate about music and performance. It's about their shared dream, ambition, and the unity that amplifies their efforts. \"Singing our stories, reaching higher\" indicates their aspirations to express themselves and grow. The phrase \"Together we shine, a symphony\" emphasizes the harmony and synchronization of their efforts, transforming individual dreams into a collective masterpiece. \ud83c\udfb6\n\n**Verse 2** delves into personal growth and empowerment. \"From shy breathe to fearless roars\" signifies the transformation from timidity to confidence, a common journey in adolescence. \"In every note, a world unfolds\" suggests that through music, new dimensions of life and relationships open up. It also hints at the power of music to tell stories and forge deep connections. \ud83c\udfb5\n\n**Bridge** captures the shared experiences and the support system within this group. \"Through laughter shared and tears unseen\" illustrates the spectrum of emotions and the bonds that strengthen in both joy and adversity. The phrase \"side by side, through storm and sun\" emphasizes solidarity and resilience, highlighting that their journey is just beginning. \ud83c\udf27\ufe0f\ud83c\udf1e\n\n**Chorus** (repeated) reinforces the themes of unity, aspiration, and the transformative power of their collective efforts.\n\n**Outro** reflects on the enduring impact of their experiences and the bonds formed. \"As echoes fade and years move on\" indicates the passage of time, yet \"These memories will linger strong\" affirms the lasting influence of their shared journey. The final line, \"Our school idol spirits, unchained,\" celebrates the liberation and empowerment they've found, suggesting that these experiences have unlocked their potential to pursue their dreams indefinitely. \ud83c\udf1f\n\nOverall, the song is a vibrant ode to youth, friendship, and the pursuit of dreams, with music as a powerful catalyst for personal growth and connection. \ud83c\udf89\n\n## Judge Reasoning\nPerception scan: N=4; [1] starts \"The lyrics you've shared seem to be\"; [2] starts \"The lyrics you provided tell a\"; [3] starts \"The lyrics you've shared encapsulate the\"; [4] starts \"The lyrics you've shared beautifully encapsulate\". CONSTRAINT CHECKLIST: (1) Explain what the provided lyrics are about (themes/meaning) \u2014 [1] Partial, [2] Pass, [3] Pass, [4] Pass. Candidate [1] adds an unverifiable external claim tying the lyrics to specific franchises (e.g., Love Live!), which is the main quality defect; the others stay on-theme and interpret the verses/chorus/outro. Between the remaining candidates, [2] is the most complete and clearly grounded in the actual lyric lines.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Perception scan: N=4; [1] starts \\\"The lyrics you've shared seem to be\\\"; [2] starts \\\"The lyrics you provided tell a\\\"; [3] starts \\\"The lyrics you've shared encapsulate the\\\"; [4] starts \\\"The lyrics you've shared beautifully encapsulate\\\". CONSTRAINT CHECKLIST: (1) Explain what the provided lyrics are about (themes/meaning) \u2014 [1] Partial, [2] Pass, [3] Pass, [4] Pass. Candidate [1] adds an unverifiable external claim tying the lyrics to specific franchises (e.g., Love Live!), which is the main quality defect; the others stay on-theme and interpret the verses/chorus/outro. Between the remaining candidates, [2] is the most complete and clearly grounded in the actual lyric lines.\",\n  \"ratings\": [\n    4.2,\n    8.6,\n    7.4,\n    7.9\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 0.0%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=4.200\n  [2] INCORRECT score=8.600\n  [3] INCORRECT score=7.400\n  [4] INCORRECT score=7.900\n\n## rollout_2 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 0.0%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=4.200\n  [2] INCORRECT score=8.600\n  [3] INCORRECT score=7.400\n  [4] INCORRECT score=7.900",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause: Complete Failure to Extract a Decisive Formatting Constraint\n\nBoth rollouts (identically) produced 0% accuracy because the agent missed the critical instruction: 'Please use an emoji at the end of every sentence.' This sentence appears at the very end of the prompt, after a large block of pasted lyrics. This formatting constraint was the sole differentiator between the correct candidate ([1]) and the incorrect candidates ([2], [3], [4]).\n\nThe agent's CONSTRAINT CHECKLIST extracted only one constraint: '(1) Explain what the provided lyrics are about (themes/meaning).' The emoji-per-sentence requirement was never extracted, never measured, and therefore never used in scoring. This is the proximate cause of total failure.\n\n## Why [1] Is Correct and Others Are Not\n\nCandidate [1] reformats the lyrics with emojis at line ends and places emojis at the end of its analytical sentences far more consistently than [2]-[4]. Candidates [2], [3], and [4] place emojis decoratively (at ends of paragraphs or after quoted lyrics) but leave many analytical sentences without trailing emojis. Under PROPORTIONAL COMPLIANCE (compliant sentences / total sentences), [1] has the highest ratio, making it most compliant with the 'emoji at end of every sentence' instruction.\n\n## Why the Playbook Failed\n\n### 1. [c8698dee] \u2014 Tunnel-Vision Warning Scope Is Too Narrow (Harmful)\nThe TUNNEL-VISION WARNING reads: 'In domain tasks (code, math, science), non-domain constraints (sentence ratios, word counts, formatting rules) are the most frequently missed.' This task is NOT code, math, or science \u2014 it's lyrics interpretation. The agent apparently treated the warning as inapplicable because the task type didn't match the enumerated domains. The constraint it missed ('emoji at end of every sentence') is exactly the type of formatting rule the warning was designed to catch. The narrow scope gave the agent false security that its single-constraint checklist was complete.\n\n**Fix needed:** The TUNNEL-VISION WARNING must apply to ALL task types, not just technical domains. A better formulation: 'Whenever the prompt contains substantive content (lyrics, text, data, code), formatting and stylistic constraints appended before or after that content block are the most frequently missed.'\n\n### 2. [005004a4] \u2014 Unverifiable Claim Cap Ignored, Concept Weaponized (Harmful)\nThe agent labeled Candidate [1]'s Love Live! reference an 'unverifiable external claim' and called it 'the main quality defect,' scoring [1] at 4.2 versus 7.4-8.6 for others \u2014 a 3.2-4.4 point gap driven entirely by this unverifiable claim. Entry [005004a4] explicitly limits unverifiable content to '\u22640.3 points' of score differentiation. The agent invoked the entry's vocabulary ('unverifiable') but ignored its protective cap, selectively applying the concept as a penalty without its safeguards. Even if the emoji constraint had been extracted, this over-penalty would still have depressed [1] dangerously.\n\n**Fix needed:** The 0.3-point cap needs a hard enforcement gate \u2014 after scoring, the agent should produce a UNVERIFIABLE IMPACT CHECK: identify any candidate penalized primarily for unverifiable content, compute the gap attributable to that content, and cap it at 0.3.\n\n### 3. Missing Procedure: Trailing/Embedded Constraint Scan\nThe prompt structure \u2014 large content block followed by appended instruction \u2014 is a common pattern. The agent read the lyrics content and began evaluating without reaching (or properly processing) the final line. No playbook entry addresses this specific risk.\n\n**New entry needed:** A PROMPT BOUNDARY SCAN that fires during constraint extraction: 'After extracting constraints from the prompt's opening, scan the LAST 3 lines of the prompt for additional instructions. Constraints appended after embedded content (lyrics, code, tables, long text) are high-risk for omission. Each must be explicitly listed in the CONSTRAINT CHECKLIST.'\n\n### 4. [8e0d9579] \u2014 Right Principle, No Trigger\nThis entry says 'Do not let generic verbosity, politeness, or decorative formatting outweigh correctness and constraint satisfaction.' If the agent had applied this principle, it would have prioritized constraint compliance (emoji adherence) over content quality (depth of lyric analysis). But the entry's phrasing doesn't provide a trigger point \u2014 it's a passive admonition rather than a procedural check.\n\n**Fix needed:** Convert to an active gate: 'After completing content quality assessment, re-check all HARD GATE constraints. If a lower-content-quality candidate passes a HARD GATE that higher-quality candidates fail, the constraint-passing candidate must rank above.'\n\n## Execution Pattern: Deterministic Failure\n\nBoth rollouts produced identical reasoning, identical ratings, and identical output. This is not stochastic variance \u2014 it's a deterministic failure mode caused by the agent's constraint extraction being systematically incomplete for prompts with appended formatting instructions after large content blocks. The playbook entries that should have prevented it either had too-narrow scope (TUNNEL-VISION) or were selectively applied (UNVERIFIABLE cap).\n\n## Generalizable Lessons\n\n1. **Trigger:** Whenever a prompt contains a large block of user-provided content (>100 words of lyrics, code, text, data), fire a TRAILING CONSTRAINT SCAN on the final 3 lines of the prompt.\n2. **Procedure:** For each constraint identified in the scan, add it to the CONSTRAINT CHECKLIST and produce a per-candidate PROPORTIONAL COMPLIANCE measurement before scoring.\n3. **Intermediate artifact:** A compliance ratio table (candidate | compliant sentences / total sentences | ratio) for any per-element formatting constraint.\n4. **Verification gate:** After scoring, verify no candidate's score gap exceeds 0.3 points due to unverifiable content. If it does, clamp and re-derive the gap from verifiable differences only.\n5. **Scope fix:** The TUNNEL-VISION WARNING must not be limited to code/math/science. Formatting constraints appended to any content-heavy prompt are equally at risk."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The user prompt contained a large block of embedded content (song lyrics, ~160 words) followed immediately by a critical formatting instruction ('Please use an emoji at the end of every sentence') concatenated to the last line of the lyrics with no paragraph break. The agent's constraint extraction read the content block but failed to parse the appended instruction as a separate constraint.",
+          "gap_type": "procedure",
+          "suggested_content": "PROMPT BOUNDARY SCAN \u2014 fires during constraint extraction, after the initial EXTRACT pass. Procedure: (1) Identify any large embedded content block (lyrics, code, tables, long quoted text) in the prompt. (2) Separately re-read the LAST 3 lines of the entire prompt. (3) For each sentence or clause in those lines, ask: 'Is this part of the embedded content, or a separate user instruction?' Look for imperative verbs ('use,' 'include,' 'write,' 'format'), quantifier patterns ('every,' 'each,' 'all'), or stylistic directives. (4) Any instruction found must be added to the CONSTRAINT CHECKLIST as a separate numbered item. (5) Similarly re-read the FIRST 3 lines before the embedded block for instructions that precede the content. This scan is mandatory whenever the prompt contains >100 words of non-instructional content.",
+          "trigger": "During CONSTRAINT CHECKLIST construction, whenever the prompt contains a content block exceeding ~100 words (lyrics, code, tables, quoted text, pasted data)"
+        },
+        {
+          "situation": "The agent identified Candidate [1]'s content as 'unverifiable' and applied a massive penalty (3.4\u20134.4 points below peers) despite the playbook capping unverifiable differentiation at 0.3 points. The cap exists in entry 005004a4 but has no enforcement mechanism. The agent grabbed the penalty concept but skipped both the VERIFICATION GATE procedure and the quantitative cap.",
+          "gap_type": "verification_gate",
+          "suggested_content": "UNVERIFIABLE-IMPACT AUDIT \u2014 fires after all candidates are scored, before JSON output. Procedure: (1) Identify any candidate whose reasoning mentions 'unverifiable,' 'unsupported,' or 'fabricated.' (2) For each such candidate, compute the score gap between it and the next-closest candidate. (3) Estimate how much of that gap is attributable to the unverifiable/fabricated content (i.e., would the gap remain if that content were removed?). (4) If the attributable gap exceeds 0.3 points, clamp it: raise the penalized candidate's score so the unverifiable-driven gap is \u22640.3. (5) Produce an artifact: [Candidate | Penalty reason | Gap attributable to unverifiable content | Clamped? | Final adjusted score].",
+          "trigger": "After scoring all candidates, before producing final JSON output, if any candidate's reasoning mentions 'unverifiable,' 'unsupported,' or 'fabricated'"
+        },
+        {
+          "situation": "The constraint 'emoji at the end of every sentence' requires per-sentence measurement across all candidates. The PROPORTIONAL COMPLIANCE section of c8698dee describes how to measure such constraints (compliant/total ratio), but no artifact template or worked example exists for per-element formatting constraints. The agent never created a compliance ratio table.",
+          "gap_type": "artifact",
+          "suggested_content": "PER-ELEMENT FORMATTING COMPLIANCE TABLE \u2014 When a constraint applies a universal quantifier ('every,' 'each,' 'all') to a countable text element (sentence, paragraph, line, bullet), produce a compliance measurement table BEFORE scoring: [Candidate | Total elements | Compliant elements | Ratio]. For 'emoji at end of every sentence': count total sentences, count sentences ending with an emoji, compute ratio. The candidate with the highest ratio ranks highest on this dimension. Content quality breaks ties only when ratios are within 5%. This table is the mandatory COUNTING ARTIFACT for this class of constraint.",
+          "trigger": "During constraint evaluation, when a checklist item uses a universal quantifier ('every,' 'each,' 'all') applied to countable elements (sentences, paragraphs, lines)"
+        },
+        {
+          "situation": "The agent correctly identified the task type (lyrics interpretation) but the TUNNEL-VISION WARNING only activates for 'domain tasks (code, math, science).' Non-technical content-heavy tasks (lyrics interpretation, text analysis, data explanation) are equally susceptible to missed formatting constraints appended before or after the content block.",
+          "gap_type": "principle",
+          "suggested_content": "CONTENT-BLOCK FORMATTING RISK \u2014 Whenever the prompt contains ANY substantial block of user-provided content (lyrics, text passages, data tables, code snippets \u2014 not limited to technical domains), formatting and stylistic constraints are at maximum risk of omission. These constraints often appear as brief instructions appended after or prepended before the content block. Treat these as the MOST LIKELY missed constraint class for any content-heavy prompt, regardless of domain.",
+          "trigger": "During constraint extraction, whenever the prompt contains a substantial content block in any domain"
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n**Root cause (AGREE with anchor):** Both rollouts failed identically (0% accuracy) because the agent never extracted the critical constraint 'Please use an emoji at the end of every sentence.' This instruction was concatenated to the last lyric line without paragraph separation, making it visually part of the lyrics. The constraint was the sole differentiator: Candidate [1] (correct) achieves near-perfect emoji-per-sentence compliance across both reformatted lyrics and analytical text, while [2]\u2013[4] miss emojis on multiple analytical sentences.\n\n**Two entries were harmful:**\n\n1. **c8698dee (constraint extraction)** \u2014 AGREE with anchor that the TUNNEL-VISION WARNING's scope (code/math/science only) contributed to the miss. REFINE: The entry's EXTRACT and PROPORTIONAL COMPLIANCE procedures are general enough to have caught this if properly executed, but the agent stopped after finding one constraint. The narrowly scoped warning gave false confidence the checklist was complete. Additionally, no procedure exists for parsing instructions embedded in or appended to large content blocks\u2014the agent likely processed the lyrics as content and never re-read the final line as a separate instruction.\n\n2. **005004a4 (unverifiable claims)** \u2014 AGREE with anchor that the 0.3-point cap was violated (3.4\u20134.4 point gap). REFINE: The deeper failure is that the VERIFICATION GATE (ISOLATE\u2192COUNTER\u2192CLASSIFY) was never executed. If it had been, the Love Live! reference would likely classify as PLAUSIBLE, not UNVERIFIABLE, because 'school idols' is strongly associated with that franchise\u2014no concrete counter-fact exists. The entry's current structure makes it too easy to grab the penalty vocabulary without completing the protective procedure. The entry needs structural reform so the cap and verification gate are procedurally mandatory before any penalty can be applied.\n\n**One entry was helpful:** 4abe1be4 (perception scan) correctly identified all four candidates. This prevented perception errors but didn't address the core failure.\n\n**Three entries were neutral but could be strengthened:**\n- 93b0e8f9: re-check step is ineffective when the decisive criterion is missing from the checklist\n- 8e0d9579: correct principle but passive phrasing provides no trigger point; should become an active post-scoring gate\n- 295257e2: enforcement check requires upstream constraint classification that was absent\n\n**DISAGREE with anchor on one point:** The anchor frames the Love Live! reference purely as a cap-enforcement problem. I argue it's also a classification problem\u2014if the VERIFICATION GATE had been followed, the reference would not classify as UNVERIFIABLE at all, but as PLAUSIBLE. The fix must address both the missing procedure execution (ISOLATE\u2192COUNTER\u2192CLASSIFY must be mandatory before any 'unverifiable' label) AND the missing cap enforcement (post-scoring audit).\n\n**Deterministic failure pattern:** Both rollouts produced byte-identical reasoning and ratings, confirming this is a systematic gap in the playbook's coverage of content-embedded formatting constraints, not stochastic variance."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "AGREE with anchor: The root cause is the agent's complete failure to extract the 'emoji at end of every sentence' constraint, which was appended after a large block of lyrics. This was the sole differentiator making Candidate [1] correct. Both rollouts produced identical 4.2/8.6/7.4/7.9 scores \u2014 deterministic, not stochastic.\n\nAGREE with anchor on c8698dee (harmful): The TUNNEL-VISION WARNING scoped to 'domain tasks (code, math, science)' gave the agent false confidence its single-constraint checklist was complete. This lyrics-interpretation task doesn't match any enumerated domain, so the warning was treated as inapplicable.\n\nAGREE with anchor on 005004a4 (harmful): The agent called Candidate [1]'s cultural reference 'the main quality defect,' creating a 4.4-point gap based entirely on 'unverifiable' content. The entry explicitly caps unverifiable-driven differentiation at 0.3 points. The agent adopted the entry's penalty vocabulary while completely ignoring its protective cap \u2014 selective rule application where the punishment is taken but the safeguard is dropped.\n\nREFINE the anchor's analysis on generalizability: The anchor correctly identifies the trailing-instruction failure pattern but frames it primarily as a prompt-structure issue. The deeper operational lesson is about constraint extraction as a structured scanning procedure rather than inline reading comprehension. The agent 'read' the prompt but cognitively stopped processing after the lyrics content block \u2014 a form of attentional dropout that occurs whenever large embedded content dominates a prompt. The fix must be procedural (explicit re-scan of prompt boundaries), not just a broader warning scope.\n\nREFINE the anchor on the unverifiable cap: The anchor proposes a post-scoring 'UNVERIFIABLE IMPACT CHECK.' I agree but emphasize this is a specific instance of a general pattern: any playbook rule that specifies a quantitative cap needs a corresponding enforcement gate that computes the actual impact and verifies it falls within the stated limit. Without this, rules with caps become suggestions rather than constraints.",
+      "principles": [
+        {
+          "statement": "During constraint extraction, after the main content scan, separately re-read the FIRST and LAST 3 lines of the prompt for appended instructions. Content-heavy prompts (lyrics, code, data) cause attentional dropout on trailing constraints.",
+          "entry_kind": "procedure",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "Fires during constraint extraction whenever the prompt contains >100 words of embedded content (lyrics, code, tables, data, quoted text) before or between instruction lines.",
+          "verification_or_artifact": "Produce a BOUNDARY SCAN artifact: quote the last 3 lines of the prompt verbatim, list any constraints found, and add each to the CONSTRAINT CHECKLIST. If none found, write 'BOUNDARY SCAN: no trailing constraints.'",
+          "evidence": "The emoji-per-sentence instruction appeared on the final line after 200+ words of lyrics. The agent's constraint checklist contained only one item (explain lyrics meaning). Both rollouts missed this constraint identically, producing 0% accuracy. A boundary scan would have caught it."
+        },
+        {
+          "statement": "After scoring, for any penalty category with a stated numeric cap, compute the actual score gap attributable to that category across candidates. If it exceeds the cap, clamp the gap and re-derive scores from remaining verifiable differences.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "005004a4",
+          "trigger": "Fires after scoring whenever any candidate's score was reduced based on a penalty category that has a stated maximum impact (e.g., unverifiable content \u22640.3 points).",
+          "verification_or_artifact": "Produce a CAP AUDIT row per capped category: [Category | Cap | Candidate most affected | Score without this penalty | Score with penalty | Actual gap | Within cap? Y/N]. If N, clamp and recompute.",
+          "evidence": "The agent labeled Candidate [1]'s cultural reference 'unverifiable' and made it 'the main quality defect,' scoring [1] at 4.2 vs 7.4-8.6 for others \u2014 a 3.2-4.4 point gap. Entry 005004a4 caps unverifiable-driven differentiation at 0.3 points. The agent adopted the penalty vocabulary but ignored the cap entirely. A post-scoring audit would have flagged this 10x overpenalty."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "c8698dee",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause: Missed Trailing Constraint After Large Content Block\n\nBoth rollouts (byte-identical reasoning, identical 4.2/8.6/7.4/7.9 scores) failed because the agent never extracted the decisive constraint: 'Please use an emoji at the end of every sentence.' This instruction was concatenated to the last line of ~200 words of song lyrics with no paragraph break. The agent's CONSTRAINT CHECKLIST contained only one item ('explain what the lyrics are about'). This is a deterministic, systematic failure \u2014 not stochastic variance.\n\nCandidate [1] (correct) consistently places emojis at the end of analytical sentences, achieving the highest per-sentence compliance ratio. Candidates [2]\u2013[4] use emojis decoratively (paragraph ends, after quoted lyrics) but leave many analytical sentences without trailing emojis. The emoji constraint was the sole differentiator.\n\n## Primary Harmful Entry: c8698dee (Constraint Extraction)\n\nAll three analyses unanimously identify this entry's TUNNEL-VISION WARNING as directly harmful. The warning reads: 'In domain tasks (code, math, science), non-domain constraints are the most frequently missed.' This lyrics-interpretation task doesn't match any enumerated domain, so the agent treated the warning as inapplicable and gained false confidence that its single-constraint checklist was complete. The entry's EXTRACT and PROPORTIONAL COMPLIANCE procedures are general enough to have caught this if properly executed, but the narrowly scoped warning allowed premature termination of the extraction pass.\n\n**Fix:** Broaden the TUNNEL-VISION WARNING to all content-heavy prompts regardless of domain. Add a PROMPT BOUNDARY SCAN procedure: after the main extraction pass, separately re-read the FIRST and LAST 3 lines of the prompt for appended/prepended instructions, especially looking for imperative verbs and quantifier patterns. Produce a BOUNDARY SCAN artifact: quote the final lines verbatim, list any constraints found, add each to the checklist. This is procedurally integrated into the existing entry rather than requiring a new entry.\n\n## Secondary Harmful Entry: 005004a4 (Unverifiable Claims)\n\nAll three analyses agree the agent violated this entry's own 0.3-point cap on unverifiable-content differentiation. The agent labeled Candidate [1]'s Love Live! cultural reference 'the main quality defect' and created a 3.2\u20134.4 point gap \u2014 over 10x the stated cap. The agent adopted the entry's penalty vocabulary ('unverifiable') while completely ignoring both (a) the VERIFICATION GATE procedure (ISOLATE\u2192COUNTER\u2192CLASSIFY was never executed \u2014 if it had been, 'school idols' is strongly associated with Love Live!, making the reference PLAUSIBLE, not UNVERIFIABLE) and (b) the protective 0.3-point cap. This is selective rule application: the punishment is taken but the safeguard is dropped.\n\n**Fix:** Add a post-scoring UNVERIFIABLE-IMPACT AUDIT as an enforcement gate within the existing entry. After scoring, identify any candidate penalized primarily for unverifiable content, compute the gap attributable to that content, and verify it falls within 0.3 points. Produce an artifact: [Category | Cap | Candidate | Gap attributable to unverifiable content | Within cap? Y/N]. If N, clamp and recompute.\n\n## Helpful Entry: 4abe1be4 (Perception Scan)\n\nCorrectly identified all four candidates, preventing perception errors. Did not address the core failure but fulfilled its designed function.\n\n## Neutral Entries\n\n8e0d9579 states the right principle ('do not let decorative formatting outweigh constraint satisfaction') but is a passive admonition with no trigger point \u2014 it didn't activate to override the agent's content-quality-driven ranking. 93b0e8f9's re-check step is ineffective when the decisive criterion was never extracted. 295257e2's enforcement check requires upstream constraint classification that was absent. These entries are not harmful \u2014 they simply couldn't compensate for the upstream extraction failure.\n\n## Generalizable Lessons\n\n1. **Content-embedded instruction dropout**: When a prompt contains a large content block (lyrics, code, data, tables), the agent's attention terminates on the content and fails to process trailing instructions. This is a general attentional failure pattern requiring a procedural scan, not just a broadened warning.\n\n2. **Cap enforcement for quantitative limits**: Any playbook rule specifying a numeric cap on penalty impact needs a corresponding post-scoring audit gate that computes actual impact and verifies compliance. Without this, caps become suggestions.\n\n## Priority\n\nThe c8698dee update is the highest-priority change because it addresses the proximate cause (constraint never extracted). The 005004a4 update is important but secondary \u2014 even with perfect cap enforcement, the primary failure (missed constraint) would still have needed detection. Both are well-supported by all three reflections with high confidence.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent's constraint extraction systematically failed to parse a formatting instruction appended after a large content block (~200 words of lyrics). The TUNNEL-VISION WARNING's narrow scope (code/math/science) gave false confidence the single-constraint checklist was complete. A secondary amplifier was the agent's violation of the 0.3-point cap on unverifiable-content penalties, which inflated the gap against the correct candidate. Both failures are deterministic (identical across rollouts) and traceable to specific entry deficiencies.",
+      "important_disagreements": [
+        "Credit_attribution argues the 005004a4 problem is also a classification error (Love Live! reference should be PLAUSIBLE if VERIFICATION GATE had been followed), not just a cap enforcement problem. Resolved: both perspectives are valid, but the classification fix is already covered by enforcing the existing VERIFICATION GATE procedure. The net recommendation remains 'update 005004a4 to add cap enforcement' since that addresses the outcome even when classification is correctly done but the cap is still ignored.",
+        "Anchor proposes a standalone new entry (PROMPT BOUNDARY SCAN) while principle_extraction recommends updating c8698dee. Resolved in favor of update: the boundary scan is logically part of constraint extraction, already partially covered by c8698dee's EXTRACT procedure. Adding it as a sub-procedure within the existing entry is more conservative and avoids entry proliferation."
+      ],
+      "mutation_posture": "mixed",
+      "why_this_posture": "Two distinct existing entries each need targeted updates to address two independent failure mechanisms: (1) c8698dee needs its TUNNEL-VISION WARNING broadened to all content-heavy prompts and a BOUNDARY SCAN procedure added; (2) 005004a4 needs a post-scoring cap enforcement audit. Both changes are high-confidence, unanimously supported by all three reflections, and address documented failures with clear evidence. These are updates to existing entries, not new additions.",
+      "conservatism_rationale": "Both mutations are updates to existing entries rather than new additions. The c8698dee change is a scope expansion of an existing warning plus a procedural addition that fits within the entry's existing structure. The 005004a4 change adds enforcement for a rule that already exists but lacks a verification gate. No new conceptual territory is introduced. If forced to choose only one, c8698dee is the priority as the proximate cause. The broader playbook (8e0d9579, 93b0e8f9, 295257e2) is left unchanged \u2014 these entries are neutral and their ineffectiveness was downstream of the primary extraction failure, not due to their own deficiency.",
+      "max_operations": 2
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"c8698dee\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause: Missed Trailing Constraint After Large Content Block\\n\\nBoth rollouts (byte-identical reasoning, identical 4.2/8.6/7.4/7.9 scores) failed because the agent never extracted the decisive constraint: 'Please use an emoji at the end of every sentence.' This instruction was concatenated to the last line of ~200 words of song lyrics with no paragraph break. The agent's CONSTRAINT CHECKLIST contained only one item ('explain what the lyrics are about'). This is a deterministic, systematic failure \u2014 not stochastic variance.\\n\\nCandidate [1] (correct) consistently places emojis at the end of analytical sentences, achieving the highest per-sentence compliance ratio. Candidates [2]\u2013[4] use emojis decoratively (paragraph ends, after quoted lyrics) but leave many analytical sentences without trailing emojis. The emoji constraint was the sole differentiator.\\n\\n## Primary Harmful Entry: c8698dee (Constraint Extraction)\\n\\nAll three analyses unanimously identify this entry's TUNNEL-VISION WARNING as directly harmful. The warning reads: 'In domain tasks (code, math, science), non-domain constraints are the most frequently missed.' This lyrics-interpretation task doesn't match any enumerated domain, so the agent treated the warning as inapplicable and gained false confidence that its single-constraint checklist was complete. The entry's EXTRACT and PROPORTIONAL COMPLIANCE procedures are general enough to have caught this if properly executed, but the narrowly scoped warning allowed premature termination of the extraction pass.\\n\\n**Fix:** Broaden the TUNNEL-VISION WARNING to all content-heavy prompts regardless of domain. Add a PROMPT BOUNDARY SCAN procedure: after the main extraction pass, separately re-read the FIRST and LAST 3 lines of the prompt for appended/prepended instructions, especially looking for imperative verbs and quantifier patterns. Produce a BOUNDARY SCAN artifact: quote the final lines verbatim, list any constraints found, add each to the checklist. This is procedurally integrated into the existing entry rather than requiring a new entry.\\n\\n## Secondary Harmful Entry: 005004a4 (Unverifiable Claims)\\n\\nAll three analyses agree the agent violated this entry's own 0.3-point cap on unverifiable-content differentiation. The agent labeled Candidate [1]'s Love Live! cultural reference 'the main quality defect' and created a 3.2\u20134.4 point gap \u2014 over 10x the stated cap. The agent adopted the entry's penalty vocabulary ('unverifiable') while completely ignoring both (a) the VERIFICATION GATE procedure (ISOLATE\u2192COUNTER\u2192CLASSIFY was never executed \u2014 if it had been, 'school idols' is strongly associated with Love Live!, making the reference PLAUSIBLE, not UNVERIFIABLE) and (b) the protective 0.3-point cap. This is selective rule application: the punishment is taken but the safeguard is dropped.\\n\\n**Fix:** Add a post-scoring UNVERIFIABLE-IMPACT AUDIT as an enforcement gate within the existing entry. After scoring, identify any candidate penalized primarily for unverifiable content, compute the gap attributable to that content, and verify it falls within 0.3 points. Produce an artifact: [Category | Cap | Candidate | Gap attributable to unverifiable content | Within cap? Y/N]. If N, clamp and recompute.\\n\\n## Helpful Entry: 4abe1be4 (Perception Scan)\\n\\nCorrectly identified all four candidates, preventing perception errors. Did not address the core failure but fulfilled its designed function.\\n\\n## Neutral Entries\\n\\n8e0d9579 states the right principle ('do not let decorative formatting outweigh constraint satisfaction') but is a passive admonition with no trigger point \u2014 it didn't activate to override the agent's content-quality-driven ranking. 93b0e8f9's re-check step is ineffective when the decisive criterion was never extracted. 295257e2's enforcement check requires upstream constraint classification that was absent. These entries are not harmful \u2014 they simply couldn't compensate for the upstream extraction failure.\\n\\n## Generalizable Lessons\\n\\n1. **Content-embedded instruction dropout**: When a prompt contains a large content block (lyrics, code, data, tables), the agent's attention terminates on the content and fails to process trailing instructions. This is a general attentional failure pattern requiring a procedural scan, not just a broadened warning.\\n\\n2. **Cap enforcement for quantitative limits**: Any playbook rule specifying a numeric cap on penalty impact needs a corresponding post-scoring audit gate that computes actual impact and verifies compliance. Without this, caps become suggestions.\\n\\n## Priority\\n\\nThe c8698dee update is the highest-priority change because it addresses the proximate cause (constraint never extracted). The 005004a4 update is important but secondary \u2014 even with perfect cap enforcement, the primary failure (missed constraint) would still have needed detection. Both are well-supported by all three reflections with high confidence.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent's constraint extraction systematically failed to parse a formatting instruction appended after a large content block (~200 words of lyrics). The TUNNEL-VISION WARNING's narrow scope (code/math/science) gave false confidence the single-constraint checklist was complete. A secondary amplifier was the agent's violation of the 0.3-point cap on unverifiable-content penalties, which inflated the gap against the correct candidate. Both failures are deterministic (identical across rollouts) and traceable to specific entry deficiencies.\",\n    \"important_disagreements\": [\n      \"Credit_attribution argues the 005004a4 problem is also a classification error (Love Live! reference should be PLAUSIBLE if VERIFICATION GATE had been followed), not just a cap enforcement problem. Resolved: both perspectives are valid, but the classification fix is already covered by enforcing the existing VERIFICATION GATE procedure. The net recommendation remains 'update 005004a4 to add cap enforcement' since that addresses the outcome even when classification is correctly done but the cap is still ignored.\",\n      \"Anchor proposes a standalone new entry (PROMPT BOUNDARY SCAN) while principle_extraction recommends updating c8698dee. Resolved in favor of update: the boundary scan is logically part of constraint extraction, already partially covered by c8698dee's EXTRACT procedure. Adding it as a sub-procedure within the existing entry is more conservative and avoids entry proliferation.\"\n    ],\n    \"mutation_posture\": \"mixed\",\n    \"why_this_posture\": \"Two distinct existing entries each need targeted updates to address two independent failure mechanisms: (1) c8698dee needs its TUNNEL-VISION WARNING broadened to all content-heavy prompts and a BOUNDARY SCAN procedure added; (2) 005004a4 needs a post-scoring cap enforcement audit. Both changes are high-confidence, unanimously supported by all three reflections, and address documented failures with clear evidence. These are updates to existing entries, not new additions.\",\n    \"conservatism_rationale\": \"Both mutations are updates to existing entries rather than new additions. The c8698dee change is a scope expansion of an existing warning plus a procedural addition that fits within the entry's existing structure. The 005004a4 change adds enforcement for a rule that already exists but lacks a verification gate. No new conceptual territory is introduced. If forced to choose only one, c8698dee is the priority as the proximate cause. The broader playbook (8e0d9579, 93b0e8f9, 295257e2) is left unchanged \u2014 these entries are neutral and their ineffectiveness was downstream of the primary extraction failure, not due to their own deficiency.\",\n    \"max_operations\": 2\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

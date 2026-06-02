@@ -1,0 +1,496 @@
+{
+  "task_id": "factuality:241",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "61b87a5f",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:241\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n## Root Cause: Systematic JSON Output Formatting Failure\n\nBoth rollouts failed identically with `parse_error: response was not valid JSON`, producing a 0.0% pass rate. This is a total, systematic failure \u2014 not execution noise \u2014 because the same failure reproduced across all attempts on the same task. The agent's analytical work (which may have been correct) was entirely zeroed out by an inability to emit syntactically valid JSON.\n\n## Entry [61b87a5f] \u2014 Unanimously Harmful\n\nAll three diagnostic angles independently conclude that entry [61b87a5f] is harmful, not merely insufficient. The entry is the sole playbook guard for JSON output validity, yet it focuses narrowly on LaTeX backslash escaping and unescaped double-quotes \u2014 a single sub-failure-mode of JSON invalidity. This narrow focus is actively harmful for two reasons:\n\n1. **False coverage**: The entry's checklist items (scan for backslashes, replace LaTeX notation) pass trivially on non-LaTeX tasks like essay evaluation. A checklist that auto-passes gives no friction point to catch the actual structural problem (e.g., wrapping JSON in markdown code fences, including preamble prose, malformed object structure). The agent may believe format handling is complete after performing the LaTeX scan, closing the cognitive loop without catching the real error.\n\n2. **Missing critical scope**: The entry never states that the response must contain ONLY JSON \u2014 no markdown fencing, no explanatory prose before or after. It never specifies the required output schema (field names, types, array structure). It never checks structural validity (matched braces, no trailing commas, correct array length). These are the most likely failure modes on this task, and none are addressed.\n\nThe key insight is that JSON output validity is a **binary gate** \u2014 the output is either parseable or it fails completely. Partial coverage of a binary gate (checking only one failure mode out of many) provides effectively zero protection. The current entry addresses ~20% of possible JSON failure modes while creating the impression that format validity has been handled.\n\n## What the Update Should Cover\n\nEntry [61b87a5f] should be restructured to be a comprehensive final output guard with these components:\n\n1. **Output-only discipline**: The entire response must be ONLY the JSON object. First character must be `{`, last character must be `}`. No markdown code fences, no prose before or after, no commentary outside the JSON structure.\n\n2. **Structural self-check**: Matched delimiters (every `{` has `}`, every `[` has `]`), no trailing commas after last array/object element, all string values properly quoted.\n\n3. **Schema compliance**: Ratings array length must equal N from the perception scan. All required fields present and correctly typed.\n\n4. **Character-level escaping** (retained from current entry): Scan string fields for unescaped backslashes (LaTeX, file paths), unescaped double-quotes, unescaped control characters. Replace technical notation with plain-text equivalents.\n\nThe current entry's LaTeX-specific advice should be retained as one sub-check (item 4) but must not dominate or lead the procedure. Structural validity and output-only discipline are more fundamental and more commonly violated.\n\n## Substantive Task Analysis (Secondary)\n\nThe task is an essay-comparison evaluation where all four candidates meet basic mechanical constraints (vocabulary inclusion, word count \u226580). This is a near-tie scenario where factual accuracy should be the primary differentiator \u2014 several candidates contain verifiable factual errors (e.g., contradictory statistics about Canada's size, fabricated claims about French-speaking provinces, implausible coastline measurements). However, because the agent never reached the scoring stage, we cannot evaluate its analytical quality and have no evidence for playbook changes to the analytical entries.\n\n## PP Trace Limitation\n\nBecause the agent's output was itself unparseable, no PP annotation tags (<playbook_cite>, <missing_guidance>) are available. All entry assessments are therefore narrative-inferred from entry content vs. failure mode, not from direct citation evidence. This reduces confidence slightly but does not undermine the core diagnosis, which is strongly supported by the systematic nature of the failure and the clear mismatch between the entry's scope and the failure mode.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Entry 61b87a5f is the sole JSON output guard but covers only LaTeX escaping \u2014 a narrow sub-failure-mode. The actual failure is almost certainly structural (markdown fencing, preamble prose, or malformed object), which the entry does not address at all. This creates false coverage of a binary gate, causing systematic 0% failure across all rollouts.\",\n  \"important_disagreements\": [\n    \"The anchor proposes 4 separate new entries (schema template, JSON-only discipline, string sanitization, self-test gate); principle_extraction argues this reduces to 2 core principles; credit_attribution identifies 4 coverage gaps. Resolution: following conservatism, a single comprehensive UPDATE to entry 61b87a5f is preferred over adding 3-4 new entries from one trace. The entry already occupies the correct playbook position (final output guard); it needs expanded scope, not replacement by multiple entries.\",\n    \"The anchor frames the problem as 'imbalance' (15+ analysis entries vs 1 format entry); principle_extraction reframes as 'binary vs graded failure modes' requiring disproportionate thoroughness. Resolution: the binary-gate insight is accurate and explains WHY narrow coverage is harmful, but is too abstract to justify a standalone meta-entry from one trace. It should inform how entry 61b87a5f is rewritten (comprehensive coverage of all sub-failure-modes) rather than become a separate rule.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry 61b87a5f exists in the correct location (final output guard) and addresses the right concern (JSON validity), but its scope is fatally narrow. Updating it to cover structural validity, output-only discipline, and schema compliance \u2014 while retaining the existing escaping advice as a sub-check \u2014 is the most conservative fix that addresses the root cause. No new entry is needed because the entry already exists; it just needs to be comprehensive.\",\n  \"conservatism_rationale\": \"A single update to one existing entry is the smallest change that fixes the 100% reproducible failure. Adding 3-4 new entries (as some reflections suggest) risks over-fitting to one trace. The near-tie essay differentiation gap identified by credit_attribution is secondary \u2014 the agent never reached that stage \u2014 and has insufficient evidence for a new entry. The binary-gate meta-principle is insightful but too abstract for a single-trace addition. One well-targeted update is clearly justified; more changes are not.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\nWrite an essay comparing the cultures of Canada and the United States.\nWrite at least 80 words.\nInclude the following vocabulary: - Square mile\n- Border\n- Coastline\n- Provinces\n- Language\n- English - French\n- Diversity\n- Married\n- Children\n- Education\n- Art - Cities\n\n## Candidate Responses\n\n[1]\nCanada and the United States, two vast nations sharing a long border, exhibit both similarities and differences in their cultures. Both countries boast expansive territories, with Canada covering nearly 3.9 million square miles and the United States about 3.8 million square miles. Despite their geographical proximity, their cultural landscapes are distinct.\n\nCanada is divided into provinces, each with its own unique identity. The country is officially bilingual, with English and French as its official languages, reflecting its colonial history. This bilingualism is most prominent in Quebec, where French is the dominant language. In contrast, the United States primarily speaks English, although Spanish is widely spoken, especially in states bordering Mexico.\n\nDiversity is a hallmark of both nations, with multicultural cities like Toronto and New York showcasing a rich tapestry of ethnicities and cultures. This diversity influences various aspects of life, including art, cuisine, and festivals. Canadian cities often emphasize multiculturalism as a core value, while American cities celebrate a melting pot of cultures.\n\nIn terms of family life, both countries value the institution of marriage and raising children, though societal norms and expectations can vary. Education is highly valued in both nations, with a strong emphasis on providing quality schooling to children. However, Canada's education system is often noted for its affordability and accessibility compared to the United States.\n\nArt plays a significant role in both cultures, with Canadian art often reflecting its natural landscapes and indigenous heritage, while American art is known for its innovation and global influence. The coastlines of both countries offer stunning natural beauty, from the rugged Atlantic shores of Canada to the sunny beaches of California.\n\nIn summary, while Canada and the United States share a border and many cultural similarities, their differences in language, diversity, and societal values create distinct national identities.\n\n[2]\nCanada and the United States, two nations separated by the world's longest international border, share a unique relationship. While both countries possess distinct cultures, they also exhibit striking similarities. In terms of geographical layout, Canada, with its ten provinces, spans a massive land area of approximately 3.9 million square miles, significantly smaller than the United States. In contrast, the U.S. boasts a vast coastline of over 13,000 miles. Conversely, Canada's coastline is more rugged and diverse, making it an interesting comparison.\n\nCanada is a predominantly bilingual nation, with both English and French serving as official languages, which contributes to the country's rich diversity. This language dichotomy creates an intriguing cultural dynamic, especially in comparison to the United States, where English is the primary language spoken. This results in a difference in cultural expression through art, which is often used to reflect the nation's values and history.\n\nOn a social level, both countries have similar family structures. The average household in Canada consists of two married individuals with two children, while in the United States it is also common for households to consist of two married individuals with two children. Another similarity can be seen in education systems, with both countries prioritizing higher learning. The United States and Canada place significant emphasis on higher education institutions and boast some of the world's top universities.\n\nHowever, one notable distinction lies in the way art is perceived and celebrated in each nation. Canadian cities such as Toronto and Montreal have a rich cultural scene, often highlighted through public events like music festivals and museum exhibits. Conversely, the U.S. has cities like New York and Los Angeles that serve as hubs for the world's art scene.\n\nIn conclusion, Canada and the United States, though having distinct cultural identities, share many striking similarities, particularly in terms of their geography, family structures, education systems, and appreciation of art.\n\n[3]\nCanada and the United States share the longest undefended border in the world, stretching across thousands of square miles. Both nations boast extensive coastlines along the Pacific and Atlantic oceans, though Canada's reaches into the Arctic as well. While the U.S. is divided into states, Canada consists of provinces and territories, each with its distinct cultural identity.\n\nLanguage represents a key difference between these nations. While English dominates in the U.S., Canada officially embraces both English and French, with Quebec primarily speaking the latter. Both countries celebrate diversity through immigration, though Canada has historically maintained a higher per-capita immigration rate.\n\nFamily life shows similarities in both nations, with married couples having an average of two children. Education systems prioritize public schooling, though Canadian universities typically charge lower tuition fees. Art and culture thrive in major cities like Toronto, Vancouver, New York, and Chicago, with Canadian art traditionally focusing more on natural landscapes while American art emphasizes urban scenes.\n\nRecent studies show that 82% of Canadians live within 70 miles of major cities, compared to 65% of Americans, reflecting Canada's more centralized population distribution. Quebec's French-speaking population has been steadily increasing since 1980, with French now being the primary language in three eastern provinces.\n\n[4]\nThe United States and Canada are two neighboring countries with distinct cultures, despite their geographical proximity. The United States encompasses approximately 3.8 million square miles, while Canada spans over 3.9 million square miles. Although they share the world's longest international border, their cultural differences are apparent. Canada's unique cultural identity is shaped by its vast coastline, which stretches over 150,000 miles, and its ten provinces, each with its own distinct heritage.\n\nOne notable difference lies in language. While the primary language spoken in the United States is English, Canada has both English and French as official languages, with a higher percentage of native French speakers. This bilingualism contributes to Canada's rich cultural diversity. Canada prides itself on its mosaic approach to diversity, embracing the customs and traditions of its citizens from various ethnic backgrounds.\n\nRegarding family values, Canadian couples are more likely to cohabitate before getting married. However, once married, Canadian families tend to have fewer children compared to American families. Education is highly valued in both countries, but Canada places a strong emphasis on publicly funded education, with some provinces offering free tuition to residents.\n\nCanada is renowned for its vibrant arts scene, particularly in cities such as Toronto and Montreal. American cities, on the other hand, like New York and Los Angeles, are hubs for the film and music industries. Despite these differences, both countries appreciate the significance of art in their respective cultures.\n\nCanada's geographic and linguistic diversity contributes to its distinct cultural identity, setting it apart from its southern neighbor, the United States.\n\n## Raw Judge Output\nError: parse_error: response was not valid JSON\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\nWrite an essay comparing the cultures of Canada and the United States.\nWrite at least 80 words.\nInclude the following vocabulary: - Square mile\n- Border\n- Coastline\n- Provinces\n- Language\n- English - French\n- Diversity\n- Married\n- Children\n- Education\n- Art - Cities\n\n## Candidate Responses\n\n[1]\nCanada and the United States, two vast nations sharing a long border, exhibit both similarities and differences in their cultures. Both countries boast expansive territories, with Canada covering nearly 3.9 million square miles and the United States about 3.8 million square miles. Despite their geographical proximity, their cultural landscapes are distinct.\n\nCanada is divided into provinces, each with its own unique identity. The country is officially bilingual, with English and French as its official languages, reflecting its colonial history. This bilingualism is most prominent in Quebec, where French is the dominant language. In contrast, the United States primarily speaks English, although Spanish is widely spoken, especially in states bordering Mexico.\n\nDiversity is a hallmark of both nations, with multicultural cities like Toronto and New York showcasing a rich tapestry of ethnicities and cultures. This diversity influences various aspects of life, including art, cuisine, and festivals. Canadian cities often emphasize multiculturalism as a core value, while American cities celebrate a melting pot of cultures.\n\nIn terms of family life, both countries value the institution of marriage and raising children, though societal norms and expectations can vary. Education is highly valued in both nations, with a strong emphasis on providing quality schooling to children. However, Canada's education system is often noted for its affordability and accessibility compared to the United States.\n\nArt plays a significant role in both cultures, with Canadian art often reflecting its natural landscapes and indigenous heritage, while American art is known for its innovation and global influence. The coastlines of both countries offer stunning natural beauty, from the rugged Atlantic shores of Canada to the sunny beaches of California.\n\nIn summary, while Canada and the United States share a border and many cultural similarities, their differences in language, diversity, and societal values create distinct national identities.\n\n[2]\nCanada and the United States, two nations separated by the world's longest international border, share a unique relationship. While both countries possess distinct cultures, they also exhibit striking similarities. In terms of geographical layout, Canada, with its ten provinces, spans a massive land area of approximately 3.9 million square miles, significantly smaller than the United States. In contrast, the U.S. boasts a vast coastline of over 13,000 miles. Conversely, Canada's coastline is more rugged and diverse, making it an interesting comparison.\n\nCanada is a predominantly bilingual nation, with both English and French serving as official languages, which contributes to the country's rich diversity. This language dichotomy creates an intriguing cultural dynamic, especially in comparison to the United States, where English is the primary language spoken. This results in a difference in cultural expression through art, which is often used to reflect the nation's values and history.\n\nOn a social level, both countries have similar family structures. The average household in Canada consists of two married individuals with two children, while in the United States it is also common for households to consist of two married individuals with two children. Another similarity can be seen in education systems, with both countries prioritizing higher learning. The United States and Canada place significant emphasis on higher education institutions and boast some of the world's top universities.\n\nHowever, one notable distinction lies in the way art is perceived and celebrated in each nation. Canadian cities such as Toronto and Montreal have a rich cultural scene, often highlighted through public events like music festivals and museum exhibits. Conversely, the U.S. has cities like New York and Los Angeles that serve as hubs for the world's art scene.\n\nIn conclusion, Canada and the United States, though having distinct cultural identities, share many striking similarities, particularly in terms of their geography, family structures, education systems, and appreciation of art.\n\n[3]\nCanada and the United States share the longest undefended border in the world, stretching across thousands of square miles. Both nations boast extensive coastlines along the Pacific and Atlantic oceans, though Canada's reaches into the Arctic as well. While the U.S. is divided into states, Canada consists of provinces and territories, each with its distinct cultural identity.\n\nLanguage represents a key difference between these nations. While English dominates in the U.S., Canada officially embraces both English and French, with Quebec primarily speaking the latter. Both countries celebrate diversity through immigration, though Canada has historically maintained a higher per-capita immigration rate.\n\nFamily life shows similarities in both nations, with married couples having an average of two children. Education systems prioritize public schooling, though Canadian universities typically charge lower tuition fees. Art and culture thrive in major cities like Toronto, Vancouver, New York, and Chicago, with Canadian art traditionally focusing more on natural landscapes while American art emphasizes urban scenes.\n\nRecent studies show that 82% of Canadians live within 70 miles of major cities, compared to 65% of Americans, reflecting Canada's more centralized population distribution. Quebec's French-speaking population has been steadily increasing since 1980, with French now being the primary language in three eastern provinces.\n\n[4]\nThe United States and Canada are two neighboring countries with distinct cultures, despite their geographical proximity. The United States encompasses approximately 3.8 million square miles, while Canada spans over 3.9 million square miles. Although they share the world's longest international border, their cultural differences are apparent. Canada's unique cultural identity is shaped by its vast coastline, which stretches over 150,000 miles, and its ten provinces, each with its own distinct heritage.\n\nOne notable difference lies in language. While the primary language spoken in the United States is English, Canada has both English and French as official languages, with a higher percentage of native French speakers. This bilingualism contributes to Canada's rich cultural diversity. Canada prides itself on its mosaic approach to diversity, embracing the customs and traditions of its citizens from various ethnic backgrounds.\n\nRegarding family values, Canadian couples are more likely to cohabitate before getting married. However, once married, Canadian families tend to have fewer children compared to American families. Education is highly valued in both countries, but Canada places a strong emphasis on publicly funded education, with some provinces offering free tuition to residents.\n\nCanada is renowned for its vibrant arts scene, particularly in cities such as Toronto and Montreal. American cities, on the other hand, like New York and Los Angeles, are hubs for the film and music industries. Despite these differences, both countries appreciate the significance of art in their respective cultures.\n\nCanada's geographic and linguistic diversity contributes to its distinct cultural identity, setting it apart from its southern neighbor, the United States.\n\n## Raw Judge Output\nError: parse_error: response was not valid JSON",
+  "evaluation_details": "## rollout_1 Evaluation\n\nError: parse_error: response was not valid JSON\n\n## rollout_2 Evaluation\n\nError: parse_error: response was not valid JSON",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause: Systematic JSON Output Formatting Failure\n\nBoth rollouts (and the PP trace) failed identically with `parse_error: response was not valid JSON`. This is a total failure \u2014 0.0% on both rollouts \u2014 caused not by bad analysis or wrong rankings, but by the agent being unable to emit syntactically valid JSON. Since all three traces (rollout_1, rollout_2, PP) fail the same way on the same task, this is a systematic formatting defect, not execution noise.\n\n## Why Entry [61b87a5f] Is Harmful Rather Than Helpful\n\nEntry [61b87a5f] is the only playbook entry addressing JSON output validity, yet it clearly failed to prevent the error. Worse, it may be actively harmful because:\n1. It focuses narrowly on LaTeX/backslash escaping and unescaped double-quotes \u2014 a subset of JSON syntax problems.\n2. It does NOT specify the required output schema (what fields, what types, what structure the JSON must have).\n3. It does NOT instruct the agent to emit ONLY JSON with no surrounding prose or markdown fencing.\n4. It creates a false sense of coverage \u2014 the agent may believe it has handled JSON validity by scanning for backslashes, while the actual failure mode is structural (e.g., wrapping JSON in markdown code blocks, including preamble text, or producing a malformed object).\n\n## What Is Missing From the Playbook\n\n### 1. Explicit Output Schema Template\nThe playbook never specifies the exact JSON structure the agent must produce. The agent needs a concrete schema: `{\"ratings\": [score1, score2, ...], \"best\": candidate_id, ...}` or whatever format is expected. Without this, the agent must guess the output structure, increasing the chance of format errors.\n\n**Proposed procedure:**\n- TRIGGER: Always, as the very last step before output.\n- ARTIFACT: Construct the JSON object field-by-field. Start with an empty `{}`, add each required field, verify each value type.\n- VERIFICATION: The final output must be ONLY the JSON object \u2014 no markdown code fences, no prose before or after, no commentary.\n\n### 2. JSON-Only Output Discipline\nA rule is needed that explicitly states: 'Your entire response must be a single JSON object. Do not wrap it in markdown code blocks (```json...```). Do not include any text before or after the JSON object. Do not include explanatory prose outside the JSON structure.'\n\n### 3. String-Value Sanitization Procedure\nWhen the agent writes analysis text inside JSON string fields, it must:\n- Replace literal newlines with `\\n` or use single-line strings.\n- Escape all double-quotes within strings.\n- Avoid embedding raw special characters.\nEntry [61b87a5f] mentions some of this but buries it among LaTeX-specific advice. The procedure needs to be more general and explicit.\n\n### 4. Self-Test Gate\nThe playbook should include a final verification step: 'Before submitting, mentally parse your output \u2014 verify it starts with `{` and ends with `}`, all strings are properly quoted, all arrays have matching brackets, and no trailing commas exist.'\n\n## The Substantive Task Analysis (Secondary)\n\nBecause the output failed before any scores were produced, we cannot evaluate the agent's analytical quality. However, examining the task itself reveals it is an essay-comparison evaluation with soft constraints (vocabulary inclusion, word count \u226580). All four candidates appear to include the required vocabulary and exceed 80 words, making this likely a near-tie scenario. Several candidates contain factual inaccuracies (e.g., Candidate 2 says Canada is 'significantly smaller than the United States' while quoting larger square mileage; Candidate 3 claims French is the primary language in three eastern provinces; Candidate 4 claims Canada's coastline is 150,000 miles). These factual differences should differentiate rankings, but the agent never got to produce them.\n\n## Generalizable Lessons\n\n1. **Output format failures are catastrophic** \u2014 they zero out all analytical work. The playbook must treat output formatting as the highest-priority gate, not an afterthought.\n2. **Entry [61b87a5f] needs restructuring** \u2014 split into (a) output schema specification, (b) JSON-only output discipline, (c) string sanitization, (d) self-validation. Currently it tries to do all four poorly.\n3. **Systematic failures across all rollouts** suggest the issue is in playbook coverage, not agent variance. This is the strongest signal for a missing rule.\n4. **The playbook has 15+ entries about analysis methodology but only 1 (insufficient) entry about output formatting** \u2014 this imbalance needs correction since format failures are binary (total failure) while analysis errors are graded."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The agent needed to produce a valid JSON object as its entire output, but emitted something unparseable \u2014 consistently across all three attempts on a task with no LaTeX or special characters.",
+          "gap_type": "artifact",
+          "suggested_content": "OUTPUT SCHEMA TEMPLATE \u2014 Before writing any evaluation prose, internalize the exact output structure required. The final output must be a JSON object matching this skeleton: {\"ratings\": [score1, score2, ...scoreN], \"best\": candidateID, ...}. Build this object field-by-field at the end. Confirm the ratings array has exactly N entries (one per candidate from the perception scan). Every field must be present, correctly typed, and the object must be complete.",
+          "trigger": "Fires at the start of every evaluation (to internalize the target schema) and again at the end (to construct the artifact field-by-field before emitting)."
+        },
+        {
+          "situation": "The agent's output was not valid JSON, likely because it included markdown code fences (```json...```), explanatory prose before/after the JSON, or other non-JSON text alongside the intended object.",
+          "gap_type": "procedure",
+          "suggested_content": "JSON-ONLY OUTPUT DISCIPLINE \u2014 Your entire response must consist of exactly one JSON object. Rules: (1) Do NOT wrap the JSON in markdown code fences (```json...```). (2) Do NOT include any text, commentary, or reasoning outside the JSON object. (3) The response must begin with '{' and end with '}'. (4) All analytical reasoning belongs inside JSON string fields or must be omitted from the final output entirely.",
+          "trigger": "Fires as the very last step before the response is emitted \u2014 after all analysis is complete and the JSON object has been constructed."
+        },
+        {
+          "situation": "The agent had no way to validate its own JSON output structurally before submission. Entry 61b87a5f focuses on character-level escaping but not on structural validity (matching braces, proper nesting, no trailing commas, correct array structure).",
+          "gap_type": "verification_gate",
+          "suggested_content": "JSON STRUCTURAL SELF-TEST \u2014 Before emitting: (1) Verify the response starts with '{' and ends with '}'. (2) Confirm every opening brace/bracket has a matching close. (3) Check for trailing commas after the last element in any array or object. (4) Verify all string values are enclosed in double-quotes and contain no unescaped control characters. (5) Count the elements in the ratings array and confirm it equals N from the perception scan. If any check fails, fix before emitting.",
+          "trigger": "Fires after constructing the JSON output artifact but before emitting the response. This is the absolute final step."
+        },
+        {
+          "situation": "All four candidates meet the basic essay requirements (vocabulary, word count), making this a near-tie scenario where factual accuracy is the primary differentiator. The agent needed a strategy for ranking essays with similar constraint compliance but differing factual quality.",
+          "gap_type": "strategy",
+          "suggested_content": "NEAR-TIE ESSAY EVALUATION \u2014 When all candidates satisfy the same set of mechanical constraints (word count, vocabulary inclusion), differentiate on factual accuracy first, then on depth/nuance of analysis, then on writing quality. For factual differentiation: identify 2-3 specific factual claims per candidate and verify or flag them. Common essay pitfalls: contradictory statistics (claiming X is smaller while quoting a larger number), overgeneralized claims about regions/populations, and fabricated statistics.",
+          "trigger": "Fires during scoring when the constraint compliance matrix shows all candidates passing the same mechanical checks."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n### Agreement with Anchor\nI agree with the anchor's core diagnosis: this is a systematic JSON output formatting failure (3/3 identical failures) that zeroed all analytical work. I also agree that entry 61b87a5f is harmful rather than just insufficient, and that the playbook's imbalance (15+ analytical entries, 1 inadequate formatting entry) is the structural root cause.\n\n### Refinements to Anchor\n1. **Severity of 61b87a5f's harm**: The anchor argues the entry creates 'false sense of coverage.' I refine this: the entry is harmful specifically because its checklist items (backslash scanning, LaTeX replacement) pass trivially on non-LaTeX tasks like essay evaluation, giving the agent no friction point to catch structural JSON problems. A checklist that auto-passes is functionally invisible \u2014 worse than no checklist because it closes the cognitive loop without catching errors.\n\n2. **Root cause specificity**: Without seeing the agent's actual malformed output (only the parse error), we cannot confirm exactly which JSON structural problem occurred (markdown fences, preamble prose, missing fields, etc.). The anchor assumes several possible causes; I note this uncertainty explicitly. However, the systematic nature across all attempts strongly suggests a consistent structural pattern, not a random typo.\n\n3. **PP trace limitation**: The anchor references the PP trace but the behavioral annotation tags (<playbook_cite>, <missing_guidance>, etc.) are not visible in the provided output \u2014 likely because the agent's response was itself unparseable. This means we cannot confirm which entries the agent actually consulted. All entry assessments are therefore inferred from the entry content vs. the failure mode, not from direct citation evidence.\n\n### Key Insight for Curator\nThe highest-impact mutation is not adding new entries but restructuring entry 61b87a5f. Currently it tries to be a final output guard but focuses on a narrow edge case (LaTeX escaping). It should be split into: (a) a schema template artifact that the agent builds, (b) a JSON-only output discipline rule, and (c) a structural self-test verification gate. The current LaTeX-escaping advice can be retained as one sub-check within the structural gate, but it should not dominate or lead the procedure.\n\n### Substantive Task Note\nThis is a near-tie essay evaluation where all candidates meet mechanical constraints (vocabulary, word count \u226580). The primary differentiator should be factual accuracy \u2014 candidates 2, 3, and 4 each contain verifiable factual errors of varying severity. This tie-breaking scenario is underserved by the current playbook, which has strong constraint-checking entries but weak guidance for differentiating among equally-compliant candidates."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "AGREEMENT with anchor: The root cause is correctly identified \u2014 a systematic JSON output formatting failure causing 0% on both rollouts and the PP trace. The failure is 100% reproducible across all attempts, confirming this is a playbook coverage gap, not execution variance. The anchor is also correct that entry 61b87a5f is harmful: it addresses only a narrow subset of JSON invalidity (LaTeX backslash escaping, unescaped quotes) while the actual failure is almost certainly structural \u2014 the agent likely emitted prose, markdown fencing, or other non-JSON content alongside or around the JSON object. The entry's narrow focus gives false coverage and may prevent the agent from recognizing broader format issues.\n\nREFINEMENT of anchor: The anchor proposes four new entries (schema template, JSON-only discipline, string sanitization, self-test gate). This is over-specified for playbook mutation. The core operational failure reduces to two generalizable principles: (1) structured output must be the ONLY content in the response, and (2) a comprehensive format self-check must fire as the absolute last step. These two principles cover the anchor's four proposals more concisely. The anchor's discussion of substantive task analysis (factual inaccuracies in candidates) is accurate but irrelevant \u2014 the agent never reached the scoring stage.\n\nDISAGREEMENT: The anchor frames this primarily as an 'imbalance' problem (15+ analysis entries vs. 1 formatting entry). While true observationally, the deeper lesson is about catastrophic-vs-graded failure modes: format invalidity is binary (0% or pass), while analytical quality errors are graded. The playbook must prioritize binary-failure gates with disproportionate thoroughness because partial coverage of a binary gate is effectively zero coverage \u2014 the agent either passes the gate or gets 0% regardless of how many sub-checks it performed.",
+      "principles": [
+        {
+          "statement": "Your entire response must be ONLY the required structured format. No markdown fencing, no prose before/after, no commentary. Output starts with the opening delimiter and ends with the closing delimiter \u2014 nothing else.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "61b87a5f",
+          "trigger": "Always, when the task requires machine-parseable structured output (JSON, XML, CSV, etc.).",
+          "verification_or_artifact": "Verify the first character of your output is the format's opening delimiter (e.g., '{') and the last character is the matching closing delimiter (e.g., '}').",
+          "evidence": "All three traces failed with parse_error. Entry 61b87a5f addresses only escape characters within JSON strings but never states that the response must contain ONLY JSON. The most likely failure mode is the agent wrapping valid JSON in markdown code blocks or prefacing it with explanatory text."
+        },
+        {
+          "statement": "Before submitting structured output, perform a complete syntax self-check: matched delimiters, all strings quoted, special chars escaped, no trailing commas, array lengths match expectations. A single syntax error in a binary-pass format gate causes total failure.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "61b87a5f",
+          "trigger": "Final step before output submission, after all analysis is complete.",
+          "verification_or_artifact": "Construct a mental checklist: (1) starts with '{', ends with '}'; (2) every string value enclosed in double quotes; (3) no unescaped special characters; (4) no trailing commas after last array/object element; (5) ratings array length equals candidate count from perception scan.",
+          "evidence": "Entry 61b87a5f checks only backslash escaping and unescaped quotes \u2014 a subset of possible syntax errors. The 100% failure rate across all three traces shows that partial format checking provides zero protection when the failure mode is structural rather than character-level."
+        },
+        {
+          "statement": "When a failure mode is binary (0% or pass), its prevention gate must be comprehensive \u2014 covering ALL sub-failure-modes, not just the most salient one. Partial coverage of a binary gate equals zero coverage.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "When designing or following any verification gate that guards a pass/fail outcome (output format, authentication, required fields).",
+          "verification_or_artifact": "After completing a binary gate check, ask: 'What other ways could this gate still fail that I haven't checked?' Enumerate at least two alternative failure modes beyond the one the playbook explicitly mentions.",
+          "evidence": "Entry 61b87a5f addresses LaTeX escaping (one failure mode) but misses structural invalidity (wrapping in prose/markdown), causing 0% across all traces. The narrow entry created false confidence \u2014 the agent may have believed format was handled after checking for backslashes, while the actual failure was entirely different."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "61b87a5f",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause: Systematic JSON Output Formatting Failure\n\nBoth rollouts failed identically with `parse_error: response was not valid JSON`, producing a 0.0% pass rate. This is a total, systematic failure \u2014 not execution noise \u2014 because the same failure reproduced across all attempts on the same task. The agent's analytical work (which may have been correct) was entirely zeroed out by an inability to emit syntactically valid JSON.\n\n## Entry [61b87a5f] \u2014 Unanimously Harmful\n\nAll three diagnostic angles independently conclude that entry [61b87a5f] is harmful, not merely insufficient. The entry is the sole playbook guard for JSON output validity, yet it focuses narrowly on LaTeX backslash escaping and unescaped double-quotes \u2014 a single sub-failure-mode of JSON invalidity. This narrow focus is actively harmful for two reasons:\n\n1. **False coverage**: The entry's checklist items (scan for backslashes, replace LaTeX notation) pass trivially on non-LaTeX tasks like essay evaluation. A checklist that auto-passes gives no friction point to catch the actual structural problem (e.g., wrapping JSON in markdown code fences, including preamble prose, malformed object structure). The agent may believe format handling is complete after performing the LaTeX scan, closing the cognitive loop without catching the real error.\n\n2. **Missing critical scope**: The entry never states that the response must contain ONLY JSON \u2014 no markdown fencing, no explanatory prose before or after. It never specifies the required output schema (field names, types, array structure). It never checks structural validity (matched braces, no trailing commas, correct array length). These are the most likely failure modes on this task, and none are addressed.\n\nThe key insight is that JSON output validity is a **binary gate** \u2014 the output is either parseable or it fails completely. Partial coverage of a binary gate (checking only one failure mode out of many) provides effectively zero protection. The current entry addresses ~20% of possible JSON failure modes while creating the impression that format validity has been handled.\n\n## What the Update Should Cover\n\nEntry [61b87a5f] should be restructured to be a comprehensive final output guard with these components:\n\n1. **Output-only discipline**: The entire response must be ONLY the JSON object. First character must be `{`, last character must be `}`. No markdown code fences, no prose before or after, no commentary outside the JSON structure.\n\n2. **Structural self-check**: Matched delimiters (every `{` has `}`, every `[` has `]`), no trailing commas after last array/object element, all string values properly quoted.\n\n3. **Schema compliance**: Ratings array length must equal N from the perception scan. All required fields present and correctly typed.\n\n4. **Character-level escaping** (retained from current entry): Scan string fields for unescaped backslashes (LaTeX, file paths), unescaped double-quotes, unescaped control characters. Replace technical notation with plain-text equivalents.\n\nThe current entry's LaTeX-specific advice should be retained as one sub-check (item 4) but must not dominate or lead the procedure. Structural validity and output-only discipline are more fundamental and more commonly violated.\n\n## Substantive Task Analysis (Secondary)\n\nThe task is an essay-comparison evaluation where all four candidates meet basic mechanical constraints (vocabulary inclusion, word count \u226580). This is a near-tie scenario where factual accuracy should be the primary differentiator \u2014 several candidates contain verifiable factual errors (e.g., contradictory statistics about Canada's size, fabricated claims about French-speaking provinces, implausible coastline measurements). However, because the agent never reached the scoring stage, we cannot evaluate its analytical quality and have no evidence for playbook changes to the analytical entries.\n\n## PP Trace Limitation\n\nBecause the agent's output was itself unparseable, no PP annotation tags (<playbook_cite>, <missing_guidance>) are available. All entry assessments are therefore narrative-inferred from entry content vs. failure mode, not from direct citation evidence. This reduces confidence slightly but does not undermine the core diagnosis, which is strongly supported by the systematic nature of the failure and the clear mismatch between the entry's scope and the failure mode.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Entry 61b87a5f is the sole JSON output guard but covers only LaTeX escaping \u2014 a narrow sub-failure-mode. The actual failure is almost certainly structural (markdown fencing, preamble prose, or malformed object), which the entry does not address at all. This creates false coverage of a binary gate, causing systematic 0% failure across all rollouts.",
+      "important_disagreements": [
+        "The anchor proposes 4 separate new entries (schema template, JSON-only discipline, string sanitization, self-test gate); principle_extraction argues this reduces to 2 core principles; credit_attribution identifies 4 coverage gaps. Resolution: following conservatism, a single comprehensive UPDATE to entry 61b87a5f is preferred over adding 3-4 new entries from one trace. The entry already occupies the correct playbook position (final output guard); it needs expanded scope, not replacement by multiple entries.",
+        "The anchor frames the problem as 'imbalance' (15+ analysis entries vs 1 format entry); principle_extraction reframes as 'binary vs graded failure modes' requiring disproportionate thoroughness. Resolution: the binary-gate insight is accurate and explains WHY narrow coverage is harmful, but is too abstract to justify a standalone meta-entry from one trace. It should inform how entry 61b87a5f is rewritten (comprehensive coverage of all sub-failure-modes) rather than become a separate rule."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry 61b87a5f exists in the correct location (final output guard) and addresses the right concern (JSON validity), but its scope is fatally narrow. Updating it to cover structural validity, output-only discipline, and schema compliance \u2014 while retaining the existing escaping advice as a sub-check \u2014 is the most conservative fix that addresses the root cause. No new entry is needed because the entry already exists; it just needs to be comprehensive.",
+      "conservatism_rationale": "A single update to one existing entry is the smallest change that fixes the 100% reproducible failure. Adding 3-4 new entries (as some reflections suggest) risks over-fitting to one trace. The near-tie essay differentiation gap identified by credit_attribution is secondary \u2014 the agent never reached that stage \u2014 and has insufficient evidence for a new entry. The binary-gate meta-principle is insightful but too abstract for a single-trace addition. One well-targeted update is clearly justified; more changes are not.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\n      \"entry_id\": \"61b87a5f\",\n      \"tag\": \"harmful\"\n    },\n    {\n      \"entry_id\": \"93b0e8f9\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"4abe1be4\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"c8698dee\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"8e0d9579\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"3008aa9b\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"8c88459e\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"ac6ae69a\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"132aab84\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"005004a4\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"342f27b9\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"29e534bd\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"71f11566\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"c292da46\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"295257e2\",\n      \"tag\": \"neutral\"\n    }\n  ],\n  \"analysis\": \"## Root Cause: Systematic JSON Output Formatting Failure\\n\\nBoth rollouts failed identically with `parse_error: response was not valid JSON`, producing a 0.0% pass rate. This is a total, systematic failure \u2014 not execution noise \u2014 because the same failure reproduced across all attempts on the same task. The agent's analytical work (which may have been correct) was entirely zeroed out by an inability to emit syntactically valid JSON.\\n\\n## Entry [61b87a5f] \u2014 Unanimously Harmful\\n\\nAll three diagnostic angles independently conclude that entry [61b87a5f] is harmful, not merely insufficient. The entry is the sole playbook guard for JSON output validity, yet it focuses narrowly on LaTeX backslash escaping and unescaped double-quotes \u2014 a single sub-failure-mode of JSON invalidity. This narrow focus is actively harmful for two reasons:\\n\\n1. **False coverage**: The entry's checklist items (scan for backslashes, replace LaTeX notation) pass trivially on non-LaTeX tasks like essay evaluation. A checklist that auto-passes gives no friction point to catch the actual structural problem (e.g., wrapping JSON in markdown code fences, including preamble prose, malformed object structure). The agent may believe format handling is complete after performing the LaTeX scan, closing the cognitive loop without catching the real error.\\n\\n2. **Missing critical scope**: The entry never states that the response must contain ONLY JSON \u2014 no markdown fencing, no explanatory prose before or after. It never specifies the required output schema (field names, types, array structure). It never checks structural validity (matched braces, no trailing commas, correct array length). These are the most likely failure modes on this task, and none are addressed.\\n\\nThe key insight is that JSON output validity is a **binary gate** \u2014 the output is either parseable or it fails completely. Partial coverage of a binary gate (checking only one failure mode out of many) provides effectively zero protection. The current entry addresses ~20% of possible JSON failure modes while creating the impression that format validity has been handled.\\n\\n## What the Update Should Cover\\n\\nEntry [61b87a5f] should be restructured to be a comprehensive final output guard with these components:\\n\\n1. **Output-only discipline**: The entire response must be ONLY the JSON object. First character must be `{`, last character must be `}`. No markdown code fences, no prose before or after, no commentary outside the JSON structure.\\n\\n2. **Structural self-check**: Matched delimiters (every `{` has `}`, every `[` has `]`), no trailing commas after last array/object element, all string values properly quoted.\\n\\n3. **Schema compliance**: Ratings array length must equal N from the perception scan. All required fields present and correctly typed.\\n\\n4. **Character-level escaping** (retained from current entry): Scan string fields for unescaped backslashes (LaTeX, file paths), unescaped double-quotes, unescaped control characters. Replace technical notation with plain-text equivalents.\\n\\nThe current entry's LaTeX-specific advice should be retained as one sub-check (item 4) but must not dominate or lead the procedure. Structural validity and output-only discipline are more fundamental and more commonly violated.\\n\\n## Substantive Task Analysis (Secondary)\\n\\nThe task is an essay-comparison evaluation where all four candidates meet basic mechanical constraints (vocabulary inclusion, word count \u226580). This is a near-tie scenario where factual accuracy should be the primary differentiator \u2014 several candidates contain verifiable factual errors (e.g., contradictory statistics about Canada's size, fabricated claims about French-speaking provinces, implausible coastline measurements). However, because the agent never reached the scoring stage, we cannot evaluate its analytical quality and have no evidence for playbook changes to the analytical entries.\\n\\n## PP Trace Limitation\\n\\nBecause the agent's output was itself unparseable, no PP annotation tags (<playbook_cite>, <missing_guidance>) are available. All entry assessments are therefore narrative-inferred from entry content vs. failure mode, not from direct citation evidence. This reduces confidence slightly but does not undermine the core diagnosis, which is strongly supported by the systematic nature of the failure and the clear mismatch between the entry's scope and the failure mode.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Entry 61b87a5f is the sole JSON output guard but covers only LaTeX escaping \u2014 a narrow sub-failure-mode. The actual failure is almost certainly structural (markdown fencing, preamble prose, or malformed object), which the entry does not address at all. This creates false coverage of a binary gate, causing systematic 0% failure across all rollouts.\",\n    \"important_disagreements\": [\n      \"The anchor proposes 4 separate new entries (schema template, JSON-only discipline, string sanitization, self-test gate); principle_extraction argues this reduces to 2 core principles; credit_attribution identifies 4 coverage gaps. Resolution: following conservatism, a single comprehensive UPDATE to entry 61b87a5f is preferred over adding 3-4 new entries from one trace. The entry already occupies the correct playbook position (final output guard); it needs expanded scope, not replacement by multiple entries.\",\n      \"The anchor frames the problem as 'imbalance' (15+ analysis entries vs 1 format entry); principle_extraction reframes as 'binary vs graded failure modes' requiring disproportionate thoroughness. Resolution: the binary-gate insight is accurate and explains WHY narrow coverage is harmful, but is too abstract to justify a standalone meta-entry from one trace. It should inform how entry 61b87a5f is rewritten (comprehensive coverage of all sub-failure-modes) rather than become a separate rule.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry 61b87a5f exists in the correct location (final output guard) and addresses the right concern (JSON validity), but its scope is fatally narrow. Updating it to cover structural validity, output-only discipline, and schema compliance \u2014 while retaining the existing escaping advice as a sub-check \u2014 is the most conservative fix that addresses the root cause. No new entry is needed because the entry already exists; it just needs to be comprehensive.\",\n    \"conservatism_rationale\": \"A single update to one existing entry is the smallest change that fixes the 100% reproducible failure. Adding 3-4 new entries (as some reflections suggest) risks over-fitting to one trace. The near-tie essay differentiation gap identified by credit_attribution is secondary \u2014 the agent never reached that stage \u2014 and has insufficient evidence for a new entry. The binary-gate meta-principle is insightful but too abstract for a single-trace addition. One well-targeted update is clearly justified; more changes are not.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,595 @@
+{
+  "task_id": "ref:24",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task ref:24\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts failed identically with parse error 'ties single-rating response was missing rating.' The agent produced an **array of per-candidate JSON objects** \u2014 each containing its own `reasoning` and `rating` (singular) fields \u2014 instead of the required **single JSON object** with fields `reasoning` (string), `ratings` (number array), and `best_response_ids` (string array). The evaluation harness could not extract the expected structure, yielding 0% on every rollout.\n\nThree compounding failures produced this result:\n\n### 1. Malformed Output Structure (PRIMARY \u2014 caused the parse error)\nThe agent wrapped per-candidate evaluations in an outer JSON array: `[{\"candidate_id\": \"1\", \"response\": \"{\\\"reasoning\\\"..., \\\"rating\\\": 10.0}\"}, ...]`. Tellingly, the last evaluated candidate (candidate 4) includes `\"ratings\": [1.0], \"best_response_ids\": [\"4\"]` \u2014 schema field names from entry 61b87a5f embedded at the wrong nesting level. This shows the agent partially recognized the required fields but misinterpreted where they belong structurally. Entry 61b87a5f specifies 'single JSON object' and lists field names/types, but never shows a concrete template demonstrating that ALL candidates' scores belong in ONE positionally-ordered `ratings` array inside ONE top-level object. The specification was sufficient to convey field names but ambiguous about aggregation level.\n\n### 2. Incomplete Candidate Coverage (4 of 14 evaluated)\nThe agent processed candidates 1\u20134 and then began emitting output, leaving candidates 5\u201314 entirely unevaluated. Entries 93b0e8f9 and 4abe1be4 both mandate producing exactly N scores, but neither gates the *transition* from evaluation to output on completeness. The agent's default behavior appears to be sequential per-candidate emission \u2014 it started outputting before finishing all items. No perception scan artifact (N=14) was visible in the output.\n\n### 3. Factual Discrimination Failure\nThe agent rated Stratus, Stratocumulus, and Nimbostratus identically at 10.0 for a question whose canonical textbook answer is Stratus (flat, gray, uniform layer producing light drizzle). Stratocumulus has a lumpy/patchy appearance; Nimbostratus produces moderate-to-heavy continuous precipitation. The agent evaluated each candidate in isolation rather than first deriving a reference answer. Entry 342f27b9 prescribes reference-first derivation but scopes it to 'math, logic, or computation prompts,' missing factual identification questions.\n\n## Execution Slip vs. Playbook Gap\nThe identical character-for-character failure across both rollouts strongly argues against random execution variance. When 100% of rollouts reproduce the same structural error, this is a systematic interpretation problem. I estimate approximately 50% execution slip (several existing entries already mandate the right behavior but were not followed) and 50% playbook gap (the output template is ambiguous, the completeness gate is missing, and factual-question scoping is too narrow).\n\n## Playbook Implication\nThe single highest-impact fix is to **update entry 61b87a5f** by adding a concrete output template that shows the exact expected JSON shape with placeholder values. This directly addresses the primary failure (parse error) and would have prevented the 0% score even if the other issues remained. The entry already says 'single JSON object' and lists field names \u2014 it needs a structural example showing aggregation and positional ordering, plus an explicit prohibition on arrays of per-candidate objects.\n\nSecondary improvements (lower priority, not recommended for this cycle): (a) broadening entry 342f27b9's scope from 'math, logic, or computation' to include factual identification questions; (b) adding a completeness gate between evaluation and output generation. These would improve quality but neither caused the parse error that produced 0%.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent misinterpreted the output schema specification in entry 61b87a5f, producing per-candidate JSON objects instead of a single aggregated JSON object. This structural mismatch caused the parse error and 0% score in both rollouts. The entry specifies field names and types but lacks a concrete template showing the expected nesting and aggregation level.\",\n  \"important_disagreements\": [\n    \"Credit_attribution tagged 61b87a5f as 'harmful' (agent partially consulted it, produced worse output); anchor and principle_extraction tagged it 'helpful.' Resolution: the entry's content is directionally correct and should be preserved \u2014 the agent extracted schema field names from it. The problem is that field-name+type specification is ambiguous about aggregation level. This is best addressed by updating the entry (adding a template), not removing or weakening it. Tagged 'helpful' with 'needs update.'\",\n    \"Execution-slip vs. playbook-gap ratio: anchor says 60/40, credit_attribution says 40/60, principle_extraction says ~50/50. Resolution: identical failure across 100% of rollouts is stronger evidence of systematic gap than slip. Settled at ~50/50, which favors an update mutation over a no_change posture.\",\n    \"Credit_attribution proposed a MASTER EVALUATION SEQUENCE entry chaining all existing procedures. While conceptually appealing, this is a large structural addition based on a single task. The existing entries already prescribe correct ordering (perception scan \u2192 constraint extraction \u2192 evaluation \u2192 output). The specific failure here is output format, not sequencing. Deferred as over-scoped for one observation.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry 61b87a5f already covers output format requirements but demonstrably fails to prevent the exact structural error seen. A concrete template showing the expected JSON shape \u2014 single object, positionally-ordered ratings array, explicit prohibition on per-candidate objects \u2014 directly addresses the primary failure mode. This is the smallest change with the highest expected impact.\",\n  \"conservatism_rationale\": \"Only one entry needs updating (61b87a5f). The secondary issues (342f27b9 scope, completeness gate) are real but lower-impact \u2014 they would not have changed the parse-error outcome and each rests on a single task observation. Restricting to one update is conservative and addresses the dominant failure mode.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\nWhich cloud type is characterized by a flat, gray appearance that often covers the entire sky and may produce light precipitation?\n\n## Candidate Responses\n\n[1]\nStratus\n\n[2]\nStratocumulus\n\n[3]\nNimbostratus\n\n[4]\nCumulus\n\n[5]\nCirrus\n\n[6]\nCirrostratus\n\n[7]\nCirrocumulus\n\n[8]\nAltostratus\n\n[9]\nAltocumulus\n\n[10]\nCumulonimbus\n\n[11]\nThe shape and characteristics of clouds can help meteorologists predict weather patterns and conditions.\n\n[12]\nCloud formation is influenced by factors like temperature, humidity, and atmospheric pressure.\n\n[13]\nCertainly, I would be happy to help you with that.\n\n[14]\nI'm not sure I understand, can you rephrase your question?\n\n## Raw Judge Output\n[{\"candidate_id\": \"1\", \"response\": \"{\\\"reasoning\\\":\\\"CONSTRAINT CHECKLIST: give the correct cloud type name matching the prompt\u2019s flat, gray, sky-covering description (single, accurate term). The candidate answer \\\\\\\"Stratus\\\\\\\" directly fits, so it satisfies the objective requirement.\\\",\\\"rating\\\":10.0}\"}, {\"candidate_id\": \"2\", \"response\": \"{\\\"reasoning\\\":\\\"The prompt describes low, gray cloud layers that can cover much of the sky and produce light precipitation, which matches stratocumulus clouds. \u201cStratocumulus\u201d is the correct identification.\\\",\\\"rating\\\":10.0}\"}, {\"candidate_id\": \"3\", \"response\": \"{\\\"reasoning\\\":\\\"The prompt asks for the cloud type with a flat gray appearance covering much of the sky that may produce light precipitation. \u201cNimbostratus\u201d is the correct match.\\\",\\\"rating\\\":10.0}\"}, {\"candidate_id\": \"4\", \"response\": \"{\\\"reasoning\\\":\\\"The prompt describes flat, gray, overcast clouds associated with stratus; the candidate answered 'Cumulus', which are generally puffy and do not match the described type. This is factually incorrect, so it earns a very low score.\\\",\\\"ratings\\\":[1.0],\\\"best_response_ids\\\":[\\\"4\\\"]}\"}]\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\nWhich cloud type is characterized by a flat, gray appearance that often covers the entire sky and may produce light precipitation?\n\n## Candidate Responses\n\n[1]\nStratus\n\n[2]\nStratocumulus\n\n[3]\nNimbostratus\n\n[4]\nCumulus\n\n[5]\nCirrus\n\n[6]\nCirrostratus\n\n[7]\nCirrocumulus\n\n[8]\nAltostratus\n\n[9]\nAltocumulus\n\n[10]\nCumulonimbus\n\n[11]\nThe shape and characteristics of clouds can help meteorologists predict weather patterns and conditions.\n\n[12]\nCloud formation is influenced by factors like temperature, humidity, and atmospheric pressure.\n\n[13]\nCertainly, I would be happy to help you with that.\n\n[14]\nI'm not sure I understand, can you rephrase your question?\n\n## Raw Judge Output\n[{\"candidate_id\": \"1\", \"response\": \"{\\\"reasoning\\\":\\\"CONSTRAINT CHECKLIST: give the correct cloud type name matching the prompt\u2019s flat, gray, sky-covering description (single, accurate term). The candidate answer \\\\\\\"Stratus\\\\\\\" directly fits, so it satisfies the objective requirement.\\\",\\\"rating\\\":10.0}\"}, {\"candidate_id\": \"2\", \"response\": \"{\\\"reasoning\\\":\\\"The prompt describes low, gray cloud layers that can cover much of the sky and produce light precipitation, which matches stratocumulus clouds. \u201cStratocumulus\u201d is the correct identification.\\\",\\\"rating\\\":10.0}\"}, {\"candidate_id\": \"3\", \"response\": \"{\\\"reasoning\\\":\\\"The prompt asks for the cloud type with a flat gray appearance covering much of the sky that may produce light precipitation. \u201cNimbostratus\u201d is the correct match.\\\",\\\"rating\\\":10.0}\"}, {\"candidate_id\": \"4\", \"response\": \"{\\\"reasoning\\\":\\\"The prompt describes flat, gray, overcast clouds associated with stratus; the candidate answered 'Cumulus', which are generally puffy and do not match the described type. This is factually incorrect, so it earns a very low score.\\\",\\\"ratings\\\":[1.0],\\\"best_response_ids\\\":[\\\"4\\\"]}\"}]",
+  "evaluation_details": "## rollout_1 Evaluation\n\nError: parse_error: ties single-rating response was missing rating\n\n## rollout_2 Evaluation\n\nError: parse_error: ties single-rating response was missing rating",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause Analysis\n\nBoth rollouts failed identically (0.0%) with the same parse error: 'ties single-rating response was missing rating.' The failures stem from two compounding issues:\n\n### 1. CRITICAL: Malformed Output Structure (Primary Failure)\nThe agent produced an **array of per-candidate JSON objects**, each containing individual `reasoning` and `rating` fields, instead of the required **single JSON object** with `reasoning` (string), `ratings` (number array), and `best_response_ids` (string array). The evaluation harness could not extract the required fields, resulting in a parse error and 0% score.\n\nEntry [61b87a5f] already specifies the correct schema (`ratings` as number array, `best_response_ids` as string array), but the agent still produced per-candidate objects. The entry likely needs a more explicit structural template or example showing that ALL candidates' scores go into ONE `ratings` array in a SINGLE top-level object \u2014 not an array of per-candidate objects.\n\nNotably, the agent also introduced schema inconsistency within its own output: candidates 1-3 each have `\"rating\": 10.0` (singular), while candidate 4 has `\"ratings\": [1.0], \"best_response_ids\": [\"4\"]` embedded within the per-candidate object. This suggests the agent partially remembered the required schema fields but injected them at the wrong structural level.\n\n### 2. CRITICAL: Incomplete Candidate Coverage (14 candidates, only 4 evaluated)\nThe agent only evaluated candidates 1-4 out of 14 total. Candidates 5-14 (including multiple wrong cloud types, off-topic filler, and non-responsive text) were entirely skipped. Entries [4abe1be4] and [93b0e8f9] both mandate enumerating all candidates and producing exactly N scores \u2014 neither was followed. Even if the output format had been correct, having only 4 ratings for 14 candidates would fail the array-length check.\n\n### 3. Factual Accuracy Problem (Would Have Caused Failure Even If Format Were Correct)\nThe agent rated three different answers (Stratus, Stratocumulus, Nimbostratus) identically at 10.0. For this standard meteorology question, **Stratus** is the textbook answer: flat, gray, uniform layer covering the entire sky, producing light drizzle. Stratocumulus has a lumpy/patchy appearance (the 'cumulus' component) and doesn't uniformly cover the sky the same way. Nimbostratus is associated with continuous moderate-to-heavy precipitation, not 'light precipitation.' The agent failed to derive a reference answer first (violating [342f27b9]) and failed to discriminate between the best answer and related-but-distinct alternatives.\n\nEntry [005004a4] should have caught this, but requires the agent to actually exercise independent domain knowledge before scoring.\n\n### 4. Non-Responsive Candidates Not Identified\nCandidates 11-14 include generic meteorology statements, a compliance preamble, and a request for rephrasing \u2014 none answer the question. Entry [132aab84] (focus alignment) should have classified these as OFF-TOPIC, but they were never even reached in the evaluation.\n\n## What Is Missing From the Playbook\n\n### A. Output Format Template (Strongest Need)\nThe playbook specifies required field names and types but never shows the expected structural shape. A concrete template would prevent the per-candidate-object error:\n```\n{\"reasoning\": \"...\", \"ratings\": [score1, score2, ..., scoreN], \"best_response_ids\": [\"id1\", ...]}\n```\nThe entry should explicitly state: 'There is ONE top-level JSON object. The ratings array is ORDERED by candidate index [1] through [N]. Do NOT produce separate JSON objects per candidate.'\n\n### B. Factual Knowledge Discrimination Rule\nFor factual questions with a single correct answer, the playbook needs a rule: When a prompt asks for a specific factual identification (e.g., 'which cloud type,' 'what element,' 'which country'), derive the canonical answer first, then apply strict discrimination:\n- Canonical correct answer \u2192 top score tier\n- Partially overlapping but not the best-fit answer \u2192 intermediate score tier (with explicit justification for why it's not the best match)\n- Wrong answers \u2192 low score tier\n- Non-answers / off-topic / refusals \u2192 lowest score tier\n\nThis is different from subjective questions where multiple answers are equally valid. The current tie-handling rule [295257e2] says 'keep correct answers close together' but doesn't handle the case where the agent incorrectly broadens 'correct' to include partial matches.\n\n### C. Streaming/Truncation Guard\nThe agent appears to have begun outputting candidate-by-candidate evaluations and stopped after 4. A rule should mandate: 'Before beginning any output, confirm you have completed evaluation of ALL N candidates identified in the perception scan. If your evaluation notes cover fewer than N candidates, you are not ready to output.'\n\n## Which Existing Entries Need Refinement\n\n- **[61b87a5f]**: Needs an explicit JSON template showing the single-object structure with ordered ratings array. The current description of 'Required fields present: reasoning (string), ratings (number array), best_response_ids (string array)' is necessary but insufficient \u2014 the agent interpreted it as per-candidate objects that each contain some of these fields.\n\n- **[4abe1be4]**: The perception scan rule is correct but needs a stronger enforcement gate \u2014 something like: 'After the perception scan, do NOT begin evaluating candidates until you have confirmed N in a labeled artifact. Evaluation output MUST be withheld until all N candidates have been assessed in your reasoning.'\n\n- **[295257e2]**: The tie-handling rule needs a 'FACTUAL QUESTION GATE' that explicitly prevents treating partially-matching factual answers as equivalent to the canonical correct answer. For objective factual questions, 'tie' should mean 'equally correct,' not 'somewhat related.'\n\n## Execution Slip vs. Playbook Gap\nThis failure is approximately 60% execution slip (the playbook already has entries for counting candidates, checking output format, and verifying factual accuracy \u2014 none were followed) and 40% playbook gap (the output format template is missing, and the tie-handling guidance doesn't address factual discrimination). The identical failure across both rollouts suggests a systematic issue with how the agent approaches multi-candidate evaluation, not random noise."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "helpful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Agent produced an array of per-candidate JSON objects instead of a single JSON object with a consolidated ratings array. Entry 61b87a5f specifies required fields and 'single JSON object' but the agent still misinterpreted the structural shape, embedding schema fields at the per-candidate level. Identical failure across all three runs.",
+          "gap_type": "artifact",
+          "suggested_content": "CONCRETE OUTPUT TEMPLATE \u2014 Insert into or replace the schema compliance section of entry 61b87a5f. Show the EXACT expected structure: {\"reasoning\": \"<your full evaluation of ALL candidates in one string>\", \"ratings\": [score_for_candidate_1, score_for_candidate_2, ..., score_for_candidate_N], \"best_response_ids\": [\"id_of_best\", ...]}. Explicitly prohibit: (a) JSON arrays of per-candidate objects, (b) separate 'rating' fields per candidate, (c) any output where the first character is '['. The ratings array is POSITIONALLY ORDERED: index 0 = candidate [1], index 1 = candidate [2], etc. All N candidate evaluations go in the single 'reasoning' string; all N scores go in the single 'ratings' array.",
+          "trigger": "Fires as part of the final output guard immediately before emitting JSON. Should also be referenced during the initial task setup so the agent knows the target structure before beginning evaluation."
+        },
+        {
+          "situation": "Agent started producing per-candidate output and stopped after candidate 4, leaving candidates 5-14 unevaluated. This happened identically in all three runs, suggesting the agent's default processing mode is sequential per-candidate emission that can truncate.",
+          "gap_type": "verification_gate",
+          "suggested_content": "ALL-CANDIDATES COMPLETION GATE \u2014 Before producing ANY output text, verify that your internal evaluation covers ALL N candidates from the perception scan. Produce an intermediate checklist artifact: [Candidate ID | Evaluated: Y/N]. If ANY candidate shows 'N', you MUST NOT begin output formatting. Return to the unevaluated candidate(s) and complete analysis. This gate fires AFTER all per-candidate reasoning and BEFORE the final output guard.",
+          "trigger": "After completing per-candidate analysis, immediately before beginning output formatting. Should be inserted into the evaluation workflow as a mandatory checkpoint."
+        },
+        {
+          "situation": "Agent treated three different cloud types (Stratus, Stratocumulus, Nimbostratus) as equally correct (all 10.0) for a factual question with a single canonical answer. Existing tie-handling entry 295257e2 says 'keep correct answers close together' but doesn't address the case where the agent incorrectly broadens 'correct' to include partial factual matches.",
+          "gap_type": "strategy",
+          "suggested_content": "FACTUAL QUESTION DISCRIMINATION \u2014 When a prompt asks for a specific factual identification (e.g., 'which cloud type,' 'what element,' 'which country'), derive the canonical answer FIRST (per 342f27b9). Then apply strict scoring tiers: (1) Canonical correct answer \u2192 top tier (9-10); (2) Related but not best-fit answer (belongs to same domain but has distinct characteristics that don't match the prompt's description) \u2192 intermediate tier (5-7) with explicit reasoning for WHY it's not the canonical match; (3) Clearly wrong answer \u2192 low tier (1-3); (4) Non-answer / off-topic / refusal \u2192 lowest tier (0-1). Key distinction: for factual questions, 'tie' means 'equally correct,' not 'from the same domain.' Two cloud types that are both gray do NOT tie if only one matches ALL stated characteristics.",
+          "trigger": "After constraint extraction identifies a factual/definitional question type (single correct answer expected), before per-candidate scoring begins."
+        },
+        {
+          "situation": "Multiple mandatory procedures (perception scan, constraint extraction, reference derivation, per-candidate evaluation, completion check, output formatting) exist as separate entries, but the agent skipped most of them. Identical failure across all three runs indicates the entries collectively lack enforcement sequencing \u2014 the agent defaults to a shallow sequential-emit pattern that bypasses most procedural gates.",
+          "gap_type": "procedure",
+          "suggested_content": "MASTER EVALUATION SEQUENCE \u2014 Execute these steps in strict order. Each step MUST produce a labeled artifact BEFORE the next step begins. No step may be skipped. (1) PERCEPTION SCAN [4abe1be4] \u2014 Find all candidate markers [1], [2], ..., quote first 5 words, state N. Artifact: list of N candidates. (2) CONSTRAINT EXTRACTION [c8698dee] \u2014 Extract all prompt requirements into numbered checklist. Artifact: numbered constraint list. (3) QUESTION-TYPE CLASSIFICATION \u2014 Factual \u2192 derive reference answer [342f27b9]. Subjective \u2192 identify validity criteria. Artifact: reference answer or criteria. (4) PER-CANDIDATE EVALUATION \u2014 Evaluate each of N candidates against reference/criteria. Artifact: N evaluation notes. (5) COMPLETION CHECK \u2014 Verify N evaluations exist. Artifact: completion checklist. (6) OUTPUT FORMATTING [61b87a5f] \u2014 Produce single JSON object with ratings array of length N. If you find yourself producing output before step 5, STOP and return to the incomplete step.",
+          "trigger": "At the very start of every evaluation task, as the first thing the agent does before any analysis."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n### Agreement with Anchor\nI agree with the anchor's identification of three compounding failures: (1) malformed output structure (array of per-candidate objects instead of single JSON), (2) incomplete candidate coverage (4 of 14), and (3) factual accuracy errors (Stratus, Stratocumulus, Nimbostratus all rated 10.0). The anchor's proposed coverage gaps (output template, factual discrimination, completion guard) are well-targeted.\n\n### Key Refinements\n**Re-tagging entry influence:** The anchor tags entries 93b0e8f9, 4abe1be4, 005004a4, 342f27b9, and f26064e1 as 'helpful.' While their DESIGN is correct, they were completely unapplied across all three identical runs. I preserve 'helpful' for entries with sound advice (indicating the content should be kept), but emphasize that helpfulness here means 'good advice that needs enforcement,' not 'positively influenced this run.' The distinction matters for playbook mutation: these entries need structural reinforcement, not content changes.\n\n**Entries 61b87a5f and c8698dee were harmful:** The anchor tags 61b87a5f as 'helpful' and c8698dee as 'neutral.' I disagree. Both entries show evidence of partial, superficial consultation that produced WORSE outcomes than complete non-consultation. Entry 61b87a5f's schema fields appeared at the wrong structural level (per-candidate objects). Entry c8698dee's 'CONSTRAINT CHECKLIST' label was invoked as a one-line gloss, potentially short-circuiting deeper analysis by creating a false compliance signal.\n\n**Execution slip vs. playbook gap ratio:** The anchor estimates 60/40 execution slip vs. playbook gap. I push this to approximately 45/55 or 40/60. The IDENTICAL character-for-character failure across all three runs is not consistent with random execution variance \u2014 it indicates a deterministic failure mode where the playbook's structure fails to override the agent's default processing pattern. When a 'slip' reproduces exactly three times, it's a systematic gap.\n\n### Root Cause: Default Processing Mode Override\nThe deepest pattern is that the agent has a strong default behavior of sequential per-candidate evaluation with per-candidate output emission. The playbook's entries (perception scan, constraint extraction, reference derivation, output schema) specify a DIFFERENT workflow but are structured as independent checks rather than a sequential pipeline with hard gates. The agent defaults to its prior pattern (emit per-candidate objects) and only partially incorporates playbook vocabulary ('CONSTRAINT CHECKLIST' label, schema field names) without executing the actual procedures.\n\nThis suggests the highest-value playbook mutation is not adding more content to existing entries but creating a MASTER SEQUENCING PROCEDURE that explicitly chains the existing entries into a gated pipeline with mandatory intermediate artifacts. Each step's artifact must exist before the next step can begin.\n\n### Secondary Pattern: Factual Discrimination\nThe agent's treatment of Stratocumulus and Nimbostratus as equally correct with Stratus reveals a gap in the playbook's handling of factual questions with single canonical answers. The tie-handling entry (295257e2) is designed for cases with genuinely multiple valid answers, not for cases where similar-sounding alternatives differ on key characteristics. A new entry should explicitly gate factual questions: derive canonical answer first, then apply strict scoring tiers based on match quality, not domain proximity."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Agreement and Refinements vs. Anchor\n\n**AGREE** with anchor on primary failure: the agent produced an array of per-candidate JSON objects (each with its own `rating` field) instead of a single JSON object containing a `ratings` array. This directly caused the parse error in both rollouts.\n\n**AGREE** that only 4/14 candidates were evaluated. Even with correct format, missing 10 ratings would fail the array-length check.\n\n**AGREE** on the factual discrimination problem (Stratus, Stratocumulus, Nimbostratus all scored 10.0 when only Stratus is the canonical textbook answer).\n\n**REFINE** the anchor's 60/40 execution-slip vs. playbook-gap split. Both rollouts failed identically with the same structural error. When 100% of rollouts reproduce the same mistake, this is stronger evidence of a systematic interpretation problem than a random execution slip. Entry 61b87a5f does state 'single JSON object' and lists the required fields, but never shows the mapping between the N candidates and the ratings array. The agent demonstrably interpreted the schema as per-candidate objects, suggesting the specification is structurally ambiguous. I'd weight this closer to 50/50 or even 55% playbook gap.\n\n**REFINE** the anchor's claim about entry 4abe1be4 needing an 'enforcement gate.' The perception scan entry already says 'Lock: your final ratings array MUST contain exactly N scores.' The real gap is that no entry gates the transition from working notes to output generation on completeness. The agent began emitting output after processing 4 items and apparently stopped. The fix isn't stronger wording\u2014it's a process gate: 'Do not begin output until all N items are addressed in working notes.'\n\n## Key Evidence from Trace\n\n1. The agent's output structure: `[{\"candidate_id\": \"1\", \"response\": \"{\\\"reasoning\\\"..., \\\"rating\\\": 10.0}\"}, ...]` \u2014 wrapping per-candidate evaluations in an outer array. This is a fundamentally different shape than `{\"reasoning\": \"...\", \"ratings\": [...], \"best_response_ids\": [...]}`. The agent partially remembered the schema fields (candidate 4 includes `ratings` and `best_response_ids`) but embedded them inside per-candidate objects.\n\n2. Processing stopped at candidate 4 with no signal that 10 more candidates existed. No perception scan artifact (N=14) is visible in the output.\n\n3. Candidates 2 (Stratocumulus) and 3 (Nimbostratus) were scored identically to candidate 1 (Stratus). The agent's reasoning for candidate 2 states 'which matches stratocumulus clouds' and for candidate 3 'Nimbostratus is the correct match' \u2014 treating each as independently correct rather than comparing against a reference answer.\n\n## Generalizable Lessons\n\nThe three failures map to three distinct generalizable principles:\n\n1. **Concrete template for structured output**: Field-name + type specs are ambiguous about nesting and aggregation level. A concrete example template disambiguates. This is the highest-impact fix.\n\n2. **Completeness gate**: Processing all items before any output is an old principle that needs explicit process enforcement \u2014 not just a requirement on the final array length.\n\n3. **Reference-first for evaluation**: The agent evaluated each candidate in isolation without first determining the correct answer. This pattern generalizes beyond judging: before evaluating options, determine criteria-satisfaction independently.",
+      "principles": [
+        {
+          "statement": "Before generating structured output, instantiate a concrete template with placeholder values matching the exact expected shape. Compare your output's nesting and aggregation level to this template before emitting.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "61b87a5f",
+          "trigger": "Whenever the task requires structured output (JSON, XML, table) with a defined schema.",
+          "verification_or_artifact": "Write a placeholder template (e.g., {\"field\": [val1, val2, ...], ...}) BEFORE generating real output. After drafting output, verify structural match: same nesting depth, same aggregation level, same number of top-level objects.",
+          "evidence": "Entry 61b87a5f specifies field names and types but the agent interpreted them as per-candidate objects instead of a single aggregated object. A concrete template like {\"reasoning\": \"...\", \"ratings\": [s1, s2, ..., sN], \"best_response_ids\": [...]} would have prevented this ambiguity. 100% of rollouts made the same structural error."
+        },
+        {
+          "statement": "When processing N enumerated items, do not begin output generation until working notes confirm all N items are addressed. Explicit count check: items_processed == N.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "93b0e8f9",
+          "trigger": "Any task requiring enumeration or processing of all items in a set before producing output.",
+          "verification_or_artifact": "After completing evaluation of each item, increment a running count. Before transitioning to output, verify: items_processed == N. If not, identify and process missing items.",
+          "evidence": "The agent evaluated 4 of 14 candidates then began emitting output. Entries 93b0e8f9 and 4abe1be4 specify the final array must have N scores, but neither gates the transition from evaluation to output on completeness. The gap is process-level: requiring completeness of the final product isn't sufficient when the agent streams output incrementally."
+        },
+        {
+          "statement": "Before evaluating multiple options against an objective criterion, independently determine the correct/ideal answer and record it as a reference artifact. Compare each option to this reference, not only to each other.",
+          "entry_kind": "procedure",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "342f27b9",
+          "trigger": "Any evaluation or selection task where the criterion has an objectively determinable best answer (factual recall, computation, logic).",
+          "verification_or_artifact": "Produce a labeled reference artifact: [Reference answer: X | Key discriminating features: A, B, C]. Then for each option: does it match the reference exactly, partially, or not at all?",
+          "evidence": "Entry 342f27b9 scopes this principle to 'math, logic, or computation prompts,' missing factual recall questions. The agent rated three different cloud types identically at 10.0 because it evaluated each in isolation. A reference answer (Stratus: flat, gray, uniform layer, light drizzle) would have enabled discrimination: Stratocumulus has patchy/lumpy texture, Nimbostratus produces moderate-to-heavy continuous precipitation."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts failed identically with parse error 'ties single-rating response was missing rating.' The agent produced an **array of per-candidate JSON objects** \u2014 each containing its own `reasoning` and `rating` (singular) fields \u2014 instead of the required **single JSON object** with fields `reasoning` (string), `ratings` (number array), and `best_response_ids` (string array). The evaluation harness could not extract the expected structure, yielding 0% on every rollout.\n\nThree compounding failures produced this result:\n\n### 1. Malformed Output Structure (PRIMARY \u2014 caused the parse error)\nThe agent wrapped per-candidate evaluations in an outer JSON array: `[{\"candidate_id\": \"1\", \"response\": \"{\\\"reasoning\\\"..., \\\"rating\\\": 10.0}\"}, ...]`. Tellingly, the last evaluated candidate (candidate 4) includes `\"ratings\": [1.0], \"best_response_ids\": [\"4\"]` \u2014 schema field names from entry 61b87a5f embedded at the wrong nesting level. This shows the agent partially recognized the required fields but misinterpreted where they belong structurally. Entry 61b87a5f specifies 'single JSON object' and lists field names/types, but never shows a concrete template demonstrating that ALL candidates' scores belong in ONE positionally-ordered `ratings` array inside ONE top-level object. The specification was sufficient to convey field names but ambiguous about aggregation level.\n\n### 2. Incomplete Candidate Coverage (4 of 14 evaluated)\nThe agent processed candidates 1\u20134 and then began emitting output, leaving candidates 5\u201314 entirely unevaluated. Entries 93b0e8f9 and 4abe1be4 both mandate producing exactly N scores, but neither gates the *transition* from evaluation to output on completeness. The agent's default behavior appears to be sequential per-candidate emission \u2014 it started outputting before finishing all items. No perception scan artifact (N=14) was visible in the output.\n\n### 3. Factual Discrimination Failure\nThe agent rated Stratus, Stratocumulus, and Nimbostratus identically at 10.0 for a question whose canonical textbook answer is Stratus (flat, gray, uniform layer producing light drizzle). Stratocumulus has a lumpy/patchy appearance; Nimbostratus produces moderate-to-heavy continuous precipitation. The agent evaluated each candidate in isolation rather than first deriving a reference answer. Entry 342f27b9 prescribes reference-first derivation but scopes it to 'math, logic, or computation prompts,' missing factual identification questions.\n\n## Execution Slip vs. Playbook Gap\nThe identical character-for-character failure across both rollouts strongly argues against random execution variance. When 100% of rollouts reproduce the same structural error, this is a systematic interpretation problem. I estimate approximately 50% execution slip (several existing entries already mandate the right behavior but were not followed) and 50% playbook gap (the output template is ambiguous, the completeness gate is missing, and factual-question scoping is too narrow).\n\n## Playbook Implication\nThe single highest-impact fix is to **update entry 61b87a5f** by adding a concrete output template that shows the exact expected JSON shape with placeholder values. This directly addresses the primary failure (parse error) and would have prevented the 0% score even if the other issues remained. The entry already says 'single JSON object' and lists field names \u2014 it needs a structural example showing aggregation and positional ordering, plus an explicit prohibition on arrays of per-candidate objects.\n\nSecondary improvements (lower priority, not recommended for this cycle): (a) broadening entry 342f27b9's scope from 'math, logic, or computation' to include factual identification questions; (b) adding a completeness gate between evaluation and output generation. These would improve quality but neither caused the parse error that produced 0%.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent misinterpreted the output schema specification in entry 61b87a5f, producing per-candidate JSON objects instead of a single aggregated JSON object. This structural mismatch caused the parse error and 0% score in both rollouts. The entry specifies field names and types but lacks a concrete template showing the expected nesting and aggregation level.",
+      "important_disagreements": [
+        "Credit_attribution tagged 61b87a5f as 'harmful' (agent partially consulted it, produced worse output); anchor and principle_extraction tagged it 'helpful.' Resolution: the entry's content is directionally correct and should be preserved \u2014 the agent extracted schema field names from it. The problem is that field-name+type specification is ambiguous about aggregation level. This is best addressed by updating the entry (adding a template), not removing or weakening it. Tagged 'helpful' with 'needs update.'",
+        "Execution-slip vs. playbook-gap ratio: anchor says 60/40, credit_attribution says 40/60, principle_extraction says ~50/50. Resolution: identical failure across 100% of rollouts is stronger evidence of systematic gap than slip. Settled at ~50/50, which favors an update mutation over a no_change posture.",
+        "Credit_attribution proposed a MASTER EVALUATION SEQUENCE entry chaining all existing procedures. While conceptually appealing, this is a large structural addition based on a single task. The existing entries already prescribe correct ordering (perception scan \u2192 constraint extraction \u2192 evaluation \u2192 output). The specific failure here is output format, not sequencing. Deferred as over-scoped for one observation."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry 61b87a5f already covers output format requirements but demonstrably fails to prevent the exact structural error seen. A concrete template showing the expected JSON shape \u2014 single object, positionally-ordered ratings array, explicit prohibition on per-candidate objects \u2014 directly addresses the primary failure mode. This is the smallest change with the highest expected impact.",
+      "conservatism_rationale": "Only one entry needs updating (61b87a5f). The secondary issues (342f27b9 scope, completeness gate) are real but lower-impact \u2014 they would not have changed the parse-error outcome and each rests on a single task observation. Restricting to one update is conservative and addresses the dominant failure mode.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts failed identically with parse error 'ties single-rating response was missing rating.' The agent produced an **array of per-candidate JSON objects** \u2014 each containing its own `reasoning` and `rating` (singular) fields \u2014 instead of the required **single JSON object** with fields `reasoning` (string), `ratings` (number array), and `best_response_ids` (string array). The evaluation harness could not extract the expected structure, yielding 0% on every rollout.\\n\\nThree compounding failures produced this result:\\n\\n### 1. Malformed Output Structure (PRIMARY \u2014 caused the parse error)\\nThe agent wrapped per-candidate evaluations in an outer JSON array: `[{\\\"candidate_id\\\": \\\"1\\\", \\\"response\\\": \\\"{\\\\\\\"reasoning\\\\\\\"..., \\\\\\\"rating\\\\\\\": 10.0}\\\"}, ...]`. Tellingly, the last evaluated candidate (candidate 4) includes `\\\"ratings\\\": [1.0], \\\"best_response_ids\\\": [\\\"4\\\"]` \u2014 schema field names from entry 61b87a5f embedded at the wrong nesting level. This shows the agent partially recognized the required fields but misinterpreted where they belong structurally. Entry 61b87a5f specifies 'single JSON object' and lists field names/types, but never shows a concrete template demonstrating that ALL candidates' scores belong in ONE positionally-ordered `ratings` array inside ONE top-level object. The specification was sufficient to convey field names but ambiguous about aggregation level.\\n\\n### 2. Incomplete Candidate Coverage (4 of 14 evaluated)\\nThe agent processed candidates 1\u20134 and then began emitting output, leaving candidates 5\u201314 entirely unevaluated. Entries 93b0e8f9 and 4abe1be4 both mandate producing exactly N scores, but neither gates the *transition* from evaluation to output on completeness. The agent's default behavior appears to be sequential per-candidate emission \u2014 it started outputting before finishing all items. No perception scan artifact (N=14) was visible in the output.\\n\\n### 3. Factual Discrimination Failure\\nThe agent rated Stratus, Stratocumulus, and Nimbostratus identically at 10.0 for a question whose canonical textbook answer is Stratus (flat, gray, uniform layer producing light drizzle). Stratocumulus has a lumpy/patchy appearance; Nimbostratus produces moderate-to-heavy continuous precipitation. The agent evaluated each candidate in isolation rather than first deriving a reference answer. Entry 342f27b9 prescribes reference-first derivation but scopes it to 'math, logic, or computation prompts,' missing factual identification questions.\\n\\n## Execution Slip vs. Playbook Gap\\nThe identical character-for-character failure across both rollouts strongly argues against random execution variance. When 100% of rollouts reproduce the same structural error, this is a systematic interpretation problem. I estimate approximately 50% execution slip (several existing entries already mandate the right behavior but were not followed) and 50% playbook gap (the output template is ambiguous, the completeness gate is missing, and factual-question scoping is too narrow).\\n\\n## Playbook Implication\\nThe single highest-impact fix is to **update entry 61b87a5f** by adding a concrete output template that shows the exact expected JSON shape with placeholder values. This directly addresses the primary failure (parse error) and would have prevented the 0% score even if the other issues remained. The entry already says 'single JSON object' and lists field names \u2014 it needs a structural example showing aggregation and positional ordering, plus an explicit prohibition on arrays of per-candidate objects.\\n\\nSecondary improvements (lower priority, not recommended for this cycle): (a) broadening entry 342f27b9's scope from 'math, logic, or computation' to include factual identification questions; (b) adding a completeness gate between evaluation and output generation. These would improve quality but neither caused the parse error that produced 0%.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent misinterpreted the output schema specification in entry 61b87a5f, producing per-candidate JSON objects instead of a single aggregated JSON object. This structural mismatch caused the parse error and 0% score in both rollouts. The entry specifies field names and types but lacks a concrete template showing the expected nesting and aggregation level.\",\n    \"important_disagreements\": [\n      \"Credit_attribution tagged 61b87a5f as 'harmful' (agent partially consulted it, produced worse output); anchor and principle_extraction tagged it 'helpful.' Resolution: the entry's content is directionally correct and should be preserved \u2014 the agent extracted schema field names from it. The problem is that field-name+type specification is ambiguous about aggregation level. This is best addressed by updating the entry (adding a template), not removing or weakening it. Tagged 'helpful' with 'needs update.'\",\n      \"Execution-slip vs. playbook-gap ratio: anchor says 60/40, credit_attribution says 40/60, principle_extraction says ~50/50. Resolution: identical failure across 100% of rollouts is stronger evidence of systematic gap than slip. Settled at ~50/50, which favors an update mutation over a no_change posture.\",\n      \"Credit_attribution proposed a MASTER EVALUATION SEQUENCE entry chaining all existing procedures. While conceptually appealing, this is a large structural addition based on a single task. The existing entries already prescribe correct ordering (perception scan \u2192 constraint extraction \u2192 evaluation \u2192 output). The specific failure here is output format, not sequencing. Deferred as over-scoped for one observation.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry 61b87a5f already covers output format requirements but demonstrably fails to prevent the exact structural error seen. A concrete template showing the expected JSON shape \u2014 single object, positionally-ordered ratings array, explicit prohibition on per-candidate objects \u2014 directly addresses the primary failure mode. This is the smallest change with the highest expected impact.\",\n    \"conservatism_rationale\": \"Only one entry needs updating (61b87a5f). The secondary issues (342f27b9 scope, completeness gate) are real but lower-impact \u2014 they would not have changed the parse-error outcome and each rests on a single task observation. Restricting to one update is conservative and addresses the dominant failure mode.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "helpful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "helpful": 2,
+        "harmful": 1
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "helpful": 1,
+        "neutral": 1
+      },
+      "selected_tag": "helpful",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

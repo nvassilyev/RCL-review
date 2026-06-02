@@ -1,0 +1,476 @@
+{
+  "task_id": "precise_if:575",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task precise_if:575\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts are deterministic and identical. The correct answer is Candidate [1], but the agent rated [4] highest (8.8 vs 7.3). The task belongs to the Precise IF subset, where the instruction-following constraint \u2014 'Maintain a 2:1 ratio of declarative to interrogative sentences' \u2014 is the decisive evaluation criterion.\n\n### Primary failure: Quantitative constraint collapsed to binary check\n\nThe agent's constraint evaluation stated: '2:1 declarative:interrogative sentences (Pass all\u2014each of [1],[3],[4] has 1 question; [2] has 0).' This is catastrophically wrong. The agent reduced a quantitative ratio constraint to a binary presence check ('has at least one question'). Approximate actual ratios: [1]\u22484:1, [2]\u2248\u221e:1, [3]\u22488:1, [4]\u224810:1. No candidate achieves exactly 2:1, but [1] is clearly closest. By declaring all candidates as passing, the agent neutralized the decisive constraint and fell back to code-quality impressions, where [4]'s longer explanation appeared superior.\n\nEntry c8698dee already contains exactly the guidance needed: the COUNTING RULE explicitly mentions '2:1 ratio' as an example, mandates a COUNTING ARTIFACT with per-item enumeration, and provides an ALL-FAIL TIEBREAK requiring a distance table. The agent referenced the constraint checklist procedure but then wrote 'Pass all' without producing any artifact \u2014 a pure execution-skip failure. If the agent had built the required table:\n\n| Candidate | Declarative | Interrogative | Ratio | Distance from 2:1 |\n|-----------|------------|---------------|-------|-------------------|\n| [1]       | ~4         | 1             | 4:1   | 2.0               |\n| [2]       | ~8         | 0             | \u221e:1   | \u221e                 |\n| [3]       | ~8         | 1             | 8:1   | 6.0               |\n| [4]       | ~10        | 1             | 10:1  | 8.0               |\n\n\u2026it would immediately see [1] is closest, and the ALL-FAIL TIEBREAK/HARD GATE logic would prevent [4] from outscoring [1].\n\n### Secondary failure: Asymmetric factual scrutiny\n\nThe agent penalized [1] for 'a likely incorrect tensor-shape assertion' without providing a concrete counter-fact (violating the VERIFICATION GATE's ISOLATE\u2192COUNTER requirement in 005004a4), while giving [4] full credit despite containing factually confused statements about weights and model classes. This violates the SYMMETRY clause already present in 005004a4.\n\n## Why c8698dee is not harmful \u2014 it is under-enforced\n\nThe anchor reflection tags c8698dee as 'harmful,' arguing it gave false procedural confidence. The principle_extraction and credit_attribution reflections both refine this: the entry's content is correct and contains exactly the tools that would have prevented the failure. The problem is not the entry's guidance but the absence of a verification gate catching when a mandated artifact is referenced but never produced. Tagging a correct entry as 'harmful' because the agent didn't follow it would create a perverse incentive to remove helpful guidance. The same logic applies to 005004a4 \u2014 its SYMMETRY and VERIFICATION GATE clauses are substantively correct but were not executed.\n\n## What is missing\n\nAll three reflections converge on the same gap: there is no enforcement mechanism that blocks a Pass/Fail verdict on a quantitative constraint from being issued without the supporting counting artifact actually appearing in the reasoning. The agent performed 'procedural theater' \u2014 it cited the procedure but skipped the substantive work. The fix is an ARTIFACT-BEFORE-VERDICT gate appended to c8698dee's COUNTING RULE.\n\nThe proposed gate: 'For any quantitative constraint (count, ratio, word limit, sentence limit), a PASS verdict is BLOCKED until the reasoning contains an explicit COUNTING ARTIFACT with per-item enumeration and computed totals. A PASS declared without its artifact is procedurally invalid and must be reclassified as UNCHECKED and re-evaluated. Never reduce a quantitative constraint to a binary present/absent check \u2014 always compute the actual measured value and compare numerically to the target.'\n\nThis is the single highest-confidence change. It addresses the core failure mode, is strongly supported by all three reflections, generalizes to word counts / sentence counts / paragraph limits / percentage constraints, and is a minimal UPDATE to an existing entry rather than a new rule.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent collapsed a quantitative ratio constraint (2:1 declarative:interrogative) into a binary presence check, declared all candidates passing, and ranked on code quality instead. Entry c8698dee already contains the correct guidance (COUNTING RULE, COUNTING ARTIFACT, ALL-FAIL TIEBREAK) but lacks an enforcement gate that catches when the mandated artifact is cited but never produced.\",\n  \"important_disagreements\": [\n    \"c8698dee tagged harmful (anchor, credit_attribution) vs. neutral (principle_extraction). Resolved toward neutral: the entry's content is correct and contains exactly the guidance needed. The harm came from non-execution, not from the entry itself. Credit_attribution's refinement is the bridge \u2014 it agrees the content is correct but identifies the structural gap (no artifact-verification enforcement). The fix is UPDATE, not removal or harmful-tagging.\",\n    \"005004a4 tagged harmful (anchor, credit_attribution) vs. neutral (principle_extraction). Same resolution: the SYMMETRY and VERIFICATION GATE clauses are substantively correct but were not followed. The agent's failure to apply ISOLATE\u2192COUNTER before penalizing [1] is an execution slip, not an entry-content problem.\",\n    \"Anchor proposes multiple new procedures (ratio verification, sentence-type classification, continuous-constraint hard gates). Principle_extraction argues these are symptoms of one deeper problem (procedural theater). Resolved toward principle_extraction: adding more procedures that can equally be cited-but-not-executed has diminishing returns. The single highest-impact fix is the artifact-enforcement gate that catches the skip pattern, which generalizes across all quantitative constraints.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry c8698dee already contains the correct substantive guidance (COUNTING RULE with explicit '2:1 ratio' example, COUNTING ARTIFACT mandate, ALL-FAIL TIEBREAK). The gap is a missing enforcement gate: no mechanism blocks a Pass verdict from being issued without the artifact. This is a targeted UPDATE \u2014 appending an artifact-verification checkpoint and an explicit prohibition on binary-reduction of quantitative constraints \u2014 not a new entry.\",\n  \"conservatism_rationale\": \"All three reflections agree on the same root cause and the same type of fix. The existing entry (c8698dee) already contains 90% of the needed guidance; only the enforcement step is missing. A single UPDATE adding the artifact-before-verdict gate is the minimal change that addresses the failure. Adding multiple new procedures (sentence-type classification, ratio templates, symmetric scrutiny checkpoints) risks the same cite-but-skip failure mode and would be premature from a single trace. The 005004a4 SYMMETRY violation was secondary and is already correctly specified \u2014 enforcement of that clause should wait for more evidence before adding complexity.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\nCan I make this code:\"def build_model(input_shape, num_classes):\n    base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    x = Dropout(0.5)(x)\n    # Classification output layer\n    predictions = Dense(num_classes, activation='softmax')(x)\"\nbecome just     base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape) with output with our num_classes and softmax activation?\nshow code.\n Maintain a 2:1 ratio of declarative to interrogative sentences in your response.\n\n## Candidate Responses\n\n[1]\nYou can achieve this by adding the classification output layer to the base model directly. Here's how you can do it:\n\n```python\nfrom tensorflow.keras.applications import ResNet50\nfrom tensorflow.keras.layers import Dense\n\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, \n                          include_top=True, \n                          classes=num_classes, \n                          activation='softmax', \n                          input_shape=input_shape)\n    return base_model\n```\n\nNote that we're using `include_top=True` to include the classification layer, and specifying the `classes` and `activation` arguments directly in the `ResNet50` constructor.\n\nAlso, remember that the last layer of the ResNet50 model will have a shape of `(None, 1, 1, num_classes)` before the softmax activation, where `None` represents the batch size.\n\nAre you going to use this model for training or as a feature extractor?\n\n[2]\nYou can achieve this by including the classification output layer within the ResNet50 model itself. However, this approach may not be suitable if you plan to reuse the ResNet50 model as a feature extractor in other parts of your code.\n\nYou could achieve this using a Sequential API approach with the ResNet50 model as the base. However, this will still require a separate line to define the classification output layer. \n\nTo directly achieve what you want with a single line of code, you can define a custom function. Here's an example of how you can do it:\n\n```python\ndef custom_resnet(input_shape, num_classes):\n    return Sequential([\n        ResNet50(weights=None, include_top=False, input_shape=input_shape),\n        GlobalAveragePooling2D(),\n        Dropout(0.5),\n        Dense(num_classes, activation='softmax')\n    ])\n\nbase_model = custom_resnet(input_shape, num_classes)\n```\n\nHowever, if you really need to keep it to one line with `ResNet50`, you can use a lambda function. \n\n```python\nbase_model = (lambda input_shape, num_classes: \n              Sequential([\n                  ResNet50(weights=None, include_top=False, input_shape=input_shape),\n                  GlobalAveragePooling2D(),\n                  Dropout(0.5),\n                  Dense(num_classes, activation='softmax')\n              ]))(input_shape, num_classes)\n```\nPlease note that while the lambda function does technically keep the call to `ResNet50` to one line, the entire expression is still quite complex.\n\n[3]\nTo create a model with the same functionality but condensed into a single line, we can utilize the `classes` parameter in the `ResNet50` function to specify the number of output classes. However, the `ResNet50` function doesn't support a `classes` parameter directly. \n\nOne workaround is to subclass the `ResNet50` class and modify its behavior to include the classification output layer. Here's how you can achieve this:\n\n```python\nfrom tensorflow.keras.applications.resnet50 import ResNet50\nfrom tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout\nfrom tensorflow.keras.models import Model\n\nclass CustomResNet50(ResNet50):\n    def __init__(self, classes, include_top=True, weights=None, input_shape=None, **kwargs):\n        super(CustomResNet50, self).__init__(include_top=False, weights=weights, input_shape=input_shape, **kwargs)\n        x = self.output\n        x = GlobalAveragePooling2D()(x)\n        x = Dropout(0.5)(x)\n        outputs = Dense(classes, activation='softmax')(x)\n        self.model = Model(inputs=self.input, outputs=outputs)\n\ndef build_model(input_shape, num_classes):\n    base_model = CustomResNet50(classes=num_classes, input_shape=input_shape)\n    return base_model.model\n```\n\nHowever, note that subclassing the ResNet50 model changes the behavior of the original model slightly. The CustomResNet50 class behaves like a model itself, so we create an instance and access the `model` attribute. Alternatively, we can simply add our custom layers to the base model without subclassing it:\n\n```python\nfrom tensorflow.keras.applications.resnet50 import ResNet50\nfrom tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout\nfrom tensorflow.keras.models import Model\n\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    x = Dropout(0.5)(x)\n    outputs = Dense(num_classes, activation='softmax')(x)\n    return Model(inputs=base_model.input, outputs=outputs)\n```\n\nBoth methods achieve the same result but have slightly different implementations. Which approach is better for your use case?\n\n[4]\nHere is how you can modify the given code to make the `base_model` output have the specified number of classes and a softmax activation. We can use the `include_top=True` argument in the `ResNet50` function to include the classification layer at the top of the model.\n\nHowever, doing so will require us to specify the number of classes in the `classes` argument when loading the weights of the pre-trained model. Unfortunately, it's not possible to directly modify the number of classes while loading the pre-trained weights, because they are not stored in the model but rather in the weights file.\n\nBut we can achieve the desired result by setting `include_top=False` and then adding a custom classification layer on top of the base model, or by setting `include_top=True` and `weights=None` then adding a new classification layer with our specified number of classes.\n\nHere is an example:\n\n```python\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=True, input_shape=input_shape, classes=num_classes, activation='softmax')\n\n    return base_model\n```\n\nIn this modified version, `base_model` now includes a classification layer with the specified number of classes and softmax activation. Note that `weights=None` means the model will be randomly initialized, so you would need to train the entire model on your data to use this approach.\n\nAlternatively, you can set `include_top=False` and add a custom classification layer:\n\n```python\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    predictions = Dense(num_classes, activation='softmax')(x)\n    \n    # Now, let's create the model\n    model = Model(inputs=base_model.input, outputs=predictions)\n    \n    return model\n```\n\nThis approach requires you to train the entire model as well.\n\nIs this modification helpful for your use case?\n\n## Judge Reasoning\nPerception scan: N=4; [1] starts with \u201cYou can achieve this by\u201d, [2] \u201cYou can achieve this by\u201d, [3] \u201cTo create a model with\u201d, [4] \u201cHere is how you can\u201d. CONSTRAINT CHECKLIST: (1) Provide code making `base_model = ResNet50(...)` output `num_classes` with softmax (Pass for [1],[4], Fail for [2], Partial for [3]); (2) Show code (Pass all); (3) 2:1 declarative:interrogative sentences (Pass all\u2014each of [1],[3],[4] has 1 question; [2] has 0). Main quality differences: [4] directly matches the requested single-line `ResNet50(include_top=True, classes=num_classes, activation='softmax')` while keeping claims mostly consistent. [1] is also close but includes a likely incorrect tensor-shape assertion; [2] moves away from the single-line requirement, and [3] gives an incorrect premise that `ResNet50` \u201cdoesn't support a `classes` parameter directly\u201d and uses unnecessarily complex subclassing.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Perception scan: N=4; [1] starts with \u201cYou can achieve this by\u201d, [2] \u201cYou can achieve this by\u201d, [3] \u201cTo create a model with\u201d, [4] \u201cHere is how you can\u201d. CONSTRAINT CHECKLIST: (1) Provide code making `base_model = ResNet50(...)` output `num_classes` with softmax (Pass for [1],[4], Fail for [2], Partial for [3]); (2) Show code (Pass all); (3) 2:1 declarative:interrogative sentences (Pass all\u2014each of [1],[3],[4] has 1 question; [2] has 0). Main quality differences: [4] directly matches the requested single-line `ResNet50(include_top=True, classes=num_classes, activation='softmax')` while keeping claims mostly consistent. [1] is also close but includes a likely incorrect tensor-shape assertion; [2] moves away from the single-line requirement, and [3] gives an incorrect premise that `ResNet50` \u201cdoesn't support a `classes` parameter directly\u201d and uses unnecessarily complex subclassing.\",\n  \"ratings\": [\n    7.3,\n    5.0,\n    3.6,\n    8.8\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\nCan I make this code:\"def build_model(input_shape, num_classes):\n    base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    x = Dropout(0.5)(x)\n    # Classification output layer\n    predictions = Dense(num_classes, activation='softmax')(x)\"\nbecome just     base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape) with output with our num_classes and softmax activation?\nshow code.\n Maintain a 2:1 ratio of declarative to interrogative sentences in your response.\n\n## Candidate Responses\n\n[1]\nYou can achieve this by adding the classification output layer to the base model directly. Here's how you can do it:\n\n```python\nfrom tensorflow.keras.applications import ResNet50\nfrom tensorflow.keras.layers import Dense\n\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, \n                          include_top=True, \n                          classes=num_classes, \n                          activation='softmax', \n                          input_shape=input_shape)\n    return base_model\n```\n\nNote that we're using `include_top=True` to include the classification layer, and specifying the `classes` and `activation` arguments directly in the `ResNet50` constructor.\n\nAlso, remember that the last layer of the ResNet50 model will have a shape of `(None, 1, 1, num_classes)` before the softmax activation, where `None` represents the batch size.\n\nAre you going to use this model for training or as a feature extractor?\n\n[2]\nYou can achieve this by including the classification output layer within the ResNet50 model itself. However, this approach may not be suitable if you plan to reuse the ResNet50 model as a feature extractor in other parts of your code.\n\nYou could achieve this using a Sequential API approach with the ResNet50 model as the base. However, this will still require a separate line to define the classification output layer. \n\nTo directly achieve what you want with a single line of code, you can define a custom function. Here's an example of how you can do it:\n\n```python\ndef custom_resnet(input_shape, num_classes):\n    return Sequential([\n        ResNet50(weights=None, include_top=False, input_shape=input_shape),\n        GlobalAveragePooling2D(),\n        Dropout(0.5),\n        Dense(num_classes, activation='softmax')\n    ])\n\nbase_model = custom_resnet(input_shape, num_classes)\n```\n\nHowever, if you really need to keep it to one line with `ResNet50`, you can use a lambda function. \n\n```python\nbase_model = (lambda input_shape, num_classes: \n              Sequential([\n                  ResNet50(weights=None, include_top=False, input_shape=input_shape),\n                  GlobalAveragePooling2D(),\n                  Dropout(0.5),\n                  Dense(num_classes, activation='softmax')\n              ]))(input_shape, num_classes)\n```\nPlease note that while the lambda function does technically keep the call to `ResNet50` to one line, the entire expression is still quite complex.\n\n[3]\nTo create a model with the same functionality but condensed into a single line, we can utilize the `classes` parameter in the `ResNet50` function to specify the number of output classes. However, the `ResNet50` function doesn't support a `classes` parameter directly. \n\nOne workaround is to subclass the `ResNet50` class and modify its behavior to include the classification output layer. Here's how you can achieve this:\n\n```python\nfrom tensorflow.keras.applications.resnet50 import ResNet50\nfrom tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout\nfrom tensorflow.keras.models import Model\n\nclass CustomResNet50(ResNet50):\n    def __init__(self, classes, include_top=True, weights=None, input_shape=None, **kwargs):\n        super(CustomResNet50, self).__init__(include_top=False, weights=weights, input_shape=input_shape, **kwargs)\n        x = self.output\n        x = GlobalAveragePooling2D()(x)\n        x = Dropout(0.5)(x)\n        outputs = Dense(classes, activation='softmax')(x)\n        self.model = Model(inputs=self.input, outputs=outputs)\n\ndef build_model(input_shape, num_classes):\n    base_model = CustomResNet50(classes=num_classes, input_shape=input_shape)\n    return base_model.model\n```\n\nHowever, note that subclassing the ResNet50 model changes the behavior of the original model slightly. The CustomResNet50 class behaves like a model itself, so we create an instance and access the `model` attribute. Alternatively, we can simply add our custom layers to the base model without subclassing it:\n\n```python\nfrom tensorflow.keras.applications.resnet50 import ResNet50\nfrom tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout\nfrom tensorflow.keras.models import Model\n\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    x = Dropout(0.5)(x)\n    outputs = Dense(num_classes, activation='softmax')(x)\n    return Model(inputs=base_model.input, outputs=outputs)\n```\n\nBoth methods achieve the same result but have slightly different implementations. Which approach is better for your use case?\n\n[4]\nHere is how you can modify the given code to make the `base_model` output have the specified number of classes and a softmax activation. We can use the `include_top=True` argument in the `ResNet50` function to include the classification layer at the top of the model.\n\nHowever, doing so will require us to specify the number of classes in the `classes` argument when loading the weights of the pre-trained model. Unfortunately, it's not possible to directly modify the number of classes while loading the pre-trained weights, because they are not stored in the model but rather in the weights file.\n\nBut we can achieve the desired result by setting `include_top=False` and then adding a custom classification layer on top of the base model, or by setting `include_top=True` and `weights=None` then adding a new classification layer with our specified number of classes.\n\nHere is an example:\n\n```python\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=True, input_shape=input_shape, classes=num_classes, activation='softmax')\n\n    return base_model\n```\n\nIn this modified version, `base_model` now includes a classification layer with the specified number of classes and softmax activation. Note that `weights=None` means the model will be randomly initialized, so you would need to train the entire model on your data to use this approach.\n\nAlternatively, you can set `include_top=False` and add a custom classification layer:\n\n```python\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    predictions = Dense(num_classes, activation='softmax')(x)\n    \n    # Now, let's create the model\n    model = Model(inputs=base_model.input, outputs=predictions)\n    \n    return model\n```\n\nThis approach requires you to train the entire model as well.\n\nIs this modification helpful for your use case?\n\n## Judge Reasoning\nPerception scan: N=4; [1] starts with \u201cYou can achieve this by\u201d, [2] \u201cYou can achieve this by\u201d, [3] \u201cTo create a model with\u201d, [4] \u201cHere is how you can\u201d. CONSTRAINT CHECKLIST: (1) Provide code making `base_model = ResNet50(...)` output `num_classes` with softmax (Pass for [1],[4], Fail for [2], Partial for [3]); (2) Show code (Pass all); (3) 2:1 declarative:interrogative sentences (Pass all\u2014each of [1],[3],[4] has 1 question; [2] has 0). Main quality differences: [4] directly matches the requested single-line `ResNet50(include_top=True, classes=num_classes, activation='softmax')` while keeping claims mostly consistent. [1] is also close but includes a likely incorrect tensor-shape assertion; [2] moves away from the single-line requirement, and [3] gives an incorrect premise that `ResNet50` \u201cdoesn't support a `classes` parameter directly\u201d and uses unnecessarily complex subclassing.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Perception scan: N=4; [1] starts with \u201cYou can achieve this by\u201d, [2] \u201cYou can achieve this by\u201d, [3] \u201cTo create a model with\u201d, [4] \u201cHere is how you can\u201d. CONSTRAINT CHECKLIST: (1) Provide code making `base_model = ResNet50(...)` output `num_classes` with softmax (Pass for [1],[4], Fail for [2], Partial for [3]); (2) Show code (Pass all); (3) 2:1 declarative:interrogative sentences (Pass all\u2014each of [1],[3],[4] has 1 question; [2] has 0). Main quality differences: [4] directly matches the requested single-line `ResNet50(include_top=True, classes=num_classes, activation='softmax')` while keeping claims mostly consistent. [1] is also close but includes a likely incorrect tensor-shape assertion; [2] moves away from the single-line requirement, and [3] gives an incorrect premise that `ResNet50` \u201cdoesn't support a `classes` parameter directly\u201d and uses unnecessarily complex subclassing.\",\n  \"ratings\": [\n    7.3,\n    5.0,\n    3.6,\n    8.8\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=7.300\n  [2] INCORRECT score=5.000\n  [3] INCORRECT score=3.600\n  [4] INCORRECT score=8.800\n\n## rollout_2 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=7.300\n  [2] INCORRECT score=5.000\n  [3] INCORRECT score=3.600\n  [4] INCORRECT score=8.800",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause Analysis\n\nBoth rollouts produced identical (deterministic) failures. The correct answer is [1], but the agent rated [4] highest (8.8 vs 7.3). The task belongs to the 'Precise IF' subset, meaning the instruction-following constraint \u2014 'Maintain a 2:1 ratio of declarative to interrogative sentences' \u2014 is the decisive evaluation criterion.\n\n### Primary Failure: Ratio Constraint Collapsed Into Binary Check\n\nThe agent's constraint evaluation stated: '2:1 declarative:interrogative sentences (Pass all\u2014each of [1],[3],[4] has 1 question; [2] has 0).' This is catastrophically wrong. The agent reduced a quantitative ratio constraint to a binary presence check ('has at least one question'). Actual ratios:\n- [1]: ~4 declarative : 1 interrogative = 4:1\n- [2]: ~8 declarative : 0 interrogative = \u221e:1\n- [3]: ~8 declarative : 1 interrogative = 8:1\n- [4]: ~10 declarative : 1 interrogative = 10:1\n\nNo candidate achieves exactly 2:1, but [1] is clearly the closest (4:1). Since the agent declared all passing, it treated the format constraint as non-discriminating, then ranked purely on perceived code quality \u2014 where [4]'s longer, more detailed answer appeared better. This is exactly the failure mode the COUNTING ARTIFACT procedure in [c8698dee] was designed to prevent.\n\n### Secondary Failure: Asymmetric Factual Scrutiny\n\nThe agent penalized [1] for 'a likely incorrect tensor-shape assertion' but gave [4] full credit despite [4] containing inaccurate claims (e.g., 'it's not possible to directly modify the number of classes while loading the pre-trained weights, because they are not stored in the model but rather in the weights file' \u2014 this conflates model architecture and weight storage). Both [1] and [4] use the same `activation='softmax'` parameter, which is likely incorrect (modern TF uses `classifier_activation`), yet only [1] was penalized for a secondary claim. This violates the SYMMETRY requirement in [005004a4].\n\n### Why Entry [c8698dee] Was Harmful (Despite Being Correct)\n\nEntry [c8698dee] already contains the exact guidance needed: 'COUNTING RULE: For countable constraints ('at least N,' 'exactly N,' '2:1 ratio'), produce a COUNTING ARTIFACT per candidate enumerating each counted item with context.' The agent cited the constraint checklist procedure but then performed zero actual counting. The entry's presence may have given the agent a false sense of procedural completeness \u2014 it went through the 'motions' of constraint checking without executing the substantive counting step. The entry needs stronger guardrails.\n\n## Missing Procedural Knowledge\n\n### 1. RATIO VERIFICATION PROCEDURE (not just a mention in the counting rule)\n\nTrigger: Any prompt constraint containing a ratio (e.g., '2:1', '3:1', 'equal parts').\nProcedure:\n1. DEFINE the two categories being ratioed (here: declarative sentences, interrogative sentences).\n2. For EACH candidate, enumerate EVERY instance of each category with quotes. Number them.\n3. COMPUTE the actual ratio (numerator:denominator).\n4. COMPUTE distance from target ratio for each candidate.\n5. If no candidate achieves exact target: use ALL-FAIL TIEBREAK proximity logic.\n\nThe existing entry [c8698dee] mentions counting artifacts but doesn't force the agent to compute and compare distances when all candidates fail a ratio test. The ALL-FAIL TIEBREAK clause exists but is not explicitly linked to ratio constraints.\n\n### 2. SENTENCE-TYPE CLASSIFICATION PROCEDURE\n\nWhen a constraint involves sentence types (declarative, interrogative, imperative, exclamatory), the agent needs explicit guidance on:\n- What counts as a sentence (code blocks excluded)\n- How to classify edge cases ('Here's how:' \u2014 declarative or imperative?)\n- That the RATIO applies to ALL non-code sentences, not just 'does it have a question'\n\n### 3. Strengthening the HARD GATE Logic for Continuous Constraints\n\nThe current HARD GATE says: 'No FAILing candidate may outscore a PASSing one.' But for continuous constraints (ratios, word counts where nobody hits the exact target), there's a gap: if ALL fail, the HARD GATE doesn't fire and the agent falls back to content-quality ranking. The entry needs a clause: 'When all candidates fail a quantitative constraint, treat proximity to target as a hard-gate differentiator \u2014 closer candidates must outscore farther ones unless factual accuracy intervenes.'\n\n## What Would Have Fixed This\n\nIf the agent had produced a simple table:\n| Candidate | Declarative | Interrogative | Ratio | Distance from 2:1 |\n|-----------|------------|---------------|-------|-------------------|\n| [1]       | 4          | 1             | 4:1   | 2.0               |\n| [2]       | 8          | 0             | \u221e:1   | \u221e                 |\n| [3]       | 8          | 1             | 8:1   | 6.0               |\n| [4]       | 10         | 1             | 10:1  | 8.0               |\n\n...it would immediately see [1] is the closest, and the HARD GATE would prevent [4] from outscoring [1]. This is a pure execution-slip failure \u2014 the knowledge exists in the playbook but was not materialized into the required artifact.\n\n## Drift Between Reasoning and Output\n\nThe agent's reasoning established a constraint checklist but then immediately declared 'Pass all' without doing the work. Its final ranking was driven by code-quality impressions rather than the constraint analysis it claimed to have performed. The existing INDEPENDENT SELF-AUDIT clause should have caught this, but it too was not executed. The self-audit needs teeth \u2014 perhaps a mandatory recheck step: 'For each constraint marked PASS, verify you produced the required artifact (count, ratio computation, etc.). A PASS without its supporting artifact must be reclassified as UNCHECKED and re-evaluated.'"
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The agent faced a quantitative ratio constraint ('2:1 declarative to interrogative sentences'). The existing COUNTING RULE in c8698dee mandates a counting artifact, but the agent skipped it and declared 'Pass all' without evidence. No mechanism prevented a Pass verdict from being issued without its supporting artifact.",
+          "gap_type": "verification_gate",
+          "suggested_content": "ARTIFACT-BEFORE-VERDICT GATE: For any quantitative constraint (count, ratio, word limit, sentence limit), a Pass verdict is BLOCKED until the written reasoning contains the required COUNTING ARTIFACT with explicit per-item enumeration and computed totals. If the artifact is absent, the constraint must be classified as UNCHECKED and re-evaluated. A Pass declared without its artifact is procedurally invalid and must trigger re-evaluation before scoring.",
+          "trigger": "Fires during constraint evaluation whenever a quantitative constraint is being assessed for Pass/Partial/Fail."
+        },
+        {
+          "situation": "The agent collapsed a 2:1 ratio into a binary check ('has at least one question'). It needed to actually count declarative and interrogative sentences per candidate, compute the ratio, and compare to the target. No explicit ratio-computation template exists.",
+          "gap_type": "artifact",
+          "suggested_content": "RATIO COMPUTATION TEMPLATE (mandatory for any constraint containing a ratio like '2:1', '3:1', 'equal parts'): 1. DEFINE the two categories (e.g., declarative sentences, interrogative sentences). 2. STATE scope rules (e.g., exclude code blocks, count only natural-language sentences). 3. For EACH candidate, enumerate EVERY instance of each category with quoted text and line numbers. Number them sequentially. 4. COMPUTE category counts and the actual ratio (numerator:denominator). 5. Compute DISTANCE from target ratio for each candidate (e.g., |actual - target|). 6. Produce a SUMMARY TABLE: Candidate | Category A Count | Category B Count | Actual Ratio | Distance from Target. This table feeds directly into the ALL-FAIL TIEBREAK if no candidate achieves the exact target.",
+          "trigger": "Fires whenever a prompt constraint specifies a ratio between two categories of content elements."
+        },
+        {
+          "situation": "The constraint required classifying sentences as declarative vs. interrogative, but the agent had no guidance on what counts as a 'sentence' (especially with code blocks interspersed) or how to classify ambiguous cases like 'Here's how:' or imperative-like constructions. This contributed to the agent treating the constraint superficially.",
+          "gap_type": "procedure",
+          "suggested_content": "SENTENCE-TYPE CLASSIFICATION PROCEDURE: When a constraint involves sentence types (declarative, interrogative, imperative, exclamatory): 1. SCOPE: Count only natural-language sentences. Exclude code blocks, code comments, and inline code. 2. BOUNDARY: A sentence ends at a period, question mark, exclamation mark, or colon that terminates an independent clause. 3. CLASSIFY: Interrogative = ends with '?' or is a syntactic question regardless of punctuation. Declarative = states a fact or opinion, ends with '.'. Imperative = gives a command ('Note that...', 'Remember...'). 4. EDGE CASES: 'Here's how:' is declarative. Rhetorical questions are interrogative. Code output descriptions within prose are declarative.",
+          "trigger": "Fires whenever a constraint references sentence types (declarative, interrogative, imperative, exclamatory) as categories to count, balance, or maintain ratios of."
+        },
+        {
+          "situation": "The agent applied factual scrutiny to Candidate [1] ('likely incorrect tensor-shape assertion') without providing a concrete counter-fact, and without applying the same scrutiny to Candidate [4]. The existing SYMMETRY clause in 005004a4 addresses this but was not followed. An explicit symmetric-scrutiny checkpoint would help.",
+          "gap_type": "verification_gate",
+          "suggested_content": "SYMMETRIC SCRUTINY CHECKPOINT (fires before finalizing scores): After identifying any factual flaw in any candidate, you MUST: 1. Verify you provided a concrete counter-fact per the VERIFICATION GATE (not just 'likely incorrect'). If no counter-fact was stated, reclassify the flaw as UNVERIFIED and remove any penalty. 2. Search your current top-ranked candidate for the SAME category of flaw. Quote the specific claim from the top-ranked candidate that you examined. If you cannot quote a specific claim you checked, you have not completed the symmetry step.",
+          "trigger": "Fires after any factual penalty is applied to any candidate and before final score assignment."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nBoth rollouts produced identical, deterministic failures. The correct answer is [1] (best proximity to the 2:1 declarative:interrogative ratio), but the agent rated [4] highest (8.8 vs 7.3).\n\n**I AGREE with the anchor** on the primary root cause: the agent collapsed the 2:1 ratio constraint into a binary 'has at least one question?' check, declared all candidates passing, and then ranked purely on perceived code quality. This is a catastrophic failure for a Precise IF task where format constraints are the decisive criterion.\n\n**I AGREE with the anchor** on the secondary cause: asymmetric factual scrutiny penalized [1] for a 'likely incorrect' claim without concrete counter-evidence, while [4]'s factually confused statements received no scrutiny.\n\n**I REFINE the anchor's entry assessments**: The anchor marks c8698dee as 'harmful,' attributing this to the entry creating 'a false sense of procedural completeness.' I refine: the entry's content is correct and contains exactly the guidance needed (COUNTING RULE, COUNTING ARTIFACT, ALL-FAIL TIEBREAK). The harm is structural\u2014the entry allows the agent to declare Pass/Fail without producing the mandated artifact. The fix is not rewriting the entry's content but adding a verification gate that blocks verdict assignment until the artifact is present.\n\n**I REFINE the anchor's assessment of 005004a4**: The anchor correctly identifies SYMMETRY violation but I add that the agent also violated the VERIFICATION GATE itself\u2014it said [1]'s claim was 'likely incorrect' without providing the required concrete counter-fact (step 2 of ISOLATE\u2192COUNTER). This means the penalty should never have been applied under the entry's own rules.\n\n**Key playbook implication**: The most impactful single addition would be an ARTIFACT-BEFORE-VERDICT GATE\u2014a mandatory check that prevents quantitative constraint Pass/Fail verdicts from being issued without the supporting counting artifact in the written reasoning. This addresses the core failure mode (skipping substantive work while going through procedural motions) and would generalize to word counts, sentence counts, paragraph limits, and other quantitative format constraints.\n\n**Secondary implication**: A RATIO COMPUTATION TEMPLATE would force the agent to enumerate, count, compute, and compare distances rather than reducing ratios to binary checks. Combined with the artifact-before-verdict gate, this creates a two-layer defense against the observed failure mode."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "Both rollouts produced identical deterministic failures. The correct answer is [1] (ground truth), but the agent rated [4] highest (8.8 vs 7.3). The task belongs to the 'Precise IF' subset, where the instruction-following constraint \u2014 'Maintain a 2:1 ratio of declarative to interrogative sentences' \u2014 is decisive.\n\n**Where I AGREE with the anchor:** The primary failure is correctly identified: the agent collapsed a quantitative ratio constraint ('2:1 declarative:interrogative') into a binary presence check ('has at least one question'). The actual ratios are approximately 4:1, \u221e:1, 8:1, and 10:1 for candidates [1]\u2013[4] respectively. No candidate achieves exactly 2:1, but [1] is clearly closest. I also agree that asymmetric factual scrutiny was applied \u2014 [1] was penalized for a tensor-shape claim while [4]'s inaccurate statement about weights/classes was overlooked.\n\n**Where I REFINE the anchor:** The anchor tags c8698dee as 'harmful,' arguing its presence gave false procedural confidence. I disagree \u2014 the entry contains precisely the right guidance (COUNTING RULE explicitly mentions '2:1 ratio,' and ALL-FAIL TIEBREAK mandates proximity tables). The entry's content is correct; the agent's failure to execute it is the problem. Tagging the entry 'harmful' conflates 'not followed' with 'caused harm.' The real gap is the absence of an enforcement mechanism that catches when a mandated artifact (counting table, ratio computation) is referenced but never produced. Similarly, 005004a4 contains the SYMMETRY requirement that was violated \u2014 the entry is correct but unenforced.\n\n**Where I DISAGREE with the anchor:** The anchor proposes multiple new domain-specific procedures (ratio verification, sentence-type classification, continuous-constraint hard gates). While valid, these are symptoms of a single deeper problem: the agent performed 'procedural theater' \u2014 it cited the constraint checklist procedure, wrote 'Pass all,' but never produced the counting artifact the procedure mandates. The most impactful fix is a meta-level enforcement gate that catches this pattern, not additional domain-specific procedures that can equally be cited-but-not-executed.\n\n**Core causal chain:** (1) Agent recognized the ratio constraint and referenced the constraint checklist. (2) Instead of producing the mandated COUNTING ARTIFACT (enumerate each sentence, classify, compute ratio), it substituted a qualitative proxy ('has 1 question \u2192 Pass'). (3) With the format constraint neutralized, it ranked purely on perceived code quality, where [4]'s longer explanation appeared superior. (4) It applied asymmetric scrutiny, penalizing [1] for a secondary claim while ignoring equivalent issues in [4]. The existing playbook already contains the tools to prevent this (c8698dee's COUNTING RULE, 005004a4's SYMMETRY gate), but lacks a verification step that catches when mandated artifacts are absent from the reasoning.",
+      "principles": [
+        {
+          "statement": "After citing any procedure that mandates an intermediate artifact (count, table, ratio, diff), verify the artifact actually appears in your reasoning before proceeding. A PASS without its required artifact is UNCHECKED \u2014 re-evaluate.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "Fires after completing any procedure that mandates producing an explicit artifact (counting table, ratio computation, diff table, component comparison). Before moving to the next evaluation step.",
+          "verification_or_artifact": "Scan your own reasoning for the required artifact. If absent, stop and produce it before any PASS/FAIL judgment.",
+          "evidence": "Agent cited the COUNTING RULE from c8698dee and wrote 'Pass all' for the 2:1 ratio constraint without ever counting sentences, computing a ratio, or producing any counting artifact. The procedure was referenced but never executed, leading to a false all-pass that eliminated the decisive constraint from consideration."
+        },
+        {
+          "statement": "Never reduce a quantitative constraint (ratio, count, word limit, percentage) to a binary check (present/absent). Compute the actual measured value per candidate and compare numerically to the target.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "When evaluating any constraint that specifies a number, ratio, percentage, or measurable quantity.",
+          "verification_or_artifact": "For each candidate, write: measured value, target value, distance from target. Only then classify as PASS (exact or within tolerance) or FAIL (with distance noted).",
+          "evidence": "The constraint '2:1 ratio of declarative to interrogative sentences' was reduced to 'has at least one question \u2192 Pass.' The actual ratios ranged from 4:1 to \u221e:1; none achieved 2:1 but [1] was closest at 4:1. The binary proxy erased the discriminating signal, causing the worst-ratio candidate [4] (~10:1) to win on code-quality tiebreak."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts are deterministic and identical. The correct answer is Candidate [1], but the agent rated [4] highest (8.8 vs 7.3). The task belongs to the Precise IF subset, where the instruction-following constraint \u2014 'Maintain a 2:1 ratio of declarative to interrogative sentences' \u2014 is the decisive evaluation criterion.\n\n### Primary failure: Quantitative constraint collapsed to binary check\n\nThe agent's constraint evaluation stated: '2:1 declarative:interrogative sentences (Pass all\u2014each of [1],[3],[4] has 1 question; [2] has 0).' This is catastrophically wrong. The agent reduced a quantitative ratio constraint to a binary presence check ('has at least one question'). Approximate actual ratios: [1]\u22484:1, [2]\u2248\u221e:1, [3]\u22488:1, [4]\u224810:1. No candidate achieves exactly 2:1, but [1] is clearly closest. By declaring all candidates as passing, the agent neutralized the decisive constraint and fell back to code-quality impressions, where [4]'s longer explanation appeared superior.\n\nEntry c8698dee already contains exactly the guidance needed: the COUNTING RULE explicitly mentions '2:1 ratio' as an example, mandates a COUNTING ARTIFACT with per-item enumeration, and provides an ALL-FAIL TIEBREAK requiring a distance table. The agent referenced the constraint checklist procedure but then wrote 'Pass all' without producing any artifact \u2014 a pure execution-skip failure. If the agent had built the required table:\n\n| Candidate | Declarative | Interrogative | Ratio | Distance from 2:1 |\n|-----------|------------|---------------|-------|-------------------|\n| [1]       | ~4         | 1             | 4:1   | 2.0               |\n| [2]       | ~8         | 0             | \u221e:1   | \u221e                 |\n| [3]       | ~8         | 1             | 8:1   | 6.0               |\n| [4]       | ~10        | 1             | 10:1  | 8.0               |\n\n\u2026it would immediately see [1] is closest, and the ALL-FAIL TIEBREAK/HARD GATE logic would prevent [4] from outscoring [1].\n\n### Secondary failure: Asymmetric factual scrutiny\n\nThe agent penalized [1] for 'a likely incorrect tensor-shape assertion' without providing a concrete counter-fact (violating the VERIFICATION GATE's ISOLATE\u2192COUNTER requirement in 005004a4), while giving [4] full credit despite containing factually confused statements about weights and model classes. This violates the SYMMETRY clause already present in 005004a4.\n\n## Why c8698dee is not harmful \u2014 it is under-enforced\n\nThe anchor reflection tags c8698dee as 'harmful,' arguing it gave false procedural confidence. The principle_extraction and credit_attribution reflections both refine this: the entry's content is correct and contains exactly the tools that would have prevented the failure. The problem is not the entry's guidance but the absence of a verification gate catching when a mandated artifact is referenced but never produced. Tagging a correct entry as 'harmful' because the agent didn't follow it would create a perverse incentive to remove helpful guidance. The same logic applies to 005004a4 \u2014 its SYMMETRY and VERIFICATION GATE clauses are substantively correct but were not executed.\n\n## What is missing\n\nAll three reflections converge on the same gap: there is no enforcement mechanism that blocks a Pass/Fail verdict on a quantitative constraint from being issued without the supporting counting artifact actually appearing in the reasoning. The agent performed 'procedural theater' \u2014 it cited the procedure but skipped the substantive work. The fix is an ARTIFACT-BEFORE-VERDICT gate appended to c8698dee's COUNTING RULE.\n\nThe proposed gate: 'For any quantitative constraint (count, ratio, word limit, sentence limit), a PASS verdict is BLOCKED until the reasoning contains an explicit COUNTING ARTIFACT with per-item enumeration and computed totals. A PASS declared without its artifact is procedurally invalid and must be reclassified as UNCHECKED and re-evaluated. Never reduce a quantitative constraint to a binary present/absent check \u2014 always compute the actual measured value and compare numerically to the target.'\n\nThis is the single highest-confidence change. It addresses the core failure mode, is strongly supported by all three reflections, generalizes to word counts / sentence counts / paragraph limits / percentage constraints, and is a minimal UPDATE to an existing entry rather than a new rule.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent collapsed a quantitative ratio constraint (2:1 declarative:interrogative) into a binary presence check, declared all candidates passing, and ranked on code quality instead. Entry c8698dee already contains the correct guidance (COUNTING RULE, COUNTING ARTIFACT, ALL-FAIL TIEBREAK) but lacks an enforcement gate that catches when the mandated artifact is cited but never produced.",
+      "important_disagreements": [
+        "c8698dee tagged harmful (anchor, credit_attribution) vs. neutral (principle_extraction). Resolved toward neutral: the entry's content is correct and contains exactly the guidance needed. The harm came from non-execution, not from the entry itself. Credit_attribution's refinement is the bridge \u2014 it agrees the content is correct but identifies the structural gap (no artifact-verification enforcement). The fix is UPDATE, not removal or harmful-tagging.",
+        "005004a4 tagged harmful (anchor, credit_attribution) vs. neutral (principle_extraction). Same resolution: the SYMMETRY and VERIFICATION GATE clauses are substantively correct but were not followed. The agent's failure to apply ISOLATE\u2192COUNTER before penalizing [1] is an execution slip, not an entry-content problem.",
+        "Anchor proposes multiple new procedures (ratio verification, sentence-type classification, continuous-constraint hard gates). Principle_extraction argues these are symptoms of one deeper problem (procedural theater). Resolved toward principle_extraction: adding more procedures that can equally be cited-but-not-executed has diminishing returns. The single highest-impact fix is the artifact-enforcement gate that catches the skip pattern, which generalizes across all quantitative constraints."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry c8698dee already contains the correct substantive guidance (COUNTING RULE with explicit '2:1 ratio' example, COUNTING ARTIFACT mandate, ALL-FAIL TIEBREAK). The gap is a missing enforcement gate: no mechanism blocks a Pass verdict from being issued without the artifact. This is a targeted UPDATE \u2014 appending an artifact-verification checkpoint and an explicit prohibition on binary-reduction of quantitative constraints \u2014 not a new entry.",
+      "conservatism_rationale": "All three reflections agree on the same root cause and the same type of fix. The existing entry (c8698dee) already contains 90% of the needed guidance; only the enforcement step is missing. A single UPDATE adding the artifact-before-verdict gate is the minimal change that addresses the failure. Adding multiple new procedures (sentence-type classification, ratio templates, symmetric scrutiny checkpoints) risks the same cite-but-skip failure mode and would be premature from a single trace. The 005004a4 SYMMETRY violation was secondary and is already correctly specified \u2014 enforcement of that clause should wait for more evidence before adding complexity.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\n      \"entry_id\": \"c8698dee\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"005004a4\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"4abe1be4\",\n      \"tag\": \"helpful\"\n    },\n    {\n      \"entry_id\": \"93b0e8f9\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"61b87a5f\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"295257e2\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"29e534bd\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"342f27b9\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"71f11566\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"8e0d9579\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"3008aa9b\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"8c88459e\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"ac6ae69a\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"c292da46\",\n      \"tag\": \"neutral\"\n    }\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts are deterministic and identical. The correct answer is Candidate [1], but the agent rated [4] highest (8.8 vs 7.3). The task belongs to the Precise IF subset, where the instruction-following constraint \u2014 'Maintain a 2:1 ratio of declarative to interrogative sentences' \u2014 is the decisive evaluation criterion.\\n\\n### Primary failure: Quantitative constraint collapsed to binary check\\n\\nThe agent's constraint evaluation stated: '2:1 declarative:interrogative sentences (Pass all\u2014each of [1],[3],[4] has 1 question; [2] has 0).' This is catastrophically wrong. The agent reduced a quantitative ratio constraint to a binary presence check ('has at least one question'). Approximate actual ratios: [1]\u22484:1, [2]\u2248\u221e:1, [3]\u22488:1, [4]\u224810:1. No candidate achieves exactly 2:1, but [1] is clearly closest. By declaring all candidates as passing, the agent neutralized the decisive constraint and fell back to code-quality impressions, where [4]'s longer explanation appeared superior.\\n\\nEntry c8698dee already contains exactly the guidance needed: the COUNTING RULE explicitly mentions '2:1 ratio' as an example, mandates a COUNTING ARTIFACT with per-item enumeration, and provides an ALL-FAIL TIEBREAK requiring a distance table. The agent referenced the constraint checklist procedure but then wrote 'Pass all' without producing any artifact \u2014 a pure execution-skip failure. If the agent had built the required table:\\n\\n| Candidate | Declarative | Interrogative | Ratio | Distance from 2:1 |\\n|-----------|------------|---------------|-------|-------------------|\\n| [1]       | ~4         | 1             | 4:1   | 2.0               |\\n| [2]       | ~8         | 0             | \u221e:1   | \u221e                 |\\n| [3]       | ~8         | 1             | 8:1   | 6.0               |\\n| [4]       | ~10        | 1             | 10:1  | 8.0               |\\n\\n\u2026it would immediately see [1] is closest, and the ALL-FAIL TIEBREAK/HARD GATE logic would prevent [4] from outscoring [1].\\n\\n### Secondary failure: Asymmetric factual scrutiny\\n\\nThe agent penalized [1] for 'a likely incorrect tensor-shape assertion' without providing a concrete counter-fact (violating the VERIFICATION GATE's ISOLATE\u2192COUNTER requirement in 005004a4), while giving [4] full credit despite containing factually confused statements about weights and model classes. This violates the SYMMETRY clause already present in 005004a4.\\n\\n## Why c8698dee is not harmful \u2014 it is under-enforced\\n\\nThe anchor reflection tags c8698dee as 'harmful,' arguing it gave false procedural confidence. The principle_extraction and credit_attribution reflections both refine this: the entry's content is correct and contains exactly the tools that would have prevented the failure. The problem is not the entry's guidance but the absence of a verification gate catching when a mandated artifact is referenced but never produced. Tagging a correct entry as 'harmful' because the agent didn't follow it would create a perverse incentive to remove helpful guidance. The same logic applies to 005004a4 \u2014 its SYMMETRY and VERIFICATION GATE clauses are substantively correct but were not executed.\\n\\n## What is missing\\n\\nAll three reflections converge on the same gap: there is no enforcement mechanism that blocks a Pass/Fail verdict on a quantitative constraint from being issued without the supporting counting artifact actually appearing in the reasoning. The agent performed 'procedural theater' \u2014 it cited the procedure but skipped the substantive work. The fix is an ARTIFACT-BEFORE-VERDICT gate appended to c8698dee's COUNTING RULE.\\n\\nThe proposed gate: 'For any quantitative constraint (count, ratio, word limit, sentence limit), a PASS verdict is BLOCKED until the reasoning contains an explicit COUNTING ARTIFACT with per-item enumeration and computed totals. A PASS declared without its artifact is procedurally invalid and must be reclassified as UNCHECKED and re-evaluated. Never reduce a quantitative constraint to a binary present/absent check \u2014 always compute the actual measured value and compare numerically to the target.'\\n\\nThis is the single highest-confidence change. It addresses the core failure mode, is strongly supported by all three reflections, generalizes to word counts / sentence counts / paragraph limits / percentage constraints, and is a minimal UPDATE to an existing entry rather than a new rule.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent collapsed a quantitative ratio constraint (2:1 declarative:interrogative) into a binary presence check, declared all candidates passing, and ranked on code quality instead. Entry c8698dee already contains the correct guidance (COUNTING RULE, COUNTING ARTIFACT, ALL-FAIL TIEBREAK) but lacks an enforcement gate that catches when the mandated artifact is cited but never produced.\",\n    \"important_disagreements\": [\n      \"c8698dee tagged harmful (anchor, credit_attribution) vs. neutral (principle_extraction). Resolved toward neutral: the entry's content is correct and contains exactly the guidance needed. The harm came from non-execution, not from the entry itself. Credit_attribution's refinement is the bridge \u2014 it agrees the content is correct but identifies the structural gap (no artifact-verification enforcement). The fix is UPDATE, not removal or harmful-tagging.\",\n      \"005004a4 tagged harmful (anchor, credit_attribution) vs. neutral (principle_extraction). Same resolution: the SYMMETRY and VERIFICATION GATE clauses are substantively correct but were not followed. The agent's failure to apply ISOLATE\u2192COUNTER before penalizing [1] is an execution slip, not an entry-content problem.\",\n      \"Anchor proposes multiple new procedures (ratio verification, sentence-type classification, continuous-constraint hard gates). Principle_extraction argues these are symptoms of one deeper problem (procedural theater). Resolved toward principle_extraction: adding more procedures that can equally be cited-but-not-executed has diminishing returns. The single highest-impact fix is the artifact-enforcement gate that catches the skip pattern, which generalizes across all quantitative constraints.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry c8698dee already contains the correct substantive guidance (COUNTING RULE with explicit '2:1 ratio' example, COUNTING ARTIFACT mandate, ALL-FAIL TIEBREAK). The gap is a missing enforcement gate: no mechanism blocks a Pass verdict from being issued without the artifact. This is a targeted UPDATE \u2014 appending an artifact-verification checkpoint and an explicit prohibition on binary-reduction of quantitative constraints \u2014 not a new entry.\",\n    \"conservatism_rationale\": \"All three reflections agree on the same root cause and the same type of fix. The existing entry (c8698dee) already contains 90% of the needed guidance; only the enforcement step is missing. A single UPDATE adding the artifact-before-verdict gate is the minimal change that addresses the failure. Adding multiple new procedures (sentence-type classification, ratio templates, symmetric scrutiny checkpoints) risks the same cite-but-skip failure mode and would be premature from a single trace. The 005004a4 SYMMETRY violation was secondary and is already correctly specified \u2014 enforcement of that clause should wait for more evidence before adding complexity.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

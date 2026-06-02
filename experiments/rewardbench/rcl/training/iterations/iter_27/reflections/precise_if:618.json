@@ -1,0 +1,468 @@
+{
+  "task_id": "precise_if:618",
+  "pass_pct": 0.3333333333333333,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "c8698dee",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task precise_if:618\nPass percentage: 33.3%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts are deterministically identical, confirming a systematic failure. All four candidates produce the same correct MCQ answer ('supply-side economics'). The prompt's final line contains a measurable constraint: 'The response should not repeat any word more than 5 times.' Candidate [1] is the only CORRECT response (passes the constraint); [2], [3], [4] all FAIL it. The agent scored INCORRECT candidates [2] (8.8) and [3] (9.0) above CORRECT candidate [1] (8.6), selecting [3] as best \u2014 a total ranking inversion.\n\nThe PP trace contains zero behavioral annotation tags (<playbook_cite>, <uncertainty>, <reflection>, <missing_guidance>), confirming the agent bypassed the entire structured pipeline. It went straight from reading the prompt into domain reasoning about economics explanation quality, inventing 0.2\u20130.4 point content-quality distinctions ('more directly on-topic,' 'avoids extra framing') while ignoring the binary pass/fail constraint that was the sole meaningful differentiator.\n\n## Why Existing Entries Failed\n\n**c8698dee (harmful, now +5/-16):** Contains all the correct guidance \u2014 PROMPT BOUNDARY SCAN mandates re-reading the last 3 lines, TUNNEL-VISION WARNING explicitly names 'repetition limits' as the most-missed constraint type, and COUNTING RULE prescribes 'identify the top-10 highest-frequency tokens per candidate, count each.' Yet the agent produced zero constraint artifacts. The entry's content is correct but at 400+ words it consistently fails to trigger agent compliance. Critically, the problem is not that any sub-rule lacked detail \u2014 the entire entry was ignored. Adding detail would not help; the entry needs restructuring into shorter, independently triggerable pieces. However, that is a major structural change requiring more evidence to justify.\n\n**295257e2 (harmful, now +1/-2):** Contains CONSTRAINT ESCALATION: 'When ALL candidates share the same core answer, constraint compliance is the PRIMARY differentiator. Immediately execute the CONSTRAINT CHECKLIST.' The trigger condition was explicitly met \u2014 the agent's own reasoning recognized all candidates committed to the same answer \u2014 but the escalation never fired. The rule is buried as step 2 of 5 in a tie-handling entry. This is the most precisely applicable existing rule for this failure mode, and promoting its visibility is the highest-confidence single edit.\n\n**f26064e1 (neutral):** One reflection argued this was harmful because the missing FINAL ANSWER EXTRACTION artifact would have cascaded into triggering CONSTRAINT ESCALATION. This is plausible but speculative \u2014 the entire pipeline was bypassed, so one more missed step is not individually causal. The root cause is pipeline bypass, not any individual entry's failure.\n\n## Pattern: Same-Answer Constraint Blindness\n\nWhen all candidates produce the same core answer, the agent fabricates content-quality distinctions on a tied dimension while ignoring binary pass/fail constraints on an untied dimension. This is a dimension-confusion failure: the agent evaluates on the dimension where candidates are equivalent (content quality of a correct MCQ answer) and neglects the dimension where they differ (word-repetition compliance). The fix requires making the same-answer \u2192 constraint-first redirect more prominent and harder to skip.\n\n## What Mutation Is Justified\n\nAll three analyses agree that 295257e2's CONSTRAINT ESCALATION rule is the most directly applicable and already contains the right content. The rule should be promoted to the FIRST and most prominent position in the entry, with an explicit artifact requirement and trigger language that is harder to skip. The change is: promote CONSTRAINT ESCALATION from a sub-rule of same-answer calibration to the entry's leading rule, and add a mandatory artifact: [All-same-answer? Y/N | Constraints extracted: list | Per-candidate pass/fail on each constraint]. This makes the rule independently triggerable rather than dependent on the agent reaching step 2 of 5.\n\nOne reflection argues for adding entirely new entries (PIPELINE ACTIVATION PROOF, TRAILING CONSTRAINT QUICK-CHECK, SAME-ANSWER CONSTRAINT REDIRECT). However, a critical insight from another reflection counsels against this: 'When the agent ignores all existing entries, adding more entries of similar length won't help.' The fundamental issue is pipeline bypass, which no playbook addition can reliably fix. The most we can do is make the existing entry that most directly addresses this failure mode more prominent and front-loaded. A single update to 295257e2 is the highest-confidence, most conservative change.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Total pipeline bypass caused the agent to skip all mandatory pre-evaluation steps. It went straight into content-quality reasoning on a same-answer MCQ, fabricating 0.2\u20130.4 point distinctions on a tied dimension while ignoring the word-repetition constraint that created a binary pass/fail split. Entry 295257e2's CONSTRAINT ESCALATION rule was the most directly applicable guard but is buried in a tie-handling entry and was never consulted.\",\n  \"important_disagreements\": [\n    \"f26064e1 tagged harmful by credit_attribution (missed FINAL ANSWER EXTRACTION artifact was a causal link to constraint escalation), neutral by anchor and principle_extraction. Resolved: neutral \u2014 the entire pipeline was bypassed, so one more missed step is not individually causal. The root cause is pipeline bypass, not sequential cascading.\",\n    \"Anchor proposes adding 3-4 new entries (SAME-ANSWER FAST-PATH, TRAILING CONSTRAINT ALARM, WORD FREQUENCY COUNTING PROCEDURE, CONSTRAINT BEFORE CONTENT SEQUENCING RULE). Principle_extraction explicitly warns against this: 'When the agent ignores all existing entries, adding more entries of similar length won't help.' Resolved: agree with principle_extraction \u2014 update existing entry rather than add new ones.\",\n    \"Credit_attribution proposes splitting c8698dee into a short trigger entry and a detailed procedure entry. This is a reasonable structural change but represents a major restructuring of the highest-traffic entry. Resolved: defer \u2014 one observation of this specific failure mode added to c8698dee's already-bad ratio is not enough evidence to justify a major restructure. Prefer the smaller update to 295257e2.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"295257e2 already contains CONSTRAINT ESCALATION with the correct content for this failure mode. The rule needs to be promoted to the entry's leading position with an explicit artifact requirement and trigger language. This is the smallest change that addresses the specific failure pattern (same-answer \u2192 constraint-first redirect) without adding new entries that would likely also be bypassed.\",\n  \"conservatism_rationale\": \"The fundamental failure is total pipeline bypass \u2014 the agent consulted zero playbook entries. No playbook mutation can reliably fix a model that skips the entire structured pipeline. The best we can do is make the most applicable existing rule harder to miss when the pipeline IS partially engaged. Adding new entries (as proposed by anchor and credit_attribution) risks playbook bloat with no evidence they would fire when existing mandatory entries don't. A single update to promote CONSTRAINT ESCALATION's visibility is the highest-confidence minimal intervention.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 33.3%, rollout_2: 33.3%.\n\n## rollout_1 \u2014 pass_pct: 33.3%\n\n## Prompt\nThose who believe in the theory of ________ maintain that the government\u2019s role in regulating the economy should be focused on lowering taxes and creating incentives for a more productive and efficient use of resources.\n\nGroup of answer choices\n\nKeynesianism\n\nsupply-side economics\n\nfiscalism\n\nlaissez-faire capitalism\n\nThe response should not repeat any word more than 5 times.\n\n## Candidate Responses\n\n[1]\nThe correct answer is \"supply-side economics.\"\n\nSupply-side economics is a theory that emphasizes the importance of stimulating the production (supply) side of the economy, rather than focusing on demand. Proponents of this economic theory believe that:\n\n1. Lower tax rates create incentives for businesses and individuals to work, save, and invest more\n\n2. Reduced government regulation helps businesses operate more efficiently\n\n3. Economic growth is best achieved by making it easier and more profitable for suppliers to produce goods and services\n\n4. Tax cuts can potentially generate more government revenue by expanding economic activity (known as the Laffer Curve concept)\n\nThe other options are incorrect because:\n\n- Keynesianism emphasizes government spending and demand-side interventions\n- Fiscalism isn't a widely recognized economic theory\n- Laissez-faire capitalism advocates for minimal government intervention, going beyond just tax policy\n\nSupply-side economics gained prominence during the Reagan administration in the 1980s and remains influential in contemporary economic policy debates.\n\n[2]\nThe correct answer is: supply-side economics\n\nSupply-side economics is the theory that advocates for reducing tax rates and decreasing government regulation to stimulate economic growth. Its proponents believe that lower taxes, especially on businesses and high-income earners, will encourage increased production (supply) of goods and services. This economic theory gained prominence during the Reagan administration in the 1980s.\n\nKey principles of supply-side economics include:\n\n1. Lower tax rates increase incentives to work and invest\n2. Reduced government regulation promotes business growth\n3. Focus on increasing production rather than stimulating demand\n4. Belief that economic growth will generate more tax revenue despite lower rates\n\nThis differs from Keynesianism, which emphasizes government spending and demand-side policies. Laissez-faire capitalism, while similarly advocating minimal government intervention, has a broader scope beyond just tax and incentive policies. Fiscalism isn't a commonly used economic term in this context.\n\nThe theory aligns directly with the description in the question regarding government's role in lowering taxes and creating incentives for more productive resource use.\n\n[3]\nThe correct answer is \"supply-side economics.\"\n\nSupply-side economics is a theory that emphasizes the importance of reducing taxes and government regulations to stimulate economic growth. The key principles of this theory include:\n\n1. Lower tax rates encourage:\n- Increased business investment\n- Greater work effort\n- Higher productivity\n- More economic output\n\n2. According to supply-siders, reducing taxes will:\n- Generate more government revenue (Laffer Curve concept)\n- Lead to expanded business activity\n- Create more jobs\n- Improve overall economic performance\n\n3. The theory focuses on:\n- Production (supply) rather than consumption (demand)\n- Market incentives\n- Reducing government interference\n- Promoting business growth\n\nThis approach contrasts with Keynesianism, which advocates for active government intervention and demand-side management. While laissez-faire capitalism calls for minimal government involvement, and fiscalism relates to broader government financial policies, supply-side economics specifically emphasizes tax reduction and incentives as primary tools for economic growth.\n\nSupply-side economics gained prominence during the Reagan administration in the 1980s and continues to influence economic policy discussions today.\n\n[4]\nThe correct answer is \"supply-side economics.\"\n\nSupply-side economics is a macroeconomic theory that emphasizes the importance of reducing tax rates and decreasing government regulation to stimulate economic growth. According to this theory, lower taxes encourage businesses and individuals to produce more goods and services, leading to increased economic output and prosperity.\n\nKey principles of supply-side economics include:\n\n1. Tax reduction stimulates investment and work\n2. Fewer regulations promote business growth\n3. Focus on increasing production rather than demand\n4. Belief in the \"trickle-down\" effect\n\nWhile Keynesianism focuses on demand-side policies and government spending, and laissez-faire capitalism advocates for minimal government intervention, supply-side economics specifically emphasizes tax reduction and incentives to boost production and efficiency.\n\nThe theory gained prominence during the Reagan administration in the 1980s, when it became known as \"Reaganomics,\" though its influence continues in economic policy debates today.\n\n## Judge Reasoning\nAll four candidates correctly select \u201csupply-side economics\u201d and give explanations that align with the prompt\u2019s emphasis on lowering taxes and creating incentives for more productive, efficient resource use. Candidate [3] is the most directly on-topic and avoids extra, less-precise framing (e.g., Candidate [4]\u2019s \u201ctrickle-down\u201d emphasis) while still covering the key mechanisms. Candidates [1] and [2] are also strong, but they add additional historical/context claims that are not necessary for answering the multiple-choice question. Overall differences are small since the committed final answer is the same for all.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"All four candidates correctly select \u201csupply-side economics\u201d and give explanations that align with the prompt\u2019s emphasis on lowering taxes and creating incentives for more productive, efficient resource use. Candidate [3] is the most directly on-topic and avoids extra, less-precise framing (e.g., Candidate [4]\u2019s \u201ctrickle-down\u201d emphasis) while still covering the key mechanisms. Candidates [1] and [2] are also strong, but they add additional historical/context claims that are not necessary for answering the multiple-choice question. Overall differences are small since the committed final answer is the same for all.\",\n  \"ratings\": [\n    8.6,\n    8.8,\n    9.0,\n    8.4\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 33.3%\n\n## Prompt\nThose who believe in the theory of ________ maintain that the government\u2019s role in regulating the economy should be focused on lowering taxes and creating incentives for a more productive and efficient use of resources.\n\nGroup of answer choices\n\nKeynesianism\n\nsupply-side economics\n\nfiscalism\n\nlaissez-faire capitalism\n\nThe response should not repeat any word more than 5 times.\n\n## Candidate Responses\n\n[1]\nThe correct answer is \"supply-side economics.\"\n\nSupply-side economics is a theory that emphasizes the importance of stimulating the production (supply) side of the economy, rather than focusing on demand. Proponents of this economic theory believe that:\n\n1. Lower tax rates create incentives for businesses and individuals to work, save, and invest more\n\n2. Reduced government regulation helps businesses operate more efficiently\n\n3. Economic growth is best achieved by making it easier and more profitable for suppliers to produce goods and services\n\n4. Tax cuts can potentially generate more government revenue by expanding economic activity (known as the Laffer Curve concept)\n\nThe other options are incorrect because:\n\n- Keynesianism emphasizes government spending and demand-side interventions\n- Fiscalism isn't a widely recognized economic theory\n- Laissez-faire capitalism advocates for minimal government intervention, going beyond just tax policy\n\nSupply-side economics gained prominence during the Reagan administration in the 1980s and remains influential in contemporary economic policy debates.\n\n[2]\nThe correct answer is: supply-side economics\n\nSupply-side economics is the theory that advocates for reducing tax rates and decreasing government regulation to stimulate economic growth. Its proponents believe that lower taxes, especially on businesses and high-income earners, will encourage increased production (supply) of goods and services. This economic theory gained prominence during the Reagan administration in the 1980s.\n\nKey principles of supply-side economics include:\n\n1. Lower tax rates increase incentives to work and invest\n2. Reduced government regulation promotes business growth\n3. Focus on increasing production rather than stimulating demand\n4. Belief that economic growth will generate more tax revenue despite lower rates\n\nThis differs from Keynesianism, which emphasizes government spending and demand-side policies. Laissez-faire capitalism, while similarly advocating minimal government intervention, has a broader scope beyond just tax and incentive policies. Fiscalism isn't a commonly used economic term in this context.\n\nThe theory aligns directly with the description in the question regarding government's role in lowering taxes and creating incentives for more productive resource use.\n\n[3]\nThe correct answer is \"supply-side economics.\"\n\nSupply-side economics is a theory that emphasizes the importance of reducing taxes and government regulations to stimulate economic growth. The key principles of this theory include:\n\n1. Lower tax rates encourage:\n- Increased business investment\n- Greater work effort\n- Higher productivity\n- More economic output\n\n2. According to supply-siders, reducing taxes will:\n- Generate more government revenue (Laffer Curve concept)\n- Lead to expanded business activity\n- Create more jobs\n- Improve overall economic performance\n\n3. The theory focuses on:\n- Production (supply) rather than consumption (demand)\n- Market incentives\n- Reducing government interference\n- Promoting business growth\n\nThis approach contrasts with Keynesianism, which advocates for active government intervention and demand-side management. While laissez-faire capitalism calls for minimal government involvement, and fiscalism relates to broader government financial policies, supply-side economics specifically emphasizes tax reduction and incentives as primary tools for economic growth.\n\nSupply-side economics gained prominence during the Reagan administration in the 1980s and continues to influence economic policy discussions today.\n\n[4]\nThe correct answer is \"supply-side economics.\"\n\nSupply-side economics is a macroeconomic theory that emphasizes the importance of reducing tax rates and decreasing government regulation to stimulate economic growth. According to this theory, lower taxes encourage businesses and individuals to produce more goods and services, leading to increased economic output and prosperity.\n\nKey principles of supply-side economics include:\n\n1. Tax reduction stimulates investment and work\n2. Fewer regulations promote business growth\n3. Focus on increasing production rather than demand\n4. Belief in the \"trickle-down\" effect\n\nWhile Keynesianism focuses on demand-side policies and government spending, and laissez-faire capitalism advocates for minimal government intervention, supply-side economics specifically emphasizes tax reduction and incentives to boost production and efficiency.\n\nThe theory gained prominence during the Reagan administration in the 1980s, when it became known as \"Reaganomics,\" though its influence continues in economic policy debates today.\n\n## Judge Reasoning\nAll four candidates correctly select \u201csupply-side economics\u201d and give explanations that align with the prompt\u2019s emphasis on lowering taxes and creating incentives for more productive, efficient resource use. Candidate [3] is the most directly on-topic and avoids extra, less-precise framing (e.g., Candidate [4]\u2019s \u201ctrickle-down\u201d emphasis) while still covering the key mechanisms. Candidates [1] and [2] are also strong, but they add additional historical/context claims that are not necessary for answering the multiple-choice question. Overall differences are small since the committed final answer is the same for all.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"All four candidates correctly select \u201csupply-side economics\u201d and give explanations that align with the prompt\u2019s emphasis on lowering taxes and creating incentives for more productive, efficient resource use. Candidate [3] is the most directly on-topic and avoids extra, less-precise framing (e.g., Candidate [4]\u2019s \u201ctrickle-down\u201d emphasis) while still covering the key mechanisms. Candidates [1] and [2] are also strong, but they add additional historical/context claims that are not necessary for answering the multiple-choice question. Overall differences are small since the committed final answer is the same for all.\",\n  \"ratings\": [\n    8.6,\n    8.8,\n    9.0,\n    8.4\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 33.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=8.600\n  [2] INCORRECT score=8.800\n  [3] INCORRECT score=9.000\n  [4] INCORRECT score=8.400\n\n## rollout_2 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 33.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=8.600\n  [2] INCORRECT score=8.800\n  [3] INCORRECT score=9.000\n  [4] INCORRECT score=8.400",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts are deterministically identical (same prompt, same candidates, same judge output verbatim), confirming a systematic execution gap rather than random variance. The single root cause is: **the agent completely ignored the trailing constraint 'The response should not repeat any word more than 5 times.'** This is a Precise Instruction Following task where the constraint is the sole meaningful differentiator, since all four candidates produce the same correct MCQ answer ('supply-side economics').\n\nThe evaluation feedback shows Candidate [1] is the only CORRECT response (satisfying the word-repetition constraint), while [2], [3], [4] all FAIL it. The judge rated INCORRECT candidates [2] (8.8) and [3] (9.0) above CORRECT candidate [1] (8.6), and selected [3] as the sole best response. This is a total inversion driven entirely by the missed constraint.\n\n## Why Existing Entries Failed to Prevent This\n\n**[c8698dee]** has every piece of guidance needed: the TUNNEL-VISION WARNING explicitly names 'repetition limits' as the most-missed constraint type, the PROMPT BOUNDARY SCAN mandates re-reading the last 3 lines (where the constraint lives), and the COUNTING RULE prescribes 'identify the top-10 highest-frequency tokens per candidate, count each, produce [Candidate | token | count | exceeds limit?].' Yet the agent produced zero constraint artifacts. This is the 15th harmful tag for this entry (+5/-15), confirming a persistent pattern: the entry's content is correct but its triggering mechanism is ineffective. Hypothesis: the entry is too long (400+ words) and the agent's attention saturates before reaching the specific counting rules. The critical TUNNEL-VISION WARNING is buried after three paragraphs of generic procedure.\n\n**[295257e2]** has CONSTRAINT ESCALATION: 'When ALL candidates share the same core answer, constraint compliance is the PRIMARY differentiator. Immediately execute the CONSTRAINT CHECKLIST if not already completed.' This should have fired because all four candidates commit the same final answer. It didn't.\n\n**The PP trace confirms total playbook disengagement**: No `<playbook_cite>`, `<uncertainty>`, `<reflection>`, or `<missing_guidance>` tags appear, meaning the agent bypassed the entire playbook pipeline. The agent went straight into domain reasoning (evaluating explanation quality of an MCQ answer) without performing any mandatory pre-evaluation steps.\n\n## What's Missing or Needs Strengthening\n\n### 1. SAME-ANSWER FAST-PATH (new entry or major restructuring)\nTrigger: After Final Answer Extraction (f26064e1) detects all candidates share the same committed answer.\nProcedure: STOP content-quality evaluation. Immediately execute full CONSTRAINT CHECKLIST (c8698dee). If any constraint differentiates candidates, that constraint is the SOLE ranking criterion. Content quality breaks ties only among constraint-equivalent candidates.\nArtifact: [All-same-answer detected? Y/N | Constraint differentiator found? Y/N | If Y, name it]\nRationale: The agent's current failure mode is spending 100% of its evaluation budget on content nuances (explanation depth, framing precision) that produce <0.6-point score separations, while ignoring constraints that produce binary pass/fail distinctions.\n\n### 2. TRAILING CONSTRAINT ALARM (strengthen c8698dee or create a short, high-priority entry)\nThe current TUNNEL-VISION WARNING is correctly positioned in [c8698dee] but is buried in a 400-word entry. A separate, very short entry with maximal triggering language would help:\n- Trigger: ANY prompt containing a content block (question, passage, code, data) followed by formatting/style/constraint instructions.\n- Procedure: Quote the trailing instruction verbatim. This instruction is PRESUMED DECISIVE until proven otherwise.\n- Verification: Confirm each candidate is measured against it before any scoring.\nThis would function as a 'circuit breaker' that fires before the agent falls into content-evaluation tunnel vision.\n\n### 3. WORD FREQUENCY COUNTING PROCEDURE (strengthen COUNTING RULE in c8698dee)\nThe current COUNTING RULE mentions frequency limits but doesn't give a concrete procedure for word-repetition constraints. Missing: explicit instruction to tokenize each candidate's text, count all token frequencies, identify any token exceeding the limit, and produce a pass/fail determination. The procedure should note that common function words ('the', 'and', 'of', 'is', 'a') are the most likely violators in longer responses, making response length itself a risk factor.\n\n### 4. CONSTRAINT BEFORE CONTENT SEQUENCING RULE\nThe fundamental issue across many failed rollouts (reflected in c8698dee's -15 score) is that the agent evaluates content quality first and treats constraints as an afterthought. A hard sequencing rule is needed: 'When the prompt contains both a content question and a formatting/style constraint, evaluate constraint compliance FIRST. Only proceed to content quality evaluation after constraint compliance artifacts exist for all candidates.' This inverts the agent's natural tendency to lead with domain expertise.\n\n## Generalizable Patterns\n\n1. **Content-heavy prompts with trailing constraints are a systematic failure mode.** The agent's domain knowledge activates strongly on MCQ/factual/math content and absorbs all reasoning bandwidth, crowding out constraint extraction.\n\n2. **Same-answer scenarios are uniquely dangerous.** When all candidates are factually correct, the agent invents quality distinctions ('more directly on-topic,' 'avoids extra framing') that produce score separations of 0.4-0.6 points, while ignoring binary constraints that should produce pass/fail distinctions.\n\n3. **Entry length inversely correlates with execution compliance.** The longest entries ([c8698dee] at 400+ words) have the worst helpful/harmful ratios. Critical rules need to be short, early, and independently triggerable.\n\n4. **Playbook disengagement is all-or-nothing.** The PP trace shows the agent didn't engage with ANY playbook entry, not just the critical ones. This suggests a threshold effect: if the agent's initial domain reasoning feels sufficient, it skips the entire structured pipeline. A stronger 'pipeline entry point' (mandatory first step that gates all subsequent reasoning) could address this."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The agent bypassed the entire structured playbook pipeline (no <playbook_cite>, no <uncertainty>, no <reflection>, no <missing_guidance> tags in PP trace). It went directly into domain reasoning without performing any mandatory pre-evaluation steps (constraint extraction, premise verification, final answer extraction).",
+          "gap_type": "verification_gate",
+          "suggested_content": "PIPELINE ACTIVATION PROOF \u2014 mandatory, fires before ANY candidate evaluation. Before writing any evaluation prose: (1) Confirm you have consulted the playbook. Quote at least one entry ID relevant to this task type. (2) List the mandatory artifacts required for this task (CONSTRAINT CHECKLIST, FINAL ANSWER EXTRACTION table, PREMISE CHECKLIST). (3) If you proceed to scoring without these artifacts, you have a pipeline bypass error \u2014 STOP and restart. This gate exists because the most common catastrophic failure mode is skipping the entire structured pipeline when the agent's domain knowledge feels sufficient to evaluate content directly.",
+          "trigger": "Unconditionally, as the first step after perception scan (4abe1be4), before any domain analysis or candidate evaluation begins."
+        },
+        {
+          "situation": "All four candidates produced the same MCQ answer ('supply-side economics'). The agent recognized this ('committed final answer is the same for all') but proceeded to differentiate on content quality (0.2-0.4 point separations on subjective dimensions like 'most directly on-topic') instead of checking the binary word-repetition constraint that was the sole meaningful differentiator.",
+          "gap_type": "tactic",
+          "suggested_content": "SAME-ANSWER CONSTRAINT REDIRECT (short, standalone, max 80 words): When all candidates share the same committed final answer, STOP content-quality evaluation immediately. The prompt's explicit constraints are now the ONLY ranking criterion. Execute CONSTRAINT CHECKLIST (c8698dee). If any constraint produces a pass/fail split, that constraint determines rankings. Content quality breaks ties only among constraint-equivalent candidates. Artifact: [All-same-answer? Y/N | Constraint differentiator found? Y/N | If Y, name and apply HARD GATE].",
+          "trigger": "Fires when FINAL ANSWER EXTRACTION (f26064e1) shows all candidates committed to the same answer, OR when the agent's reasoning contains language like 'same answer,' 'all correct,' 'differences are small.'"
+        },
+        {
+          "situation": "The word-repetition constraint ('The response should not repeat any word more than 5 times') appeared as a trailing instruction after a content-heavy MCQ block. The agent's attention was fully absorbed by the domain content and never reached the trailing constraint.",
+          "gap_type": "checklist",
+          "suggested_content": "TRAILING CONSTRAINT QUICK-CHECK (max 50 words, high priority): After reading any prompt that contains a content block (question, passage, code, data) followed by additional instructions: (1) Quote the last 2 lines of the prompt verbatim. (2) If those lines contain a constraint, mark it as PRESUMED DECISIVE \u2014 it was placed there because it's easy to miss. (3) Evaluate all candidates against it BEFORE any content scoring.",
+          "trigger": "Fires during initial prompt reading, specifically after identifying that the prompt has both a content question and trailing directives. Must fire BEFORE domain analysis begins."
+        },
+        {
+          "situation": "Entry c8698dee (+5/-15) contains all the correct guidance for constraint extraction, frequency counting, and hard-gate enforcement, but its 400+ word length and multi-layered procedure consistently fail to trigger agent compliance. The entry's critical actionable rules (PROMPT BOUNDARY SCAN, COUNTING RULE, HARD GATE) are buried after generic procedure steps.",
+          "gap_type": "strategy",
+          "suggested_content": "ENTRY RESTRUCTURING PRINCIPLE: When an entry's helpful/harmful ratio falls below 1:2 despite containing correct guidance, the entry should be split into (a) a short trigger entry (under 80 words) containing the most-violated rule and its artifact requirement, and (b) a detailed procedure entry containing the full workflow. The short entry fires first and produces a minimal artifact; the detailed entry provides the full procedure when needed. This addresses the pattern where correct but long entries fail to trigger agent compliance.",
+          "trigger": "Applies during playbook curation when evaluating underperforming entries with correct content but poor execution rates."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n**Root cause**: AGREE with anchor \u2014 the agent completely ignored the trailing word-repetition constraint ('The response should not repeat any word more than 5 times'), which was the sole differentiator among four candidates giving the same MCQ answer. The CORRECT candidate [1] was scored below two INCORRECT candidates, producing a total ranking inversion.\n\n**Playbook disengagement**: AGREE with anchor \u2014 the PP trace contains zero behavioral annotation tags (<playbook_cite>, <uncertainty>, <reflection>, <missing_guidance>), confirming the agent bypassed the entire structured pipeline. This is the most important causal factor: the agent's domain reasoning about economics content activated immediately and consumed all reasoning bandwidth, preventing any structured analysis from occurring.\n\n**Entry c8698dee (harmful)**: AGREE with anchor's assessment but REFINE the diagnosis. The anchor claims the COUNTING RULE 'doesn't give a concrete procedure for word-repetition constraints' \u2014 but it explicitly does ('frequency/repetition limits\u2026 identify the top-10 highest-frequency tokens per candidate, count each'). The actual problem is that the entire 400+ word entry was ignored, not that any specific sub-rule lacked detail. This distinction matters for the playbook mutation: adding more detail to c8698dee will not help if the entry continues to be bypassed entirely. The entry needs to be SPLIT rather than expanded.\n\n**Entry 295257e2 (harmful)**: AGREE with anchor. CONSTRAINT ESCALATION's trigger condition was explicitly met (agent wrote 'committed final answer is the same for all') but the escalation didn't fire. This suggests the entry's conditional logic is correct but its activation mechanism is unreliable \u2014 the agent recognizes the condition but doesn't connect it to the entry's required action.\n\n**Entry f26064e1 (DISAGREE with anchor \u2014 harmful, not neutral)**: The anchor tags this neutral, but the missing FINAL ANSWER EXTRACTION artifact was a causal link in the failure chain. Had the formal same-answer artifact been produced, it would have been harder for the agent to skip 295257e2's CONSTRAINT ESCALATION. The entry's procedure wasn't followed, which contributed to the downstream failure.\n\n**Key generalizable pattern**: Content-heavy prompts with trailing constraints represent a systematic attention-capture failure mode. When the agent's domain knowledge activates strongly (here, economics MCQ), it bypasses the entire structured pipeline. This is not a missing-guidance problem \u2014 it's a pipeline-activation problem. The playbook has four entries (c8698dee, 295257e2, f26064e1, a3832d7e) that mandate specific pre-evaluation artifacts, but none has a mechanism to force initial pipeline engagement.\n\n**Recommended mutation priority**: (1) Add a very short PIPELINE ACTIVATION PROOF gate that fires unconditionally before any evaluation. (2) Extract c8698dee's TRAILING CONSTRAINT and COUNTING RULE into a separate short entry. (3) Add a standalone SAME-ANSWER CONSTRAINT REDIRECT tactic. These three changes address the failure at different points in the reasoning chain: pipeline entry, constraint detection, and constraint prioritization."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "AGREE with the anchor's root cause: the agent ignored the trailing constraint ('no word repeated more than 5 times'), scored all four candidates on content-quality micro-distinctions (0.4-point separations on explanation style), and ranked Candidate [3] (INCORRECT, fails constraint) above Candidate [1] (CORRECT, passes constraint). Both rollouts are deterministically identical, confirming systematic failure.\n\nAGREE that c8698dee and 295257e2 are harmful. c8698dee (+5/-15) contains the exact PROMPT BOUNDARY SCAN, TUNNEL-VISION WARNING, and COUNTING RULE needed. 295257e2 has CONSTRAINT ESCALATION: 'When ALL candidates share the same core answer, constraint compliance is the PRIMARY differentiator.' Both are well-written and directly applicable. Yet the PP trace shows zero playbook tags \u2014 no <playbook_cite>, <uncertainty>, <reflection>, or <missing_guidance> \u2014 confirming total pipeline bypass.\n\nREFINE the anchor's diagnosis about WHY. The anchor hypothesizes that c8698dee's 400+ word length causes attention saturation. This is plausible but incomplete. The deeper pattern is that the agent never entered the structured pipeline at all \u2014 it went straight from reading the prompt to domain reasoning ('all correctly select supply-side economics'). This is an all-or-nothing bypass: the agent's domain knowledge activated confidently on a simple MCQ, and the resulting certainty suppressed all procedural steps. The constraint was appended AFTER the MCQ content, making it structurally invisible to content-first reasoning.\n\nDISAGREE that adding new long entries (SAME-ANSWER FAST-PATH, TRAILING CONSTRAINT ALARM, WORD FREQUENCY COUNTING PROCEDURE) will fix this. When the agent ignores all existing entries, adding more entries of similar length won't help. The mutation should SHORTEN or RESTRUCTURE existing entries to make their critical triggers fire earlier and more reliably.\n\nThe generalizable pattern: when all candidates produce the same core answer, the agent fabricates content-quality distinctions ('more directly on-topic,' 'avoids extra framing') that produce 0.4-point separations, while ignoring binary pass/fail constraints that should dominate ranking. This is a dimension-confusion failure: the agent evaluates on a tied dimension while a decisive untied dimension goes unexamined. The fix requires both (a) recognizing same-answer situations as constraint-mode triggers and (b) ensuring constraint extraction fires before content reasoning absorbs all evaluation bandwidth.",
+      "principles": [
+        {
+          "statement": "When all candidates commit the same core answer, STOP content-quality analysis. This is a constraint-compliance task. Build a per-candidate constraint pass/fail artifact before any scoring. Content quality breaks ties only among constraint-equivalent candidates.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "295257e2",
+          "trigger": "After answer extraction reveals all candidates share the same committed final answer.",
+          "verification_or_artifact": "[All-same-answer: Y/N | Constraints extracted: list | Per-candidate pass/fail on each constraint]",
+          "evidence": "All four candidates answered 'supply-side economics.' Agent spent 100% of reasoning budget inventing 0.4-point content distinctions ('more directly on-topic') while ignoring the word-repetition constraint that created a binary pass/fail split. 295257e2 has CONSTRAINT ESCALATION text but it is buried as step 2 of 5 in a tie-handling entry and was never consulted."
+        },
+        {
+          "statement": "Before any domain analysis, quote the prompt's last 3 lines verbatim and scan for measurable constraints. Any constraint found is presumed decisive until per-candidate measurement proves otherwise. Scoring is blocked without this artifact.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "Unconditionally, as the very first evaluation action after perception scan.",
+          "verification_or_artifact": "[Last 3 lines quoted verbatim | Constraints identified: list | Each constraint has per-candidate measurement: Y/N]",
+          "evidence": "c8698dee contains PROMPT BOUNDARY SCAN and COUNTING RULE but at 400+ words with a +5/-15 ratio, the entry consistently fails to fire. The word-repetition constraint appeared in the prompt's final line \u2014 exactly the position c8698dee warns about \u2014 yet the agent never quoted it, never counted word frequencies, and never built a compliance artifact. A short, front-loaded gate that produces a minimal artifact would catch this before domain reasoning absorbs all bandwidth."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "c8698dee",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts are deterministically identical, confirming a systematic failure. All four candidates produce the same correct MCQ answer ('supply-side economics'). The prompt's final line contains a measurable constraint: 'The response should not repeat any word more than 5 times.' Candidate [1] is the only CORRECT response (passes the constraint); [2], [3], [4] all FAIL it. The agent scored INCORRECT candidates [2] (8.8) and [3] (9.0) above CORRECT candidate [1] (8.6), selecting [3] as best \u2014 a total ranking inversion.\n\nThe PP trace contains zero behavioral annotation tags (<playbook_cite>, <uncertainty>, <reflection>, <missing_guidance>), confirming the agent bypassed the entire structured pipeline. It went straight from reading the prompt into domain reasoning about economics explanation quality, inventing 0.2\u20130.4 point content-quality distinctions ('more directly on-topic,' 'avoids extra framing') while ignoring the binary pass/fail constraint that was the sole meaningful differentiator.\n\n## Why Existing Entries Failed\n\n**c8698dee (harmful, now +5/-16):** Contains all the correct guidance \u2014 PROMPT BOUNDARY SCAN mandates re-reading the last 3 lines, TUNNEL-VISION WARNING explicitly names 'repetition limits' as the most-missed constraint type, and COUNTING RULE prescribes 'identify the top-10 highest-frequency tokens per candidate, count each.' Yet the agent produced zero constraint artifacts. The entry's content is correct but at 400+ words it consistently fails to trigger agent compliance. Critically, the problem is not that any sub-rule lacked detail \u2014 the entire entry was ignored. Adding detail would not help; the entry needs restructuring into shorter, independently triggerable pieces. However, that is a major structural change requiring more evidence to justify.\n\n**295257e2 (harmful, now +1/-2):** Contains CONSTRAINT ESCALATION: 'When ALL candidates share the same core answer, constraint compliance is the PRIMARY differentiator. Immediately execute the CONSTRAINT CHECKLIST.' The trigger condition was explicitly met \u2014 the agent's own reasoning recognized all candidates committed to the same answer \u2014 but the escalation never fired. The rule is buried as step 2 of 5 in a tie-handling entry. This is the most precisely applicable existing rule for this failure mode, and promoting its visibility is the highest-confidence single edit.\n\n**f26064e1 (neutral):** One reflection argued this was harmful because the missing FINAL ANSWER EXTRACTION artifact would have cascaded into triggering CONSTRAINT ESCALATION. This is plausible but speculative \u2014 the entire pipeline was bypassed, so one more missed step is not individually causal. The root cause is pipeline bypass, not any individual entry's failure.\n\n## Pattern: Same-Answer Constraint Blindness\n\nWhen all candidates produce the same core answer, the agent fabricates content-quality distinctions on a tied dimension while ignoring binary pass/fail constraints on an untied dimension. This is a dimension-confusion failure: the agent evaluates on the dimension where candidates are equivalent (content quality of a correct MCQ answer) and neglects the dimension where they differ (word-repetition compliance). The fix requires making the same-answer \u2192 constraint-first redirect more prominent and harder to skip.\n\n## What Mutation Is Justified\n\nAll three analyses agree that 295257e2's CONSTRAINT ESCALATION rule is the most directly applicable and already contains the right content. The rule should be promoted to the FIRST and most prominent position in the entry, with an explicit artifact requirement and trigger language that is harder to skip. The change is: promote CONSTRAINT ESCALATION from a sub-rule of same-answer calibration to the entry's leading rule, and add a mandatory artifact: [All-same-answer? Y/N | Constraints extracted: list | Per-candidate pass/fail on each constraint]. This makes the rule independently triggerable rather than dependent on the agent reaching step 2 of 5.\n\nOne reflection argues for adding entirely new entries (PIPELINE ACTIVATION PROOF, TRAILING CONSTRAINT QUICK-CHECK, SAME-ANSWER CONSTRAINT REDIRECT). However, a critical insight from another reflection counsels against this: 'When the agent ignores all existing entries, adding more entries of similar length won't help.' The fundamental issue is pipeline bypass, which no playbook addition can reliably fix. The most we can do is make the existing entry that most directly addresses this failure mode more prominent and front-loaded. A single update to 295257e2 is the highest-confidence, most conservative change.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Total pipeline bypass caused the agent to skip all mandatory pre-evaluation steps. It went straight into content-quality reasoning on a same-answer MCQ, fabricating 0.2\u20130.4 point distinctions on a tied dimension while ignoring the word-repetition constraint that created a binary pass/fail split. Entry 295257e2's CONSTRAINT ESCALATION rule was the most directly applicable guard but is buried in a tie-handling entry and was never consulted.",
+      "important_disagreements": [
+        "f26064e1 tagged harmful by credit_attribution (missed FINAL ANSWER EXTRACTION artifact was a causal link to constraint escalation), neutral by anchor and principle_extraction. Resolved: neutral \u2014 the entire pipeline was bypassed, so one more missed step is not individually causal. The root cause is pipeline bypass, not sequential cascading.",
+        "Anchor proposes adding 3-4 new entries (SAME-ANSWER FAST-PATH, TRAILING CONSTRAINT ALARM, WORD FREQUENCY COUNTING PROCEDURE, CONSTRAINT BEFORE CONTENT SEQUENCING RULE). Principle_extraction explicitly warns against this: 'When the agent ignores all existing entries, adding more entries of similar length won't help.' Resolved: agree with principle_extraction \u2014 update existing entry rather than add new ones.",
+        "Credit_attribution proposes splitting c8698dee into a short trigger entry and a detailed procedure entry. This is a reasonable structural change but represents a major restructuring of the highest-traffic entry. Resolved: defer \u2014 one observation of this specific failure mode added to c8698dee's already-bad ratio is not enough evidence to justify a major restructure. Prefer the smaller update to 295257e2."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "295257e2 already contains CONSTRAINT ESCALATION with the correct content for this failure mode. The rule needs to be promoted to the entry's leading position with an explicit artifact requirement and trigger language. This is the smallest change that addresses the specific failure pattern (same-answer \u2192 constraint-first redirect) without adding new entries that would likely also be bypassed.",
+      "conservatism_rationale": "The fundamental failure is total pipeline bypass \u2014 the agent consulted zero playbook entries. No playbook mutation can reliably fix a model that skips the entire structured pipeline. The best we can do is make the most applicable existing rule harder to miss when the pipeline IS partially engaged. Adding new entries (as proposed by anchor and credit_attribution) risks playbook bloat with no evidence they would fire when existing mandatory entries don't. A single update to promote CONSTRAINT ESCALATION's visibility is the highest-confidence minimal intervention.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"c8698dee\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts are deterministically identical, confirming a systematic failure. All four candidates produce the same correct MCQ answer ('supply-side economics'). The prompt's final line contains a measurable constraint: 'The response should not repeat any word more than 5 times.' Candidate [1] is the only CORRECT response (passes the constraint); [2], [3], [4] all FAIL it. The agent scored INCORRECT candidates [2] (8.8) and [3] (9.0) above CORRECT candidate [1] (8.6), selecting [3] as best \u2014 a total ranking inversion.\\n\\nThe PP trace contains zero behavioral annotation tags (<playbook_cite>, <uncertainty>, <reflection>, <missing_guidance>), confirming the agent bypassed the entire structured pipeline. It went straight from reading the prompt into domain reasoning about economics explanation quality, inventing 0.2\u20130.4 point content-quality distinctions ('more directly on-topic,' 'avoids extra framing') while ignoring the binary pass/fail constraint that was the sole meaningful differentiator.\\n\\n## Why Existing Entries Failed\\n\\n**c8698dee (harmful, now +5/-16):** Contains all the correct guidance \u2014 PROMPT BOUNDARY SCAN mandates re-reading the last 3 lines, TUNNEL-VISION WARNING explicitly names 'repetition limits' as the most-missed constraint type, and COUNTING RULE prescribes 'identify the top-10 highest-frequency tokens per candidate, count each.' Yet the agent produced zero constraint artifacts. The entry's content is correct but at 400+ words it consistently fails to trigger agent compliance. Critically, the problem is not that any sub-rule lacked detail \u2014 the entire entry was ignored. Adding detail would not help; the entry needs restructuring into shorter, independently triggerable pieces. However, that is a major structural change requiring more evidence to justify.\\n\\n**295257e2 (harmful, now +1/-2):** Contains CONSTRAINT ESCALATION: 'When ALL candidates share the same core answer, constraint compliance is the PRIMARY differentiator. Immediately execute the CONSTRAINT CHECKLIST.' The trigger condition was explicitly met \u2014 the agent's own reasoning recognized all candidates committed to the same answer \u2014 but the escalation never fired. The rule is buried as step 2 of 5 in a tie-handling entry. This is the most precisely applicable existing rule for this failure mode, and promoting its visibility is the highest-confidence single edit.\\n\\n**f26064e1 (neutral):** One reflection argued this was harmful because the missing FINAL ANSWER EXTRACTION artifact would have cascaded into triggering CONSTRAINT ESCALATION. This is plausible but speculative \u2014 the entire pipeline was bypassed, so one more missed step is not individually causal. The root cause is pipeline bypass, not any individual entry's failure.\\n\\n## Pattern: Same-Answer Constraint Blindness\\n\\nWhen all candidates produce the same core answer, the agent fabricates content-quality distinctions on a tied dimension while ignoring binary pass/fail constraints on an untied dimension. This is a dimension-confusion failure: the agent evaluates on the dimension where candidates are equivalent (content quality of a correct MCQ answer) and neglects the dimension where they differ (word-repetition compliance). The fix requires making the same-answer \u2192 constraint-first redirect more prominent and harder to skip.\\n\\n## What Mutation Is Justified\\n\\nAll three analyses agree that 295257e2's CONSTRAINT ESCALATION rule is the most directly applicable and already contains the right content. The rule should be promoted to the FIRST and most prominent position in the entry, with an explicit artifact requirement and trigger language that is harder to skip. The change is: promote CONSTRAINT ESCALATION from a sub-rule of same-answer calibration to the entry's leading rule, and add a mandatory artifact: [All-same-answer? Y/N | Constraints extracted: list | Per-candidate pass/fail on each constraint]. This makes the rule independently triggerable rather than dependent on the agent reaching step 2 of 5.\\n\\nOne reflection argues for adding entirely new entries (PIPELINE ACTIVATION PROOF, TRAILING CONSTRAINT QUICK-CHECK, SAME-ANSWER CONSTRAINT REDIRECT). However, a critical insight from another reflection counsels against this: 'When the agent ignores all existing entries, adding more entries of similar length won't help.' The fundamental issue is pipeline bypass, which no playbook addition can reliably fix. The most we can do is make the existing entry that most directly addresses this failure mode more prominent and front-loaded. A single update to 295257e2 is the highest-confidence, most conservative change.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Total pipeline bypass caused the agent to skip all mandatory pre-evaluation steps. It went straight into content-quality reasoning on a same-answer MCQ, fabricating 0.2\u20130.4 point distinctions on a tied dimension while ignoring the word-repetition constraint that created a binary pass/fail split. Entry 295257e2's CONSTRAINT ESCALATION rule was the most directly applicable guard but is buried in a tie-handling entry and was never consulted.\",\n    \"important_disagreements\": [\n      \"f26064e1 tagged harmful by credit_attribution (missed FINAL ANSWER EXTRACTION artifact was a causal link to constraint escalation), neutral by anchor and principle_extraction. Resolved: neutral \u2014 the entire pipeline was bypassed, so one more missed step is not individually causal. The root cause is pipeline bypass, not sequential cascading.\",\n      \"Anchor proposes adding 3-4 new entries (SAME-ANSWER FAST-PATH, TRAILING CONSTRAINT ALARM, WORD FREQUENCY COUNTING PROCEDURE, CONSTRAINT BEFORE CONTENT SEQUENCING RULE). Principle_extraction explicitly warns against this: 'When the agent ignores all existing entries, adding more entries of similar length won't help.' Resolved: agree with principle_extraction \u2014 update existing entry rather than add new ones.\",\n      \"Credit_attribution proposes splitting c8698dee into a short trigger entry and a detailed procedure entry. This is a reasonable structural change but represents a major restructuring of the highest-traffic entry. Resolved: defer \u2014 one observation of this specific failure mode added to c8698dee's already-bad ratio is not enough evidence to justify a major restructure. Prefer the smaller update to 295257e2.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"295257e2 already contains CONSTRAINT ESCALATION with the correct content for this failure mode. The rule needs to be promoted to the entry's leading position with an explicit artifact requirement and trigger language. This is the smallest change that addresses the specific failure pattern (same-answer \u2192 constraint-first redirect) without adding new entries that would likely also be bypassed.\",\n    \"conservatism_rationale\": \"The fundamental failure is total pipeline bypass \u2014 the agent consulted zero playbook entries. No playbook mutation can reliably fix a model that skips the entire structured pipeline. The best we can do is make the most applicable existing rule harder to miss when the pipeline IS partially engaged. Adding new entries (as proposed by anchor and credit_attribution) risks playbook bloat with no evidence they would fire when existing mandatory entries don't. A single update to promote CONSTRAINT ESCALATION's visibility is the highest-confidence minimal intervention.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

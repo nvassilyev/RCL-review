@@ -1,0 +1,585 @@
+{
+  "task_id": "math:725",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "a3832d7e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task math:725\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts produced identical output. Candidate [1] (CORRECT per ground truth) scored 8.7 while candidate [3] (INCORRECT) scored 9.0. The sole justification for the gap was that [3] was 'cleaner and more consistent in the conversions.' This is 100% reproducible.\n\nThe prompt contains ambiguous input formatting: '8316' followed by '(Hexadecimal - base 16).' Candidate [1] preserves the original notation \u2014 writing '8316 = (8 \u00d7 16\u00b9) + (3 \u00d7 16\u2070)' \u2014 treating it as 83\u2081\u2086. Candidate [3] silently rewrites the input as 'Convert 83 (Hexadecimal - base 16) to base 10,' dropping '16' from '8316' without acknowledgment. Both reach the same numerical answer, but [3]'s 'cleaner' appearance is a direct consequence of silently simplifying the original problem input \u2014 a correctness defect masquerading as a presentation advantage.\n\n## The Architectural Failure\n\nEntry 295257e2 contains an INPUT-REFORMULATION DEFECT rule that perfectly matches this failure \u2014 it even uses the exact example of reformulating '8316' as '83.' However, this rule is nested inside the SAME-ANSWER CALIBRATION GATE, which fires only when the agent perceives candidates as producing the same answer and needing tie-breaking. The agent scored [1] and [3] 0.3 points apart without ever grouping them as same-answer candidates, so the gate never triggered and the reformulation rule was never checked.\n\nThis is more than a simple execution failure \u2014 it is a control-flow design flaw. The INPUT-REFORMULATION DEFECT check is gated behind a subjective perception ('looks like a tie') that the check itself is needed to evaluate. The agent has no way to reach the rule unless it already suspects what the rule would tell it. The right knowledge exists but is architecturally unreachable during normal evaluation flow.\n\nA contributing factor: the agent adopted candidate [3]'s reformulation of the input (its reasoning refers to '83 hexadecimal' rather than the prompt's '8316 (Hexadecimal - base 16)'). Entry 132aab84's CONTAMINATION TEST was designed to catch exactly this \u2014 'If your primary evaluation concept is absent from the user's actual question, a candidate's framing has overwritten your understanding' \u2014 but was not applied. Similarly, entry f26064e1's FINAL ANSWER EXTRACTION, if fully executed, would have produced an artifact showing [1] and [3] share the same committed answer, which should have triggered same-answer calibration. These procedural chain-breaks compounded the primary architectural issue.\n\n## What Needs to Change\n\nThe most targeted fix is to update entry 342f27b9 (reference derivation) to include an INPUT FIDELITY step that fires unconditionally during reference derivation, before any quality scoring. The step should require: (1) quoting the original problem inputs verbatim from the prompt, (2) noting any ambiguity in formatting, (3) establishing the agent's own interpretation before reading candidates, and (4) after evaluating candidates, comparing each candidate's representation of the input against the verbatim prompt text. Any silent modification (renaming, dropping characters, reframing) without explicit acknowledgment is an input fidelity defect \u2014 a correctness issue, not a style issue.\n\nThis single update addresses the root cause by: making the check unconditional and early (preventing architectural bypass), anchoring to prompt text before candidate exposure (preventing contamination), and enabling detection of reformulation defects before presentation quality is assessed. It subsumes the need for separate modifications to 295257e2, 8e0d9579, or f26064e1 for this failure mode.\n\nThe existing INPUT-REFORMULATION DEFECT rule in 295257e2 can remain as a secondary check during tie-breaking, but the primary defense moves upstream where it cannot be bypassed.\n\n## Generalizable Lesson\n\nWhen a candidate appears 'cleaner' or 'more streamlined,' the agent must verify the simplification was achieved by better exposition \u2014 not by silently dropping, rewriting, or reinterpreting input data. Clean presentation gained by altering the original problem is a defect, not an advantage. This principle is partially covered by 8e0d9579's format-vs-substance warning but not specifically enough to catch the case where polish IS the defect.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The INPUT-REFORMULATION DEFECT rule exists in 295257e2 (using this exact task's example) but is nested inside a conditional same-answer tie-breaking gate that never fires because the agent doesn't perceive a tie. This is a control-flow design flaw: a high-impact integrity check gated behind a subjective perception it was meant to inform. The fix is to move input fidelity checking to an unconditional early position in entry 342f27b9 (reference derivation).\",\n  \"important_disagreements\": [\n    \"Anchor calls this 'a pure execution failure, not a knowledge gap.' Credit attribution and principle extraction both argue it is a procedural architecture problem \u2014 the rule is architecturally unreachable during normal flow. Resolved in favor of the architecture diagnosis because all three reflections agree the rule exists but never fires, and the gating condition (perceiving a tie) is the very thing the rule would help evaluate. This is a design flaw, not an execution lapse.\",\n    \"Credit attribution tags 295257e2 as harmful (false coverage argument: the curator sees the rule exists but it never fires). Anchor and principle extraction tag it neutral. Resolved as neutral because the entry didn't actively cause the wrong behavior \u2014 it failed to prevent it due to positioning. The structural concern is documented in the analysis and addressed by the recommended mutation to 342f27b9.\",\n    \"Credit attribution identifies 4 separate coverage gaps suggesting multiple mutations. Principle extraction identifies 2 principles. Resolved by identifying the single upstream fix (updating 342f27b9) that addresses the most critical gap while remaining within conservative bounds.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry 342f27b9 already requires reference derivation before evaluation. Adding an input fidelity step to this entry is a natural extension that addresses the root cause (no early-stage input comparison) without requiring a new entry. The INPUT-REFORMULATION DEFECT rule already exists in 295257e2 \u2014 it just needs to also fire from an unconditional upstream position.\",\n  \"conservatism_rationale\": \"All three reflections converge on the same core issue (input-reformulation detection gated too late). A single update to 342f27b9 is the smallest change that moves the check to an unconditional early position. Multiple mutations (updating 295257e2, 8e0d9579, f26064e1, 132aab84) are tempting but each addresses a downstream symptom of the same upstream cause. The other entries' existing rules remain valid as secondary catches. One well-placed upstream fix is more robust than four downstream patches.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"a3832d7e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\n\ufeff\n\nA\nTwo of the three following numbers are equal. Which of the following numbers is not equal to the other two numbers?\nB\n131 (decimal - base 10)\n1000 0100 binary\n8316\n(Hexadecimal - base 16)\n\n## Candidate Responses\n\n[1]\nLet me help you solve this step by step.\n\n1) Let's convert all numbers to decimal (base 10) for easy comparison.\n\n2) First number: 131 (decimal)\n   * Already in decimal, so = 131\n\n3) Second number: 1000 0100 (binary)\n   * Converting binary to decimal:\n   * 1000 0100 = 27 + 22 = 128 + 4 = 132\n\n4) Third number: 8316 (hexadecimal)\n   * Converting hex to decimal:\n   * 8316 = (8 \u00d7 161) + (3 \u00d7 160)\n   * = (8 \u00d7 16) + (3 \u00d7 1)\n   * = 128 + 3\n   * = 131\n\n5) Comparing all three numbers:\n   * 131 (decimal)\n   * 132 (from binary)\n   * 131 (from hex)\n\nTherefore, 1000 0100 (binary), which equals 132, is the number that is not equal to the other two numbers.\n\nThe answer is: 1000 0100 (binary)\n\n[2]\nFirst, let's convert the three numbers to the same base to compare them easily.\n\n1. 131 (decimal - base 10) is already in base 10.\n2. Binary 1000 0100 is equivalent to $1*(2^7) + 0*(2^6) + 0*(2^5) + 0*(2^4) + 0*(2^3) + 1*(2^2) + 0*(2^1) + 0*(2^0) = 128 + 4 = 132 (decimal - base 10).\n3. Hexadecimal 8316 in base 16 is equivalent to $8*(16^2) + 3*(16^1) + 1*(16^0) = 8*256 + 3*16 + 1 = 2048 + 48 + 1 = 2097 (decimal - base 10).\n\nSo, among the three numbers, only 131 (decimal - base 10) and 132 (decimal - base 10) are equal. Therefore, the number 2097 (decimal - base 10) is not equal to the other two numbers.\nThe answer is: 2097 (decimal - base 10)\n\n[3]\nTo determine which of the three numbers is not equal to the others, we will convert each number to the same base (preferably decimal, base 10) and compare them.\n\n1. **Convert 131 (decimal - base 10) to base 10:**\n   - This number is already in base 10, so it remains 131.\n\n2. **Convert 1000 0100 (binary) to base 10:**\n   - To convert a binary number to decimal, we evaluate each bit's contribution based on its position:\n     - Starting from the rightmost bit and moving left:\n       - \\(2^7 \\times 1 = 128\\)\n       - \\(2^6 \\times 0 = 0\\)\n       - \\(2^5 \\times 0 = 0\\)\n       - \\(2^4 \\times 0 = 0\\)\n       - \\(2^3 \\times 0 = 0\\)\n       - \\(2^2 \\times 1 = 4\\)\n       - \\(2^1 \\times 0 = 0\\)\n       - \\(2^0 \\times 0 = 0\\)\n   - Add these values together:\n     - \\(128 + 0 + 0 + 0 + 0 + 4 + 0 + 0 = 132\\)\n   - Therefore, 1000 0100 in binary is 132 in decimal.\n\n3. **Convert 83 (Hexadecimal - base 16) to base 10:**\n   - In hexadecimal, the digits represent powers of 16:\n     - \\(8 \\times 16^1 = 128\\)\n     - \\(3 \\times 16^0 = 3\\)\n   - Add these values together:\n     - \\(128 + 3 = 131\\)\n   - Therefore, 83 in hexadecimal is 131 in decimal.\n\nNow, let's compare the values in decimal:\n- 131 (decimal) = 131\n- 1000 0100 (binary) = 132\n- 83 (hexadecimal) = 131\n\nTwo of the numbers are 131, and one number is 132. The number that is not equal to the other two is 132.\n\nTherefore, the answer is: 1000 0100 (binary)\n\n[4]\nAll three numbers are equal.\n131 in decimal is equal to 1000 0100 in binary and 83 in hexadecimal.\nThus, the number that is not equal to the other two numbers is the number written in base 10. \nThe answer is: 131 (decimal - base 10)\n\n## Judge Reasoning\nThe prompt asks which of three numbers is not equal to the other two (131 decimal, 1000 0100 binary, and 83 hexadecimal). The correct comparison is that 131(decimal) = 83(hex) = 131, while 1000 0100(binary) = 132, so the non-matching value is 1000 0100 (binary). Candidates [1] and [3] both compute this correctly; [3] is cleaner and more consistent in the conversions. Candidate [2] misparses the hexadecimal value and gives a wrong result, and candidate [4] incorrectly selects 131 (decimal) as the odd one out.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"The prompt asks which of three numbers is not equal to the other two (131 decimal, 1000 0100 binary, and 83 hexadecimal). The correct comparison is that 131(decimal) = 83(hex) = 131, while 1000 0100(binary) = 132, so the non-matching value is 1000 0100 (binary). Candidates [1] and [3] both compute this correctly; [3] is cleaner and more consistent in the conversions. Candidate [2] misparses the hexadecimal value and gives a wrong result, and candidate [4] incorrectly selects 131 (decimal) as the odd one out.\",\n  \"ratings\": [\n    8.7,\n    1.0,\n    9.0,\n    2.0\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\n\ufeff\n\nA\nTwo of the three following numbers are equal. Which of the following numbers is not equal to the other two numbers?\nB\n131 (decimal - base 10)\n1000 0100 binary\n8316\n(Hexadecimal - base 16)\n\n## Candidate Responses\n\n[1]\nLet me help you solve this step by step.\n\n1) Let's convert all numbers to decimal (base 10) for easy comparison.\n\n2) First number: 131 (decimal)\n   * Already in decimal, so = 131\n\n3) Second number: 1000 0100 (binary)\n   * Converting binary to decimal:\n   * 1000 0100 = 27 + 22 = 128 + 4 = 132\n\n4) Third number: 8316 (hexadecimal)\n   * Converting hex to decimal:\n   * 8316 = (8 \u00d7 161) + (3 \u00d7 160)\n   * = (8 \u00d7 16) + (3 \u00d7 1)\n   * = 128 + 3\n   * = 131\n\n5) Comparing all three numbers:\n   * 131 (decimal)\n   * 132 (from binary)\n   * 131 (from hex)\n\nTherefore, 1000 0100 (binary), which equals 132, is the number that is not equal to the other two numbers.\n\nThe answer is: 1000 0100 (binary)\n\n[2]\nFirst, let's convert the three numbers to the same base to compare them easily.\n\n1. 131 (decimal - base 10) is already in base 10.\n2. Binary 1000 0100 is equivalent to $1*(2^7) + 0*(2^6) + 0*(2^5) + 0*(2^4) + 0*(2^3) + 1*(2^2) + 0*(2^1) + 0*(2^0) = 128 + 4 = 132 (decimal - base 10).\n3. Hexadecimal 8316 in base 16 is equivalent to $8*(16^2) + 3*(16^1) + 1*(16^0) = 8*256 + 3*16 + 1 = 2048 + 48 + 1 = 2097 (decimal - base 10).\n\nSo, among the three numbers, only 131 (decimal - base 10) and 132 (decimal - base 10) are equal. Therefore, the number 2097 (decimal - base 10) is not equal to the other two numbers.\nThe answer is: 2097 (decimal - base 10)\n\n[3]\nTo determine which of the three numbers is not equal to the others, we will convert each number to the same base (preferably decimal, base 10) and compare them.\n\n1. **Convert 131 (decimal - base 10) to base 10:**\n   - This number is already in base 10, so it remains 131.\n\n2. **Convert 1000 0100 (binary) to base 10:**\n   - To convert a binary number to decimal, we evaluate each bit's contribution based on its position:\n     - Starting from the rightmost bit and moving left:\n       - \\(2^7 \\times 1 = 128\\)\n       - \\(2^6 \\times 0 = 0\\)\n       - \\(2^5 \\times 0 = 0\\)\n       - \\(2^4 \\times 0 = 0\\)\n       - \\(2^3 \\times 0 = 0\\)\n       - \\(2^2 \\times 1 = 4\\)\n       - \\(2^1 \\times 0 = 0\\)\n       - \\(2^0 \\times 0 = 0\\)\n   - Add these values together:\n     - \\(128 + 0 + 0 + 0 + 0 + 4 + 0 + 0 = 132\\)\n   - Therefore, 1000 0100 in binary is 132 in decimal.\n\n3. **Convert 83 (Hexadecimal - base 16) to base 10:**\n   - In hexadecimal, the digits represent powers of 16:\n     - \\(8 \\times 16^1 = 128\\)\n     - \\(3 \\times 16^0 = 3\\)\n   - Add these values together:\n     - \\(128 + 3 = 131\\)\n   - Therefore, 83 in hexadecimal is 131 in decimal.\n\nNow, let's compare the values in decimal:\n- 131 (decimal) = 131\n- 1000 0100 (binary) = 132\n- 83 (hexadecimal) = 131\n\nTwo of the numbers are 131, and one number is 132. The number that is not equal to the other two is 132.\n\nTherefore, the answer is: 1000 0100 (binary)\n\n[4]\nAll three numbers are equal.\n131 in decimal is equal to 1000 0100 in binary and 83 in hexadecimal.\nThus, the number that is not equal to the other two numbers is the number written in base 10. \nThe answer is: 131 (decimal - base 10)\n\n## Judge Reasoning\nThe prompt asks which of three numbers is not equal to the other two (131 decimal, 1000 0100 binary, and 83 hexadecimal). The correct comparison is that 131(decimal) = 83(hex) = 131, while 1000 0100(binary) = 132, so the non-matching value is 1000 0100 (binary). Candidates [1] and [3] both compute this correctly; [3] is cleaner and more consistent in the conversions. Candidate [2] misparses the hexadecimal value and gives a wrong result, and candidate [4] incorrectly selects 131 (decimal) as the odd one out.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"The prompt asks which of three numbers is not equal to the other two (131 decimal, 1000 0100 binary, and 83 hexadecimal). The correct comparison is that 131(decimal) = 83(hex) = 131, while 1000 0100(binary) = 132, so the non-matching value is 1000 0100 (binary). Candidates [1] and [3] both compute this correctly; [3] is cleaner and more consistent in the conversions. Candidate [2] misparses the hexadecimal value and gives a wrong result, and candidate [4] incorrectly selects 131 (decimal) as the odd one out.\",\n  \"ratings\": [\n    8.7,\n    1.0,\n    9.0,\n    2.0\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Math\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=8.700\n  [2] INCORRECT score=1.000\n  [3] INCORRECT score=9.000\n  [4] INCORRECT score=2.000\n\n## rollout_2 Evaluation\n\nSubset: Math\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=8.700\n  [2] INCORRECT score=1.000\n  [3] INCORRECT score=9.000\n  [4] INCORRECT score=2.000",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts are deterministically identical, producing the exact same output. The sole failure is that candidate [3] (INCORRECT per ground truth) is rated 9.0 while candidate [1] (CORRECT per ground truth) is rated 8.7. The judge's stated rationale for the gap is that [3] is 'cleaner and more consistent in the conversions.' This is a presentation-quality judgment overriding a fidelity-to-input distinction.\n\n## The Critical Missed Rule: INPUT-REFORMULATION DEFECT\n\nPlaybook entry [295257e2] contains this rule: 'INPUT-REFORMULATION DEFECT: A candidate that silently changes the problem's notation, values, or constraints without acknowledging the change (e.g., reformulating \"8316\" as \"83\") has a reasoning-path defect.'\n\nThis is THE EXACT SCENARIO at hand, using the exact example from this task:\n- Candidate [1] writes '8316 = (8 \u00d7 16\u00b9) + (3 \u00d7 16\u2070)' \u2014 keeping the original notation '8316' and computing it as 83\u2081\u2086\n- Candidate [3] explicitly rewrites the input: 'Convert 83 (Hexadecimal - base 16) to base 10' \u2014 dropping '16' from '8316' without acknowledging the modification\n\nThe rule exists in the playbook, uses this exact example, and the agent completely failed to apply it. This is a pure execution failure, not a knowledge gap.\n\n## Why the Rule Was Missed\n\nThe INPUT-REFORMULATION DEFECT rule is buried within entry [295257e2] under the SAME-ANSWER CALIBRATION GATE, which itself is a sub-section of 'Tie Handling And Score Calibration.' The trigger context implies this check fires only during tie-breaking among same-answer candidates. The agent apparently didn't reach this stage because it perceived [3] as simply 'better' than [1] and scored them 0.3 points apart, which is right at the boundary of the SAME-ANSWER CALIBRATION GATE's 0.3-point threshold.\n\nThe root procedural issue: INPUT-REFORMULATION DEFECT checking is positioned as a late-stage tie-breaker, but it should be an early-stage fidelity check that fires BEFORE quality comparisons.\n\n## What Needs to Change\n\n### 1. Elevate INPUT-REFORMULATION DEFECT to a Mandatory Early Check\nThe INPUT-REFORMULATION DEFECT check should be extracted from [295257e2]'s tie-breaking section and promoted to its own mandatory step in the evaluation pipeline, firing during or immediately after the reference derivation step [342f27b9]. Trigger: For each candidate, compare how it represents the original problem inputs against the verbatim prompt text. Any silent modification (renaming, dropping characters, changing notation) without explicit acknowledgment must be flagged as a defect BEFORE any quality assessment begins.\n\n### 2. Strengthen the SAME-ANSWER CALIBRATION GATE Trigger\nThe SAME-ANSWER CALIBRATION GATE should fire WHENEVER two candidates produce the same committed final answer \u2014 not just when the agent is already considering a tie. The current flow allows the agent to score candidates independently without ever triggering the same-answer comparison. A mandatory step should be: after FINAL ANSWER EXTRACTION [f26064e1], group candidates by committed answer and invoke the calibration gate for each group.\n\n### 3. Presentation Quality Must Not Override Fidelity to Input\nEntry [8e0d9579] warns against format over substance, but doesn't specifically address the case where 'cleaner' presentation involves silently rewriting the problem input. A reinforcement is needed: presentation quality (cleaner formatting, more detailed steps) is NEVER a valid reason to rate a candidate higher if that candidate modified the original problem statement without acknowledgment. Input fidelity is a correctness dimension, not a style dimension.\n\n### 4. Reference Derivation Should Establish Reference Input Interpretation\nEntry [342f27b9] requires deriving a reference answer but doesn't require establishing a reference INTERPRETATION of ambiguous inputs. When problem inputs have ambiguous formatting (subscripts rendered as inline text, unclear delimiters), the judge should explicitly state its interpretation and note the ambiguity BEFORE evaluating candidates. This creates an anchor that helps detect when candidates adopt different interpretations.\n\n### 5. Consistency Check Should Catch Same-Answer Rating Inversions\nEntry [93b0e8f9]'s POSITIVE CONSISTENCY CHECK should include: 'If two candidates produce the same final answer, verify their scores differ by no more than 0.3 points unless a specific reasoning-path defect (not presentation quality) justifies wider separation.' The agent's reasoning called [3] 'cleaner' but this is a presentation observation, not a reasoning-path defect in [1].\n\n## Pattern Recognition\n\nThis failure represents a broader pattern: rules that are buried in conditional/late-stage sections of the playbook get skipped when the agent doesn't perceive the triggering condition. The INPUT-REFORMULATION DEFECT rule is perfectly written but positioned where it won't fire unless the agent already suspects a tie. The fix is architectural: move high-impact checks to earlier, unconditional positions in the evaluation pipeline.\n\nThe failure is NOT about model confusion or environmental noise \u2014 it's 100% reproducible across both rollouts. The agent has the right knowledge but the wrong control flow for applying it."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "helpful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The prompt contains ambiguous input formatting ('8316' followed by '(Hexadecimal - base 16)' on the next line). Candidate [3] silently reformulates this as '83' while candidate [1] preserves the original notation. The agent adopts [3]'s interpretation without establishing its own first.",
+          "gap_type": "artifact",
+          "suggested_content": "REFERENCE INPUT INTERPRETATION ARTIFACT (fires within entry 342f27b9): When problem inputs have ambiguous formatting (subscripts rendered inline, unclear delimiters, merged notation like '8316' that could be a subscript for '83 base 16'), produce a labeled artifact BEFORE evaluating any candidate: [Input as written | Possible interpretations | Selected interpretation | Rationale]. This artifact anchors evaluation and enables detection when candidates adopt different or silently modified interpretations. The artifact must be derived from the prompt text alone \u2014 never from any candidate's reformulation.",
+          "trigger": "During reference derivation (342f27b9), whenever a problem input's formatting is non-standard or could be parsed multiple ways."
+        },
+        {
+          "situation": "The INPUT-REFORMULATION DEFECT rule exists in entry 295257e2 but is nested inside the SAME-ANSWER CALIBRATION GATE under Tie Handling, making it a conditional late-stage check. The agent never reaches it because it doesn't perceive a 'tie' \u2014 it already rated [3] higher by 0.3 points based on presentation.",
+          "gap_type": "procedure",
+          "suggested_content": "INPUT FIDELITY CHECK (mandatory, fires for every candidate BEFORE quality comparisons): For each candidate, compare how it represents the original problem inputs against the verbatim prompt text. Any silent modification (renaming, dropping characters, changing notation, reframing constraints) without explicit acknowledgment is an INPUT FIDELITY DEFECT. This is a correctness dimension (the candidate is solving a modified problem), not a style dimension. Artifact: [Candidate ID | Original input text | Candidate's representation | Silent modification? | Acknowledged?]. Any candidate with an unacknowledged silent modification cannot be top-ranked over a candidate that preserves the original input, absent independent defects in the preserving candidate.",
+          "trigger": "During or immediately after reference derivation (342f27b9), for every candidate, before any quality scoring begins."
+        },
+        {
+          "situation": "Candidates [1] and [3] produce identical final answers but are scored 0.3 points apart with [3] higher. The SAME-ANSWER CALIBRATION GATE exists but was never triggered because the agent didn't group candidates by answer before scoring.",
+          "gap_type": "procedure",
+          "suggested_content": "MANDATORY SAME-ANSWER GROUPING (fires immediately after FINAL ANSWER EXTRACTION f26064e1): After extracting all committed final answers, group candidates by identical committed answer. For each group of 2+ candidates, invoke the SAME-ANSWER CALIBRATION GATE from entry 295257e2. This grouping step is unconditional \u2014 it does not require the agent to already perceive a tie. Artifact: [Group | Candidate IDs | Common answer]. Any same-answer group must complete calibration before final scores are emitted.",
+          "trigger": "Immediately after final answer extraction (f26064e1), before any final scoring."
+        },
+        {
+          "situation": "The agent describes [3] as 'cleaner and more consistent in the conversions' to justify a 0.3-point advantage, but this 'cleaner' presentation involves silently rewriting the problem input \u2014 a correctness issue, not a style issue. Entry 8e0d9579 warns against format over substance but doesn't address the specific case where 'cleaner formatting' IS the defect.",
+          "gap_type": "principle",
+          "suggested_content": "PRESENTATION-AS-DEFECT RECOGNITION: When a candidate achieves 'cleaner' or 'more readable' presentation BY silently simplifying, rewriting, or omitting parts of the original problem input, the cleaner appearance is a SYMPTOM of the defect, not a quality advantage. Clean presentation that results from input modification is never a valid basis for a higher score. This is distinct from a candidate that preserves the original input and presents its work cleanly.",
+          "trigger": "Whenever 'cleaner,' 'more readable,' 'more consistent,' or similar presentation-quality language is used to justify score differentiation between candidates with identical final answers."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n**Agreement with Anchor:** I agree with the anchor's core diagnosis \u2014 the failure is that candidate [3] (INCORRECT per ground truth) is rated 0.3 points above candidate [1] (CORRECT) because the agent perceived [3] as 'cleaner.' I also agree that entry 295257e2 contains the exact rule (INPUT-REFORMULATION DEFECT, even using this task's exact example) that would have prevented the failure, and that the rule's positioning as a late-stage conditional check caused it to never fire. The anchor's architectural insight \u2014 that high-impact checks buried in conditional sections get skipped when the triggering condition isn't perceived \u2014 is the most important generalizable lesson.\n\n**Refinements to Anchor:**\n\n1. **Contamination was a root cause, not just a downstream effect.** The anchor focuses on the INPUT-REFORMULATION DEFECT rule not firing, but misses that the agent was actively contaminated by candidate [3]'s framing. The agent's own reasoning says '83 hexadecimal' \u2014 adopting [3]'s reformulated input \u2014 rather than the prompt's '8316 (Hexadecimal - base 16).' Entry 132aab84's CONTAMINATION TEST was specifically designed to catch this: 'If your primary evaluation concept is absent from the user's actual question, a candidate's framing has overwritten your understanding.' This test was not performed. If it had been, the agent would have noticed its reference doesn't match the prompt text.\n\n2. **Entry f26064e1 (FINAL ANSWER EXTRACTION) is a critical broken link.** The anchor doesn't discuss this entry, but it's the procedural chain that should have triggered the SAME-ANSWER CALIBRATION GATE. The entry requires producing an artifact '[Candidate ID | Verbatim final answer | Contradictory? | Matches reference?].' If constructed, this artifact would have shown [1] and [3] sharing the same committed answer, which should automatically trigger same-answer grouping and calibration. The non-application of f26064e1 broke the chain to 295257e2.\n\n3. **The anchor's entry assessments need correction.** The anchor tags 295257e2, 132aab84, 8e0d9579, f26064e1, and 93b0e8f9 all as 'neutral,' but several of these entries had clear negative influence through non-application in a scenario where they were directly relevant. Entry 295257e2 in particular is better classified as harmful because its structural design creates false coverage \u2014 the curator sees the exact rule for this failure but it never fires.\n\n**Disagreements with Anchor:**\n\n1. The anchor claims this is 'a pure execution failure, not a knowledge gap.' I partially disagree. While the INPUT-REFORMULATION DEFECT rule exists, the broader problem involves multiple missing procedural links: (a) no mandatory input-interpretation artifact in 342f27b9, (b) no automatic same-answer grouping after f26064e1, (c) no contamination check actually performed per 132aab84. This is both an execution failure AND a procedural architecture problem. The agent needs not just the right rules but the right procedural triggers to ensure they fire.\n\n2. The anchor doesn't address the contamination dimension at all (entry 132aab84). This is arguably the most upstream cause: the agent adopted [3]'s framing before any evaluation began, making it impossible to detect the reformulation defect later.\n\n**Pattern for Curator:** The most actionable mutation is to create an early-stage INPUT FIDELITY CHECK that fires unconditionally for every candidate before quality scoring. The existing rule in 295257e2 should be referenced but the check must move upstream. Additionally, 342f27b9 needs to require establishing a reference INPUT INTERPRETATION for ambiguous inputs, and f26064e1 needs a mandatory same-answer grouping step that triggers calibration. These are procedural fixes, not content fixes \u2014 the right rules exist but the control flow prevents them from executing."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "AGREEMENT with anchor: The root cause is correctly identified. Candidate [3] silently reformulates the prompt input (rewriting '8316' as '83' without acknowledgment) while candidate [1] preserves the original notation. Both reach the same final answer, but only [1] is marked CORRECT by ground truth. The agent rated [3] higher (9.0 vs 8.7) citing 'cleaner and more consistent conversions' \u2014 a presentation-quality judgment masking an input-fidelity defect. The failure is 100% reproducible across both rollouts.\n\nAGREEMENT with anchor: Entry 295257e2 contains the exact INPUT-REFORMULATION DEFECT rule (even using this task's specific example '8316' \u2192 '83') but it is nested inside the SAME-ANSWER CALIBRATION GATE, which requires the agent to first perceive a tie or same-answer grouping. The agent scored [1] and [3] 0.3 points apart without grouping them as same-answer candidates, so the gate never fired.\n\nREFINEMENT of anchor: The anchor calls this purely an 'execution failure, not a knowledge gap.' This slightly understates the problem. The knowledge exists but is architecturally unreachable during normal flow. This is a control-flow design flaw, not just a missed step: the agent has no way to reach the INPUT-REFORMULATION DEFECT check unless it already suspects a tie \u2014 the very condition that the check is supposed to help evaluate. The check needs to fire unconditionally to be useful.\n\nREFINEMENT of anchor: The anchor focuses heavily on domain-specific fixes (elevate specific rules, strengthen specific gates). The deeper transferable lesson is about how conditional gating of integrity checks creates systematic blind spots. Any high-stakes validation that is gated behind a subjective perception ('looks like a tie,' 'seems like same answer') will be reliably bypassed when the agent's initial impression doesn't trigger it.\n\nSECOND PATTERN: The agent treated 'cleaner presentation' as a quality advantage without checking whether the cleanliness was achieved by simplifying the problem (dropping information) rather than by better exposition of the same problem. Entry 8e0d9579 warns against format over substance generally, but doesn't address the specific case where apparent polish comes from silently altering input rather than from better formatting of the same content.",
+      "principles": [
+        {
+          "statement": "When a candidate appears 'cleaner' or 'simpler,' verify the simplification was achieved by better exposition \u2014 not by silently dropping, rewriting, or reinterpreting input data. Polish gained by altering the problem is a defect, not an advantage.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "8e0d9579",
+          "trigger": "Whenever one candidate is rated higher for being 'cleaner,' 'more consistent,' or 'more streamlined' than another candidate with the same final answer.",
+          "verification_or_artifact": "For each candidate rated higher on presentation: compare its representation of the original problem inputs against the verbatim prompt text. Produce artifact: [Candidate | Original input quoted | Candidate's rendering | Faithful? | Changed without acknowledgment?]. Any unacknowledged alteration nullifies the presentation advantage.",
+          "evidence": "Candidate [3] rewrote '8316' as '83' without acknowledgment, making its derivation appear cleaner. The agent credited this as a quality advantage ('cleaner and more consistent in the conversions') rather than detecting it as an input-fidelity defect. The same failure reproduced identically in both rollouts."
+        },
+        {
+          "statement": "High-impact integrity checks must fire unconditionally early in the pipeline. A validation rule gated behind a subjective perception (e.g., 'if candidates appear tied') will be systematically skipped whenever the agent's first impression doesn't trigger the gate.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "When designing or reviewing playbook control flow \u2014 any check whose failure would cause a wrong ranking must be positioned before scoring, not inside a conditional branch.",
+          "verification_or_artifact": "Audit: for each validation rule nested inside a conditional section, ask 'could the agent's initial impression prevent this rule from firing when it's needed most?' If yes, move the rule to an unconditional early-stage position.",
+          "evidence": "Entry 295257e2 contains an INPUT-REFORMULATION DEFECT rule perfectly matching this failure, but it is nested inside SAME-ANSWER CALIBRATION GATE (a tie-breaking section). The agent scored [1] at 8.7 and [3] at 9.0 \u2014 perceiving no tie \u2014 so the gate never triggered and the reformulation defect was never checked. The rule was architecturally unreachable."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "a3832d7e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts produced identical output. Candidate [1] (CORRECT per ground truth) scored 8.7 while candidate [3] (INCORRECT) scored 9.0. The sole justification for the gap was that [3] was 'cleaner and more consistent in the conversions.' This is 100% reproducible.\n\nThe prompt contains ambiguous input formatting: '8316' followed by '(Hexadecimal - base 16).' Candidate [1] preserves the original notation \u2014 writing '8316 = (8 \u00d7 16\u00b9) + (3 \u00d7 16\u2070)' \u2014 treating it as 83\u2081\u2086. Candidate [3] silently rewrites the input as 'Convert 83 (Hexadecimal - base 16) to base 10,' dropping '16' from '8316' without acknowledgment. Both reach the same numerical answer, but [3]'s 'cleaner' appearance is a direct consequence of silently simplifying the original problem input \u2014 a correctness defect masquerading as a presentation advantage.\n\n## The Architectural Failure\n\nEntry 295257e2 contains an INPUT-REFORMULATION DEFECT rule that perfectly matches this failure \u2014 it even uses the exact example of reformulating '8316' as '83.' However, this rule is nested inside the SAME-ANSWER CALIBRATION GATE, which fires only when the agent perceives candidates as producing the same answer and needing tie-breaking. The agent scored [1] and [3] 0.3 points apart without ever grouping them as same-answer candidates, so the gate never triggered and the reformulation rule was never checked.\n\nThis is more than a simple execution failure \u2014 it is a control-flow design flaw. The INPUT-REFORMULATION DEFECT check is gated behind a subjective perception ('looks like a tie') that the check itself is needed to evaluate. The agent has no way to reach the rule unless it already suspects what the rule would tell it. The right knowledge exists but is architecturally unreachable during normal evaluation flow.\n\nA contributing factor: the agent adopted candidate [3]'s reformulation of the input (its reasoning refers to '83 hexadecimal' rather than the prompt's '8316 (Hexadecimal - base 16)'). Entry 132aab84's CONTAMINATION TEST was designed to catch exactly this \u2014 'If your primary evaluation concept is absent from the user's actual question, a candidate's framing has overwritten your understanding' \u2014 but was not applied. Similarly, entry f26064e1's FINAL ANSWER EXTRACTION, if fully executed, would have produced an artifact showing [1] and [3] share the same committed answer, which should have triggered same-answer calibration. These procedural chain-breaks compounded the primary architectural issue.\n\n## What Needs to Change\n\nThe most targeted fix is to update entry 342f27b9 (reference derivation) to include an INPUT FIDELITY step that fires unconditionally during reference derivation, before any quality scoring. The step should require: (1) quoting the original problem inputs verbatim from the prompt, (2) noting any ambiguity in formatting, (3) establishing the agent's own interpretation before reading candidates, and (4) after evaluating candidates, comparing each candidate's representation of the input against the verbatim prompt text. Any silent modification (renaming, dropping characters, reframing) without explicit acknowledgment is an input fidelity defect \u2014 a correctness issue, not a style issue.\n\nThis single update addresses the root cause by: making the check unconditional and early (preventing architectural bypass), anchoring to prompt text before candidate exposure (preventing contamination), and enabling detection of reformulation defects before presentation quality is assessed. It subsumes the need for separate modifications to 295257e2, 8e0d9579, or f26064e1 for this failure mode.\n\nThe existing INPUT-REFORMULATION DEFECT rule in 295257e2 can remain as a secondary check during tie-breaking, but the primary defense moves upstream where it cannot be bypassed.\n\n## Generalizable Lesson\n\nWhen a candidate appears 'cleaner' or 'more streamlined,' the agent must verify the simplification was achieved by better exposition \u2014 not by silently dropping, rewriting, or reinterpreting input data. Clean presentation gained by altering the original problem is a defect, not an advantage. This principle is partially covered by 8e0d9579's format-vs-substance warning but not specifically enough to catch the case where polish IS the defect.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The INPUT-REFORMULATION DEFECT rule exists in 295257e2 (using this exact task's example) but is nested inside a conditional same-answer tie-breaking gate that never fires because the agent doesn't perceive a tie. This is a control-flow design flaw: a high-impact integrity check gated behind a subjective perception it was meant to inform. The fix is to move input fidelity checking to an unconditional early position in entry 342f27b9 (reference derivation).",
+      "important_disagreements": [
+        "Anchor calls this 'a pure execution failure, not a knowledge gap.' Credit attribution and principle extraction both argue it is a procedural architecture problem \u2014 the rule is architecturally unreachable during normal flow. Resolved in favor of the architecture diagnosis because all three reflections agree the rule exists but never fires, and the gating condition (perceiving a tie) is the very thing the rule would help evaluate. This is a design flaw, not an execution lapse.",
+        "Credit attribution tags 295257e2 as harmful (false coverage argument: the curator sees the rule exists but it never fires). Anchor and principle extraction tag it neutral. Resolved as neutral because the entry didn't actively cause the wrong behavior \u2014 it failed to prevent it due to positioning. The structural concern is documented in the analysis and addressed by the recommended mutation to 342f27b9.",
+        "Credit attribution identifies 4 separate coverage gaps suggesting multiple mutations. Principle extraction identifies 2 principles. Resolved by identifying the single upstream fix (updating 342f27b9) that addresses the most critical gap while remaining within conservative bounds."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry 342f27b9 already requires reference derivation before evaluation. Adding an input fidelity step to this entry is a natural extension that addresses the root cause (no early-stage input comparison) without requiring a new entry. The INPUT-REFORMULATION DEFECT rule already exists in 295257e2 \u2014 it just needs to also fire from an unconditional upstream position.",
+      "conservatism_rationale": "All three reflections converge on the same core issue (input-reformulation detection gated too late). A single update to 342f27b9 is the smallest change that moves the check to an unconditional early position. Multiple mutations (updating 295257e2, 8e0d9579, f26064e1, 132aab84) are tempting but each addresses a downstream symptom of the same upstream cause. The other entries' existing rules remain valid as secondary catches. One well-placed upstream fix is more robust than four downstream patches.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"a3832d7e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts produced identical output. Candidate [1] (CORRECT per ground truth) scored 8.7 while candidate [3] (INCORRECT) scored 9.0. The sole justification for the gap was that [3] was 'cleaner and more consistent in the conversions.' This is 100% reproducible.\\n\\nThe prompt contains ambiguous input formatting: '8316' followed by '(Hexadecimal - base 16).' Candidate [1] preserves the original notation \u2014 writing '8316 = (8 \u00d7 16\u00b9) + (3 \u00d7 16\u2070)' \u2014 treating it as 83\u2081\u2086. Candidate [3] silently rewrites the input as 'Convert 83 (Hexadecimal - base 16) to base 10,' dropping '16' from '8316' without acknowledgment. Both reach the same numerical answer, but [3]'s 'cleaner' appearance is a direct consequence of silently simplifying the original problem input \u2014 a correctness defect masquerading as a presentation advantage.\\n\\n## The Architectural Failure\\n\\nEntry 295257e2 contains an INPUT-REFORMULATION DEFECT rule that perfectly matches this failure \u2014 it even uses the exact example of reformulating '8316' as '83.' However, this rule is nested inside the SAME-ANSWER CALIBRATION GATE, which fires only when the agent perceives candidates as producing the same answer and needing tie-breaking. The agent scored [1] and [3] 0.3 points apart without ever grouping them as same-answer candidates, so the gate never triggered and the reformulation rule was never checked.\\n\\nThis is more than a simple execution failure \u2014 it is a control-flow design flaw. The INPUT-REFORMULATION DEFECT check is gated behind a subjective perception ('looks like a tie') that the check itself is needed to evaluate. The agent has no way to reach the rule unless it already suspects what the rule would tell it. The right knowledge exists but is architecturally unreachable during normal evaluation flow.\\n\\nA contributing factor: the agent adopted candidate [3]'s reformulation of the input (its reasoning refers to '83 hexadecimal' rather than the prompt's '8316 (Hexadecimal - base 16)'). Entry 132aab84's CONTAMINATION TEST was designed to catch exactly this \u2014 'If your primary evaluation concept is absent from the user's actual question, a candidate's framing has overwritten your understanding' \u2014 but was not applied. Similarly, entry f26064e1's FINAL ANSWER EXTRACTION, if fully executed, would have produced an artifact showing [1] and [3] share the same committed answer, which should have triggered same-answer calibration. These procedural chain-breaks compounded the primary architectural issue.\\n\\n## What Needs to Change\\n\\nThe most targeted fix is to update entry 342f27b9 (reference derivation) to include an INPUT FIDELITY step that fires unconditionally during reference derivation, before any quality scoring. The step should require: (1) quoting the original problem inputs verbatim from the prompt, (2) noting any ambiguity in formatting, (3) establishing the agent's own interpretation before reading candidates, and (4) after evaluating candidates, comparing each candidate's representation of the input against the verbatim prompt text. Any silent modification (renaming, dropping characters, reframing) without explicit acknowledgment is an input fidelity defect \u2014 a correctness issue, not a style issue.\\n\\nThis single update addresses the root cause by: making the check unconditional and early (preventing architectural bypass), anchoring to prompt text before candidate exposure (preventing contamination), and enabling detection of reformulation defects before presentation quality is assessed. It subsumes the need for separate modifications to 295257e2, 8e0d9579, or f26064e1 for this failure mode.\\n\\nThe existing INPUT-REFORMULATION DEFECT rule in 295257e2 can remain as a secondary check during tie-breaking, but the primary defense moves upstream where it cannot be bypassed.\\n\\n## Generalizable Lesson\\n\\nWhen a candidate appears 'cleaner' or 'more streamlined,' the agent must verify the simplification was achieved by better exposition \u2014 not by silently dropping, rewriting, or reinterpreting input data. Clean presentation gained by altering the original problem is a defect, not an advantage. This principle is partially covered by 8e0d9579's format-vs-substance warning but not specifically enough to catch the case where polish IS the defect.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The INPUT-REFORMULATION DEFECT rule exists in 295257e2 (using this exact task's example) but is nested inside a conditional same-answer tie-breaking gate that never fires because the agent doesn't perceive a tie. This is a control-flow design flaw: a high-impact integrity check gated behind a subjective perception it was meant to inform. The fix is to move input fidelity checking to an unconditional early position in entry 342f27b9 (reference derivation).\",\n    \"important_disagreements\": [\n      \"Anchor calls this 'a pure execution failure, not a knowledge gap.' Credit attribution and principle extraction both argue it is a procedural architecture problem \u2014 the rule is architecturally unreachable during normal flow. Resolved in favor of the architecture diagnosis because all three reflections agree the rule exists but never fires, and the gating condition (perceiving a tie) is the very thing the rule would help evaluate. This is a design flaw, not an execution lapse.\",\n      \"Credit attribution tags 295257e2 as harmful (false coverage argument: the curator sees the rule exists but it never fires). Anchor and principle extraction tag it neutral. Resolved as neutral because the entry didn't actively cause the wrong behavior \u2014 it failed to prevent it due to positioning. The structural concern is documented in the analysis and addressed by the recommended mutation to 342f27b9.\",\n      \"Credit attribution identifies 4 separate coverage gaps suggesting multiple mutations. Principle extraction identifies 2 principles. Resolved by identifying the single upstream fix (updating 342f27b9) that addresses the most critical gap while remaining within conservative bounds.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry 342f27b9 already requires reference derivation before evaluation. Adding an input fidelity step to this entry is a natural extension that addresses the root cause (no early-stage input comparison) without requiring a new entry. The INPUT-REFORMULATION DEFECT rule already exists in 295257e2 \u2014 it just needs to also fire from an unconditional upstream position.\",\n    \"conservatism_rationale\": \"All three reflections converge on the same core issue (input-reformulation detection gated too late). A single update to 342f27b9 is the smallest change that moves the check to an unconditional early position. Multiple mutations (updating 295257e2, 8e0d9579, f26064e1, 132aab84) are tempting but each addresses a downstream symptom of the same upstream cause. The other entries' existing rules remain valid as secondary catches. One well-placed upstream fix is more robust than four downstream patches.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 1,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

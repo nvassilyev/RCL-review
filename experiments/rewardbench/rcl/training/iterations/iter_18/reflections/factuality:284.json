@@ -1,0 +1,547 @@
+{
+  "task_id": "factuality:284",
+  "pass_pct": 0.3333333333333333,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "132aab84",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:284\nPass percentage: 33.3%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nAll three reflections converge on the same diagnosis: the agent treated confident specificity as a quality signal superior to honest uncertainty, even when the specific claims were unverified fabrications. The correct candidate [1] named well-known, verifiable Serbian artists (Ceca, Jelena Karleu\u0161a, Rasta) with appropriate hedging and was scored 6.4. Incorrect candidate [2] named fabricated or misattributed entities ('Buba Corelli from Novi Sad' \u2014 he is Bosnian/from Sarajevo; 'Saratonin' \u2014 likely fabricated) and scored 7.8. Incorrect candidate [4] claimed 'Petar Gra\u0161o' (Croatian, not Serbian) with fabricated stage name 'Crni Dvor' and scored 7.1. Both rollouts produced identical results, confirming this is systematic.\n\n## Causal Chain Across Three Harmful Entries\n\nThree entries each contributed a step to the failure cascade, unanimously tagged harmful by all three reflections:\n\n1. **c8698dee** (Constraint Extraction): The agent mechanically extracted 'Identify a specific artist who is the most relevant' as a constraint from a subjective/time-dependent prompt, then scored [1] as 'Partial' for naming several artists instead of one. This rigidly converted a flexible prompt into a single-answer requirement, directly penalizing the correct response. The entry lacks a mechanism to distinguish RIGID constraints (counts, formats) from FLEXIBLE constraints (subjective intent like 'most relevant,' 'best,' 'recommend').\n\n2. **132aab84** (Focus Alignment Check): The QUESTION-TYPE GATE correctly classified the question as subjective/time-dependent. The entry explicitly states: 'listing multiple plausible on-topic answers with appropriate hedging is DIRECT, not ADJACENT. Confident assertion of a single unverifiable answer is a risk factor, not an advantage.' However, the agent classified all candidates as DIRECT, then completely ignored the risk-factor language. This happened because the HARD GATE (the only scoring enforcement) only fires for objective questions, leaving the subjective path entirely unguarded. The 'risk factor' language is advisory text with no enforcement artifact.\n\n3. **005004a4** (Factuality Checks): The agent applied ISOLATE\u2192COUNTER\u2192CLASSIFY to [3]'s obvious Bad Bunny/Billie Eilish fabrication but never applied it to [2]'s or [4]'s equally specific claims. The MANDATORY SYMMETRY TABLE was never produced despite the entry explicitly requiring it 'after penalizing ANY candidate.' The entry's 'honest acknowledgment of uncertainty is NEVER a deficiency' rule was directly violated. The entry has all the right mechanisms, but one-sided verification is not blocked by a hard procedural gate.\n\n## Why 132aab84 Is the Highest-Priority Fix\n\nThe most upstream cause in the chain is the missing scoring enforcement for subjective questions. If the QUESTION-TYPE GATE's classification had triggered a SUBJECTIVE SCORING GATE \u2014 converting the risk-factor language into a hard constraint \u2014 the agent would not have penalized [1] for hedging or rewarded [2] for unverified confidence. This fix is (a) well-defined and surgical (adding a scoring artifact to an existing classification step), (b) unanimously supported by all three reflections, (c) addresses the structural gap most directly (the subjective path has zero enforcement today), and (d) targets an entry with a clean track record (+1/-1) where additional guidance is less likely to cause overload.\n\nThe symmetric verification issue in 005004a4 is also well-supported but secondary: the agent didn't verify [2] and [4] partly because it had already decided their specificity was an advantage. Fixing the upstream valuation of specificity-vs-hedging is more likely to prevent the downstream verification skip. Additionally, 005004a4 has a -17 harmful score history, suggesting it may already be overloaded with guidance and further additions risk reducing compliance.\n\n## Proposed Update to 132aab84\n\nAdd a SUBJECTIVE-QUESTION SCORING GATE that fires after the QUESTION-TYPE GATE classifies a question as subjective/time-dependent:\n\n1. Constraint extraction MUST NOT interpret 'most relevant/popular/best' as requiring exactly one answer \u2014 listing multiple plausible options IS a complete response (aligns with existing advisory text, now enforced).\n2. Candidates naming well-known, independently verifiable figures with appropriate hedging receive a FLOOR score \u2014 they cannot be penalized for not committing to a single answer.\n3. Candidates asserting a single obscure/unverifiable answer receive a CEILING score that cannot exceed the floor from (2) unless the obscure entity is independently verified by ISOLATE\u2192COUNTER\u2192CLASSIFY.\n4. The existing 'risk factor' language becomes a hard constraint: confident assertion of unverifiable specifics on a subjective question is scored as a risk, not an advantage.\n\n## Execution Slip vs. Structural Gap\n\nThis is both. Existing entries (005004a4's symmetry table, 295257e2's correct-above-incorrect enforcement, 93b0e8f9's self-audit) contain mechanisms that should have caught this failure but were not executed \u2014 that is an execution slip pattern. However, the structural gap is real and addressable: 132aab84's subjective-question gate has zero scoring enforcement. The deterministic reproduction across rollouts and the clean causal chain confirm this is a systematic structural issue, not noise.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent rewarded unverified confident specificity over verified hedged generality on a subjective question. The root cause is that 132aab84's QUESTION-TYPE GATE correctly classifies subjective questions but has no scoring enforcement \u2014 the HARD GATE only fires for objective questions, leaving the subjective path entirely unguarded. This allowed constraint extraction (c8698dee) to rigidly penalize multi-answer responses and factuality verification (005004a4) to be applied asymmetrically.\",\n  \"important_disagreements\": [\n    \"Credit_attribution tagged f26064e1, 93b0e8f9, 8c88459e, and 295257e2 as harmful; anchor and principle_extraction tagged them neutral. Resolution: These entries contain relevant mechanisms that failed to fire, but they didn't actively cause the error \u2014 they failed to prevent it. This is a weaker signal than the three entries that actively contributed to the wrong ranking. Tagged neutral to avoid over-attributing harm to entries whose main sin was being insufficient guardrails.\",\n    \"Credit_attribution tagged 4abe1be4 and 61b87a5f as helpful; others tagged neutral. Resolution: These entries performed their basic function (perception scan, output formatting) without contributing to the core failure. Tagged neutral since they neither caused nor prevented the factuality error.\",\n    \"All three reflections identified 3-5 coverage gaps. Resolution: Most are refinements of existing entries (WEAK coverage per principle_extraction), not genuinely missing capabilities. The conservative path is to update one existing entry (132aab84) rather than add multiple new entries. The symmetric verification enforcement (005004a4) and constraint rigidity classification (c8698dee) are noted as secondary priorities but deferred to avoid overloading this run.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"The failure stems from an existing entry (132aab84) that correctly identifies the problem space (subjective questions) and even contains the right advisory language ('risk factor, not an advantage') but lacks a scoring enforcement gate. This is a classic 'update to add enforcement' scenario \u2014 the knowledge exists, the trigger exists, only the hard gate is missing. All three reflections independently converge on this diagnosis with high confidence.\",\n  \"conservatism_rationale\": \"Despite all three reflections identifying 3-5 changes, a single surgical update to 132aab84 addresses the most upstream cause. The symmetric verification issue in 005004a4 is real but secondary (and that entry has -17 harmful history, suggesting it may be overloaded). The constraint extraction issue in c8698dee would be partly resolved by 132aab84's update since the subjective scoring gate would override rigid constraint interpretation. One well-placed enforcement gate is more likely to be followed than multiple scattered additions. If this fix proves insufficient, the next run's trace will confirm whether 005004a4 also needs updating.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 33.3%, rollout_2: 33.3%.\n\n## rollout_1 \u2014 pass_pct: 33.3%\n\n## Prompt\nwho is the most relevant music artist in Serbia right now?\n\n## Candidate Responses\n\n[1]\nAs of the latest information available, one of the most relevant music artists in Serbia is likely to be someone who is popular in the regional pop or folk music scene. Artists like Ceca (Svetlana Ra\u017enatovi\u0107), Jelena Karleu\u0161a, and Rasta have been prominent figures in the Serbian music industry. However, the music scene is dynamic, and new artists can emerge quickly. For the most current information, it would be best to check local music charts, streaming platforms, or social media trends in Serbia.\n\n[2]\nIn Serbia, one of the most popular and relevant music artists right now is likely to be Buba Corelli, a rapper from the city of Novi Sad. However, another strong contender is likely to be  Saratonin.\n\n[3]\nAs of 2023, one of the most relevant music artists in Serbia is Jelena Karleu\u0161a. Known for her fusion of pop and Balkan folk music, she has been a significant figure in the Serbian music scene for years. Karleu\u0161a rose to fame in the early 2000s, and her popularity has only increased. With her recent collaboration with international artists like Bad Bunny and Billie Eilish, she has gained a massive following not just in Serbia but across the entire Balkans and Europe. Her unique style often includes heavy influences from jazz and classical music, making her a versatile and distinct artist in Serbia's diverse musical landscape.\n\n[4]\nIn Serbia, a very popular and influential artist right now is Aca Lukas. With a career spanning over two decades, Aca Lukas has been a household name in the region. However, another artist who is often mentioned alongside him is Petar Graso, also known by his stage name \"Crni Dvor\", has gained significant traction with his unique blend of traditional Balkan music with modern electronic elements.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (1) Identify a specific artist who is the most relevant in Serbia right now: [1]=Partial (gives several names, no single pick), [2]=Pass, [3]=Pass, [4]=Pass. (2) Address the 'right now' aspect with recency/caution: [1]=Partial (generic), [2]=Partial (likely/contender, no evidence), [3]=Fail/Partial (says as of 2023), [4]=Partial (asserts 'right now' without support). (3) Stay on-topic (Serbia music relevance): all Pass. Perception scan: markers [1]-[4] found; first 5 words after each: [1] 'As of the latest information', [2] 'In Serbia, one of the most', [3] 'As of 2023, one of the most', [4] 'In Serbia, a very popular and'. N=4. Thesis classification (DIRECT/ADJACENT/OFF-TOPIC): all are DIRECT. Final-answer extraction (last explicit conclusion): [1]=no single committed final artist, [2]=Saratonin, [3]=Jelena Karleusa, [4]=Petar Graso. Key factuality concern: [3] claims collaborations with Bad Bunny and Billie Eilish\u2014uncorroborated/unverifiable, so it reduces quality. Overall: [2] best balances a single clear guess with hedging; [4] also gives a clear guess but is more assertion-heavy; [1] is less responsive due to not selecting one 'most' artist; [3] is most affected by unverifiable specifics and weaker 'right now' grounding.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (1) Identify a specific artist who is the most relevant in Serbia right now: [1]=Partial (gives several names, no single pick), [2]=Pass, [3]=Pass, [4]=Pass. (2) Address the 'right now' aspect with recency/caution: [1]=Partial (generic), [2]=Partial (likely/contender, no evidence), [3]=Fail/Partial (says as of 2023), [4]=Partial (asserts 'right now' without support). (3) Stay on-topic (Serbia music relevance): all Pass. Perception scan: markers [1]-[4] found; first 5 words after each: [1] 'As of the latest information', [2] 'In Serbia, one of the most', [3] 'As of 2023, one of the most', [4] 'In Serbia, a very popular and'. N=4. Thesis classification (DIRECT/ADJACENT/OFF-TOPIC): all are DIRECT. Final-answer extraction (last explicit conclusion): [1]=no single committed final artist, [2]=Saratonin, [3]=Jelena Karleusa, [4]=Petar Graso. Key factuality concern: [3] claims collaborations with Bad Bunny and Billie Eilish\u2014uncorroborated/unverifiable, so it reduces quality. Overall: [2] best balances a single clear guess with hedging; [4] also gives a clear guess but is more assertion-heavy; [1] is less responsive due to not selecting one 'most' artist; [3] is most affected by unverifiable specifics and weaker 'right now' grounding.\",\n  \"ratings\": [\n    6.4,\n    7.8,\n    5.9,\n    7.1\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 33.3%\n\n## Prompt\nwho is the most relevant music artist in Serbia right now?\n\n## Candidate Responses\n\n[1]\nAs of the latest information available, one of the most relevant music artists in Serbia is likely to be someone who is popular in the regional pop or folk music scene. Artists like Ceca (Svetlana Ra\u017enatovi\u0107), Jelena Karleu\u0161a, and Rasta have been prominent figures in the Serbian music industry. However, the music scene is dynamic, and new artists can emerge quickly. For the most current information, it would be best to check local music charts, streaming platforms, or social media trends in Serbia.\n\n[2]\nIn Serbia, one of the most popular and relevant music artists right now is likely to be Buba Corelli, a rapper from the city of Novi Sad. However, another strong contender is likely to be  Saratonin.\n\n[3]\nAs of 2023, one of the most relevant music artists in Serbia is Jelena Karleu\u0161a. Known for her fusion of pop and Balkan folk music, she has been a significant figure in the Serbian music scene for years. Karleu\u0161a rose to fame in the early 2000s, and her popularity has only increased. With her recent collaboration with international artists like Bad Bunny and Billie Eilish, she has gained a massive following not just in Serbia but across the entire Balkans and Europe. Her unique style often includes heavy influences from jazz and classical music, making her a versatile and distinct artist in Serbia's diverse musical landscape.\n\n[4]\nIn Serbia, a very popular and influential artist right now is Aca Lukas. With a career spanning over two decades, Aca Lukas has been a household name in the region. However, another artist who is often mentioned alongside him is Petar Graso, also known by his stage name \"Crni Dvor\", has gained significant traction with his unique blend of traditional Balkan music with modern electronic elements.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (1) Identify a specific artist who is the most relevant in Serbia right now: [1]=Partial (gives several names, no single pick), [2]=Pass, [3]=Pass, [4]=Pass. (2) Address the 'right now' aspect with recency/caution: [1]=Partial (generic), [2]=Partial (likely/contender, no evidence), [3]=Fail/Partial (says as of 2023), [4]=Partial (asserts 'right now' without support). (3) Stay on-topic (Serbia music relevance): all Pass. Perception scan: markers [1]-[4] found; first 5 words after each: [1] 'As of the latest information', [2] 'In Serbia, one of the most', [3] 'As of 2023, one of the most', [4] 'In Serbia, a very popular and'. N=4. Thesis classification (DIRECT/ADJACENT/OFF-TOPIC): all are DIRECT. Final-answer extraction (last explicit conclusion): [1]=no single committed final artist, [2]=Saratonin, [3]=Jelena Karleusa, [4]=Petar Graso. Key factuality concern: [3] claims collaborations with Bad Bunny and Billie Eilish\u2014uncorroborated/unverifiable, so it reduces quality. Overall: [2] best balances a single clear guess with hedging; [4] also gives a clear guess but is more assertion-heavy; [1] is less responsive due to not selecting one 'most' artist; [3] is most affected by unverifiable specifics and weaker 'right now' grounding.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (1) Identify a specific artist who is the most relevant in Serbia right now: [1]=Partial (gives several names, no single pick), [2]=Pass, [3]=Pass, [4]=Pass. (2) Address the 'right now' aspect with recency/caution: [1]=Partial (generic), [2]=Partial (likely/contender, no evidence), [3]=Fail/Partial (says as of 2023), [4]=Partial (asserts 'right now' without support). (3) Stay on-topic (Serbia music relevance): all Pass. Perception scan: markers [1]-[4] found; first 5 words after each: [1] 'As of the latest information', [2] 'In Serbia, one of the most', [3] 'As of 2023, one of the most', [4] 'In Serbia, a very popular and'. N=4. Thesis classification (DIRECT/ADJACENT/OFF-TOPIC): all are DIRECT. Final-answer extraction (last explicit conclusion): [1]=no single committed final artist, [2]=Saratonin, [3]=Jelena Karleusa, [4]=Petar Graso. Key factuality concern: [3] claims collaborations with Bad Bunny and Billie Eilish\u2014uncorroborated/unverifiable, so it reduces quality. Overall: [2] best balances a single clear guess with hedging; [4] also gives a clear guess but is more assertion-heavy; [1] is less responsive due to not selecting one 'most' artist; [3] is most affected by unverifiable specifics and weaker 'right now' grounding.\",\n  \"ratings\": [\n    6.4,\n    7.8,\n    5.9,\n    7.1\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 33.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=6.400\n  [2] INCORRECT score=7.800\n  [3] INCORRECT score=5.900\n  [4] INCORRECT score=7.100\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 33.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=6.400\n  [2] INCORRECT score=7.800\n  [3] INCORRECT score=5.900\n  [4] INCORRECT score=7.100",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts failed identically (33.3%, deterministic outputs). The correct candidate was [1], which names well-known Serbian artists (Ceca, Jelena Karleu\u0161a, Rasta) with honest hedging and recommends checking current sources. The agent ranked it 3rd (6.4) behind fabrication-laden candidates [2] (7.8, names 'Buba Corelli from Novi Sad' \u2014 he's Bosnian, and 'Saratonin' \u2014 likely fabricated) and [4] (7.1, claims 'Petar Graso' aka 'Crni Dvor' \u2014 Petar Gra\u0161o is Croatian, the stage name is fabricated).\n\nThe single root cause: **the agent treated confident specificity as a quality signal superior to honest uncertainty, even on a time-dependent subjective question where the specific claims were unverified fabrications.**\n\n## Playbook Entries That Should Have Prevented This\n\n### [132aab84] \u2014 FOCUS ALIGNMENT CHECK\nThis entry explicitly says: 'For subjective questions, listing multiple plausible on-topic answers with appropriate hedging is DIRECT, not ADJACENT. Confident assertion of a single unverifiable answer is a risk factor, not an advantage.' The agent classified all candidates as DIRECT but then *ignored* the risk-factor half of the rule. It rewarded [2] for 'balancing a single clear guess with hedging' \u2014 directly contradicting its own playbook. The entry's subjective-question gate was the right mechanism but was treated as a classification pass-through rather than a scoring modifier. **Diagnosis**: The entry tells the agent what to classify but doesn't provide an explicit scoring artifact or hard gate for subjective questions. The HARD GATE only fires for objective questions, leaving the subjective path unguarded.\n\n### [005004a4] \u2014 Factuality checks\nThe VERIFICATION GATE (ISOLATE\u2192COUNTER\u2192CLASSIFY) was applied to [3] (Bad Bunny/Billie Eilish collaborations flagged) but NOT to [2] or [4]. Buba Corelli being 'from Novi Sad' (he's from Sarajevo/Bosnia), the existence of 'Saratonin,' and Petar Gra\u0161o being described as a Serbian artist with stage name 'Crni Dvor' are all verifiably false or fabricated. The MANDATORY SYMMETRY TABLE was never produced. The 'Honest acknowledgment of uncertainty is NEVER a deficiency when input is genuinely ambiguous' rule was directly violated. **Diagnosis**: The entry has the right rules but no trigger to ensure verification is symmetric. The agent cherry-picked the most obvious fabrication ([3]) and stopped.\n\n### [c8698dee] \u2014 Constraint extraction\nThe agent extracted a constraint 'Identify a specific artist who is the most relevant' and scored [1] as Partial for naming several artists without a single pick. But on a subjective, time-dependent question, naming several well-known verifiable artists IS a complete, appropriate response. The constraint extraction step doesn't account for question type \u2014 it mechanically treated 'who is the most' as demanding a single-name answer, which penalized the correct, responsible response.\n\n## What's Missing from the Playbook\n\n### 1. Fabrication-Likelihood Heuristic for Obscure Named Entities\n**Trigger**: A candidate names a specific person/entity that is obscure or unknown to the judge, paired with specific biographical claims (origin city, stage name, genre fusion).\n**Procedure**: (a) Flag the entity as UNVERIFIED-ENTITY. (b) Check any verifiable peripheral claims about that entity (city, nationality, career facts). If peripheral claims fail verification, the entity name itself becomes suspect. (c) A candidate whose primary advantage is naming an UNVERIFIED-ENTITY with failed peripheral claims must not outscore a candidate naming well-established, widely-known figures.\n**Artifact**: [Candidate | Named entity | Peripheral claim | Verified/Failed/Unverifiable]\n**Verification**: Before crediting specificity, at least one peripheral claim about the named entity must be verified or at least not contradicted.\n\n### 2. Subjective-Question Scoring Hard Gate (refinement of [132aab84])\nThe current entry correctly identifies subjective questions but provides no scoring enforcement. Needed: When QUESTION-TYPE GATE classifies a question as subjective/time-dependent, apply a SUBJECTIVE SCORING GATE: (a) Candidates naming well-known, verifiable figures with appropriate hedging get a floor score. (b) Candidates asserting a single obscure/unverifiable answer as 'most relevant' get a ceiling score that cannot exceed the floor of (a) unless the obscure entity is independently verified. (c) The 'risk factor' language in the current entry must become a hard constraint, not advisory.\n\n### 3. Symmetric Verification Enforcement (refinement of [005004a4])\nThe MANDATORY SYMMETRY TABLE exists but wasn't produced. Need a stronger trigger: 'If you apply ISOLATE\u2192COUNTER\u2192CLASSIFY to ANY candidate, you MUST apply it to ALL candidates that name specific entities or make specific factual claims. Verification of only the most obviously wrong candidate is incomplete and forbidden.'\n\n### 4. Specificity-Is-Not-Accuracy Rule\n**Trigger**: Agent's reasoning cites 'provides a specific/clear/committed answer' as a positive signal.\n**Check**: Was that specific answer verified? If not, specificity is a presentation quality, not an accuracy signal. On factuality-sensitive evaluations, unverified specificity is a risk factor that must not outweigh verified generality.\n\n## Execution Slip vs. Missing Knowledge\n\nThis is primarily an execution slip layered on a structural playbook gap. The agent had the right rules ([132aab84]'s subjective question gate, [005004a4]'s honest-uncertainty rule) but failed to execute them. However, the playbook gap is real: the subjective-question gate has no hard scoring enforcement, and verification symmetry is advisory rather than mandatory. Both gaps need procedural hardening. The identical failure across two rollouts confirms this is a systematic pattern, not noise."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The agent encountered candidates naming obscure entities (Saratonin, Crni Dvor as a stage name) paired with specific biographical claims (Buba Corelli from Novi Sad, Petar Gra\u0161o as Serbian). The agent had no procedure to flag these as fabrication-suspect when peripheral claims are verifiable and wrong.",
+          "gap_type": "procedure",
+          "suggested_content": "FABRICATION SUSPICION TRIGGER: When a candidate names a specific person or entity that is unfamiliar or obscure to the judge, paired with at least one specific biographical claim (city, nationality, stage name, genre fusion, collaboration): (1) Flag entity as UNVERIFIED-ENTITY. (2) Check any peripheral claims about that entity against known facts (nationality, city of origin, career facts). (3) If ANY peripheral claim is VERIFIED FALSE \u2192 the entity name itself is suspect. Mark the candidate as FABRICATION-SUSPECT. (4) A FABRICATION-SUSPECT candidate cannot outscore a candidate naming well-established, widely-known figures unless the FABRICATION-SUSPECT flag is cleared by positive verification. Produce artifact: [Candidate | Named entity | Peripheral claim | Verified/Failed/Unverifiable].",
+          "trigger": "Fires during factuality assessment whenever a candidate names a specific person/entity the judge does not confidently recognize, especially when paired with specific biographical details."
+        },
+        {
+          "situation": "The agent correctly identified a subjective/time-dependent question via 132aab84's QUESTION-TYPE GATE but then had no scoring enforcement for subjective questions \u2014 the HARD GATE only fires for objective questions. This left the subjective path completely unguarded, allowing the agent to reward unverified specificity over honest hedging.",
+          "gap_type": "verification_gate",
+          "suggested_content": "SUBJECTIVE-QUESTION SCORING GATE (fires after QUESTION-TYPE GATE classifies question as subjective/time-dependent): (1) Candidates naming well-known, independently verifiable figures with appropriate hedging receive a FLOOR score for responsiveness \u2014 they cannot be penalized for not committing to a single answer. (2) Candidates asserting a single obscure/unverifiable answer receive a CEILING score that cannot exceed the floor from (1) UNLESS the obscure entity is independently verified by the judge. (3) On subjective questions, constraint extraction MUST NOT interpret 'most relevant/popular/best' as requiring exactly one name \u2014 listing multiple plausible options IS a complete response. (4) The 'risk factor' language in 132aab84 becomes a hard constraint: confident assertion of unverifiable specifics on a subjective question is scored as a risk, not an advantage.",
+          "trigger": "Fires immediately after the QUESTION-TYPE GATE in 132aab84 classifies the question as subjective, opinion-based, or time-dependent."
+        },
+        {
+          "situation": "The agent applied ISOLATE\u2192COUNTER\u2192CLASSIFY to candidate [3]'s claims but not to [2] or [4], despite all three making specific factual claims about named entities. The MANDATORY SYMMETRY TABLE (required by 005004a4) was never produced. The existing entry has the right rule but insufficient trigger strength.",
+          "gap_type": "checklist",
+          "suggested_content": "SYMMETRIC VERIFICATION ENFORCEMENT (strengthens 005004a4): If you apply ISOLATE\u2192COUNTER\u2192CLASSIFY to ANY candidate's factual claims, you MUST apply it to ALL candidates that make specific factual claims (named entities, biographical details, collaboration claims, geographic attributions). Checking only the most obviously wrong candidate is INCOMPLETE and FORBIDDEN. The MANDATORY SYMMETRY TABLE is not optional \u2014 it must be produced IN WRITING whenever any candidate is flagged. Failure to produce it is a procedural violation that invalidates the scoring.",
+          "trigger": "Fires immediately after any single candidate's factual claim is subjected to ISOLATE\u2192COUNTER\u2192CLASSIFY verification."
+        },
+        {
+          "situation": "The agent cited 'provides a specific/clear/committed answer' as a positive signal for [2] and [4] without verifying whether those specific answers were accurate. Specificity was treated as evidence of quality rather than as a presentation feature that requires verification on factuality-sensitive evaluations.",
+          "gap_type": "principle",
+          "suggested_content": "SPECIFICITY-IS-NOT-ACCURACY PRINCIPLE: When the agent's reasoning cites 'provides a specific/clear/committed answer' as a positive differentiator: (1) Check: was that specific answer verified as accurate? (2) If not, specificity is a PRESENTATION quality, not an ACCURACY signal. (3) On factuality-sensitive evaluations, unverified specificity is a RISK FACTOR that must not outweigh verified generality or honest hedging. (4) A candidate that names three well-known verifiable figures with hedging is MORE responsive than one that names one unverifiable figure with confidence.",
+          "trigger": "Fires during scoring whenever the agent's reasoning positively weights specificity, confidence, or commitment as a differentiator between candidates."
+        },
+        {
+          "situation": "The FINAL ANSWER EXTRACTION procedure (f26064e1) extracted [1]'s answer as 'no single committed final artist,' framing it as less responsive. But on a subjective question, listing multiple well-known artists IS a committed answer. The extraction procedure lacks a question-type modifier.",
+          "gap_type": "procedure",
+          "suggested_content": "QUESTION-TYPE MODIFIER FOR FINAL ANSWER EXTRACTION: When the question is classified as subjective/time-dependent (per 132aab84's QUESTION-TYPE GATE): (1) A response listing multiple plausible named entities with appropriate hedging HAS a committed final answer \u2014 its answer is 'several of these well-known figures are plausible.' (2) Do not code such responses as having 'no committed answer' or 'no single final artist.' (3) The comparison artifact should note: [Candidate | Listed entities | Entities verifiable? | Hedging appropriate?] rather than penalizing multi-entity responses.",
+          "trigger": "Fires during FINAL ANSWER EXTRACTION (f26064e1) when the question has been classified as subjective/time-dependent."
+        }
+      ],
+      "analysis": "**Credit attribution summary**: The failure was perfectly deterministic (identical reasoning, ratings, and rankings across all three runs: rollout_1, rollout_2, and PP trace), confirming a systematic structural problem rather than stochastic variance.\n\n**Root cause agreement with anchor**: I AGREE that the single root cause is the agent treating confident specificity as a quality signal superior to honest uncertainty, even when the specific claims were unverified fabrications. However, I REFINE the anchor's analysis by identifying the proximate causal chain more precisely: (1) c8698dee's constraint extraction mechanically parsed 'who is the most' as requiring a single name \u2192 [1] got 'Partial'; (2) f26064e1's final answer extraction coded [1] as 'no single committed final artist' \u2192 [1] further penalized; (3) 005004a4's verification was applied asymmetrically (only to [3]) and its MANDATORY SYMMETRY TABLE was never produced \u2192 fabrications in [2] and [4] went unchecked; (4) 132aab84's subjective-question gate correctly identified the question type but had no scoring enforcement \u2192 the risk-factor language was treated as advisory.\n\n**Key anchor corrections**: I DISAGREE with the anchor's neutral tags on f26064e1 (it was actively harmful by framing multi-entity responses as uncommitted), 295257e2 (its enforcement step should have caught the correct-above-incorrect inversion but was never executed), and 8c88459e (its HEDGING-SEVERITY RULE directly addresses this scenario but was not applied). I REFINE 93b0e8f9 from neutral to harmful: its self-consistency check ('confirm the top-rated candidate genuinely best satisfies' the stated criteria) should have caught the inconsistency between the agent's factuality concern about [3] and its failure to check [2] and [4].\n\n**Execution slip vs. structural gap**: This is BOTH. Multiple existing entries (005004a4's symmetry table, 295257e2's enforcement, 8c88459e's hedging-severity rule, 93b0e8f9's self-audit) had the right mechanisms to prevent this error but were not executed \u2014 that's an execution slip pattern suggesting these entries lack trigger salience or are too easily skipped. The structural gaps are also real: (1) 132aab84's subjective-question gate has no scoring enforcement; (2) no fabrication-suspicion procedure exists for obscure named entities; (3) the specificity-as-quality heuristic has no guardrail; (4) constraint extraction and final answer extraction lack question-type modifiers.\n\n**Prioritized recommendations**: The highest-impact change is adding a SUBJECTIVE-QUESTION SCORING GATE that converts 132aab84's advisory risk-factor language into a hard constraint. Second priority is strengthening the MANDATORY SYMMETRY TABLE trigger in 005004a4 to make it non-skippable. Third is adding a fabrication-suspicion procedure for obscure named entities. These three changes together would have prevented this failure mode."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "**Agreement with anchor**: The anchor correctly identifies the core failure: the agent rewarded unverified specificity (candidates [2] and [4] naming obscure or misattributed entities) over verified generality (candidate [1] naming well-known Serbian artists with appropriate hedging). The asymmetric verification diagnosis is also correct\u2014ISOLATE\u2192COUNTER\u2192CLASSIFY was applied to [3]'s obvious Bad Bunny/Billie Eilish fabrication but never to [2]'s claim that Buba Corelli is 'from Novi Sad' (he's Bosnian, from Sarajevo) or the likely fabricated 'Saratonin,' nor to [4]'s claim that Petar Gra\u0161o (Croatian) is a Serbian artist with a fabricated stage name. The anchor's root cause\u2014specificity treated as quality without verification\u2014is correct and well-evidenced.\n\n**Refinement of anchor**: The anchor tags 132aab84, 005004a4, and c8698dee as harmful, which I agree with but with important nuance. These entries contain the right guidance but lack enforcement mechanisms, creating a false sense of procedural coverage:\n- 132aab84's QUESTION-TYPE GATE correctly classifies subjective questions but has no SCORING GATE\u2014the agent classified all candidates as DIRECT and then penalized [1] for not picking a single name, directly contradicting the entry's own advisory that 'listing multiple plausible answers is DIRECT, not ADJACENT.'\n- 005004a4's MANDATORY SYMMETRY TABLE was never produced despite the agent flagging [3]. The entry says 'after penalizing ANY candidate, produce' the table\u2014this trigger fired but was ignored.\n- c8698dee's constraint extraction produced 'Identify a specific artist' as a constraint, mechanically converting a flexible subjective prompt into a rigid single-answer requirement.\n\nThe deterministic reproduction across both rollouts confirms this is systematic, not noise.\n\n**Key causal chain**: Constraint extraction (c8698dee) \u2192 rigid 'name one artist' requirement \u2192 [1] scored Partial \u2192 specificity of [2] and [4] rewarded without verification \u2192 asymmetric verification (only [3] checked) \u2192 wrong winner. Three entries each contributed a step to this chain.\n\n**What the anchor misses**: The anchor proposes four domain-specific fixes. The more transferable insight is that this failure class\u2014rewarding confident-sounding specificity over hedged accuracy\u2014recurs across ANY evaluation task. The operational fix is a verification prerequisite before crediting specificity, not just a domain-specific heuristic for Serbian music.",
+      "principles": [
+        {
+          "statement": "Before crediting specificity or confidence as a quality signal, verify the specific claims. Unverified specificity is a presentation trait, not accuracy evidence; it must not outweigh verified-but-general content.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "005004a4",
+          "trigger": "When your reasoning cites 'provides a specific/clear/committed answer' as a positive differentiator over a hedged or general answer.",
+          "verification_or_artifact": "For each candidate whose advantage is specificity, apply ISOLATE\u2192COUNTER\u2192CLASSIFY to its specific claims. If claims are UNVERIFIABLE or VERIFIED-FALSE, the specificity advantage is nullified or becomes a penalty.",
+          "evidence": "Agent scored [2] at 7.8 for naming 'Buba Corelli from Novi Sad' and 'Saratonin'\u2014both unverifiable or verifiably wrong\u2014over [1] at 6.4, which named well-known, verifiable Serbian artists. The specificity of [2] was treated as quality without any verification step."
+        },
+        {
+          "statement": "If you scrutinize ANY candidate's factual claims via ISOLATE\u2192COUNTER\u2192CLASSIFY, you must apply equal scrutiny to ALL candidates' comparable claims before scoring. One-sided verification is procedurally invalid.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "005004a4",
+          "trigger": "After applying ISOLATE\u2192COUNTER\u2192CLASSIFY to any candidate, before finalizing scores.",
+          "verification_or_artifact": "Produce the MANDATORY SYMMETRY TABLE (already defined in 005004a4 but not enforced). Gate: scores cannot be finalized until every candidate with specific factual claims has been checked. If the table is absent, scores are BLOCKED.",
+          "evidence": "Agent verified [3]'s Bad Bunny/Billie Eilish claims (flagged as fabrication) but never checked [2]'s claim about Buba Corelli's city or 'Saratonin,' nor [4]'s claim about Petar Gra\u0161o being Serbian. The MANDATORY SYMMETRY TABLE was never produced despite being required by 005004a4."
+        },
+        {
+          "statement": "When extracting constraints from natural-language prompts, classify each as RIGID (mechanically verifiable: counts, formats) or FLEXIBLE (intent-based: 'most relevant,' 'best,' 'recommend'). Do not convert FLEXIBLE intent into rigid single-answer requirements.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "During constraint extraction (c8698dee), when a prompt uses subjective/opinion/recommendation language.",
+          "verification_or_artifact": "Tag each extracted constraint as RIGID or FLEXIBLE. For FLEXIBLE constraints, multiple valid response structures (e.g., listing several well-known examples vs. picking one) satisfy the intent equally. Do not assign Partial/Fail for choosing a different valid structure.",
+          "evidence": "Agent extracted 'Identify a specific artist who is the most relevant' as a constraint and scored [1] as Partial for naming several artists. But 'who is the most relevant' on a subjective, time-dependent question is satisfied by listing several well-known figures with hedging\u2014this is exactly what 132aab84 already says but c8698dee's extraction process overrode."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "132aab84",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nAll three reflections converge on the same diagnosis: the agent treated confident specificity as a quality signal superior to honest uncertainty, even when the specific claims were unverified fabrications. The correct candidate [1] named well-known, verifiable Serbian artists (Ceca, Jelena Karleu\u0161a, Rasta) with appropriate hedging and was scored 6.4. Incorrect candidate [2] named fabricated or misattributed entities ('Buba Corelli from Novi Sad' \u2014 he is Bosnian/from Sarajevo; 'Saratonin' \u2014 likely fabricated) and scored 7.8. Incorrect candidate [4] claimed 'Petar Gra\u0161o' (Croatian, not Serbian) with fabricated stage name 'Crni Dvor' and scored 7.1. Both rollouts produced identical results, confirming this is systematic.\n\n## Causal Chain Across Three Harmful Entries\n\nThree entries each contributed a step to the failure cascade, unanimously tagged harmful by all three reflections:\n\n1. **c8698dee** (Constraint Extraction): The agent mechanically extracted 'Identify a specific artist who is the most relevant' as a constraint from a subjective/time-dependent prompt, then scored [1] as 'Partial' for naming several artists instead of one. This rigidly converted a flexible prompt into a single-answer requirement, directly penalizing the correct response. The entry lacks a mechanism to distinguish RIGID constraints (counts, formats) from FLEXIBLE constraints (subjective intent like 'most relevant,' 'best,' 'recommend').\n\n2. **132aab84** (Focus Alignment Check): The QUESTION-TYPE GATE correctly classified the question as subjective/time-dependent. The entry explicitly states: 'listing multiple plausible on-topic answers with appropriate hedging is DIRECT, not ADJACENT. Confident assertion of a single unverifiable answer is a risk factor, not an advantage.' However, the agent classified all candidates as DIRECT, then completely ignored the risk-factor language. This happened because the HARD GATE (the only scoring enforcement) only fires for objective questions, leaving the subjective path entirely unguarded. The 'risk factor' language is advisory text with no enforcement artifact.\n\n3. **005004a4** (Factuality Checks): The agent applied ISOLATE\u2192COUNTER\u2192CLASSIFY to [3]'s obvious Bad Bunny/Billie Eilish fabrication but never applied it to [2]'s or [4]'s equally specific claims. The MANDATORY SYMMETRY TABLE was never produced despite the entry explicitly requiring it 'after penalizing ANY candidate.' The entry's 'honest acknowledgment of uncertainty is NEVER a deficiency' rule was directly violated. The entry has all the right mechanisms, but one-sided verification is not blocked by a hard procedural gate.\n\n## Why 132aab84 Is the Highest-Priority Fix\n\nThe most upstream cause in the chain is the missing scoring enforcement for subjective questions. If the QUESTION-TYPE GATE's classification had triggered a SUBJECTIVE SCORING GATE \u2014 converting the risk-factor language into a hard constraint \u2014 the agent would not have penalized [1] for hedging or rewarded [2] for unverified confidence. This fix is (a) well-defined and surgical (adding a scoring artifact to an existing classification step), (b) unanimously supported by all three reflections, (c) addresses the structural gap most directly (the subjective path has zero enforcement today), and (d) targets an entry with a clean track record (+1/-1) where additional guidance is less likely to cause overload.\n\nThe symmetric verification issue in 005004a4 is also well-supported but secondary: the agent didn't verify [2] and [4] partly because it had already decided their specificity was an advantage. Fixing the upstream valuation of specificity-vs-hedging is more likely to prevent the downstream verification skip. Additionally, 005004a4 has a -17 harmful score history, suggesting it may already be overloaded with guidance and further additions risk reducing compliance.\n\n## Proposed Update to 132aab84\n\nAdd a SUBJECTIVE-QUESTION SCORING GATE that fires after the QUESTION-TYPE GATE classifies a question as subjective/time-dependent:\n\n1. Constraint extraction MUST NOT interpret 'most relevant/popular/best' as requiring exactly one answer \u2014 listing multiple plausible options IS a complete response (aligns with existing advisory text, now enforced).\n2. Candidates naming well-known, independently verifiable figures with appropriate hedging receive a FLOOR score \u2014 they cannot be penalized for not committing to a single answer.\n3. Candidates asserting a single obscure/unverifiable answer receive a CEILING score that cannot exceed the floor from (2) unless the obscure entity is independently verified by ISOLATE\u2192COUNTER\u2192CLASSIFY.\n4. The existing 'risk factor' language becomes a hard constraint: confident assertion of unverifiable specifics on a subjective question is scored as a risk, not an advantage.\n\n## Execution Slip vs. Structural Gap\n\nThis is both. Existing entries (005004a4's symmetry table, 295257e2's correct-above-incorrect enforcement, 93b0e8f9's self-audit) contain mechanisms that should have caught this failure but were not executed \u2014 that is an execution slip pattern. However, the structural gap is real and addressable: 132aab84's subjective-question gate has zero scoring enforcement. The deterministic reproduction across rollouts and the clean causal chain confirm this is a systematic structural issue, not noise.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent rewarded unverified confident specificity over verified hedged generality on a subjective question. The root cause is that 132aab84's QUESTION-TYPE GATE correctly classifies subjective questions but has no scoring enforcement \u2014 the HARD GATE only fires for objective questions, leaving the subjective path entirely unguarded. This allowed constraint extraction (c8698dee) to rigidly penalize multi-answer responses and factuality verification (005004a4) to be applied asymmetrically.",
+      "important_disagreements": [
+        "Credit_attribution tagged f26064e1, 93b0e8f9, 8c88459e, and 295257e2 as harmful; anchor and principle_extraction tagged them neutral. Resolution: These entries contain relevant mechanisms that failed to fire, but they didn't actively cause the error \u2014 they failed to prevent it. This is a weaker signal than the three entries that actively contributed to the wrong ranking. Tagged neutral to avoid over-attributing harm to entries whose main sin was being insufficient guardrails.",
+        "Credit_attribution tagged 4abe1be4 and 61b87a5f as helpful; others tagged neutral. Resolution: These entries performed their basic function (perception scan, output formatting) without contributing to the core failure. Tagged neutral since they neither caused nor prevented the factuality error.",
+        "All three reflections identified 3-5 coverage gaps. Resolution: Most are refinements of existing entries (WEAK coverage per principle_extraction), not genuinely missing capabilities. The conservative path is to update one existing entry (132aab84) rather than add multiple new entries. The symmetric verification enforcement (005004a4) and constraint rigidity classification (c8698dee) are noted as secondary priorities but deferred to avoid overloading this run."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "The failure stems from an existing entry (132aab84) that correctly identifies the problem space (subjective questions) and even contains the right advisory language ('risk factor, not an advantage') but lacks a scoring enforcement gate. This is a classic 'update to add enforcement' scenario \u2014 the knowledge exists, the trigger exists, only the hard gate is missing. All three reflections independently converge on this diagnosis with high confidence.",
+      "conservatism_rationale": "Despite all three reflections identifying 3-5 changes, a single surgical update to 132aab84 addresses the most upstream cause. The symmetric verification issue in 005004a4 is real but secondary (and that entry has -17 harmful history, suggesting it may be overloaded). The constraint extraction issue in c8698dee would be partly resolved by 132aab84's update since the subjective scoring gate would override rigid constraint interpretation. One well-placed enforcement gate is more likely to be followed than multiple scattered additions. If this fix proves insufficient, the next run's trace will confirm whether 005004a4 also needs updating.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"132aab84\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nAll three reflections converge on the same diagnosis: the agent treated confident specificity as a quality signal superior to honest uncertainty, even when the specific claims were unverified fabrications. The correct candidate [1] named well-known, verifiable Serbian artists (Ceca, Jelena Karleu\u0161a, Rasta) with appropriate hedging and was scored 6.4. Incorrect candidate [2] named fabricated or misattributed entities ('Buba Corelli from Novi Sad' \u2014 he is Bosnian/from Sarajevo; 'Saratonin' \u2014 likely fabricated) and scored 7.8. Incorrect candidate [4] claimed 'Petar Gra\u0161o' (Croatian, not Serbian) with fabricated stage name 'Crni Dvor' and scored 7.1. Both rollouts produced identical results, confirming this is systematic.\\n\\n## Causal Chain Across Three Harmful Entries\\n\\nThree entries each contributed a step to the failure cascade, unanimously tagged harmful by all three reflections:\\n\\n1. **c8698dee** (Constraint Extraction): The agent mechanically extracted 'Identify a specific artist who is the most relevant' as a constraint from a subjective/time-dependent prompt, then scored [1] as 'Partial' for naming several artists instead of one. This rigidly converted a flexible prompt into a single-answer requirement, directly penalizing the correct response. The entry lacks a mechanism to distinguish RIGID constraints (counts, formats) from FLEXIBLE constraints (subjective intent like 'most relevant,' 'best,' 'recommend').\\n\\n2. **132aab84** (Focus Alignment Check): The QUESTION-TYPE GATE correctly classified the question as subjective/time-dependent. The entry explicitly states: 'listing multiple plausible on-topic answers with appropriate hedging is DIRECT, not ADJACENT. Confident assertion of a single unverifiable answer is a risk factor, not an advantage.' However, the agent classified all candidates as DIRECT, then completely ignored the risk-factor language. This happened because the HARD GATE (the only scoring enforcement) only fires for objective questions, leaving the subjective path entirely unguarded. The 'risk factor' language is advisory text with no enforcement artifact.\\n\\n3. **005004a4** (Factuality Checks): The agent applied ISOLATE\u2192COUNTER\u2192CLASSIFY to [3]'s obvious Bad Bunny/Billie Eilish fabrication but never applied it to [2]'s or [4]'s equally specific claims. The MANDATORY SYMMETRY TABLE was never produced despite the entry explicitly requiring it 'after penalizing ANY candidate.' The entry's 'honest acknowledgment of uncertainty is NEVER a deficiency' rule was directly violated. The entry has all the right mechanisms, but one-sided verification is not blocked by a hard procedural gate.\\n\\n## Why 132aab84 Is the Highest-Priority Fix\\n\\nThe most upstream cause in the chain is the missing scoring enforcement for subjective questions. If the QUESTION-TYPE GATE's classification had triggered a SUBJECTIVE SCORING GATE \u2014 converting the risk-factor language into a hard constraint \u2014 the agent would not have penalized [1] for hedging or rewarded [2] for unverified confidence. This fix is (a) well-defined and surgical (adding a scoring artifact to an existing classification step), (b) unanimously supported by all three reflections, (c) addresses the structural gap most directly (the subjective path has zero enforcement today), and (d) targets an entry with a clean track record (+1/-1) where additional guidance is less likely to cause overload.\\n\\nThe symmetric verification issue in 005004a4 is also well-supported but secondary: the agent didn't verify [2] and [4] partly because it had already decided their specificity was an advantage. Fixing the upstream valuation of specificity-vs-hedging is more likely to prevent the downstream verification skip. Additionally, 005004a4 has a -17 harmful score history, suggesting it may already be overloaded with guidance and further additions risk reducing compliance.\\n\\n## Proposed Update to 132aab84\\n\\nAdd a SUBJECTIVE-QUESTION SCORING GATE that fires after the QUESTION-TYPE GATE classifies a question as subjective/time-dependent:\\n\\n1. Constraint extraction MUST NOT interpret 'most relevant/popular/best' as requiring exactly one answer \u2014 listing multiple plausible options IS a complete response (aligns with existing advisory text, now enforced).\\n2. Candidates naming well-known, independently verifiable figures with appropriate hedging receive a FLOOR score \u2014 they cannot be penalized for not committing to a single answer.\\n3. Candidates asserting a single obscure/unverifiable answer receive a CEILING score that cannot exceed the floor from (2) unless the obscure entity is independently verified by ISOLATE\u2192COUNTER\u2192CLASSIFY.\\n4. The existing 'risk factor' language becomes a hard constraint: confident assertion of unverifiable specifics on a subjective question is scored as a risk, not an advantage.\\n\\n## Execution Slip vs. Structural Gap\\n\\nThis is both. Existing entries (005004a4's symmetry table, 295257e2's correct-above-incorrect enforcement, 93b0e8f9's self-audit) contain mechanisms that should have caught this failure but were not executed \u2014 that is an execution slip pattern. However, the structural gap is real and addressable: 132aab84's subjective-question gate has zero scoring enforcement. The deterministic reproduction across rollouts and the clean causal chain confirm this is a systematic structural issue, not noise.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent rewarded unverified confident specificity over verified hedged generality on a subjective question. The root cause is that 132aab84's QUESTION-TYPE GATE correctly classifies subjective questions but has no scoring enforcement \u2014 the HARD GATE only fires for objective questions, leaving the subjective path entirely unguarded. This allowed constraint extraction (c8698dee) to rigidly penalize multi-answer responses and factuality verification (005004a4) to be applied asymmetrically.\",\n    \"important_disagreements\": [\n      \"Credit_attribution tagged f26064e1, 93b0e8f9, 8c88459e, and 295257e2 as harmful; anchor and principle_extraction tagged them neutral. Resolution: These entries contain relevant mechanisms that failed to fire, but they didn't actively cause the error \u2014 they failed to prevent it. This is a weaker signal than the three entries that actively contributed to the wrong ranking. Tagged neutral to avoid over-attributing harm to entries whose main sin was being insufficient guardrails.\",\n      \"Credit_attribution tagged 4abe1be4 and 61b87a5f as helpful; others tagged neutral. Resolution: These entries performed their basic function (perception scan, output formatting) without contributing to the core failure. Tagged neutral since they neither caused nor prevented the factuality error.\",\n      \"All three reflections identified 3-5 coverage gaps. Resolution: Most are refinements of existing entries (WEAK coverage per principle_extraction), not genuinely missing capabilities. The conservative path is to update one existing entry (132aab84) rather than add multiple new entries. The symmetric verification enforcement (005004a4) and constraint rigidity classification (c8698dee) are noted as secondary priorities but deferred to avoid overloading this run.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"The failure stems from an existing entry (132aab84) that correctly identifies the problem space (subjective questions) and even contains the right advisory language ('risk factor, not an advantage') but lacks a scoring enforcement gate. This is a classic 'update to add enforcement' scenario \u2014 the knowledge exists, the trigger exists, only the hard gate is missing. All three reflections independently converge on this diagnosis with high confidence.\",\n    \"conservatism_rationale\": \"Despite all three reflections identifying 3-5 changes, a single surgical update to 132aab84 addresses the most upstream cause. The symmetric verification issue in 005004a4 is real but secondary (and that entry has -17 harmful history, suggesting it may be overloaded). The constraint extraction issue in c8698dee would be partly resolved by 132aab84's update since the subjective scoring gate would override rigid constraint interpretation. One well-placed enforcement gate is more likely to be followed than multiple scattered additions. If this fix proves insufficient, the next run's trace will confirm whether 005004a4 also needs updating.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 1,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 1,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    }
+  ]
+}

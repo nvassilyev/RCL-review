@@ -1,0 +1,45 @@
+{
+  "combined_analysis": "## Root Cause\n\nThis is a **self-consistency failure at the answer extraction stage**, not a search or reading failure. The agent performed well on retrieval (5/7 gold docs in 3 searches) and correctly identified the full name 'John Daniel delos Santos' in its own explanation paragraph. However, when formulating the final 'Exact Answer,' the agent dropped 'John' and wrote 'Daniel Delos Santos.' The agent's reasoning and its final answer directly contradict each other.\n\nThe likely cognitive cause: the agent attempted to parse which parts of the name constituted 'first' vs. 'last' as requested by the question, and incorrectly treated 'John' as a secondary/middle name rather than part of the given name. In Filipino naming conventions (and many other cultures), compound given names like 'John Daniel' are standard, and the full name 'John Daniel delos Santos' has 'John Daniel' as the first name and 'delos Santos' as the surname. The agent's cultural name-parsing assumption was wrong.\n\n## COVERAGE GAP: Missing Playbook Entry\n\nThere is **no playbook entry covering answer extraction for proper names.** This is the most important finding. The existing Answer Extraction entries address sub-component vs. umbrella terms, ordinal positions, and document-referenced answers \u2014 none address the very common task of extracting a person's full name from sources.\n\n## Proposed New Entry: FULL NAME FIDELITY\n\nA new playbook entry should cover:\n1. **NEVER parse or reduce names.** When a question asks for 'first and last names' (or just 'name'), reproduce the COMPLETE name exactly as stated in the source documents. Do not attempt to interpret which parts are 'first,' 'middle,' or 'last,' especially for non-Western naming conventions (Filipino, Hispanic, South Asian, etc.) where compound given names and multi-word surnames are standard.\n2. **When in doubt, include ALL name components.** Omitting a name part is almost always worse than including an extra one. 'John Daniel delos Santos' is strictly more correct than 'Daniel Delos Santos.'\n3. **Self-consistency gate:** Before submitting, re-read your own explanation and verify that the Exact Answer includes every name component mentioned there. The agent literally wrote 'John Daniel delos Santos' in its explanation and then submitted 'Daniel Delos Santos' \u2014 a trivial self-check would have caught this.\n\n## Proposed New Entry: PRE-SUBMISSION SELF-CONSISTENCY CHECK\n\nMore generally, the agent needs a final verification step: **Before submitting, compare the Exact Answer against your own explanation text. If the explanation contains information that the Exact Answer omits, reconcile them.** This is a cheap, high-value gate that catches copy errors, name truncations, and accidental omissions. This pattern (correct reasoning, wrong final answer) is a recurring failure mode that no current playbook entry addresses.\n\n## Secondary Observation\n\nThe agent also inconsistently capitalized the name ('Delos Santos' vs. 'delos Santos' in sources). While this didn't cause the failure per the judge, it reinforces the rule: reproduce names exactly as found in source documents rather than re-formatting them.",
+  "head_names": [],
+  "merge_strategy": "",
+  "proposed": [
+    {
+      "op": "ADD",
+      "section": "answer_extraction",
+      "content": "FULL NAME FIDELITY: ALWAYS apply when the answer is a person's name. (1) Copy the COMPLETE name exactly as it appears in the source document \u2014 every component, in the same order, with the same capitalization (e.g., 'delos Santos' not 'Delos Santos'). (2) NEVER attempt to parse which parts are 'first,' 'middle,' or 'last,' especially for non-Western naming conventions (Filipino, Hispanic, South Asian, etc.) where compound given names ('John Daniel') and multi-word surnames ('delos Santos,' 'de la Cruz') are standard. (3) When in doubt, INCLUDE all name components. Omitting a part is almost always worse than including an extra one. Failure mode: agent identifies 'John Daniel delos Santos' in sources but submits 'Daniel Delos Santos' \u2014 dropping 'John' by wrongly treating it as a middle name and re-capitalizing the surname. The fix is mechanical: copy, don't interpret.",
+      "source_tasks": [
+        "639"
+      ]
+    },
+    {
+      "op": "ADD",
+      "section": "answer_extraction",
+      "content": "PRE-SUBMISSION SELF-CONSISTENCY CHECK: ALWAYS perform before submitting. Read your own Explanation text, then read your Exact Answer. Ask: 'Does my Exact Answer contain every key detail (name components, numbers, units, qualifiers) that my Explanation identifies as the answer?' If the Explanation says 'John Daniel delos Santos' but the Exact Answer says 'Daniel Delos Santos,' you have a mismatch \u2014 fix it by aligning the Exact Answer to the fuller version in the Explanation. This 5-second gate catches the common failure pattern of correct reasoning paired with a truncated or garbled final answer.",
+      "source_tasks": [
+        "639"
+      ]
+    }
+  ],
+  "applied": [
+    {
+      "op": "ADD",
+      "section": "answer_extraction",
+      "content": "FULL NAME FIDELITY: ALWAYS apply when the answer is a person's name. (1) Copy the COMPLETE name exactly as it appears in the source document \u2014 every component, in the same order, with the same capitalization (e.g., 'delos Santos' not 'Delos Santos'). (2) NEVER attempt to parse which parts are 'first,' 'middle,' or 'last,' especially for non-Western naming conventions (Filipino, Hispanic, South Asian, etc.) where compound given names ('John Daniel') and multi-word surnames ('delos Santos,' 'de la Cruz') are standard. (3) When in doubt, INCLUDE all name components. Omitting a part is almost always worse than including an extra one. Failure mode: agent identifies 'John Daniel delos Santos' in sources but submits 'Daniel Delos Santos' \u2014 dropping 'John' by wrongly treating it as a middle name and re-capitalizing the surname. The fix is mechanical: copy, don't interpret.",
+      "source_tasks": [
+        "639"
+      ],
+      "entry_id": "780588d5"
+    },
+    {
+      "op": "ADD",
+      "section": "answer_extraction",
+      "content": "PRE-SUBMISSION SELF-CONSISTENCY CHECK: ALWAYS perform before submitting. Read your own Explanation text, then read your Exact Answer. Ask: 'Does my Exact Answer contain every key detail (name components, numbers, units, qualifiers) that my Explanation identifies as the answer?' If the Explanation says 'John Daniel delos Santos' but the Exact Answer says 'Daniel Delos Santos,' you have a mismatch \u2014 fix it by aligning the Exact Answer to the fuller version in the Explanation. This 5-second gate catches the common failure pattern of correct reasoning paired with a truncated or garbled final answer.",
+      "source_tasks": [
+        "639"
+      ],
+      "entry_id": "1fb20ff8"
+    }
+  ],
+  "rejected": [],
+  "raw_mutator_response": "```json\n[\n  {\n    \"op\": \"ADD\",\n    \"section\": \"answer_extraction\",\n    \"content\": \"FULL NAME FIDELITY: ALWAYS apply when the answer is a person's name. (1) Copy the COMPLETE name exactly as it appears in the source document \u2014 every component, in the same order, with the same capitalization (e.g., 'delos Santos' not 'Delos Santos'). (2) NEVER attempt to parse which parts are 'first,' 'middle,' or 'last,' especially for non-Western naming conventions (Filipino, Hispanic, South Asian, etc.) where compound given names ('John Daniel') and multi-word surnames ('delos Santos,' 'de la Cruz') are standard. (3) When in doubt, INCLUDE all name components. Omitting a part is almost always worse than including an extra one. Failure mode: agent identifies 'John Daniel delos Santos' in sources but submits 'Daniel Delos Santos' \u2014 dropping 'John' by wrongly treating it as a middle name and re-capitalizing the surname. The fix is mechanical: copy, don't interpret.\"\n  },\n  {\n    \"op\": \"ADD\",\n    \"section\": \"answer_extraction\",\n    \"content\": \"PRE-SUBMISSION SELF-CONSISTENCY CHECK: ALWAYS perform before submitting. Read your own Explanation text, then read your Exact Answer. Ask: 'Does my Exact Answer contain every key detail (name components, numbers, units, qualifiers) that my Explanation identifies as the answer?' If the Explanation says 'John Daniel delos Santos' but the Exact Answer says 'Daniel Delos Santos,' you have a mismatch \u2014 fix it by aligning the Exact Answer to the fuller version in the Explanation. This 5-second gate catches the common failure pattern of correct reasoning paired with a truncated or garbled final answer.\"\n  }\n]\n```"
+}

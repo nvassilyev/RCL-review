@@ -1,0 +1,305 @@
+{
+  "task_id": "precise_if:490",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task precise_if:490\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nAll three reflections converge on the same diagnosis with high confidence: the agent correctly perceived the 'at least 7 pronouns' constraint in its perception receipt (entry [4abe1be4] worked as intended) but **never verified it against any candidate**. Instead, the agent immediately pivoted to holistic content-quality comparison ('most complete and concrete,' 'clear positive-feedback example') and scored solely on explanation quality. The correct candidate [1] received the lowest score (8.7) while all three incorrect candidates scored higher. Both rollouts produced byte-identical outputs, confirming this is systematic, not stochastic.\n\nThis is the 'acknowledge-but-skip' antipattern: the agent mentions the constraint during perception, giving false confidence it has been checked, then proceeds with subjective quality evaluation that ignores the constraint entirely.\n\n## Why Existing Entries Didn't Prevent It\n\nEntry [c8698dee] already prescribes the right procedure \u2014 extract requirements, assign Pass/Partial/Fail per candidate, write a compliance matrix, apply a gate. The agent didn't execute steps 2-3. The entry has accumulated -3 score across prior tasks, indicating chronic non-execution. However, the entry didn't *cause* the wrong behavior (hence neutral, not harmful); it was simply insufficient to override the agent's default quality-comparison mode.\n\nThe specific gap: [c8698dee] says to 'assign Pass/Partial/Fail' but doesn't mandate **explicit show-your-work evidence** for mechanically verifiable constraints. For quantitative constraints (count \u2265 N of something), a gestalt Pass/Fail label is not enough \u2014 the agent must enumerate or count the items to produce a defensible verdict. Without requiring this intermediate artifact, the agent can skip verification entirely and assign Pass/Fail based on impression (or skip the matrix altogether, as happened here).\n\nEntry [93b0e8f9]'s consistency check ('confirm the top-rated candidate genuinely best satisfies your stated decisive criteria') passed trivially because the agent's self-chosen decisive criteria were about content quality, not constraint compliance. This is a secondary structural weakness but correcting c8698dee is more impactful.\n\nEntry [4abe1be4] is genuinely helpful \u2014 it ensured the constraint was perceived. The failure is downstream: nothing bridges perception to verification.\n\n## Recommended Mutation\n\n**Update [c8698dee]** to add a sub-procedure for quantitative/countable constraints within the existing EVALUATE step:\n\n- When a requirement involves a numeric threshold on a countable text feature (e.g., 'at least N pronouns,' 'exactly N examples,' 'no more than N sentences'), the EVALUATE step must include **explicit enumeration**: list or tally the items found in each candidate and record the count. A Pass/Fail label alone is insufficient for countable constraints; the evidence (the enumeration or count) must be written out.\n- Reinforce that the compliance matrix is a **mandatory intermediate artifact** that must be completed BEFORE any quality scoring begins. Positioning: between the perception receipt and the first score assignment.\n- Clarify the GATE as HARD for mechanically verifiable constraints: Pass/Fail on a verifiable constraint is binary and takes absolute precedence over quality gradations. No FAIL candidate may outscore any PASS candidate.\n\nThis is a single update to an existing entry, adding procedural specificity (explicit enumeration for countable constraints, mandatory artifact positioning) rather than creating a new entry. Given c8698dee's -3 track record, the strengthening must be concrete and procedural rather than adding more abstract reminders.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent perceived the 'at least 7 pronouns' constraint but never verified it against any candidate, defaulting to holistic content-quality ranking. This is the 'acknowledge-but-skip' antipattern \u2014 perception without verification gives false confidence. The fix is requiring explicit enumeration/counting as a mandatory intermediate artifact for quantitative constraints, within the existing c8698dee workflow.\",\n  \"important_disagreements\": [\n    \"Credit attribution tagged [c8698dee], [93b0e8f9], and [8e0d9579] as 'harmful' while anchor and principle_extraction tagged them 'neutral.' Resolution: these entries didn't *cause* the wrong behavior \u2014 they failed to *prevent* it, which is insufficient rather than harmful. Additionally, credit attribution was running in fallback mode (no PP tags in trace), so its evidence is narrative-inferred, same weight as other heads. Keeping neutral but noting the need for update.\",\n    \"Credit attribution suggested a separate new entry might be more effective than updating c8698dee given its -3 track record. Resolution: the conservative path is to try strengthening the existing entry with more concrete procedural specificity (explicit enumeration, mandatory artifact positioning) before introducing a sibling. If the updated entry continues to fail in future runs, escalation to a new entry is warranted.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry [c8698dee] already covers the right procedure in principle but lacks the procedural specificity needed for countable/quantitative constraints. All three reflections converge on the same gap: missing requirement for explicit enumeration and mandatory artifact positioning. An update adding this specificity is the smallest justified change that addresses the root cause.\",\n  \"conservatism_rationale\": \"One entry already partially covers this gap (c8698dee). The failure is about insufficient procedural detail, not a missing concept. A single update with concrete sub-procedure is preferred over adding a new entry or bundling updates to multiple entries. The -3 score on c8698dee is concerning but could reflect the entry's vagueness rather than fundamental design flaw; strengthening with explicit enumeration requirements is the appropriate first-line intervention.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\nexplain the difference between feedback mechanism and homeostasis The response should include at least 7 pronouns.\n\n## Candidate Responses\n\n[1]\nCertainly! In discussing these concepts, it's important to understand that both feedback mechanisms and homeostasis play crucial roles in maintaining balance within biological systems, but they operate in slightly different ways and contexts.\n\nFeedback mechanisms refer to processes where the output of a system is looped back and used as input to regulate further outputs. This can happen in two main forms: positive and negative feedback. When we talk about positive feedback, it amplifies changes, pushing the system further from its initial state. Conversely, negative feedback works to counteract deviations and bring the system back towards a set point or equilibrium. These mechanisms ensure that organisms can respond appropriately to environmental changes and internal needs, allowing for effective adaptation and survival.\n\nHomeostasis, on the other hand, is a broader concept that describes the maintenance of stable, constant conditions within an organism\u2019s internal environment, despite fluctuations in the external environment. It involves a series of regulatory processes that work together to keep various physiological parameters, such as temperature, pH, and blood sugar levels, within optimal ranges. Essentially, homeostasis relies heavily on feedback mechanisms, particularly negative feedback, to achieve this balance. However, while feedback mechanisms can be seen as the tools or processes, homeostasis represents the overarching goal or outcome of using those tools effectively.\n\nIn summary, while one might say that feedback mechanisms are the strategies employed, homeostasis is the desired result of employing those strategies successfully. Both concepts are deeply interconnected and essential for the health and stability of living beings. Understanding their differences helps us appreciate the intricate design of biological systems and how they manage to maintain stability amidst varying conditions.\n\n[2]\nWhen discussing biological systems, one often encounters the concepts of feedback mechanisms and homeostasis. These two ideas are closely related but have distinct roles. In essence, homeostasis refers to the body's ability to maintain stable internal conditions despite changes in the external environment. This ensures that all the body's systems function optimally. On the other hand, feedback mechanisms are the processes by which the body monitors and adjusts these conditions to keep them within certain limits. They play a crucial role in achieving and maintaining homeostasis.\n\nFeedback mechanisms can be categorized into two types: negative and positive. Negative feedback works to counteract changes from a set point, which is essential for maintaining balance or equilibrium. For instance, if one\u2019s body temperature rises above the normal range, this triggers a series of responses aimed at cooling the body down, such as sweating. Conversely, positive feedback amplifies changes rather than reversing them, which might seem counterintuitive to stability but serves specific purposes like intensifying labor contractions during childbirth.\n\nIn summary, while homeostasis is the overall state of equilibrium that organisms strive to achieve, feedback mechanisms are the specific tools or processes used to reach and maintain this state. Both are vital for the survival and well-being of living beings, ensuring that one's internal environment remains conducive to life, regardless of external conditions.\n\n[3]\nCertainly! When one discusses the difference between a feedback mechanism and homeostasis, it's important to understand that these concepts often intertwine but serve distinct roles within biological and engineering systems. A feedback mechanism is a process where the output of a system influences its input, creating a loop that can either amplify or diminish changes. This mechanism can be positive, where the output enhances the change, or negative, where the output counteracts the change, leading to stabilization. In many cases, organisms and machines use feedback mechanisms to achieve specific goals or maintain conditions within certain parameters.\n\nHomeostasis, on the other hand, refers to the ability of an organism or a cell to maintain a stable internal environment despite fluctuations in external conditions. This concept is closely related to negative feedback mechanisms, as both involve processes aimed at achieving balance or equilibrium. However, while a feedback mechanism can be part of a broader strategy for achieving various objectives, homeostasis specifically focuses on maintaining vital conditions necessary for survival, such as temperature, pH levels, and glucose concentration.\n\nIn essence, one could say that homeostasis is a specialized application of feedback mechanisms, particularly negative feedback, to ensure the stability of critical physiological variables. For instance, when one\u2019s body temperature rises above normal, the brain triggers mechanisms like sweating to cool the body down, bringing the temperature back to a healthy range. This example showcases how feedback mechanisms operate within the broader framework of homeostasis to sustain life and optimal functioning.\n\nUnderstanding these differences helps clarify how living beings and complex systems manage to thrive amidst varying and sometimes harsh environmental challenges. It also highlights the sophisticated interplay between different components of a system to maintain health and efficiency.\n\n[4]\nWhen we talk about feedback mechanisms and homeostasis, it's important to understand how these concepts interrelate yet maintain distinct roles in biological systems. A feedback mechanism refers to a process where the output of a system is looped back and used as input to regulate itself. This can occur in two ways: positive feedback, which amplifies changes, and negative feedback, which reduces deviations from a set point. In contrast, homeostasis is the state of steady internal conditions maintained by living things. It involves the regulation of various physiological processes to keep internal environments stable despite external changes. Homeostasis often relies on feedback mechanisms to achieve balance. For instance, when one's body temperature rises, the body responds by sweating to cool down, an example of a negative feedback mechanism working to maintain homeostasis. So, while feedback mechanisms are the tools or methods that can be employed, homeostasis is the overarching goal or result achieved through their use.\n\n## Judge Reasoning\nPROMPT QUOTE: \u201cexplain the difference between feedback mechanism and homeostasis\u201d (also requires at least 7 pronouns). CANDIDATE ROLL CALL: [1] \u201cCertainly! In discussing these concepts\u2026\u201d [2] \u201cWhen discussing biological systems\u2026\u201d [3] \u201cCertainly! When one discusses the difference\u2026\u201d [4] \u201cWhen we talk about feedback mechanisms\u2026\u201d COUNT & LOCK: N=4. All responses correctly distinguish feedback mechanisms (positive/negative loops) from homeostasis (maintaining stable internal conditions) with no commission errors. Candidate [2] is the most complete and concrete (explicitly covers both feedback types and includes a clear positive-feedback example), while [4] is nearly as strong but slightly less expansive; [1] and [3] are correct but more generic.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"PROMPT QUOTE: \u201cexplain the difference between feedback mechanism and homeostasis\u201d (also requires at least 7 pronouns). CANDIDATE ROLL CALL: [1] \u201cCertainly! In discussing these concepts\u2026\u201d [2] \u201cWhen discussing biological systems\u2026\u201d [3] \u201cCertainly! When one discusses the difference\u2026\u201d [4] \u201cWhen we talk about feedback mechanisms\u2026\u201d COUNT & LOCK: N=4. All responses correctly distinguish feedback mechanisms (positive/negative loops) from homeostasis (maintaining stable internal conditions) with no commission errors. Candidate [2] is the most complete and concrete (explicitly covers both feedback types and includes a clear positive-feedback example), while [4] is nearly as strong but slightly less expansive; [1] and [3] are correct but more generic.\",\n  \"ratings\": [\n    8.7,\n    9.3,\n    8.9,\n    9.1\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\nexplain the difference between feedback mechanism and homeostasis The response should include at least 7 pronouns.\n\n## Candidate Responses\n\n[1]\nCertainly! In discussing these concepts, it's important to understand that both feedback mechanisms and homeostasis play crucial roles in maintaining balance within biological systems, but they operate in slightly different ways and contexts.\n\nFeedback mechanisms refer to processes where the output of a system is looped back and used as input to regulate further outputs. This can happen in two main forms: positive and negative feedback. When we talk about positive feedback, it amplifies changes, pushing the system further from its initial state. Conversely, negative feedback works to counteract deviations and bring the system back towards a set point or equilibrium. These mechanisms ensure that organisms can respond appropriately to environmental changes and internal needs, allowing for effective adaptation and survival.\n\nHomeostasis, on the other hand, is a broader concept that describes the maintenance of stable, constant conditions within an organism\u2019s internal environment, despite fluctuations in the external environment. It involves a series of regulatory processes that work together to keep various physiological parameters, such as temperature, pH, and blood sugar levels, within optimal ranges. Essentially, homeostasis relies heavily on feedback mechanisms, particularly negative feedback, to achieve this balance. However, while feedback mechanisms can be seen as the tools or processes, homeostasis represents the overarching goal or outcome of using those tools effectively.\n\nIn summary, while one might say that feedback mechanisms are the strategies employed, homeostasis is the desired result of employing those strategies successfully. Both concepts are deeply interconnected and essential for the health and stability of living beings. Understanding their differences helps us appreciate the intricate design of biological systems and how they manage to maintain stability amidst varying conditions.\n\n[2]\nWhen discussing biological systems, one often encounters the concepts of feedback mechanisms and homeostasis. These two ideas are closely related but have distinct roles. In essence, homeostasis refers to the body's ability to maintain stable internal conditions despite changes in the external environment. This ensures that all the body's systems function optimally. On the other hand, feedback mechanisms are the processes by which the body monitors and adjusts these conditions to keep them within certain limits. They play a crucial role in achieving and maintaining homeostasis.\n\nFeedback mechanisms can be categorized into two types: negative and positive. Negative feedback works to counteract changes from a set point, which is essential for maintaining balance or equilibrium. For instance, if one\u2019s body temperature rises above the normal range, this triggers a series of responses aimed at cooling the body down, such as sweating. Conversely, positive feedback amplifies changes rather than reversing them, which might seem counterintuitive to stability but serves specific purposes like intensifying labor contractions during childbirth.\n\nIn summary, while homeostasis is the overall state of equilibrium that organisms strive to achieve, feedback mechanisms are the specific tools or processes used to reach and maintain this state. Both are vital for the survival and well-being of living beings, ensuring that one's internal environment remains conducive to life, regardless of external conditions.\n\n[3]\nCertainly! When one discusses the difference between a feedback mechanism and homeostasis, it's important to understand that these concepts often intertwine but serve distinct roles within biological and engineering systems. A feedback mechanism is a process where the output of a system influences its input, creating a loop that can either amplify or diminish changes. This mechanism can be positive, where the output enhances the change, or negative, where the output counteracts the change, leading to stabilization. In many cases, organisms and machines use feedback mechanisms to achieve specific goals or maintain conditions within certain parameters.\n\nHomeostasis, on the other hand, refers to the ability of an organism or a cell to maintain a stable internal environment despite fluctuations in external conditions. This concept is closely related to negative feedback mechanisms, as both involve processes aimed at achieving balance or equilibrium. However, while a feedback mechanism can be part of a broader strategy for achieving various objectives, homeostasis specifically focuses on maintaining vital conditions necessary for survival, such as temperature, pH levels, and glucose concentration.\n\nIn essence, one could say that homeostasis is a specialized application of feedback mechanisms, particularly negative feedback, to ensure the stability of critical physiological variables. For instance, when one\u2019s body temperature rises above normal, the brain triggers mechanisms like sweating to cool the body down, bringing the temperature back to a healthy range. This example showcases how feedback mechanisms operate within the broader framework of homeostasis to sustain life and optimal functioning.\n\nUnderstanding these differences helps clarify how living beings and complex systems manage to thrive amidst varying and sometimes harsh environmental challenges. It also highlights the sophisticated interplay between different components of a system to maintain health and efficiency.\n\n[4]\nWhen we talk about feedback mechanisms and homeostasis, it's important to understand how these concepts interrelate yet maintain distinct roles in biological systems. A feedback mechanism refers to a process where the output of a system is looped back and used as input to regulate itself. This can occur in two ways: positive feedback, which amplifies changes, and negative feedback, which reduces deviations from a set point. In contrast, homeostasis is the state of steady internal conditions maintained by living things. It involves the regulation of various physiological processes to keep internal environments stable despite external changes. Homeostasis often relies on feedback mechanisms to achieve balance. For instance, when one's body temperature rises, the body responds by sweating to cool down, an example of a negative feedback mechanism working to maintain homeostasis. So, while feedback mechanisms are the tools or methods that can be employed, homeostasis is the overarching goal or result achieved through their use.\n\n## Judge Reasoning\nPROMPT QUOTE: \u201cexplain the difference between feedback mechanism and homeostasis\u201d (also requires at least 7 pronouns). CANDIDATE ROLL CALL: [1] \u201cCertainly! In discussing these concepts\u2026\u201d [2] \u201cWhen discussing biological systems\u2026\u201d [3] \u201cCertainly! When one discusses the difference\u2026\u201d [4] \u201cWhen we talk about feedback mechanisms\u2026\u201d COUNT & LOCK: N=4. All responses correctly distinguish feedback mechanisms (positive/negative loops) from homeostasis (maintaining stable internal conditions) with no commission errors. Candidate [2] is the most complete and concrete (explicitly covers both feedback types and includes a clear positive-feedback example), while [4] is nearly as strong but slightly less expansive; [1] and [3] are correct but more generic.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"PROMPT QUOTE: \u201cexplain the difference between feedback mechanism and homeostasis\u201d (also requires at least 7 pronouns). CANDIDATE ROLL CALL: [1] \u201cCertainly! In discussing these concepts\u2026\u201d [2] \u201cWhen discussing biological systems\u2026\u201d [3] \u201cCertainly! When one discusses the difference\u2026\u201d [4] \u201cWhen we talk about feedback mechanisms\u2026\u201d COUNT & LOCK: N=4. All responses correctly distinguish feedback mechanisms (positive/negative loops) from homeostasis (maintaining stable internal conditions) with no commission errors. Candidate [2] is the most complete and concrete (explicitly covers both feedback types and includes a clear positive-feedback example), while [4] is nearly as strong but slightly less expansive; [1] and [3] are correct but more generic.\",\n  \"ratings\": [\n    8.7,\n    9.3,\n    8.9,\n    9.1\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 0.0%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=8.700\n  [2] INCORRECT score=9.300\n  [3] INCORRECT score=8.900\n  [4] INCORRECT score=9.100\n\n## rollout_2 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 0.0%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=8.700\n  [2] INCORRECT score=9.300\n  [3] INCORRECT score=8.900\n  [4] INCORRECT score=9.100",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts produced byte-identical outputs and failed in exactly the same way: the agent acknowledged the 'at least 7 pronouns' constraint in its perception receipt but **never actually verified it**. Instead, it jumped immediately to content-quality comparison ('most complete and concrete,' 'clear positive-feedback example') and ranked candidates solely on explanation quality. The only correct candidate [1] received the lowest score (8.7), while all three incorrect candidates scored higher.\n\nThis is a pure execution-procedure failure, not a knowledge gap \u2014 the agent knew the constraint existed but lacked a triggered verification step to count pronouns in each candidate before scoring.\n\n## Why Existing Entries Didn't Prevent the Failure\n\n1. **[c8698dee] (Instruction Following Checks)** \u2014 This entry prescribes the right procedure: EXTRACT all requirements, EVALUATE each candidate Pass/Partial/Fail, apply the GATE. But the agent didn't execute steps 2-3 for the pronoun constraint. The entry says 'assign Pass/Partial/Fail on every item' but doesn't emphasize that **quantitative constraints require showing explicit count work**. The agent treated the pronoun constraint as acknowledged-but-unverified rather than as a checkable gate.\n\n2. **[93b0e8f9] (Core Ranking Criteria)** \u2014 The entry says to 're-read your own stated decisive criteria and confirm the top-rated candidate genuinely best satisfies them.' The agent's stated decisive criteria were about content quality, not constraint compliance \u2014 so the consistency check passed trivially without catching the real error. The entry needs to require that decisive criteria **must include all hard constraints from the prompt**, not just the agent's preferred quality dimensions.\n\n3. **[8e0d9579] (Verbosity over correctness)** \u2014 Directly warns against letting generic quality outweigh constraint satisfaction. The agent's behavior is exactly this antipattern. The entry exists but was not strong enough to override the agent's content-quality focus.\n\n4. **[4abe1be4] (Input-perception gate)** \u2014 The perception receipt was produced, but acknowledging a constraint in the receipt \u2260 verifying it. The gate needs a downstream enforcement mechanism.\n\n## Missing Procedure: Quantitative-Constraint Verification Gate\n\n**Trigger:** The prompt contains a countable constraint (e.g., 'at least N [items]', 'exactly N [items]', 'no more than N [items]' where [items] are pronouns, sentences, paragraphs, words, examples, etc.)\n\n**Procedure the agent should run:**\n1. IDENTIFY the countable element and the threshold (e.g., pronoun \u2265 7).\n2. For EACH candidate, explicitly enumerate or count the instances. Show the work \u2014 list or tally the items found.\n3. Record PASS/FAIL for each candidate against the threshold.\n4. HARD GATE: No FAIL candidate may outscore any PASS candidate, regardless of content quality. If all candidates fail, proceed to content-quality tiebreaking among them.\n\n**Intermediate artifact:** A constraint-compliance table written BEFORE any scores are assigned.\n\n**Verification step:** Before finalizing the `best_response_ids`, confirm that every selected best response PASSes all quantitative constraints.\n\n## Refinement Recommendations\n\n- **[c8698dee] needs strengthening**, not a new sibling rule. The EVALUATE step should mandate that quantitative/countable constraints are verified with **explicit enumeration or count** (show-your-work), not just acknowledged. The GATE step should be a HARD separator: Pass/Fail on a verifiable constraint is binary and takes precedence over quality gradations.\n\n- **[93b0e8f9] needs a clause** requiring that 'stated decisive criteria' must include all explicit prompt constraints, not just quality factors the agent chooses to emphasize. A consistency check that only validates internally-chosen criteria will miss externally-mandated ones.\n\n- **[8e0d9579] could be strengthened** with an explicit trigger: when the agent's reasoning doesn't mention constraint verification for a prompt with stated constraints, treat this as a red flag requiring re-evaluation before scoring.\n\n## Generalized Insight\n\nThe pattern here generalizes beyond pronoun counting: whenever a prompt contains a **mechanically verifiable constraint** (word count, sentence count, inclusion of specific words, structural requirements, format requirements), the agent must run a verification procedure with visible work product before any scoring. The failure mode is 'acknowledge-but-skip' \u2014 the agent mentions the constraint but never actually checks it, defaulting to holistic quality judgment. The fix is a mandatory intermediate artifact (compliance table) that forces explicit verification."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The prompt contains a quantitative constraint ('at least 7 pronouns') that requires counting specific elements in each candidate response. The agent acknowledged this constraint in its perception receipt but never performed the count, instead defaulting to holistic content-quality comparison.",
+          "gap_type": "procedure",
+          "suggested_content": "When the prompt contains a countable or mechanically verifiable constraint (e.g., 'at least N pronouns/words/sentences,' 'exactly N examples,' 'no more than N paragraphs,' 'must include the word X'), run a Quantitative Constraint Verification procedure BEFORE assigning any scores: (1) IDENTIFY the countable element and threshold. (2) For EACH candidate, explicitly enumerate or count the instances \u2014 list the items found or show a running tally. (3) Record PASS/FAIL for each candidate. (4) HARD GATE: No FAIL candidate may outscore any PASS candidate, regardless of content quality. If all candidates fail, tiebreak on content quality among them. Produce a constraint-compliance table as a mandatory intermediate artifact before any scoring begins.",
+          "trigger": "The user prompt contains a numeric threshold applied to a countable text feature (e.g., 'at least N,' 'exactly N,' 'no more than N' of a specific linguistic or structural element)."
+        },
+        {
+          "situation": "The agent's consistency check (from entry 93b0e8f9) validated only self-chosen quality criteria, missing that the prompt's hard constraints should be part of the decisive criteria.",
+          "gap_type": "verification_gate",
+          "suggested_content": "Before finalizing scores, verify that your stated 'decisive criteria' include ALL hard constraints extracted from the prompt \u2014 not just quality dimensions you chose to emphasize. If any prompt constraint is absent from your decisive criteria, add it and re-evaluate. Constraint compliance must be listed as a decisive criterion whenever the prompt states explicit, verifiable requirements.",
+          "trigger": "During the final consistency check, after stating decisive criteria but before submitting scores."
+        },
+        {
+          "situation": "The agent produced identical outputs across all three traces (both rollouts and PP trace), including byte-identical scores and reasoning. The PP trace contained no <playbook_cite>, <missing_guidance>, or <uncertainty> tags, suggesting the agent did not actively consult the playbook during execution.",
+          "gap_type": "checklist",
+          "suggested_content": "After completing the perception receipt and before beginning evaluation, explicitly consult the playbook's Instruction Following Checks for prompts with multiple requirements. If the prompt contains both a content request and a format/structural/count constraint, flag this as a multi-requirement task and commit to building a compliance matrix before scoring.",
+          "trigger": "The perception receipt identifies two or more independent requirements in the prompt."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n**Agreement with anchor:** I agree with the anchor's root-cause diagnosis: this is an 'acknowledge-but-skip' failure where the agent mentioned the pronoun constraint parenthetically but never verified it, defaulting to holistic content-quality ranking. The correct candidate [1] received the lowest score (8.7) while all three incorrect candidates scored higher. Both rollouts and the PP trace produced byte-identical outputs, confirming this is systematic, not stochastic.\n\n**Refinement of anchor:** The anchor marks all entries as 'neutral,' which understates the evidence. Three entries ([c8698dee], [93b0e8f9], [8e0d9579]) are better classified as harmful because they were designed to prevent exactly this failure pattern but their current formulations were insufficient:\n\n1. **[c8698dee]** already prescribes a compliance matrix but has accumulated -3 score, indicating chronic non-execution. Its framing needs to specifically call out quantitative/countable constraints as requiring explicit show-your-work enumeration, and to position the compliance matrix as a hard gate (not optional documentation).\n\n2. **[93b0e8f9]** has a structural design flaw: its consistency check validates against the agent's self-stated criteria, but the agent can (and did) state criteria that exclude hard prompt constraints. The fix is to require that all prompt constraints be included in the decisive criteria, not just quality dimensions the agent finds interesting.\n\n3. **[8e0d9579]** warns against letting formatting/verbosity outweigh constraint satisfaction, but frames the problem narrowly around 'verbosity' and 'formatting.' The agent's error was letting substantive content quality (concreteness, examples) override constraint compliance \u2014 a scenario the entry's current language doesn't clearly trigger for.\n\n**[4abe1be4]** is genuinely helpful \u2014 it prompted the perception receipt that correctly captured the constraint. The gap is downstream: no entry mandates converting perceived constraints into a verification artifact before scoring.\n\n**Key gap:** The most actionable missing capability is a Quantitative Constraint Verification procedure with a mandatory intermediate artifact (constraint-compliance table with explicit counts/enumerations). Entry [c8698dee] could be strengthened to include this, or it could be a new sibling entry with a more specific trigger (numeric thresholds on countable text features). Given [c8698dee]'s -3 track record, a separate, more forcefully worded entry may be more effective than another revision.\n\n**Generalizability:** This pattern applies to any mechanically verifiable constraint \u2014 word counts, sentence counts, inclusion of specific words, structural requirements, format requirements. The 'acknowledge-but-skip' failure mode is the agent's dominant failure on Precise IF tasks and requires a procedural intervention (mandatory artifact) rather than a principle-level reminder."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "AGREE with anchor: The root cause is a pure execution-procedure failure \u2014 the agent noted the 'at least 7 pronouns' constraint in its perception receipt but never verified it for any candidate. Both rollouts are byte-identical, confirming this is systematic rather than stochastic. The only correct candidate [1] was scored lowest (8.7) while all incorrect candidates scored higher, giving 0% pairwise accuracy.\n\nAGREE with anchor on the 'acknowledge-but-skip' antipattern: The agent's perception receipt correctly quotes the pronoun requirement, but this awareness never translates to a verification step. Instead, the agent immediately pivots to content-quality comparison ('most complete and concrete,' 'clear positive-feedback example') and the pronoun constraint is never mentioned again in the evaluation.\n\nREFINE the anchor's assessment of entry c8698dee: The anchor says the entry 'prescribes the right procedure' but the agent didn't follow it. More precisely, c8698dee's Step 2 says 'assign Pass/Partial/Fail on every item' \u2014 but the agent produced no compliance matrix at all for the pronoun constraint. The entry is correct in principle but lacks two critical elements: (a) it doesn't mandate an explicit artifact (visible count/enumeration) for quantitative constraints, and (b) it doesn't specify that the compliance matrix must be completed BEFORE any quality scoring begins. Without mandating the artifact's position in the workflow, the agent can skip it and jump directly to quality scoring.\n\nREFINE the anchor's assessment of entry 4abe1be4: The perception gate correctly made the agent notice the constraint. But the anchor is right that there's no 'downstream enforcement mechanism.' The gap is specifically the lack of a bridge between constraint-perception and constraint-verification. The perception receipt creates awareness; nothing in the playbook forces the agent to produce evidence that each perceived constraint was actually checked.\n\nREFINE the anchor's assessment of 93b0e8f9: The consistency check ('re-read your own stated decisive criteria and confirm the top-rated candidate genuinely best satisfies them') passed trivially because the agent's self-chosen 'decisive criteria' were about content quality, not constraint compliance. The entry needs to require that decisive criteria include ALL explicit prompt constraints, not just quality dimensions the agent elects to focus on.\n\nThe deepest generalizable lesson: In any multi-step evaluation, there is a critical gap between perceiving a requirement and verifying it. Acknowledging a constraint during perception gives false confidence that it has been checked. A mandatory intermediate artifact \u2014 explicit evidence of verification for each requirement \u2014 is the mechanism that bridges this gap. For quantitative constraints specifically, the artifact must include visible enumeration/counting, not gestalt impressions.",
+      "principles": [
+        {
+          "statement": "For every constraint noted in perception, produce per-candidate verification evidence (count, quote, or measurement) as a written artifact BEFORE scoring. Perception without explicit evidence is unverified.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "After the perception receipt lists constraints and before any candidate scoring begins.",
+          "verification_or_artifact": "A constraint-compliance matrix showing explicit evidence (not just Pass/Fail labels) for each constraint \u00d7 each candidate. Position this artifact between perception and scoring so it cannot be skipped.",
+          "evidence": "The agent's perception receipt noted 'at least 7 pronouns' but the compliance matrix from c8698dee was never constructed. The agent jumped from perception directly to quality scoring, leaving the constraint unverified. A mandatory intermediate artifact would have forced the count and revealed which candidates pass."
+        },
+        {
+          "statement": "When a constraint is countable (at least/exactly/no more than N items), enumerate the items in each candidate and record the tally. Never judge countable properties by impression.",
+          "entry_kind": "artifact",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "When any prompt requirement involves a numeric threshold applied to countable elements (words, sentences, pronouns, examples, bullet points, etc.).",
+          "verification_or_artifact": "A per-candidate enumeration listing: the items found, the count, and Pass/Fail against the threshold. This must be written out before any scoring.",
+          "evidence": "The agent never counted pronouns in any candidate. If it had enumerated pronouns in each response, it would have discovered that only candidate [1] meets the \u22657 threshold. The agent instead used gestalt content-quality judgment, which is appropriate for subjective dimensions but fails for objectively countable constraints."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nAll three reflections converge on the same diagnosis with high confidence: the agent correctly perceived the 'at least 7 pronouns' constraint in its perception receipt (entry [4abe1be4] worked as intended) but **never verified it against any candidate**. Instead, the agent immediately pivoted to holistic content-quality comparison ('most complete and concrete,' 'clear positive-feedback example') and scored solely on explanation quality. The correct candidate [1] received the lowest score (8.7) while all three incorrect candidates scored higher. Both rollouts produced byte-identical outputs, confirming this is systematic, not stochastic.\n\nThis is the 'acknowledge-but-skip' antipattern: the agent mentions the constraint during perception, giving false confidence it has been checked, then proceeds with subjective quality evaluation that ignores the constraint entirely.\n\n## Why Existing Entries Didn't Prevent It\n\nEntry [c8698dee] already prescribes the right procedure \u2014 extract requirements, assign Pass/Partial/Fail per candidate, write a compliance matrix, apply a gate. The agent didn't execute steps 2-3. The entry has accumulated -3 score across prior tasks, indicating chronic non-execution. However, the entry didn't *cause* the wrong behavior (hence neutral, not harmful); it was simply insufficient to override the agent's default quality-comparison mode.\n\nThe specific gap: [c8698dee] says to 'assign Pass/Partial/Fail' but doesn't mandate **explicit show-your-work evidence** for mechanically verifiable constraints. For quantitative constraints (count \u2265 N of something), a gestalt Pass/Fail label is not enough \u2014 the agent must enumerate or count the items to produce a defensible verdict. Without requiring this intermediate artifact, the agent can skip verification entirely and assign Pass/Fail based on impression (or skip the matrix altogether, as happened here).\n\nEntry [93b0e8f9]'s consistency check ('confirm the top-rated candidate genuinely best satisfies your stated decisive criteria') passed trivially because the agent's self-chosen decisive criteria were about content quality, not constraint compliance. This is a secondary structural weakness but correcting c8698dee is more impactful.\n\nEntry [4abe1be4] is genuinely helpful \u2014 it ensured the constraint was perceived. The failure is downstream: nothing bridges perception to verification.\n\n## Recommended Mutation\n\n**Update [c8698dee]** to add a sub-procedure for quantitative/countable constraints within the existing EVALUATE step:\n\n- When a requirement involves a numeric threshold on a countable text feature (e.g., 'at least N pronouns,' 'exactly N examples,' 'no more than N sentences'), the EVALUATE step must include **explicit enumeration**: list or tally the items found in each candidate and record the count. A Pass/Fail label alone is insufficient for countable constraints; the evidence (the enumeration or count) must be written out.\n- Reinforce that the compliance matrix is a **mandatory intermediate artifact** that must be completed BEFORE any quality scoring begins. Positioning: between the perception receipt and the first score assignment.\n- Clarify the GATE as HARD for mechanically verifiable constraints: Pass/Fail on a verifiable constraint is binary and takes absolute precedence over quality gradations. No FAIL candidate may outscore any PASS candidate.\n\nThis is a single update to an existing entry, adding procedural specificity (explicit enumeration for countable constraints, mandatory artifact positioning) rather than creating a new entry. Given c8698dee's -3 track record, the strengthening must be concrete and procedural rather than adding more abstract reminders.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent perceived the 'at least 7 pronouns' constraint but never verified it against any candidate, defaulting to holistic content-quality ranking. This is the 'acknowledge-but-skip' antipattern \u2014 perception without verification gives false confidence. The fix is requiring explicit enumeration/counting as a mandatory intermediate artifact for quantitative constraints, within the existing c8698dee workflow.",
+      "important_disagreements": [
+        "Credit attribution tagged [c8698dee], [93b0e8f9], and [8e0d9579] as 'harmful' while anchor and principle_extraction tagged them 'neutral.' Resolution: these entries didn't *cause* the wrong behavior \u2014 they failed to *prevent* it, which is insufficient rather than harmful. Additionally, credit attribution was running in fallback mode (no PP tags in trace), so its evidence is narrative-inferred, same weight as other heads. Keeping neutral but noting the need for update.",
+        "Credit attribution suggested a separate new entry might be more effective than updating c8698dee given its -3 track record. Resolution: the conservative path is to try strengthening the existing entry with more concrete procedural specificity (explicit enumeration, mandatory artifact positioning) before introducing a sibling. If the updated entry continues to fail in future runs, escalation to a new entry is warranted."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry [c8698dee] already covers the right procedure in principle but lacks the procedural specificity needed for countable/quantitative constraints. All three reflections converge on the same gap: missing requirement for explicit enumeration and mandatory artifact positioning. An update adding this specificity is the smallest justified change that addresses the root cause.",
+      "conservatism_rationale": "One entry already partially covers this gap (c8698dee). The failure is about insufficient procedural detail, not a missing concept. A single update with concrete sub-procedure is preferred over adding a new entry or bundling updates to multiple entries. The -3 score on c8698dee is concerning but could reflect the entry's vagueness rather than fundamental design flaw; strengthening with explicit enumeration requirements is the appropriate first-line intervention.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nAll three reflections converge on the same diagnosis with high confidence: the agent correctly perceived the 'at least 7 pronouns' constraint in its perception receipt (entry [4abe1be4] worked as intended) but **never verified it against any candidate**. Instead, the agent immediately pivoted to holistic content-quality comparison ('most complete and concrete,' 'clear positive-feedback example') and scored solely on explanation quality. The correct candidate [1] received the lowest score (8.7) while all three incorrect candidates scored higher. Both rollouts produced byte-identical outputs, confirming this is systematic, not stochastic.\\n\\nThis is the 'acknowledge-but-skip' antipattern: the agent mentions the constraint during perception, giving false confidence it has been checked, then proceeds with subjective quality evaluation that ignores the constraint entirely.\\n\\n## Why Existing Entries Didn't Prevent It\\n\\nEntry [c8698dee] already prescribes the right procedure \u2014 extract requirements, assign Pass/Partial/Fail per candidate, write a compliance matrix, apply a gate. The agent didn't execute steps 2-3. The entry has accumulated -3 score across prior tasks, indicating chronic non-execution. However, the entry didn't *cause* the wrong behavior (hence neutral, not harmful); it was simply insufficient to override the agent's default quality-comparison mode.\\n\\nThe specific gap: [c8698dee] says to 'assign Pass/Partial/Fail' but doesn't mandate **explicit show-your-work evidence** for mechanically verifiable constraints. For quantitative constraints (count \u2265 N of something), a gestalt Pass/Fail label is not enough \u2014 the agent must enumerate or count the items to produce a defensible verdict. Without requiring this intermediate artifact, the agent can skip verification entirely and assign Pass/Fail based on impression (or skip the matrix altogether, as happened here).\\n\\nEntry [93b0e8f9]'s consistency check ('confirm the top-rated candidate genuinely best satisfies your stated decisive criteria') passed trivially because the agent's self-chosen decisive criteria were about content quality, not constraint compliance. This is a secondary structural weakness but correcting c8698dee is more impactful.\\n\\nEntry [4abe1be4] is genuinely helpful \u2014 it ensured the constraint was perceived. The failure is downstream: nothing bridges perception to verification.\\n\\n## Recommended Mutation\\n\\n**Update [c8698dee]** to add a sub-procedure for quantitative/countable constraints within the existing EVALUATE step:\\n\\n- When a requirement involves a numeric threshold on a countable text feature (e.g., 'at least N pronouns,' 'exactly N examples,' 'no more than N sentences'), the EVALUATE step must include **explicit enumeration**: list or tally the items found in each candidate and record the count. A Pass/Fail label alone is insufficient for countable constraints; the evidence (the enumeration or count) must be written out.\\n- Reinforce that the compliance matrix is a **mandatory intermediate artifact** that must be completed BEFORE any quality scoring begins. Positioning: between the perception receipt and the first score assignment.\\n- Clarify the GATE as HARD for mechanically verifiable constraints: Pass/Fail on a verifiable constraint is binary and takes absolute precedence over quality gradations. No FAIL candidate may outscore any PASS candidate.\\n\\nThis is a single update to an existing entry, adding procedural specificity (explicit enumeration for countable constraints, mandatory artifact positioning) rather than creating a new entry. Given c8698dee's -3 track record, the strengthening must be concrete and procedural rather than adding more abstract reminders.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent perceived the 'at least 7 pronouns' constraint but never verified it against any candidate, defaulting to holistic content-quality ranking. This is the 'acknowledge-but-skip' antipattern \u2014 perception without verification gives false confidence. The fix is requiring explicit enumeration/counting as a mandatory intermediate artifact for quantitative constraints, within the existing c8698dee workflow.\",\n    \"important_disagreements\": [\n      \"Credit attribution tagged [c8698dee], [93b0e8f9], and [8e0d9579] as 'harmful' while anchor and principle_extraction tagged them 'neutral.' Resolution: these entries didn't *cause* the wrong behavior \u2014 they failed to *prevent* it, which is insufficient rather than harmful. Additionally, credit attribution was running in fallback mode (no PP tags in trace), so its evidence is narrative-inferred, same weight as other heads. Keeping neutral but noting the need for update.\",\n      \"Credit attribution suggested a separate new entry might be more effective than updating c8698dee given its -3 track record. Resolution: the conservative path is to try strengthening the existing entry with more concrete procedural specificity (explicit enumeration, mandatory artifact positioning) before introducing a sibling. If the updated entry continues to fail in future runs, escalation to a new entry is warranted.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry [c8698dee] already covers the right procedure in principle but lacks the procedural specificity needed for countable/quantitative constraints. All three reflections converge on the same gap: missing requirement for explicit enumeration and mandatory artifact positioning. An update adding this specificity is the smallest justified change that addresses the root cause.\",\n    \"conservatism_rationale\": \"One entry already partially covers this gap (c8698dee). The failure is about insufficient procedural detail, not a missing concept. A single update with concrete sub-procedure is preferred over adding a new entry or bundling updates to multiple entries. The -3 score on c8698dee is concerning but could reflect the entry's vagueness rather than fundamental design flaw; strengthening with explicit enumeration requirements is the appropriate first-line intervention.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

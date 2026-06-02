@@ -1,0 +1,332 @@
+[
+  {
+    "iteration": 1,
+    "task_query": "Export a unique list of all the songs in my song and album library and all playlists in my Spotify account into \"~/backups/spotify_songs.csv\" file in my file system. The file should have headers, \"Tit...; Laura has asked for my movie recommendations via phone text message. Reply to them with a list of comma-separated movie titles from my Simple Note account as per their request.",
+    "reflector_summary": "**Root cause of rollout_1's failure (70%)**: The 3 failing tests all relate to parsing the CSV file content into a song_title_to_artist_names dictionary and matching it against expected data. The crit...",
+    "mutation_summary": "Added two entries addressing independent failure modes: (1) manual CSV construction with selective quoting when csv module is blocked, and (2) inspecting conversation context before acting on a contact's request to discover specific filter criteria.",
+    "applied_ops": [
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "8f26163d",
+        "content": "When `csv.writer`/`csv.DictWriter` are blocked at runtime, build CSV manually with SELECTIVE quoting: only quote a field"
+      },
+      {
+        "op": "ADD",
+        "section": "problem_solving_heuristics_and_workflows",
+        "entry_id": "9f8d858f",
+        "content": "When a task involves responding to or fulfilling a contact's request (send info, answer a question, etc.): (1) Read the "
+      }
+    ]
+  },
+  {
+    "iteration": 2,
+    "task_query": "Accept all pending Venmo payment requests from my roommates and coworkers.; Leslie has asked for my movie recommendations via phone text message. Reply to them with a list of comma-separated movie titles from my Simple Note account as per their request.",
+    "reflector_summary": "**Root cause of rollout_1 failure (83.3%):** The agent attempted to approve ALL 26 pending Venmo payment requests before establishing which ones came from roommates/coworkers. This 'act first, filter ...",
+    "mutation_summary": "Added a hard rule enforcing filter-before-act ordering for bulk operations with eligibility criteria, directly addressing the rollout_1 failure where approving all 26 payment requests before filtering corrupted state and left only 4 of 10 expected requests approvable.",
+    "applied_ops": [
+      {
+        "op": "ADD",
+        "section": "strategies_and_hard_rules",
+        "entry_id": "12cfb18e",
+        "content": "When a task requires performing an action (approve, delete, update, send) on a SUBSET of items matching criteria: (1) Re"
+      }
+    ]
+  },
+  {
+    "iteration": 3,
+    "task_query": "I went on a dinner with some of my coworkers yesterday. I paid the entire bill to simplify the payment. I've made a note of individual shares in simple note. Some people have already sent me their sha...; Leslie has asked for my movie recommendations via phone text message. Reply to them with a list of comma-separated movie titles from my Simple Note account as per their request.",
+    "reflector_summary": "**Root Cause of Failure (Rollout 1, 75%):** The agent found two SimpleNote entries matching 'Work Dinner' (note 3085: 'Velvet Vittles', updated 2023-05-16; note 3084: 'Silver Lining Cafe', updated 202...",
+    "mutation_summary": "Added one entry addressing temporal disambiguation when multiple data sources match a query, directly addressing rollout_1's failure of aggregating data across two independent Work Dinner notes instead of selecting only the most recent one. Task 2's failure was already covered by existing entry [78832af2].",
+    "applied_ops": [
+      {
+        "op": "ADD",
+        "section": "problem_solving_heuristics_and_workflows",
+        "entry_id": "3c755ed7",
+        "content": "When a search query returns multiple items (notes, records, entries) that match but represent DISTINCT events or instanc"
+      }
+    ]
+  },
+  {
+    "iteration": 4,
+    "task_query": "How much money have I sent or received to my roommates on venmo since 1st Mar of this year?; Accept all pending Venmo payment requests from my roommates and coworkers.; Leslie has asked for my movie recommendations via phone text message. Reply to them with a list of comma-separated movie titles from my Simple Note account as per their request.",
+    "reflector_summary": "Both rollouts successfully computed identical intermediate values: sent_total=759.0, received_total=454.0. The divergence occurs exclusively at the answer submission step.",
+    "mutation_summary": "Updated the answer-submission entry [78832af2] with a verification gate: re-read the task instruction before calling complete_task to match answer format to the exact question asked. This addresses two independent failure modes (answer-format drift in Task 1, spurious answer in Task 3) that both stem from not verifying the task's question before submitting.",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "78832af2",
+        "content": "Before calling `apis.supervisor.complete_task()`: (1) Re-read the task instruction (call `apis.supervisor.show_active_ta"
+      }
+    ]
+  },
+  {
+    "iteration": 5,
+    "task_query": "Give a 5-star rating to all songs in my Spotify playlists which I have liked. If I have already rated it lower, increase it to 5.",
+    "reflector_summary": "The failing rollout (71.4%) made two compounding errors:",
+    "mutation_summary": "Added a disambiguation rule for possessive ('my X') vs. engagement ('liked X') language when selecting APIs, addressing the primary failure where rollout_1 used show_liked_playlists instead of show_playlist_library for 'my playlists' and then abandoned its own computed intersection.",
+    "applied_ops": [
+      {
+        "op": "ADD",
+        "section": "problem_solving_heuristics_and_workflows",
+        "entry_id": "8a052e45",
+        "content": "When a task says 'my [items]' (e.g., 'my playlists', 'my notes') alongside a SEPARATE filter ('which I have liked', 'tha"
+      }
+    ]
+  },
+  {
+    "iteration": 6,
+    "task_query": "Give a 5-star rating to all songs in my Spotify playlists which I have liked. If I have already rated it lower, increase it to 5.; Like all the songs played so far in my spotify music player queue, including the current one.; Leslie has asked for my movie recommendations via phone text message. Reply to them with a list of comma-separated movie titles from my Simple Note account as per their request.",
+    "reflector_summary": "The task instruction 'Give a 5-star rating to all songs in my Spotify playlists which I have liked' requires parsing into two components:",
+    "mutation_summary": "Updated entry [8a052e45] with stronger trigger and explicit disambiguation procedure for relative-clause ambiguity that caused wrong API selection (task 1 failure); added new entry for recognizing implicit scope boundaries from collection state metadata like position/is_current (task 2 failure); fixed incorrect API name in entry [f43ad77c] which was assessed as harmful.",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "8a052e45",
+        "content": "When a task says 'my [items]' (e.g., 'my playlists', 'my notes') combined with a filter clause ('which I have liked', 't"
+      },
+      {
+        "op": "ADD",
+        "section": "problem_solving_heuristics_and_workflows",
+        "entry_id": "f036c063",
+        "content": "When operating on ordered or stateful collections (queues, playlists, message threads), inspect each item's metadata fie"
+      },
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "f43ad77c",
+        "content": "Use `phone` app for contact/person lookup: `apis.phone.search_contacts()` (NOT `show_contacts` \u2014 that API does not exist"
+      }
+    ]
+  },
+  {
+    "iteration": 7,
+    "task_query": "I went on a dinner with some of my coworkers yesterday. I paid the entire bill to simplify the payment. I've made a note of individual shares in simple note. Some people have already sent me their sha...; I am going on a vacation. Move my go-to-sleep phone alarm to 20 minutes later and disable the rest.",
+    "reflector_summary": "The sole difference between rollout_1 (75%) and rollout_2 (100%) is how `complete_task` was called at the very end. Rollout_1 called `apis.supervisor.complete_task(answer='6097,6098,6099,6100')`, prov...",
+    "mutation_summary": "Updated entry [78832af2] to add an explicit mechanical gate: when show_active_task() returns answer: <<NOT_GIVEN>>, NEVER pass an answer argument, even if intermediate values were computed during the action. Both failed rollouts computed correct values (payment request IDs, alarm time 21:50) then incorrectly reported them as answers to action-only tasks.",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "78832af2",
+        "content": "Before calling `apis.supervisor.complete_task()`: (1) ALWAYS call `apis.supervisor.show_active_task()` and inspect the `"
+      }
+    ]
+  },
+  {
+    "iteration": 8,
+    "task_query": "What is the total cost of my electricity bills for this year? The bills are in \"~/bills/\" directory of my file system.; How much money have I sent or received to my roommates on venmo since 1st Mar of this year?; What is the title of the least-played song in my Spotify song library.",
+    "reflector_summary": "**Root cause of failure:** Rollout_1 and rollout_2 both computed the identical correct answer ($368.0) from the same four electricity .txt files. The sole difference was how they submitted the answer....",
+    "mutation_summary": "Rewrote entry [78832af2] to remove the harmful '<<NOT_GIVEN>> is a HARD SIGNAL' language that caused the agent to omit required answers on all three question-type tasks. The task instruction wording is now the sole determinant of whether to pass an answer.",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "78832af2",
+        "content": "Before calling `apis.supervisor.complete_task()`: (1) Read the task instruction and classify it: QUESTION tasks ask for "
+      }
+    ]
+  },
+  {
+    "iteration": 9,
+    "task_query": "Arrange my \"~/photographs/vacations/\" directory by organizing the photos from three vacations. The files created in February and March of this year correspond to Petra and Budapest, respectively, whil...; Accept all pending Venmo payment requests from my coworkers and friends.; Christopher has asked for my movie recommendations via phone text message. Reply to them with a list of comma-separated movie titles from my Simple Note account as per their request.",
+    "reflector_summary": "The sole difference between rollout_1 (80%) and rollout_2 (100%) is the `complete_task()` call:",
+    "mutation_summary": "Updated entry [12cfb18e] to add concrete guidance on using API-native filter parameters (relationship, tag, category) instead of query-based fuzzy search when resolving category criteria, plus a sanity-check gate when filtering removes nothing.",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "12cfb18e",
+        "content": "When a task requires performing an action (approve, delete, update, send) on a SUBSET of items matching criteria:\n\n(1) R"
+      }
+    ]
+  },
+  {
+    "iteration": 10,
+    "task_query": "Arrange my \"~/photographs/vacations/\" directory by organizing the photos from three vacations. The files created in March and April of this year correspond to Rome and Santorini, respectively, while t...; Export a unique list of all the songs in my song and album library and all playlists in my Spotify account into \"~/backups/spotify.csv\" file in my file system. The file should have headers, \"Title\" an...",
+    "reflector_summary": "Both rollouts used identical classification logic (March 2023 \u2192 Rome, April 2023 \u2192 Santorini, others \u2192 Berlin) and produced the same file-to-directory mapping (11 Rome, 11 Santorini, 15 Berlin). Both ...",
+    "mutation_summary": "Strengthened entry [c3efc092] on variable reuse to add a correctness rationale: redundant API reads on objects being modified can create unexpected model-change side effects that cause test failures, not just wasted calls.",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "c3efc092",
+        "content": "Variables persist across code blocks \u2014 reuse fetched data and computed results instead of re-fetching. This is a CORRECT"
+      }
+    ]
+  },
+  {
+    "iteration": 11,
+    "task_query": "Name the artist most recommended to me on Spotify.; Arrange my \"~/photographs/vacations/\" directory by organizing the photos from three vacations. The files created in March and April of this year correspond to Rome and Santorini, respectively, while t...; Follow all the edm artists on Spotify that have at least 23 followers.",
+    "reflector_summary": "The failing rollout (rollout_1) and the passing rollout (rollout_2) both correctly retrieved all 28 recommended songs across paginated results. The divergence was in how they counted artist appearance...",
+    "mutation_summary": "Added entry for aggregation over multi-valued fields (e.g., counting artist appearances across all positions in a song's artist list, not just the first/primary). This was the sole new gap identified \u2014 the other two failures were weak applications of existing entries [c3efc092] and [78832af2].",
+    "applied_ops": [
+      {
+        "op": "ADD",
+        "section": "problem_solving_heuristics_and_workflows",
+        "entry_id": "312bf71f",
+        "content": "When a task asks which entity is most frequent, common, or recommended, and data items contain multi-valued fields (e.g."
+      }
+    ]
+  },
+  {
+    "iteration": 13,
+    "task_query": "Add a comment, \"Thanks!\", to all the venmo payments I received from my friends in the last 7 days (including today), and like those payments.",
+    "reflector_summary": "Both rollouts failed the two tests asserting that transaction IDs match `private_data.after_threshold_contact_transaction_ids`. The test name is highly diagnostic: it contains both 'threshold' (sugges...",
+    "mutation_summary": "Updated the phone contacts entry to add disambiguation guidance: when a task references 'contacts' or social relationships without app-specific qualification, use phone contacts as the canonical source rather than defaulting to the current app's social graph (e.g., Venmo friends).",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "f43ad77c",
+        "content": "Use `phone` app for contact/person lookup: `apis.phone.search_contacts()` (NOT `show_contacts` \u2014 that API does not exist"
+      }
+    ]
+  },
+  {
+    "iteration": 14,
+    "task_query": "Add a comment, \"Thanks!\", to all the venmo payments I received from my friends in the last 7 days (including today), and like those payments.; Accept all pending Venmo payment requests from my coworkers and friends.; Leslie has asked for my movie recommendations via phone text message. Reply to them with a list of comma-separated movie titles from my Simple Note account as per their request.",
+    "reflector_summary": "**Root Cause:** Rollout 1 failed because it interpreted 'my friends' as ALL phone contacts (20 emails \u2192 34 transactions acted on), while the correct interpretation was phone contacts filtered by `rela...",
+    "mutation_summary": "Updated phone contacts entry to add explicit relationship filtering procedure: when a task uses relationship terms like 'friends' or 'coworkers', the agent must use the dedicated relationship= filter parameter on search_contacts() rather than fetching all contacts unfiltered.",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "f43ad77c",
+        "content": "Use `phone` app for contact/person lookup: `apis.phone.search_contacts()` (NOT `show_contacts` \u2014 that API does not exist"
+      }
+    ]
+  },
+  {
+    "iteration": 15,
+    "task_query": "The \"~/photos/\" directory in my file system has photo files organized in sub-directories for each vacation spot. Compress them and save them in \"~/photos/vacations/<vacation_spot>.tar\" for each vacati...; Leslie has asked for my movie recommendations via phone text message. Reply to them with a list of comma-separated movie titles from my Simple Note account as per their request.",
+    "reflector_summary": "Both rollouts reached the correct end state (4 .tar files, 0 vacation sub-directories), yet rollout_1 failed the model-changes-match test while rollout_2 passed all tests. The failed test (`assert mod...",
+    "mutation_summary": "Extended entry [c3efc092] to cover unnecessary WRITE calls (not just reads) causing model side effects, and added guidance to prefer separated operations over combined API flags for destructive actions.",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "c3efc092",
+        "content": "Variables persist across code blocks \u2014 reuse fetched data and computed results instead of re-fetching. This is a CORRECT"
+      }
+    ]
+  },
+  {
+    "iteration": 17,
+    "task_query": "I went on a dinner with some of my coworkers yesterday. I paid the entire bill to simplify the payment. I've made a note of individual shares in simple note. Some people have already sent me their sha...; Give a 1-star rating to all songs in my Spotify song library which I have not liked. If I have already rated it higher, decrease it to 1.",
+    "reflector_summary": "Both rollouts followed the same correct logical flow: identified note 3084 as the relevant Work Dinner note, parsed 7 shares, determined 4 people had already paid via Venmo transactions (Kayla, Jamie,...",
+    "mutation_summary": "Added a parameter minimalism rule: when creating/modifying resources via API, omit optional parameters the task doesn't mention, because explicitly setting even apparent defaults can trigger different backend code paths and unexpected model changes.",
+    "applied_ops": [
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "05baecc4",
+        "content": "When calling APIs to create or modify resources, pass ONLY parameters the task instruction explicitly requires or specif"
+      }
+    ]
+  },
+  {
+    "iteration": 18,
+    "task_query": "Export a unique list of all the songs in my song and album library and all playlists in my Spotify account into \"~/backups/spotify.csv\" file in my file system. The file should have headers, \"Title\" an...",
+    "reflector_summary": "**Root Cause of Rollout 1 Failure (90%)**: The single failing test (`assert model changes match spotify.User, file_system.File, file_system.Directory`) detects unexpected model mutations beyond those ...",
+    "mutation_summary": "Updated [c3efc092] to add a TOKEN / LOGIN MANAGEMENT sub-procedure, since redundant login calls from token variable mismanagement caused rollout 1's model-changes test failure.",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "c3efc092",
+        "content": "Variables persist across code blocks \u2014 reuse fetched data and computed results instead of re-fetching. This is a CORRECT"
+      }
+    ]
+  },
+  {
+    "iteration": 19,
+    "task_query": "Unfollow all the artists who have not sung even a single song I have liked on Spotify.; Arrange my \"~/photographs/vacations/\" directory by organizing the photos from three vacations. The files created in January and April of this year correspond to Athens and Seoul, respectively, while t...",
+    "reflector_summary": "**Root cause of rollout_1's failure:** The sole difference between the 75% and 100% rollouts is the `complete_task()` call. Rollout 1 called `apis.supervisor.complete_task(answer='5')`, passing the co...",
+    "mutation_summary": "Added a pre-completion verification gate requiring the agent to check its own verification output against expected outcomes before completing, addressing the critical pattern where rollout_1 saw 0 files in destination directories but completed anyway.",
+    "applied_ops": [
+      {
+        "op": "ADD",
+        "section": "verification_checklist",
+        "entry_id": "cd7e14d4",
+        "content": "PRE-COMPLETION VERIFICATION GATE \u2014 If you performed ANY verification or sanity-check step during execution, you MUST rev"
+      }
+    ]
+  },
+  {
+    "iteration": 21,
+    "task_query": "Give a 5-star rating to all songs in my Spotify playlists which I have liked. If I have already rated it lower, increase it to 5.; Name the artist least recommended to me on Spotify.; I went on a dinner with some of my friends yesterday. I paid the entire bill to simplify the payment. I've made a note of individual shares in simple note. Some people have already sent me their share...",
+    "reflector_summary": "Both rollouts fail the same two tests: the set of song_ids that were updated and the set of song_ids that were added don't match the expected sets (`private_data.to_update_review_song_ids` and `privat...",
+    "mutation_summary": "Broadened [8a052e45] trigger to fire on ANY Spotify playlist mention (not just 'my X + filter'); added frequency-vs-rank metric resolution to [312bf71f]; added rule against over-filtering with exclusion criteria beyond what the task states.",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "8a052e45",
+        "content": "* When a task involves items that could come from either an OWNERSHIP/LIBRARY API or a LIKED/ENGAGEMENT API, you MUST di"
+      },
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "312bf71f",
+        "content": "* When a task asks which entity is most/least frequent, common, or recommended, and data items contain multi-valued fiel"
+      },
+      {
+        "op": "ADD",
+        "section": "common_mistakes_and_correct_strategies",
+        "entry_id": "fe750bca",
+        "content": "* When the task states which entities are 'already handled' (e.g., 'some have already sent their share', 'those who alre"
+      }
+    ]
+  },
+  {
+    "iteration": 22,
+    "task_query": "Give a 5-star rating to all songs in my Spotify playlists which I have liked. If I have already rated it lower, increase it to 5.; Christopher has asked for my movie recommendations via phone text message. Reply to them with a list of comma-separated movie titles from my Simple Note account as per their request.",
+    "reflector_summary": "**Rollout 1 (0.0%)**: Failed entirely due to an external infrastructure error \u2014 the prompt was flagged by the API provider's content moderation system before the agent could execute any code. This is ...",
+    "mutation_summary": "Updated [8a052e45] to add explicit item-level vs container-level intersection guidance and an anti-pattern warning against abandoning computed intersections when results seem unexpectedly small \u2014 the exact two errors that caused rollout 1's 71.4% failure on the Spotify task.",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "8a052e45",
+        "content": "* When a task involves items that could come from either an OWNERSHIP/LIBRARY API or a LIKED/ENGAGEMENT API, you MUST di"
+      }
+    ]
+  },
+  {
+    "iteration": 24,
+    "task_query": "Arrange my \"~/photographs/vacations/\" directory by organizing the photos from three vacations. The files created in March and April of this year correspond to Rome and Santorini, respectively, while t...",
+    "reflector_summary": "**Root Cause Analysis**",
+    "mutation_summary": "Updated [cd7e14d4] to add a MINIMALITY RULE constraining verification to exactly one pass, since rollout_1's redundant second verification loop over the same directories triggered extra File model-change records, causing the only test failure.",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "cd7e14d4",
+        "content": "* PRE-COMPLETION VERIFICATION GATE \u2014 If you performed ANY verification or sanity-check step during execution, you MUST r"
+      }
+    ]
+  },
+  {
+    "iteration": 28,
+    "task_query": "Add all spotify-recommended R&B songs released in this or last year to a new \"Spotify R&B Recommendations\" playlist.; Export a unique list of all the songs in my song and album library and all playlists in my Spotify account into \"~/backups/spotify_library.csv\" file in my file system. The file should have headers, \"T...; Arrange my \"~/photographs/vacations/\" directory by organizing the photos from three vacations. The files created in March and April of this year correspond to Rome and Santorini, respectively, while t...",
+    "reflector_summary": "**Root Cause Analysis:**",
+    "mutation_summary": "Updated [c3efc092] to fix inconsistency between general principle ('objects involved in the task') and specific guidance ('objects you will later modify'), and added explore-then-process anti-pattern. Updated [cd7e14d4] to add Step 0 sub-goal completeness check for multi-action tasks, addressing the catastrophic pattern of completing after partial execution.",
+    "applied_ops": [
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "c3efc092",
+        "content": "* Variables persist across code blocks \u2014 reuse fetched data and computed results instead of re-fetching. This is a CORRE"
+      },
+      {
+        "op": "UPDATE",
+        "section": "",
+        "entry_id": "cd7e14d4",
+        "content": "* PRE-COMPLETION VERIFICATION GATE \u2014 Before calling complete_task(), run these checks IN ORDER:\n\nSTEP 0 \u2014 SUB-GOAL COMPL"
+      }
+    ]
+  }
+]

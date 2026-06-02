@@ -1,0 +1,126 @@
+{
+  "6104387_3": [
+    {
+      "iteration": 1,
+      "analysis": "**Root cause of rollout_1's failure (70%)**: The 3 failing tests all relate to parsing the CSV file content into a song_title_to_artist_names dictionary and matching it against expected data. The critical difference between rollout_1 (70%) and rollout_2 (100%) is the CSV quoting strategy in the manually-constructed CSV.\n\nRollout_1 used an always-quoting csv_escape function: `return '\"' + val.replace('\"','\"\"') + '\"'` \u2014 wrapping every field in double quotes regardless of content. This produced lines like:\n```\n\"Memories Stitched in Time\",\"Jasper Skye|Isabella Cruz|Seraphina Dawn\"\n```\n\nRollout_2 used selective quoting: only quoting when the field actually contains commas, newlines, or quote characters. This produced lines like:\n```\nA Symphony Written in Tears,Aria Sterling\n```\n\nThe size difference (2901 vs 2621 bytes = 280 bytes = 4 extra quote chars \u00d7 70 rows) confirms this is the sole structural difference. The test's CSV parser evidently does a simple line-based parse (split on comma) and does not strip surrounding quotes from parsed values. So rollout_1's titles had embedded `\"` characters that caused key/value mismatches against expected data, even with normalize_text comparison.\n\n**Why this is a generalizable pattern**: When the `csv` module (csv.writer, csv.DictWriter) is disallowed (a common AppWorld restriction), the agent must implement manual CSV generation. The quoting strategy is not cosmetic \u2014 it directly affects how downstream consumers parse the output. Over-quoting fields introduces literal quote characters into parsed values.\n\n**Missing playbook knowledge**:\n1. **Restricted module fallback strategy for CSV**: The playbook has no guidance on what to do when `csv.writer`/`csv.DictWriter` are blocked. Both rollouts stumbled into this restriction, and their different manual implementations led to different outcomes.\n2. **Minimal-quoting CSV rule**: When manually constructing CSV, only quote fields that contain delimiters (comma), newlines, or double-quote characters. Never always-quote, as simple parsers (and test harnesses) may not strip surrounding quotes.\n\n**Verification gap**: Rollout_1 did verify the file existed and checked its first few lines, but did not verify that individual field values parsed correctly. A spot-check of one data row by splitting on comma and confirming no extraneous quote characters would have caught this.\n\n**Not a weak application of existing rules**: No existing playbook entry covers CSV format restrictions or manual CSV construction patterns. This is a true coverage gap.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "df468d8b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "0be186ff",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "When `csv.writer`/`csv.DictWriter` are blocked at runtime, build CSV manually with SELECTIVE quoting: only quote a field if it contains a comma, newline, or double-quote character. Never always-quote every field \u2014 simple parsers and test harnesses may not strip surrounding quotes, causing key/value mismatches.\n\n```python\ndef csv_escape(val):\n    s = str(val) if val is not None else ''\n    s = s.replace('\"', '\"\"')\n    if any(c in s for c in [',', '\\n', '\\r', '\"']):\n        return '\"' + s + '\"'\n    return s\n```",
+          "rationale": "Rollout_1 of task 1 failed 3/10 tests because always-quoting CSV fields introduced literal quote characters into parsed values. Rollout_2 used selective quoting and passed 10/10. The csv module is commonly blocked in AppWorld.",
+          "scope_hint": "Applies whenever generating CSV content and csv.writer/csv.DictWriter raise a disallowed-function error.",
+          "entry_id": "8f26163d"
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When a task involves responding to or fulfilling a contact's request (send info, answer a question, etc.): (1) Read the conversation/message history with that person FIRST to discover the SPECIFIC criteria of their request. (2) Extract filter/selection parameters from their message. (3) Gather data from the relevant source. (4) Apply criteria to filter \u2014 build an explicit filtered list as an intermediate artifact. (5) Verify: response includes ALL items matching criteria and NONE that don't. (6) Send. Never skip step 1 \u2014 the conversation often contains critical constraints not stated in the task description.",
+          "rationale": "Rollout_1 of task 2 sent all 21 movie titles instead of only Tarantino's 2, because it never checked Laura's message asking specifically for Tarantino recommendations. Rollout_2 checked messages first, filtered correctly, and passed 8/8.",
+          "scope_hint": "Applies whenever the task references a person's request/question and involves sending them information gathered from another source.",
+          "entry_id": "9f8d858f"
+        }
+      ]
+    }
+  ],
+  "29caf6f_2": [
+    {
+      "iteration": 1,
+      "analysis": "**Root cause of rollout_1 failure (87.5%):** Rollout 1 failed the test `assert that none of private_data.non_director_movie_titles occur as a substring in added global_text_message` because it sent ALL 21 movie titles from the 'Movie Recommendations' note to Laura, rather than only the Quentin Tarantino movies (Django Unchained, Pulp Fiction). The critical omission was that rollout 1 never read the text message conversation with Laura to discover that she specifically asked: 'Do you have any recommendations for a movie from Quentin Tarantino?' It assumed the task was to dump all recommendations.\n\n**Success factor for rollout_2 (100%):** Rollout 2 checked the text message history with Laura, found her specific Tarantino request, parsed the note to extract only movies with 'director: Quentin Tarantino', and sent the correctly filtered list 'Django Unchained, Pulp Fiction'.\n\n**The PP trace confirms this pattern:** The PP agent explicitly fetched Laura's messages (finding the Tarantino request at sent_at 2023-05-18T10:59:26), then parsed the note to match director == 'Quentin Tarantino', and sent only the matching titles.\n\n**Generalizable missing knowledge:** The playbook lacks guidance on a critical step in multi-source tasks: **inspecting all relevant context before acting**. Specifically:\n\n1. **Trigger:** When a task involves responding to or fulfilling someone's request (a message, email, etc.), the agent must first read the conversation/message history with that person to understand the SPECIFIC parameters of their request.\n2. **Procedure:** Read the conversation \u2192 extract filter/selection criteria from the request \u2192 gather data from the source \u2192 apply the criteria to filter \u2192 compose the response.\n3. **Intermediate artifact:** A filtered list (e.g., 'movies by director X') should be constructed as an explicit intermediate step before composing the final message.\n4. **Verification gate:** Before sending, verify: (a) the response includes only items matching the stated criteria, and (b) it includes ALL items matching those criteria.\n\nRollout 1 skipped the first step entirely and jumped from 'find note with movie recommendations' straight to 'send everything to Laura,' never constructing a filtered intermediate representation. This is not a case of weak application of an existing rule \u2014 no playbook entry addresses the need to inspect conversation context to discover task-specific filter criteria.\n\n**The agent's action drifted from the task requirements** because it never gathered sufficient information about what the task actually required. A consistency check of 'does my response match the specific request?' would have caught this, but the agent never surfaced the specific request in the first place.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "df468d8b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "0be186ff",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "When `csv.writer`/`csv.DictWriter` are blocked at runtime, build CSV manually with SELECTIVE quoting: only quote a field if it contains a comma, newline, or double-quote character. Never always-quote every field \u2014 simple parsers and test harnesses may not strip surrounding quotes, causing key/value mismatches.\n\n```python\ndef csv_escape(val):\n    s = str(val) if val is not None else ''\n    s = s.replace('\"', '\"\"')\n    if any(c in s for c in [',', '\\n', '\\r', '\"']):\n        return '\"' + s + '\"'\n    return s\n```",
+          "rationale": "Rollout_1 of task 1 failed 3/10 tests because always-quoting CSV fields introduced literal quote characters into parsed values. Rollout_2 used selective quoting and passed 10/10. The csv module is commonly blocked in AppWorld.",
+          "scope_hint": "Applies whenever generating CSV content and csv.writer/csv.DictWriter raise a disallowed-function error.",
+          "entry_id": "8f26163d"
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When a task involves responding to or fulfilling a contact's request (send info, answer a question, etc.): (1) Read the conversation/message history with that person FIRST to discover the SPECIFIC criteria of their request. (2) Extract filter/selection parameters from their message. (3) Gather data from the relevant source. (4) Apply criteria to filter \u2014 build an explicit filtered list as an intermediate artifact. (5) Verify: response includes ALL items matching criteria and NONE that don't. (6) Send. Never skip step 1 \u2014 the conversation often contains critical constraints not stated in the task description.",
+          "rationale": "Rollout_1 of task 2 sent all 21 movie titles instead of only Tarantino's 2, because it never checked Laura's message asking specifically for Tarantino recommendations. Rollout_2 checked messages first, filtered correctly, and passed 8/8.",
+          "scope_hint": "Applies whenever the task references a person's request/question and involves sending them information gathered from another source.",
+          "entry_id": "9f8d858f"
+        }
+      ]
+    }
+  ]
+}

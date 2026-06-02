@@ -1,0 +1,579 @@
+{
+  "task_id": "factuality:201",
+  "pass_pct": 0.8333333333333334,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "a3832d7e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:201\nPass percentage: 83.3%\nTask completed: False\n### Unified Reflection\n## Root Cause: Triple-Lock Against Factual Differentiation in Attributed-Content Tasks\n\nBoth rollouts produced identical results: ratings [8.5, 2.5, 6.3, 8.5] with best_response_ids=[1,4]. Ground truth marks only [1] as CORRECT, so tying [4] at 8.5 caused prompt_accurate=False and winner_fraction=0.5.\n\n### Proximate Cause\nThe agent's reasoning explicitly states: 'Since the exact quoted wording is not verifiable here by default, the main differentiator is request compliance.' This is a direct application of 005004a4's PROACTIVE CLASSIFICATION rule and 0.3-point UNVERIFIABLE ceiling. Combined with 93b0e8f9's EPISTEMIC SYMMETRY AUDIT (which mandates symmetric skepticism across candidates), the agent was structurally prevented from differentiating [1] and [4] on factual grounds.\n\n### The Structural Deadlock (Triple-Lock)\nThree entries collectively block domain-knowledge-based differentiation:\n1. **005004a4**: PROACTIVE CLASSIFICATION classifies all attributed quotes as UNVERIFIABLE; 0.3-point ceiling caps score separation.\n2. **93b0e8f9**: EPISTEMIC SYMMETRY AUDIT requires the same epistemic label for structurally identical content across all candidates.\n3. **29e534bd**: ANTI-CORROBORATION says 'Never resolve by subjective plausibility' when candidates attribute different content to the same source.\n\nCritically, 005004a4 already contains a CONSENSUS KNOWLEDGE EXCEPTION that was designed to allow domain-knowledge resolution \u2014 but 29e534bd's anti-plausibility clause directly conflicts with it, creating a deadlock the agent resolved by defaulting to the most conservative rule (don't differentiate).\n\n### Missed Mandatory Artifact: DIFF TABLE\nCandidates [1] and [4] cite the same six ML authors (Mitchell, Bishop, Murphy, Goodfellow et al., Ng, Domingos) but present DIFFERENT quoted text for each. This is the textbook trigger for 29e534bd's MANDATORY DIFF TABLE. The agent never built one. Had it done so, contradictions on every shared source would have been visible \u2014 at least one candidate must be fabricating quotes for each author. This contradictory evidence is asymmetric (at least one is provably wrong), yet the ceiling rules enforce symmetric treatment.\n\n### Available But Unused Resolution Path\nTom Mitchell's 1997 definition ('A computer program is said to learn from experience E with respect to some class of tasks T...') is paradigmatic consensus ML knowledge. It falls squarely under 005004a4's CONSENSUS KNOWLEDGE EXCEPTION. The agent could have used this as a reference point to assess which candidate's Mitchell 'quote' was more or less plausible \u2014 but never attempted this, partly because 29e534bd's anti-plausibility clause discouraged it.\n\n### Execution Discipline Failure\nThe agent's reasoning was a single paragraph with zero mandatory artifacts produced: no PREMISE CHECKLIST (a3832d7e), no CONSTRAINT CHECKLIST/compliance matrix (c8698dee), no DIFF TABLE (29e534bd), no DIFFERENTIAL CLAIM VERIFICATION (93b0e8f9), no SYMMETRY TABLE (005004a4). This pervasive shortcutting across all rollouts amplified the structural problem \u2014 had any procedural entry been followed, the contradictions would have surfaced.\n\n### Why the Harmful Entries Are Harmful Here\n- **005004a4**: The PROACTIVE CLASSIFICATION rule and 0.3-point ceiling are designed to prevent rewarding fabricated specificity. But on Factuality-subset tasks where ALL candidates present attributed quotes, the ceiling prevents penalizing fabrication \u2014 the exact opposite of its intent.\n- **93b0e8f9**: EPISTEMIC SYMMETRY AUDIT mandates identical epistemic labels for structurally identical content. But when candidates make CONTRADICTORY claims about the same source, symmetric labels mask an inherently asymmetric situation (at least one is wrong).\n- **29e534bd**: The ANTI-CORROBORATION section correctly flags contradicted items but then blocks the primary resolution mechanism (domain knowledge) by prohibiting plausibility-based resolution, conflicting with the CONSENSUS KNOWLEDGE EXCEPTION it should defer to.\n\n### Recommended Fix\nUpdate 29e534bd's ANTI-CORROBORATION section to explicitly permit resolution via the CONSENSUS KNOWLEDGE EXCEPTION (005004a4) when contradictions exist. Mutual exclusivity is verifiable evidence of asymmetry \u2014 at least one version is provably wrong. The current blanket prohibition on plausibility-based resolution conflates 'subjective impression' with 'domain knowledge application,' blocking a legitimate evaluation path. The fix should: (a) clarify that when contradictions exist, the UNVERIFIABLE ceiling is suspended for the contradicted items, (b) route resolution through the CONSENSUS KNOWLEDGE EXCEPTION rather than 'subjective plausibility,' and (c) provide a structured artifact for the resolution attempt.\n\nThe meta-compliance gate (ensuring triggered artifacts are actually produced) is a valid secondary concern raised by two reflections, but from one trace it is uncertain whether adding another procedural requirement would change agent behavior when existing requirements were already ignored. This is noted for future investigation but does not warrant an add from this trace alone.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Three playbook entries (005004a4, 93b0e8f9, 29e534bd) create a triple-lock that prevents factual differentiation when all candidates present attributed quotes. Entry 29e534bd's anti-plausibility clause directly conflicts with 005004a4's CONSENSUS KNOWLEDGE EXCEPTION, creating a deadlock that the agent resolved by refusing to differentiate \u2014 wrong on a Factuality task. The agent also skipped all mandatory artifacts, preventing the contradiction from surfacing.\",\n  \"important_disagreements\": [\n    \"Credit_attribution rated c8698dee and 342f27b9 as harmful; anchor and principle_extraction rated both neutral. Resolved as neutral: these entries' content is correct and would have helped if followed. The agent's non-compliance with their artifact requirements is an execution issue, not evidence that the entries themselves are harmful. A correct rule the agent ignores is not a harmful rule.\",\n    \"Anchor proposed detailed task-specific amendments (1.5-point separation values, PLAUSIBILITY TRIAGE procedures). Principle_extraction argued these are too narrowly scoped and the real lesson is about resolving contradictions via domain knowledge. Resolved in favor of principle_extraction's framing: the update should enable the existing CONSENSUS KNOWLEDGE EXCEPTION to apply to contradicted content, not introduce new numeric thresholds from one observation.\",\n    \"All three reflections proposed a meta-compliance gate as a new entry. Resolved as not warranting an add from one trace: the agent ignored existing finalization-blocker language in multiple entries, so adding another check the agent might also skip is speculative. Noted for investigation.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"The core failure stems from a rule conflict between 29e534bd's anti-plausibility clause and 005004a4's CONSENSUS KNOWLEDGE EXCEPTION. All three reflections converge on this diagnosis with strong evidence. Updating 29e534bd to resolve this conflict is the single highest-confidence intervention: it addresses the structural deadlock while preserving all three entries' protective intent. The CONSENSUS KNOWLEDGE EXCEPTION already exists \u2014 29e534bd just needs to stop blocking it for contradicted items.\",\n  \"conservatism_rationale\": \"One update to one entry, resolving a documented rule conflict that all three reflections independently identified. The fix leverages an existing mechanism (CONSENSUS KNOWLEDGE EXCEPTION) rather than introducing new concepts. The meta-compliance gate, while reasonable, is deferred because (1) it's a new entry from one trace, (2) the agent might ignore it just as it ignored existing artifact requirements, and (3) the structural fix to 29e534bd addresses the deeper issue of WHAT to do with contradictions, while the meta-compliance gate only addresses WHETHER the agent reaches that logic at all.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"a3832d7e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 83.3%, rollout_2: 83.3%.\n\n## rollout_1 \u2014 pass_pct: 83.3%\n\n## Prompt\nWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning? \n\n## Candidate Responses\n\n[1]\nIn the context of machine learning, several prominent definitions of \"model\" are frequently cited in literature and academic works. Here are some of the most notable ones:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data and can be used to make predictions or decisions about new data.\"\n\n2. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a mathematical representation of a process, typically expressed as a set of equations or a probabilistic framework, that can be used to make predictions or inferences about data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a specific mathematical form for representing a set of assumptions about how data is generated. It includes parameters that can be adjusted to fit the data.\"\n\n4. **Andrew Ng**:\n   - From his popular online courses:\n     > \"A model is a simplified representation of reality, designed to capture the essential features of a problem and make predictions based on input data.\"\n\n5. **Chris Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, usually expressed in terms of a set of parameters. The goal of learning is to determine the values of these parameters that best explain the observed data.\"\n\n6. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between inputs and outputs, which is derived from the training data and used to make predictions on new data.\"\n\nThese definitions collectively emphasize the role of a model in capturing patterns in data, making predictions, and being adjustable through parameters. They also highlight the importance of the model's ability to generalize to new, unseen data.\n\n[2]\nIn the context of machine learning, the term \"model\" has several prominent definitions. Here are some of the most commonly quoted ones:\n\n1. **Mathematical model**: A mathematical model is a representation of a real-world system or phenomenon using mathematical equations, functions, and algorithms. In machine learning, this model is typically a set of equations that describe the relationships between inputs and outputs, such as a linear regression model or a neural network.\n\n2. **Statistical model**: A statistical model is a probability distribution over a set of possible outcomes or predictions. In machine learning, statistical models are used to quantify uncertainty and make predictions based on observed data. Examples include Bayesian networks, Gaussian mixture models, and random forests.\n\n3. **Algebraic model**: An algebraic model represents a system or process using algebraic equations and variables. In machine learning, algebraic models are used to describe the relationships between inputs and outputs, such as linear algebra-based models or matrix factorization techniques.\n\n4. **Abstraction model**: An abstraction model is a simplified representation of a complex system or process. In machine learning, abstraction models are used to capture the essential characteristics of a system or process, such as a decision tree or a clustering model.\n\n5. **Conceptual model**: A conceptual model is a high-level representation of a system or process. In machine learning, conceptual models are used to describe the underlying relationships and structures of a system, such as a graph or a semantic network.\n\n6. **Computational model**: A computational model is a software implementation of a mathematical or statistical model. In machine learning, computational models are used to train and deploy models on real-world data, such as deep learning models or decision tree ensembles.\n\n7. **Statistical pattern recognition model**: A statistical pattern recognition model is a type of model that recognizes patterns in data and makes predictions based on those patterns. In machine learning, statistical pattern recognition models are used for tasks such as image classification, speech recognition, and natural language processing.\n\n8. **Dynamical system model**: A dynamical system model represents the behavior of a system over time. In machine learning, dynamical system models are used to forecast future behavior or simulate the effects of different scenarios, such as Markov chain models or time-series forecasting models.\n\nThese definitions are not mutually exclusive, and many machine learning models blend elements from multiple categories.\n\n[3]\nIn the context of machine learning, the term \"model\" is often used to refer to a mathematical representation or computational system that learns from and makes predictions on data. Here are some of the most prominent quoted definitions of \"model\" in machine learning:\n\n1. **Tom M. Mitchell (1997)**:\n   - **Definition**: A computer program is considered a model for a concept C if, for any inputs in the input domain of C, the program returns a result that accurately reflects the concept's intended behavior.\n   - **Context**: This definition emphasizes the accuracy and behavior of the model relative to the concept it is modeling.\n\n2. **Pedro Domingos (2012)**:\n   - **Definition**: In machine learning, a model is a computational system that takes as input some data and produces as output a prediction, decision, or value. It is a mapping from inputs to outputs based on learned patterns in the training data.\n   - **Context**: This definition highlights the functional aspect of models, focusing on their predictive capability and how they learn from data.\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville (2016)**:\n   - **Definition**: A model is an abstraction that describes a set of possible relationships between inputs and outputs.\n   - **Context**: This definition emphasizes the abstract nature of models and their role in representing complex relationships in data.\n\n4. **Scott Cheng-Hsin Chen (2018)**:\n   - **Definition**: A machine learning model is a computational representation of a set of learned functions that map from inputs to outputs, typically optimized to minimize error on a given task.\n   - **Context**: This definition underscores the optimization process and the specific goal of reducing prediction errors.\n\n5. **David Barber (2012)**:\n   - **Definition**: A model is a representation of a phenomenon or a system that can be used to make predictions about future observations.\n   - **Context**: This definition focuses on the predictive power of models and their application in making future predictions.\n\n6. **Michael I. Jordan (2014)**:\n   - **Definition**: A model is a formalization of assumptions about a system or problem, encapsulated in a set of equations, rules, or parameters that enable the computation of predictions or decisions.\n   - **Context**: This definition highlights the formalization and the computational aspect of models.\n\nThese definitions capture different aspects of what constitutes a model in machine learning, such as its predictive power, learning mechanism, and representational capabilities.\n\n[4]\nIn the context of machine learning, the term \"model\" is often defined in various ways by different experts and researchers. Here are some of the most prominent and widely quoted definitions:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data. It is a mathematical representation of the relationships among variables in the data.\"\n\n2. **Christopher M. Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, typically expressed in the form of a probabilistic model, which can be used to make predictions or inferences about new data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a system that takes as input one or more variables and produces an output. In machine learning, models are trained on data to learn the parameters that best map inputs to outputs.\"\n\n4. **Andrew Ng**:\n   - From his course \"Machine Learning\" on Coursera:\n     > \"A model is a simplified representation of the real world, typically in the form of a mathematical function that maps inputs to outputs. In machine learning, this function is learned from data.\"\n\n5. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between the inputs and the outputs, expressed in a form that can be used to make predictions.\"\n\n6. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a formal description of how the data is generated, usually involving a set of parameters. The goal of machine learning is to estimate these parameters from the data.\"\n\nThese definitions collectively emphasize that a model in machine learning is a mathematical or computational representation that captures the relationships between input features and output targets, learned from data, and used for making predictions or inferences.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (1) Provide multiple prominent quoted definitions of \u201cmodel\u201d in the context of machine learning. (2) Use quoted definitions (ideally verbatim) attributed to sources/authors, not just paraphrased/category descriptions. PROMPT ANCHOR: \u201cWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning?\u201d\u2014[1] and [4] directly comply by listing 6 author-attributed definitions with quotation marks (6/6 unique items each), while [3] gives 6 definitions but omits quotation formatting (6/6 unique) and [2] replaces quoted author definitions with 8 category-style descriptions (8/8 unique). Since the exact quoted wording is not verifiable here by default, the main differentiator is request compliance: [1]/[4] match the \u201cprominent quoted definitions\u201d requirement best; [3] is only partially compliant due to missing quotes; [2] is least compliant because it largely avoids prominent quoted, attributed definitions. Therefore [1] and [4] tie for highest quality, with [3] next and [2] lowest.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (1) Provide multiple prominent quoted definitions of \u201cmodel\u201d in the context of machine learning. (2) Use quoted definitions (ideally verbatim) attributed to sources/authors, not just paraphrased/category descriptions. PROMPT ANCHOR: \u201cWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning?\u201d\u2014[1] and [4] directly comply by listing 6 author-attributed definitions with quotation marks (6/6 unique items each), while [3] gives 6 definitions but omits quotation formatting (6/6 unique) and [2] replaces quoted author definitions with 8 category-style descriptions (8/8 unique). Since the exact quoted wording is not verifiable here by default, the main differentiator is request compliance: [1]/[4] match the \u201cprominent quoted definitions\u201d requirement best; [3] is only partially compliant due to missing quotes; [2] is least compliant because it largely avoids prominent quoted, attributed definitions. Therefore [1] and [4] tie for highest quality, with [3] next and [2] lowest.\",\n  \"ratings\": [\n    8.5,\n    2.5,\n    6.3,\n    8.5\n  ],\n  \"best_response_ids\": [\n    \"1\",\n    \"4\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 83.3%\n\n## Prompt\nWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning? \n\n## Candidate Responses\n\n[1]\nIn the context of machine learning, several prominent definitions of \"model\" are frequently cited in literature and academic works. Here are some of the most notable ones:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data and can be used to make predictions or decisions about new data.\"\n\n2. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a mathematical representation of a process, typically expressed as a set of equations or a probabilistic framework, that can be used to make predictions or inferences about data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a specific mathematical form for representing a set of assumptions about how data is generated. It includes parameters that can be adjusted to fit the data.\"\n\n4. **Andrew Ng**:\n   - From his popular online courses:\n     > \"A model is a simplified representation of reality, designed to capture the essential features of a problem and make predictions based on input data.\"\n\n5. **Chris Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, usually expressed in terms of a set of parameters. The goal of learning is to determine the values of these parameters that best explain the observed data.\"\n\n6. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between inputs and outputs, which is derived from the training data and used to make predictions on new data.\"\n\nThese definitions collectively emphasize the role of a model in capturing patterns in data, making predictions, and being adjustable through parameters. They also highlight the importance of the model's ability to generalize to new, unseen data.\n\n[2]\nIn the context of machine learning, the term \"model\" has several prominent definitions. Here are some of the most commonly quoted ones:\n\n1. **Mathematical model**: A mathematical model is a representation of a real-world system or phenomenon using mathematical equations, functions, and algorithms. In machine learning, this model is typically a set of equations that describe the relationships between inputs and outputs, such as a linear regression model or a neural network.\n\n2. **Statistical model**: A statistical model is a probability distribution over a set of possible outcomes or predictions. In machine learning, statistical models are used to quantify uncertainty and make predictions based on observed data. Examples include Bayesian networks, Gaussian mixture models, and random forests.\n\n3. **Algebraic model**: An algebraic model represents a system or process using algebraic equations and variables. In machine learning, algebraic models are used to describe the relationships between inputs and outputs, such as linear algebra-based models or matrix factorization techniques.\n\n4. **Abstraction model**: An abstraction model is a simplified representation of a complex system or process. In machine learning, abstraction models are used to capture the essential characteristics of a system or process, such as a decision tree or a clustering model.\n\n5. **Conceptual model**: A conceptual model is a high-level representation of a system or process. In machine learning, conceptual models are used to describe the underlying relationships and structures of a system, such as a graph or a semantic network.\n\n6. **Computational model**: A computational model is a software implementation of a mathematical or statistical model. In machine learning, computational models are used to train and deploy models on real-world data, such as deep learning models or decision tree ensembles.\n\n7. **Statistical pattern recognition model**: A statistical pattern recognition model is a type of model that recognizes patterns in data and makes predictions based on those patterns. In machine learning, statistical pattern recognition models are used for tasks such as image classification, speech recognition, and natural language processing.\n\n8. **Dynamical system model**: A dynamical system model represents the behavior of a system over time. In machine learning, dynamical system models are used to forecast future behavior or simulate the effects of different scenarios, such as Markov chain models or time-series forecasting models.\n\nThese definitions are not mutually exclusive, and many machine learning models blend elements from multiple categories.\n\n[3]\nIn the context of machine learning, the term \"model\" is often used to refer to a mathematical representation or computational system that learns from and makes predictions on data. Here are some of the most prominent quoted definitions of \"model\" in machine learning:\n\n1. **Tom M. Mitchell (1997)**:\n   - **Definition**: A computer program is considered a model for a concept C if, for any inputs in the input domain of C, the program returns a result that accurately reflects the concept's intended behavior.\n   - **Context**: This definition emphasizes the accuracy and behavior of the model relative to the concept it is modeling.\n\n2. **Pedro Domingos (2012)**:\n   - **Definition**: In machine learning, a model is a computational system that takes as input some data and produces as output a prediction, decision, or value. It is a mapping from inputs to outputs based on learned patterns in the training data.\n   - **Context**: This definition highlights the functional aspect of models, focusing on their predictive capability and how they learn from data.\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville (2016)**:\n   - **Definition**: A model is an abstraction that describes a set of possible relationships between inputs and outputs.\n   - **Context**: This definition emphasizes the abstract nature of models and their role in representing complex relationships in data.\n\n4. **Scott Cheng-Hsin Chen (2018)**:\n   - **Definition**: A machine learning model is a computational representation of a set of learned functions that map from inputs to outputs, typically optimized to minimize error on a given task.\n   - **Context**: This definition underscores the optimization process and the specific goal of reducing prediction errors.\n\n5. **David Barber (2012)**:\n   - **Definition**: A model is a representation of a phenomenon or a system that can be used to make predictions about future observations.\n   - **Context**: This definition focuses on the predictive power of models and their application in making future predictions.\n\n6. **Michael I. Jordan (2014)**:\n   - **Definition**: A model is a formalization of assumptions about a system or problem, encapsulated in a set of equations, rules, or parameters that enable the computation of predictions or decisions.\n   - **Context**: This definition highlights the formalization and the computational aspect of models.\n\nThese definitions capture different aspects of what constitutes a model in machine learning, such as its predictive power, learning mechanism, and representational capabilities.\n\n[4]\nIn the context of machine learning, the term \"model\" is often defined in various ways by different experts and researchers. Here are some of the most prominent and widely quoted definitions:\n\n1. **Tom M. Mitchell**:\n   - From his book \"Machine Learning\" (1997):\n     > \"A model is a system that has been learned from data. It is a mathematical representation of the relationships among variables in the data.\"\n\n2. **Christopher M. Bishop**:\n   - From his book \"Pattern Recognition and Machine Learning\" (2006):\n     > \"A model is a set of assumptions about the data, typically expressed in the form of a probabilistic model, which can be used to make predictions or inferences about new data.\"\n\n3. **Ian Goodfellow, Yoshua Bengio, and Aaron Courville**:\n   - From their book \"Deep Learning\" (2016):\n     > \"A model is a system that takes as input one or more variables and produces an output. In machine learning, models are trained on data to learn the parameters that best map inputs to outputs.\"\n\n4. **Andrew Ng**:\n   - From his course \"Machine Learning\" on Coursera:\n     > \"A model is a simplified representation of the real world, typically in the form of a mathematical function that maps inputs to outputs. In machine learning, this function is learned from data.\"\n\n5. **Pedro Domingos**:\n   - From his paper \"A Few Useful Things to Know about Machine Learning\" (2012):\n     > \"A model is a hypothesis about the relationship between the inputs and the outputs, expressed in a form that can be used to make predictions.\"\n\n6. **Kevin P. Murphy**:\n   - From his book \"Machine Learning: A Probabilistic Perspective\" (2012):\n     > \"A model is a formal description of how the data is generated, usually involving a set of parameters. The goal of machine learning is to estimate these parameters from the data.\"\n\nThese definitions collectively emphasize that a model in machine learning is a mathematical or computational representation that captures the relationships between input features and output targets, learned from data, and used for making predictions or inferences.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (1) Provide multiple prominent quoted definitions of \u201cmodel\u201d in the context of machine learning. (2) Use quoted definitions (ideally verbatim) attributed to sources/authors, not just paraphrased/category descriptions. PROMPT ANCHOR: \u201cWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning?\u201d\u2014[1] and [4] directly comply by listing 6 author-attributed definitions with quotation marks (6/6 unique items each), while [3] gives 6 definitions but omits quotation formatting (6/6 unique) and [2] replaces quoted author definitions with 8 category-style descriptions (8/8 unique). Since the exact quoted wording is not verifiable here by default, the main differentiator is request compliance: [1]/[4] match the \u201cprominent quoted definitions\u201d requirement best; [3] is only partially compliant due to missing quotes; [2] is least compliant because it largely avoids prominent quoted, attributed definitions. Therefore [1] and [4] tie for highest quality, with [3] next and [2] lowest.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (1) Provide multiple prominent quoted definitions of \u201cmodel\u201d in the context of machine learning. (2) Use quoted definitions (ideally verbatim) attributed to sources/authors, not just paraphrased/category descriptions. PROMPT ANCHOR: \u201cWhat are the most prominent quoted definitions of \u201cmodel\u201d in the context of machine learning?\u201d\u2014[1] and [4] directly comply by listing 6 author-attributed definitions with quotation marks (6/6 unique items each), while [3] gives 6 definitions but omits quotation formatting (6/6 unique) and [2] replaces quoted author definitions with 8 category-style descriptions (8/8 unique). Since the exact quoted wording is not verifiable here by default, the main differentiator is request compliance: [1]/[4] match the \u201cprominent quoted definitions\u201d requirement best; [3] is only partially compliant due to missing quotes; [2] is least compliant because it largely avoids prominent quoted, attributed definitions. Therefore [1] and [4] tie for highest quality, with [3] next and [2] lowest.\",\n  \"ratings\": [\n    8.5,\n    2.5,\n    6.3,\n    8.5\n  ],\n  \"best_response_ids\": [\n    \"1\",\n    \"4\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 83.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.500\nCorrect candidate ids: 1\nTop-rated candidate ids: 1, 4\n\nCandidate scores:\n  [1] CORRECT score=8.500\n  [2] INCORRECT score=2.500\n  [3] INCORRECT score=6.300\n  [4] INCORRECT score=8.500\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 83.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.500\nCorrect candidate ids: 1\nTop-rated candidate ids: 1, 4\n\nCandidate scores:\n  [1] CORRECT score=8.500\n  [2] INCORRECT score=2.500\n  [3] INCORRECT score=6.300\n  [4] INCORRECT score=8.500",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause: The UNVERIFIABLE Ceiling Prevented Necessary Factual Differentiation\n\nBoth rollouts produced identical outputs (ratings [8.5, 2.5, 6.3, 8.5], best=[1,4]). The ground truth marks only [1] as CORRECT, so tying [4] at 8.5 caused the error. The prompt-accurate flag is False because [4] (INCORRECT) scored equal to [1] (CORRECT).\n\n### Proximate Cause: [005004a4] PROACTIVE CLASSIFICATION\n\nThe agent's reasoning explicitly states: 'Since the exact quoted wording is not verifiable here by default, the main differentiator is request compliance.' This is a direct application of [005004a4]'s rule: 'classify ALL such attributed content as UNVERIFIABLE by default.' Combined with the 0.3-point ceiling from the same entry and the EPISTEMIC SYMMETRY AUDIT in [93b0e8f9], the agent was structurally prevented from differentiating [1] and [4] on factual grounds.\n\nThe irony: this is a FACTUALITY subset task where the primary content IS attributed quotes. The UNVERIFIABLE ceiling, designed to prevent rewarding fabricated specificity, inadvertently made it impossible to penalize fabricated specificity when ALL candidates present the same type of content.\n\n### Missed Mandatory Step: [29e534bd] DIFF TABLE\n\n[1] and [4] cite the exact same set of authors (Mitchell, Bishop, Murphy, Goodfellow et al., Ng, Domingos) but present DIFFERENT quoted text for each. This is the textbook trigger for the MANDATORY DIFF TABLE in [29e534bd]. The agent never built one. Had it done so, it would have found contradictions on every single shared source \u2014 at least one candidate must be presenting fabricated quotes for each.\n\nCritically, [29e534bd]'s ANTI-CORROBORATION rule says contradicted content should be flagged as UNVERIFIED. But the entry then says 'Never resolve by subjective plausibility.' This creates a deadlock when the ENTIRE evaluation depends on which set of contradicted quotes is more accurate \u2014 the entry provides no escape hatch for resolution via domain knowledge.\n\n### Missed Mandatory Step: [93b0e8f9] DIFFERENTIAL CLAIM VERIFICATION\n\n[93b0e8f9] requires that when the top-ranked candidate's decisive advantage rests on unique factual content, ISOLATE\u2192COUNTER\u2192CLASSIFY must be applied to \u22652 differentiating claims. Since [1] and [4] tied, each has differentiating claims (different quote text for the same authors). The agent should have attempted verification of these differences. For example, Tom Mitchell's famous definition from his 1997 book is about *learning* ('A computer program is said to learn from experience E...'), not directly about 'model.' Neither [1] nor [4]'s Mitchell 'quote' matches this well-known definition, but the agent never attempted this check.\n\n### The Deeper Structural Problem: UNVERIFIABLE Ceiling vs. Factuality Tasks\n\nThe playbook has a conflict between two goals:\n1. **Don't reward fabricated specificity** (UNVERIFIABLE ceiling, EPISTEMIC SYMMETRY AUDIT)\n2. **Penalize factual mistakes** ([005004a4] verification gate, factuality checks)\n\nWhen ALL candidates present attributed quotes (which are likely fabricated by the LLM that generated them), the ceiling rule dominates and prevents ANY factual differentiation. The CONSENSUS KNOWLEDGE EXCEPTION exists but was never invoked \u2014 the agent treated it as inapplicable since it doesn't know the 'exact wording' of the source texts.\n\n### What Was Missing: A Contradiction-Resolution Procedure\n\n**Trigger:** The DIFF TABLE reveals contradictions (2+ candidates attribute DIFFERENT specific content to the SAME source).\n\n**Missing procedure:**\n1. When contradictions exist, the UNVERIFIABLE ceiling on score separation should be SUSPENDED for the contradicted items (since at least one version is provably wrong).\n2. Apply domain knowledge to assess: (a) Does either version match well-known content from the source? (b) Are the concepts attributed to each author consistent with their known intellectual contributions? (c) Which version has more internal consistency?\n3. If domain knowledge favors one version, reclassify as PLAUSIBLE vs. SUSPECT (not VERIFIED vs. VERIFIED-FALSE, since exact wording remains uncertain).\n4. A PLAUSIBLE classification should permit ~1.0 point separation over SUSPECT, not the 0.3-point ceiling.\n5. If domain knowledge cannot resolve, apply risk-factor logic: the candidate with MORE contradicted items relative to other candidates carries higher fabrication risk.\n\n### Execution Quality Issues\n\nThe agent's reasoning was extremely brief \u2014 a single paragraph covering constraint extraction and evaluation. Multiple mandatory artifacts were completely absent:\n- No PREMISE CHECKLIST\n- No DIFF TABLE (despite mandatory trigger)\n- No DIFFERENTIAL CLAIM VERIFICATION (despite tie at top)\n- No MANDATORY SYMMETRY TABLE\n- No COMPONENT COMPARISON TABLE\n\nThe consistency of this shortcutting across all rollouts suggests the agent either didn't internalize the procedural requirements or found them too complex for this task type. This is an execution discipline issue.\n\n### Actionable Insights for Curator\n\n1. **Amend [005004a4]:** Add an exception: 'When the DIFF TABLE (29e534bd) reveals that candidates attribute CONTRADICTORY content to the same source, the UNVERIFIABLE ceiling is suspended for those contradicted items. At least one version is provably wrong. Apply domain knowledge (CONSENSUS KNOWLEDGE EXCEPTION) to assess relative plausibility. Contradicted content that is plausible may separate from contradicted content that is suspect by up to 1.5 points.'\n\n2. **Amend [29e534bd]:** Strengthen the ANTI-CORROBORATION section: 'When contradicted items cannot be resolved by concrete counter-fact, apply PLAUSIBILITY TRIAGE using domain knowledge: Which version is more consistent with the source's known intellectual framework? This is not subjective plausibility \u2014 it is domain-knowledge application under the CONSENSUS KNOWLEDGE EXCEPTION. If one version aligns with known themes of the author and the other contradicts them, classify accordingly.'\n\n3. **Amend [93b0e8f9]:** Add: 'EPISTEMIC SYMMETRY AUDIT EXCEPTION: When the DIFF TABLE reveals source-level contradictions between candidates, symmetric treatment of contradicted items does NOT mean equal scores. The contradiction itself is an asymmetric signal \u2014 at least one candidate is wrong. Symmetry applies to the METHOD of evaluation (same rigor for all), not the OUTCOME (same score for all).'\n\n4. **Add procedural enforcement:** The agent skipped multiple mandatory artifacts. Consider adding a META-COMPLIANCE check: 'Before finalizing, list all mandatory artifacts triggered by this task (PREMISE CHECKLIST, DIFF TABLE, VERIFICATION GATE applications, SYMMETRY TABLE). For each, confirm it exists in your reasoning or explain why the trigger condition was not met. Missing a triggered artifact is a finalization blocker.'"
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "All candidates present attributed quotes to the same named sources, but with contradictory quote text. The DIFF TABLE shows universal contradiction. The UNVERIFIABLE ceiling blocks factual differentiation. The agent cannot distinguish which set of fabricated-looking quotes is closer to real source material.",
+          "gap_type": "procedure",
+          "suggested_content": "CONTRADICTION-RESOLUTION PROCEDURE: When the DIFF TABLE reveals that candidates attribute CONTRADICTORY specific content (quotes, definitions, statistics) to the SAME named source:\n1. SUSPEND the 0.3-point UNVERIFIABLE ceiling for contradicted items \u2014 at least one version is provably wrong, so symmetric treatment of outcomes (not methods) is inappropriate.\n2. Apply CONSENSUS KNOWLEDGE EXCEPTION: For each contradicted source, ask whether the author's KNOWN intellectual framework, research area, or famous contributions align better with one version. This is domain-knowledge application, not subjective plausibility.\n3. CLASSIFY each version as PLAUSIBLE (aligns with known contributions) or SUSPECT (contradicts known themes or attributes implausible claims). Plausible versions may separate from suspect versions by up to 1.5 points.\n4. If domain knowledge cannot distinguish versions, apply RISK-COUNTING: the candidate with MORE suspect/unresolvable contradictions relative to other candidates carries higher fabrication risk and should score lower.\n5. Produce artifact: [Source | Candidate A version | Candidate B version | Domain-knowledge assessment | PLAUSIBLE/SUSPECT/UNRESOLVABLE].",
+          "trigger": "When the DIFF TABLE (29e534bd) shows CONTRADICT in \u22652 rows for the same pair of candidates, AND the contradicted content is the primary evaluative dimension of the task."
+        },
+        {
+          "situation": "The agent skipped multiple mandatory artifacts (PREMISE CHECKLIST, DIFF TABLE, DIFFERENTIAL CLAIM VERIFICATION, SYMMETRY TABLE, compliance matrix) and produced a single-paragraph evaluation. The reasoning shows no evidence of following any procedural entry's artifact requirements.",
+          "gap_type": "checklist",
+          "suggested_content": "META-COMPLIANCE GATE (fires immediately before JSON emission, after all evaluation): List every mandatory artifact triggered by this task type:\n- PREMISE CHECKLIST (a3832d7e): triggered? artifact present?\n- CONSTRAINT CHECKLIST + compliance matrix (c8698dee): triggered? artifact present?\n- DIFF TABLE (29e534bd): triggered? artifact present?\n- DIFFERENTIAL CLAIM VERIFICATION (93b0e8f9): triggered? artifact present?\n- SYMMETRY TABLE (005004a4): triggered? artifact present?\nFor each triggered artifact that is absent: STOP. Either produce the artifact or explicitly document why the trigger condition was not met with specific evidence. Missing a triggered artifact is a FINALIZATION BLOCKER.",
+          "trigger": "Always fires as the penultimate step before JSON emission, after evaluation reasoning is complete but before output is finalized."
+        },
+        {
+          "situation": "The playbook's UNVERIFIABLE ceiling and EPISTEMIC SYMMETRY AUDIT assume that inability to verify exact attributed wording means all attributed content is equally trustworthy. But on Factuality-subset tasks where candidates present attributed quotes as their primary content, this assumption makes it impossible to penalize fabrication \u2014 the very thing the Factuality subset is designed to test.",
+          "gap_type": "principle",
+          "suggested_content": "TASK-SUBSET CALIBRATION: When the evaluation is on the Factuality dimension AND the primary content being evaluated consists of attributed quotes or factual claims:\n- The UNVERIFIABLE ceiling is a SOFT constraint, not a HARD ceiling. It can be overridden when the DIFF TABLE or domain knowledge produces asymmetric evidence.\n- Factuality tasks REQUIRE the agent to attempt factual differentiation, even for attributed content. The risk of rewarding fabricated specificity must be balanced against the risk of failing to penalize actual fabrication.\n- When ALL candidates present fabrication-risk content (attributed quotes), the agent should still attempt to rank by relative fabrication risk using CONSENSUS KNOWLEDGE, not treat all as equally credible.",
+          "trigger": "When the task is classified as a Factuality evaluation and the primary differentiating content across candidates is attributed quotes or specific factual claims."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n### Agreement with Anchor\nI agree with the anchor's core diagnosis: the proximate cause of failure is entry 005004a4's PROACTIVE CLASSIFICATION rule and 0.3-point ceiling, reinforced by 93b0e8f9's EPISTEMIC SYMMETRY AUDIT. Together, these entries structurally prevented the agent from differentiating [1] (CORRECT) from [4] (INCORRECT) because both present attributed quotes \u2014 the very content type the ceiling was designed to neutralize. I also agree that entry 29e534bd's MANDATORY TRIGGER (DIFF TABLE) was clearly met but never applied, and that even if applied, the entry's anti-plausibility clause would have created a deadlock.\n\n### Refinements to Anchor\n1. **Inconsistent ceiling application**: The anchor doesn't note that the agent applied the UNVERIFIABLE ceiling inconsistently. The agent separated [1] from [3] by 2.2 points partly based on quotation formatting of attributed content, while 005004a4's SUB-ATTRIBUTE INHERITANCE clause says formatting properties of UNVERIFIABLE content inherit the UNVERIFIABLE classification. This means the agent selectively enforced the ceiling \u2014 blocking factual differentiation between [1]/[4] while allowing format-based differentiation between [1]/[3]. The ceiling rule needs clarification about what dimensions it covers.\n\n2. **c8698dee was not neutral**: The anchor rates it neutral, but the agent violated its ARTIFACT GATE requirement (reasoning must BEGIN with a labeled CONSTRAINT CHECKLIST block) and never produced a compliance matrix. The pervasive absence of mandatory artifacts is itself a harmful pattern \u2014 c8698dee's procedural requirements, if followed, would have at minimum forced structured comparison.\n\n3. **342f27b9 was more actionable than anchor suggests**: The anchor discusses Mitchell's famous definition but doesn't connect this to the CONSENSUS KNOWLEDGE EXCEPTION in 005004a4. Mitchell's 1997 definition ('A computer program is said to learn from experience E...') is the paradigmatic example of consensus ML knowledge. The agent could have used this as a reference point to notice that neither [1]'s nor [4]'s Mitchell 'quote' matches it, triggering fabrication suspicion via the VERIFICATION GATE. The reference-derivation step would have been the natural entry point for this domain knowledge.\n\n### Disagreements with Anchor\n1. The anchor rates 342f27b9 and 295257e2 as neutral. I believe 342f27b9 is mildly harmful by omission \u2014 its reference-derivation step would have been the most natural way to introduce domain knowledge into the evaluation, and the CONSENSUS KNOWLEDGE EXCEPTION provides a legitimate path past the UNVERIFIABLE ceiling. The entry's non-application was a missed opportunity that contributed to the failure.\n\n2. The anchor's suggested fix of suspending the UNVERIFIABLE ceiling when contradictions are detected is directionally correct but insufficient. The deeper issue is that three separate entries (005004a4, 93b0e8f9, 29e534bd) each independently enforce ceilings or anti-plausibility rules. A fix in one entry alone may still be blocked by the others. The fix needs to be coordinated across all three entries, or a higher-priority override principle needs to be established.\n\n### Key Structural Insight\nThe playbook has a **triple-lock** against using domain knowledge for attributed content: (1) 005004a4's 0.3-point ceiling, (2) 93b0e8f9's symmetric treatment mandate, (3) 29e534bd's anti-plausibility clause. Each was individually designed to prevent a real failure mode (rewarding fabricated specificity), but collectively they create a situation where the agent CANNOT penalize fabrication when ALL candidates fabricate \u2014 which is exactly the scenario in Factuality-subset tasks involving LLM-generated responses.\n\nThe most effective intervention would be a **contradiction-resolution procedure** that fires when the DIFF TABLE reveals contradictions, suspends the ceiling for contradicted items, and permits domain-knowledge assessment under the CONSENSUS KNOWLEDGE EXCEPTION. This needs to be coordinated across all three entries to avoid deadlocks.\n\n### Execution Discipline\nThe agent's reasoning across all rollouts was a single paragraph with no mandatory artifacts. Zero of the following were produced: PREMISE CHECKLIST, CONSTRAINT CHECKLIST compliance matrix, DIFF TABLE, DIFFERENTIAL CLAIM VERIFICATION, MANDATORY SYMMETRY TABLE. This pervasive artifact absence suggests the agent either (a) didn't internalize procedural requirements, (b) found them too complex for the apparent simplicity of the task, or (c) was influenced by the apparent clarity of the compliance-based distinction ([1]/[4] have quotes, [2] doesn't, [3] lacks formatting). A META-COMPLIANCE gate would catch this pattern."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Agreement with anchor\nI agree with the anchor's core root cause: the UNVERIFIABLE ceiling from 005004a4, reinforced by 93b0e8f9's EPISTEMIC SYMMETRY AUDIT, prevented the agent from differentiating [1] and [4] on factual grounds despite them attributing different quote text to the same six authors. I also agree that the DIFF TABLE (29e534bd) was mandatorily triggered but never built.\n\n## Refinements\nThe anchor correctly identifies a structural conflict but overstates how 'harmful' the entries themselves are versus how poorly the agent applied them. Two critical nuances:\n\n1. **005004a4 already has a CONSENSUS KNOWLEDGE EXCEPTION** that could have been invoked. The exception says standard domain knowledge (widely-accepted facts any informed person would affirm) is valid for verification. Tom Mitchell's famous definition from his 1997 book ('A computer program is said to learn from experience E with respect to some class of tasks T and performance measure P...') is consensus ML knowledge. The agent could have used it to distinguish [1]'s fabricated Mitchell 'quote' from [4]'s different fabricated Mitchell 'quote'\u2014both are wrong, but comparing them to the real definition might reveal differential plausibility. The agent never attempted this.\n\n2. **29e534bd's anti-resolution language ('Never resolve by subjective plausibility') directly conflicts with 005004a4's CONSENSUS KNOWLEDGE EXCEPTION.** The anchor identifies this but frames it only as a missing procedure. The deeper issue is a RULE CONFLICT: one entry says 'use domain knowledge to verify,' another says 'never resolve by plausibility.' The agent, facing this conflict, defaulted to the more conservative rule (don't differentiate), which happened to be wrong for this factuality task.\n\n## Disagreement\nThe anchor proposes very detailed, task-specific amendments (1.5-point separation for plausible vs. suspect, specific PLAUSIBILITY TRIAGE procedures). These are too narrowly scoped. The generalizable lessons are about: (a) detecting when mutual exclusivity overrides symmetric-uncertainty assumptions, (b) ensuring triggered procedures are actually executed, and (c) not letting a narrow unverifiability classification suppress all available evidence channels.\n\n## Key evidence\n- Both rollouts produced identical reasoning and scores (deterministic failure mode)\n- Agent reasoning was a single paragraph; no DIFF TABLE, no PREMISE CHECKLIST, no SYMMETRY TABLE, no VERIFICATION GATE application\n- Agent explicitly stated: 'Since the exact quoted wording is not verifiable here by default, the main differentiator is request compliance'\n- [1] and [4] share the same 6 cited authors with different attributed text\u2014mandatory DIFF TABLE trigger from 29e534bd was met but ignored\n- The contradiction between [1] and [4]'s quotes means at least one is fabricating\u2014this is verifiable asymmetric evidence that was treated as symmetric uncertainty",
+      "principles": [
+        {
+          "statement": "When candidates make contradictory claims about the same fact, the contradiction is verifiable evidence of asymmetry. Override any symmetric-uncertainty default and attempt resolution via domain knowledge before equalizing scores.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "29e534bd",
+          "trigger": "When a DIFF TABLE or comparison reveals candidates attribute different content to the same source, or make mutually exclusive factual claims, AND a protective rule (e.g., UNVERIFIABLE ceiling) would enforce equal scoring.",
+          "verification_or_artifact": "Produce: [Source | Candidate A claim | Candidate B claim | Domain knowledge assessment | Resolution or 'genuinely unresolvable']. Only if ALL rows are genuinely unresolvable does the symmetric ceiling apply.",
+          "evidence": "Candidates [1] and [4] attributed 6 different quotes to the same 6 authors. The agent classified all as UNVERIFIABLE and scored them equally at 8.5. But mutual exclusivity means at least one set of quotes is fabricated per author\u2014this is verifiable asymmetric evidence. The CONSENSUS KNOWLEDGE EXCEPTION in 005004a4 was available but unused, and 29e534bd's 'never resolve by subjective plausibility' blocked the resolution path."
+        },
+        {
+          "statement": "Before finalizing, enumerate every mandatory artifact triggered by task characteristics (diff tables, checklists, verification gates). A triggered but missing artifact is a finalization blocker\u2014produce it or document why the trigger was not met.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "Fires as the last pre-submission check, after scoring but before emitting final output.",
+          "verification_or_artifact": "Produce: [Artifact name | Triggering condition | Trigger met? | Artifact present? | If missing, blocker status]. Any row with 'Trigger met: Y, Present: N' blocks finalization.",
+          "evidence": "The agent skipped the DIFF TABLE (29e534bd, trigger: 2+ candidates cite same source with different content\u2014clearly met), PREMISE CHECKLIST (a3832d7e), MANDATORY SYMMETRY TABLE (005004a4), and DIFFERENTIAL CLAIM VERIFICATION (93b0e8f9). These omissions were the proximate cause of failure\u2014had the DIFF TABLE been built, the contradictions would have been visible and the agent would have been forced to address them."
+        },
+        {
+          "statement": "When a protective rule blocks differentiation on one content property (e.g., exact wording), check whether other independently assessable properties of the same content (e.g., topical consistency with the attributed source's known work) remain available as evaluation signals.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "005004a4",
+          "trigger": "When content is classified UNVERIFIABLE on one dimension but the task requires differentiation, and the content has additional evaluable dimensions not covered by the unverifiability classification.",
+          "verification_or_artifact": "List properties of the unverifiable content: [Property | Covered by UNVERIFIABLE? | Independently assessable?]. For each independently assessable property, apply domain knowledge. Example: 'exact quote wording' is unverifiable, but 'whether the topic matches the author's known research area' is assessable via consensus knowledge.",
+          "evidence": "The agent classified all attributed quotes as UNVERIFIABLE (correct for exact wording) but then treated this as blocking ALL factual assessment. It never checked whether the quotes' topics were consistent with each author's known intellectual contributions\u2014a dimension that IS assessable via the existing CONSENSUS KNOWLEDGE EXCEPTION. This turned a narrow classification into a total evaluation shutdown."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "a3832d7e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause: Triple-Lock Against Factual Differentiation in Attributed-Content Tasks\n\nBoth rollouts produced identical results: ratings [8.5, 2.5, 6.3, 8.5] with best_response_ids=[1,4]. Ground truth marks only [1] as CORRECT, so tying [4] at 8.5 caused prompt_accurate=False and winner_fraction=0.5.\n\n### Proximate Cause\nThe agent's reasoning explicitly states: 'Since the exact quoted wording is not verifiable here by default, the main differentiator is request compliance.' This is a direct application of 005004a4's PROACTIVE CLASSIFICATION rule and 0.3-point UNVERIFIABLE ceiling. Combined with 93b0e8f9's EPISTEMIC SYMMETRY AUDIT (which mandates symmetric skepticism across candidates), the agent was structurally prevented from differentiating [1] and [4] on factual grounds.\n\n### The Structural Deadlock (Triple-Lock)\nThree entries collectively block domain-knowledge-based differentiation:\n1. **005004a4**: PROACTIVE CLASSIFICATION classifies all attributed quotes as UNVERIFIABLE; 0.3-point ceiling caps score separation.\n2. **93b0e8f9**: EPISTEMIC SYMMETRY AUDIT requires the same epistemic label for structurally identical content across all candidates.\n3. **29e534bd**: ANTI-CORROBORATION says 'Never resolve by subjective plausibility' when candidates attribute different content to the same source.\n\nCritically, 005004a4 already contains a CONSENSUS KNOWLEDGE EXCEPTION that was designed to allow domain-knowledge resolution \u2014 but 29e534bd's anti-plausibility clause directly conflicts with it, creating a deadlock the agent resolved by defaulting to the most conservative rule (don't differentiate).\n\n### Missed Mandatory Artifact: DIFF TABLE\nCandidates [1] and [4] cite the same six ML authors (Mitchell, Bishop, Murphy, Goodfellow et al., Ng, Domingos) but present DIFFERENT quoted text for each. This is the textbook trigger for 29e534bd's MANDATORY DIFF TABLE. The agent never built one. Had it done so, contradictions on every shared source would have been visible \u2014 at least one candidate must be fabricating quotes for each author. This contradictory evidence is asymmetric (at least one is provably wrong), yet the ceiling rules enforce symmetric treatment.\n\n### Available But Unused Resolution Path\nTom Mitchell's 1997 definition ('A computer program is said to learn from experience E with respect to some class of tasks T...') is paradigmatic consensus ML knowledge. It falls squarely under 005004a4's CONSENSUS KNOWLEDGE EXCEPTION. The agent could have used this as a reference point to assess which candidate's Mitchell 'quote' was more or less plausible \u2014 but never attempted this, partly because 29e534bd's anti-plausibility clause discouraged it.\n\n### Execution Discipline Failure\nThe agent's reasoning was a single paragraph with zero mandatory artifacts produced: no PREMISE CHECKLIST (a3832d7e), no CONSTRAINT CHECKLIST/compliance matrix (c8698dee), no DIFF TABLE (29e534bd), no DIFFERENTIAL CLAIM VERIFICATION (93b0e8f9), no SYMMETRY TABLE (005004a4). This pervasive shortcutting across all rollouts amplified the structural problem \u2014 had any procedural entry been followed, the contradictions would have surfaced.\n\n### Why the Harmful Entries Are Harmful Here\n- **005004a4**: The PROACTIVE CLASSIFICATION rule and 0.3-point ceiling are designed to prevent rewarding fabricated specificity. But on Factuality-subset tasks where ALL candidates present attributed quotes, the ceiling prevents penalizing fabrication \u2014 the exact opposite of its intent.\n- **93b0e8f9**: EPISTEMIC SYMMETRY AUDIT mandates identical epistemic labels for structurally identical content. But when candidates make CONTRADICTORY claims about the same source, symmetric labels mask an inherently asymmetric situation (at least one is wrong).\n- **29e534bd**: The ANTI-CORROBORATION section correctly flags contradicted items but then blocks the primary resolution mechanism (domain knowledge) by prohibiting plausibility-based resolution, conflicting with the CONSENSUS KNOWLEDGE EXCEPTION it should defer to.\n\n### Recommended Fix\nUpdate 29e534bd's ANTI-CORROBORATION section to explicitly permit resolution via the CONSENSUS KNOWLEDGE EXCEPTION (005004a4) when contradictions exist. Mutual exclusivity is verifiable evidence of asymmetry \u2014 at least one version is provably wrong. The current blanket prohibition on plausibility-based resolution conflates 'subjective impression' with 'domain knowledge application,' blocking a legitimate evaluation path. The fix should: (a) clarify that when contradictions exist, the UNVERIFIABLE ceiling is suspended for the contradicted items, (b) route resolution through the CONSENSUS KNOWLEDGE EXCEPTION rather than 'subjective plausibility,' and (c) provide a structured artifact for the resolution attempt.\n\nThe meta-compliance gate (ensuring triggered artifacts are actually produced) is a valid secondary concern raised by two reflections, but from one trace it is uncertain whether adding another procedural requirement would change agent behavior when existing requirements were already ignored. This is noted for future investigation but does not warrant an add from this trace alone.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Three playbook entries (005004a4, 93b0e8f9, 29e534bd) create a triple-lock that prevents factual differentiation when all candidates present attributed quotes. Entry 29e534bd's anti-plausibility clause directly conflicts with 005004a4's CONSENSUS KNOWLEDGE EXCEPTION, creating a deadlock that the agent resolved by refusing to differentiate \u2014 wrong on a Factuality task. The agent also skipped all mandatory artifacts, preventing the contradiction from surfacing.",
+      "important_disagreements": [
+        "Credit_attribution rated c8698dee and 342f27b9 as harmful; anchor and principle_extraction rated both neutral. Resolved as neutral: these entries' content is correct and would have helped if followed. The agent's non-compliance with their artifact requirements is an execution issue, not evidence that the entries themselves are harmful. A correct rule the agent ignores is not a harmful rule.",
+        "Anchor proposed detailed task-specific amendments (1.5-point separation values, PLAUSIBILITY TRIAGE procedures). Principle_extraction argued these are too narrowly scoped and the real lesson is about resolving contradictions via domain knowledge. Resolved in favor of principle_extraction's framing: the update should enable the existing CONSENSUS KNOWLEDGE EXCEPTION to apply to contradicted content, not introduce new numeric thresholds from one observation.",
+        "All three reflections proposed a meta-compliance gate as a new entry. Resolved as not warranting an add from one trace: the agent ignored existing finalization-blocker language in multiple entries, so adding another check the agent might also skip is speculative. Noted for investigation."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "The core failure stems from a rule conflict between 29e534bd's anti-plausibility clause and 005004a4's CONSENSUS KNOWLEDGE EXCEPTION. All three reflections converge on this diagnosis with strong evidence. Updating 29e534bd to resolve this conflict is the single highest-confidence intervention: it addresses the structural deadlock while preserving all three entries' protective intent. The CONSENSUS KNOWLEDGE EXCEPTION already exists \u2014 29e534bd just needs to stop blocking it for contradicted items.",
+      "conservatism_rationale": "One update to one entry, resolving a documented rule conflict that all three reflections independently identified. The fix leverages an existing mechanism (CONSENSUS KNOWLEDGE EXCEPTION) rather than introducing new concepts. The meta-compliance gate, while reasonable, is deferred because (1) it's a new entry from one trace, (2) the agent might ignore it just as it ignored existing artifact requirements, and (3) the structural fix to 29e534bd addresses the deeper issue of WHAT to do with contradictions, while the meta-compliance gate only addresses WHETHER the agent reaches that logic at all.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"a3832d7e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause: Triple-Lock Against Factual Differentiation in Attributed-Content Tasks\\n\\nBoth rollouts produced identical results: ratings [8.5, 2.5, 6.3, 8.5] with best_response_ids=[1,4]. Ground truth marks only [1] as CORRECT, so tying [4] at 8.5 caused prompt_accurate=False and winner_fraction=0.5.\\n\\n### Proximate Cause\\nThe agent's reasoning explicitly states: 'Since the exact quoted wording is not verifiable here by default, the main differentiator is request compliance.' This is a direct application of 005004a4's PROACTIVE CLASSIFICATION rule and 0.3-point UNVERIFIABLE ceiling. Combined with 93b0e8f9's EPISTEMIC SYMMETRY AUDIT (which mandates symmetric skepticism across candidates), the agent was structurally prevented from differentiating [1] and [4] on factual grounds.\\n\\n### The Structural Deadlock (Triple-Lock)\\nThree entries collectively block domain-knowledge-based differentiation:\\n1. **005004a4**: PROACTIVE CLASSIFICATION classifies all attributed quotes as UNVERIFIABLE; 0.3-point ceiling caps score separation.\\n2. **93b0e8f9**: EPISTEMIC SYMMETRY AUDIT requires the same epistemic label for structurally identical content across all candidates.\\n3. **29e534bd**: ANTI-CORROBORATION says 'Never resolve by subjective plausibility' when candidates attribute different content to the same source.\\n\\nCritically, 005004a4 already contains a CONSENSUS KNOWLEDGE EXCEPTION that was designed to allow domain-knowledge resolution \u2014 but 29e534bd's anti-plausibility clause directly conflicts with it, creating a deadlock the agent resolved by defaulting to the most conservative rule (don't differentiate).\\n\\n### Missed Mandatory Artifact: DIFF TABLE\\nCandidates [1] and [4] cite the same six ML authors (Mitchell, Bishop, Murphy, Goodfellow et al., Ng, Domingos) but present DIFFERENT quoted text for each. This is the textbook trigger for 29e534bd's MANDATORY DIFF TABLE. The agent never built one. Had it done so, contradictions on every shared source would have been visible \u2014 at least one candidate must be fabricating quotes for each author. This contradictory evidence is asymmetric (at least one is provably wrong), yet the ceiling rules enforce symmetric treatment.\\n\\n### Available But Unused Resolution Path\\nTom Mitchell's 1997 definition ('A computer program is said to learn from experience E with respect to some class of tasks T...') is paradigmatic consensus ML knowledge. It falls squarely under 005004a4's CONSENSUS KNOWLEDGE EXCEPTION. The agent could have used this as a reference point to assess which candidate's Mitchell 'quote' was more or less plausible \u2014 but never attempted this, partly because 29e534bd's anti-plausibility clause discouraged it.\\n\\n### Execution Discipline Failure\\nThe agent's reasoning was a single paragraph with zero mandatory artifacts produced: no PREMISE CHECKLIST (a3832d7e), no CONSTRAINT CHECKLIST/compliance matrix (c8698dee), no DIFF TABLE (29e534bd), no DIFFERENTIAL CLAIM VERIFICATION (93b0e8f9), no SYMMETRY TABLE (005004a4). This pervasive shortcutting across all rollouts amplified the structural problem \u2014 had any procedural entry been followed, the contradictions would have surfaced.\\n\\n### Why the Harmful Entries Are Harmful Here\\n- **005004a4**: The PROACTIVE CLASSIFICATION rule and 0.3-point ceiling are designed to prevent rewarding fabricated specificity. But on Factuality-subset tasks where ALL candidates present attributed quotes, the ceiling prevents penalizing fabrication \u2014 the exact opposite of its intent.\\n- **93b0e8f9**: EPISTEMIC SYMMETRY AUDIT mandates identical epistemic labels for structurally identical content. But when candidates make CONTRADICTORY claims about the same source, symmetric labels mask an inherently asymmetric situation (at least one is wrong).\\n- **29e534bd**: The ANTI-CORROBORATION section correctly flags contradicted items but then blocks the primary resolution mechanism (domain knowledge) by prohibiting plausibility-based resolution, conflicting with the CONSENSUS KNOWLEDGE EXCEPTION it should defer to.\\n\\n### Recommended Fix\\nUpdate 29e534bd's ANTI-CORROBORATION section to explicitly permit resolution via the CONSENSUS KNOWLEDGE EXCEPTION (005004a4) when contradictions exist. Mutual exclusivity is verifiable evidence of asymmetry \u2014 at least one version is provably wrong. The current blanket prohibition on plausibility-based resolution conflates 'subjective impression' with 'domain knowledge application,' blocking a legitimate evaluation path. The fix should: (a) clarify that when contradictions exist, the UNVERIFIABLE ceiling is suspended for the contradicted items, (b) route resolution through the CONSENSUS KNOWLEDGE EXCEPTION rather than 'subjective plausibility,' and (c) provide a structured artifact for the resolution attempt.\\n\\nThe meta-compliance gate (ensuring triggered artifacts are actually produced) is a valid secondary concern raised by two reflections, but from one trace it is uncertain whether adding another procedural requirement would change agent behavior when existing requirements were already ignored. This is noted for future investigation but does not warrant an add from this trace alone.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Three playbook entries (005004a4, 93b0e8f9, 29e534bd) create a triple-lock that prevents factual differentiation when all candidates present attributed quotes. Entry 29e534bd's anti-plausibility clause directly conflicts with 005004a4's CONSENSUS KNOWLEDGE EXCEPTION, creating a deadlock that the agent resolved by refusing to differentiate \u2014 wrong on a Factuality task. The agent also skipped all mandatory artifacts, preventing the contradiction from surfacing.\",\n    \"important_disagreements\": [\n      \"Credit_attribution rated c8698dee and 342f27b9 as harmful; anchor and principle_extraction rated both neutral. Resolved as neutral: these entries' content is correct and would have helped if followed. The agent's non-compliance with their artifact requirements is an execution issue, not evidence that the entries themselves are harmful. A correct rule the agent ignores is not a harmful rule.\",\n      \"Anchor proposed detailed task-specific amendments (1.5-point separation values, PLAUSIBILITY TRIAGE procedures). Principle_extraction argued these are too narrowly scoped and the real lesson is about resolving contradictions via domain knowledge. Resolved in favor of principle_extraction's framing: the update should enable the existing CONSENSUS KNOWLEDGE EXCEPTION to apply to contradicted content, not introduce new numeric thresholds from one observation.\",\n      \"All three reflections proposed a meta-compliance gate as a new entry. Resolved as not warranting an add from one trace: the agent ignored existing finalization-blocker language in multiple entries, so adding another check the agent might also skip is speculative. Noted for investigation.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"The core failure stems from a rule conflict between 29e534bd's anti-plausibility clause and 005004a4's CONSENSUS KNOWLEDGE EXCEPTION. All three reflections converge on this diagnosis with strong evidence. Updating 29e534bd to resolve this conflict is the single highest-confidence intervention: it addresses the structural deadlock while preserving all three entries' protective intent. The CONSENSUS KNOWLEDGE EXCEPTION already exists \u2014 29e534bd just needs to stop blocking it for contradicted items.\",\n    \"conservatism_rationale\": \"One update to one entry, resolving a documented rule conflict that all three reflections independently identified. The fix leverages an existing mechanism (CONSENSUS KNOWLEDGE EXCEPTION) rather than introducing new concepts. The meta-compliance gate, while reasonable, is deferred because (1) it's a new entry from one trace, (2) the agent might ignore it just as it ignored existing artifact requirements, and (3) the structural fix to 29e534bd addresses the deeper issue of WHAT to do with contradictions, while the meta-compliance gate only addresses WHETHER the agent reaches that logic at all.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "task_id": "tied:21",
+  "pass_pct": 0.9642857142857143,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "551489b6",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "993fe27f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "4828e642",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c5963e73",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "e605ca7e",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "dd742e4b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "2af71474",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "ee8b5c5d",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f6b77b51",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "006ba0cb",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "5935d994",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "dce72ca8",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Root Cause Analysis\n\nThe single critical error was scoring Piano (candidate 11) at 10.0 and including it in best_response_ids. The ground truth classifies Piano as INCORRECT. While the piano contains strings internally, it is most commonly classified as a keyboard or percussion instrument (strings are struck by hammers via keys, not directly plucked or bowed). This borderline classification error propagated into a prompt-level failure.\n\n## Failure Chain\n\n### 1. Incomplete Reasoning Cascade\nThe agent only produced explicit reasoning for candidates 1-8, violating the full-candidate reasoning mandate [551489b6]. This is directly linked to the Piano error \u2014 had the agent been forced to articulate reasoning for candidate 11 specifically, it would have needed to confront the question: 'Is Piano commonly classified as a string instrument?' The absence of reasoning for 16 of 24 candidates means scores were assigned by impression rather than analysis, which is exactly the failure mode [551489b6] was designed to prevent.\n\n### 2. Missing Category-Membership Verification for Borderline Cases\nThe factual pre-determination gate [993fe27f] was partially applied (the agent understood 'the correct answer is any string instrument') but lacked a procedure for handling borderline category membership. Piano is the classic edge case: it contains strings, but its primary classification in Western musical tradition is keyboard/percussion. The agent needed a step that asks: 'Would a reasonable, standard classification system categorize this item as X?' rather than 'Does this item have any connection to X?'\n\n### 3. Uniform Scoring Rule [c5963e73] Applied Without Verification\nThe equal-scoring rule for equally valid candidates was applied too aggressively. The agent scored all 11 'correct' candidates at 10.0 without first verifying that all 11 truly belonged in the same correctness tier. The rule as written assumes category membership has already been verified \u2014 it says 'when multiple candidates are equally valid' \u2014 but the agent skipped the validity check for Piano and applied uniform scoring. This turned a useful calibration rule into a vector for error propagation.\n\n### 4. Final Consistency Check [e605ca7e] Failed to Catch Inversion\nThe correctness tier inversion check (step 6) should have flagged Piano. But since the agent itself classified Piano as correct, the check couldn't catch an error in the classification premise. This reveals a weakness: the consistency check only verifies internal consistency of the agent's own beliefs, not accuracy of those beliefs. It needs a companion step.\n\n## Missing Procedures\n\n### A. Borderline Category Membership Gate\n**Trigger**: When the prompt asks to 'name/list an X' and a candidate provides an item that has some relationship to category X but is not a prototypical member.\n**Procedure**: (1) For each candidate, ask: 'Is this item a prototypical, unambiguous member of category X, or could it be classified in a different primary category?' (2) If borderline: determine the most standard/common classification. Piano is primarily keyboard/percussion; guitar is unambiguously string. (3) Score borderline items BELOW unambiguous members \u2014 do not assign identical scores. If confidence in membership is <80%, do not include in best_response_ids. (4) This is especially important for items with dual classifications (Piano = has strings AND is percussion/keyboard).\n\n### B. Reasoning Completeness Enforcement for Large Candidate Sets\nThe existing rule [551489b6] says to produce reasoning for every candidate, but the agent stopped at 8/24. For large candidate sets (>10), the agent may need a stronger enforcement mechanism: a mandatory intermediate artifact that lists every candidate with at least a one-line classification verdict before any scores are assigned. Format: 'Candidate N: [correct/incorrect/borderline] because [reason].' This forces engagement with every candidate including borderline ones like Piano.\n\n### C. Non-Answer Score Ceiling\nSeveral incorrect non-answers received non-zero scores (candidate 22 at 1.2, candidate 24 at 1.0, candidate 15 at 1.0) without clear justification. While these didn't cause the primary failure, they create unnecessary collision risk. For 'name an X' prompts: any candidate that does not name an X should score 0, not a small positive number. The existing binary correctness dominance rule [4828e642] covers this conceptually, but the agent didn't enforce the hard floor.\n\n## Generalizable Insight\nWhen a large set of candidates includes items spanning a classification boundary (clearly correct \u2192 borderline \u2192 clearly wrong), the agent must not batch-process the 'looks correct' group without individual verification. The risk is highest for items that share surface features with correct answers (Piano has strings) but differ on the defining classification criterion (primary instrument family). A per-candidate membership verification step \u2014 especially one that requires stating the primary classification of the named item \u2014 would catch this pattern across domains (e.g., 'Is a tomato a vegetable?', 'Is Pluto a planet?', 'Is a whale a fish?').",
+  "afc_trace_truncated": "## Prompt\nName a string instrument.\n\n## Candidate Responses\n\n[1]\nViolin\n\n[2]\nViola\n\n[3]\nCello\n\n[4]\nDouble Bass\n\n[5]\nGuitar\n\n[6]\nUkulele\n\n[7]\nBanjo\n\n[8]\nHarp\n\n[9]\nMandolin\n\n[10]\nSitar\n\n[11]\nPiano\n\n[12]\nFlute\n\n[13]\nTrumpet\n\n[14]\nDrums\n\n[15]\nSaxophone\n\n[16]\nClarinet\n\n[17]\nTrombone\n\n[18]\nAccordion\n\n[19]\nOboe\n\n[20]\nTriangle\n\n[21]\nMusical instruments are classified into families based on how they produce sound.\n\n[22]\nString instruments create sound through vibrating strings that may be plucked, bowed, or struck.\n\n[23]\nCertainly, I would be happy to help you with that.\n\n[24]\nI'm not sure I understand, can you rephrase your question?\n\n## Judge Reasoning\n[1] The prompt asks to name a string instrument, and the candidate answers with \u201cViolin,\u201d which is indeed a string instrument. There are no content or constraint issues.\n[2] The prompt asks to name a string instrument, and the candidate response \u201cViola\u201d is a correct string instrument. No other constraints are violated, so this should receive full credit.\n[3] The prompt asks for the name of a string instrument, and the candidate response \u201cCello\u201d correctly identifies one. It directly answers the question with no factual or constraint issues.\n[4] The prompt asks for a string instrument, and \u201cDouble Bass\u201d is a correct string instrument. The response directly answers the question without unnecessary additions.\n[5] The prompt asks for a string instrument, and the candidate correctly names \u201cGuitar,\u201d which is a string instrument. No constraint violations or factual issues are present.\n[6] The prompt asks for a string instrument, and the candidate response \u201cUkulele\u201d is a correct example of one. Therefore it fully satisfies the request.\n[7] The prompt asks for a string instrument, and \u201cbanjo\u201d is a valid string instrument. The response directly answers with a correct single example.\n[8] \u201cHarp\u201d is a string instrument, so the candidate directly answers the prompt correctly. No constraints are violated.\n\n## Judge Output JSON\n{\n  \"ratings\": [\n    10.0,\n    10.0,\n    10.0,\n    10.0,\n    10.0,\n    10.0,\n    10.0,\n    10.0,\n    10.0,\n    10.0,\n    10.0,\n    0.5,\n    0.0,\n    0.0,\n    1.0,\n    0.0,\n    0.2,\n    0.0,\n    0.0,\n    0.5,\n    0.0,\n    1.2,\n    0.0,\n    1.0\n  ],\n  \"best_response_ids\": [\n    \"1\",\n    \"2\",\n    \"3\",\n    \"4\",\n    \"5\",\n    \"6\",\n    \"7\",\n    \"8\",\n    \"9\",\n    \"10\",\n    \"11\"\n  ]\n}",
+  "evaluation_details": "Subset: Ties\nPairwise preference accuracy: 96.4%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.909\nCorrect candidate ids: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10\nTop-rated candidate ids: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11\n\nCandidate scores:\n  [1] CORRECT score=10.000\n  [2] CORRECT score=10.000\n  [3] CORRECT score=10.000\n  [4] CORRECT score=10.000\n  [5] CORRECT score=10.000\n  [6] CORRECT score=10.000\n  [7] CORRECT score=10.000\n  [8] CORRECT score=10.000\n  [9] CORRECT score=10.000\n  [10] CORRECT score=10.000\n  [11] INCORRECT score=10.000\n  [12] INCORRECT score=0.500\n  [13] INCORRECT score=0.000\n  [14] INCORRECT score=0.000\n  [15] INCORRECT score=1.000\n  [16] INCORRECT score=0.000\n  [17] INCORRECT score=0.200\n  [18] INCORRECT score=0.000\n  [19] INCORRECT score=0.000\n  [20] INCORRECT score=0.500\n  [21] INCORRECT score=0.000\n  [22] INCORRECT score=1.200\n  [23] INCORRECT score=0.000\n  [24] INCORRECT score=1.000"
+}

@@ -1,0 +1,394 @@
+{
+  "task_id": "math:796",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task math:796\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Unified Diagnosis\n\nBoth rollouts produced identical outputs (same ratings, same reasoning), confirming a systematic evaluation failure. The judge correctly derived the reference CDF for the random variable S = 1/X (where X is uniform on a disk), obtaining F_S(s) with breakpoint at 1/t, flat region 1\u2212t\u00b2/r\u00b2, and continuous piece 1\u22121/(r\u00b2s\u00b2). It then compared four candidates\u2014all containing errors\u2014and awarded the highest score (4.0) to incorrect Candidate [2], while scoring the ground-truth correct Candidate [1] at only 1.5.\n\n### Root Cause: Impressionistic Comparison After Correct Derivation\n\nThe failure is NOT in reference derivation (entry 342f27b9 successfully guided that). The failure is in the comparison step. The judge evaluated candidates using holistic 'closest in overall structure' reasoning rather than explicit component-by-component matching against the reference. Candidate [2] had organized headers, a correct breakpoint (1/t), and a plausible-looking formula\u2014but committed a fundamental conceptual error: it computed P(X \u2265 1/s | X < t) (conditional probability, yielding denominator t\u00b2) instead of the unconditional P(S \u2264 s) (which should yield denominator r\u00b2). This is a wrong-probability-space error that invalidates the approach. Meanwhile, Candidate [1]'s intermediate reasoning\u2014P(S \u2264 1/x) = P(X \u2265 x) = 1\u2212x\u00b2/r\u00b2\u2014is methodologically sound, but the final piecewise formula contains transcription-level errors (wrong breakpoint 1/t\u00b2 instead of 1/t, wrong exponent). The judge never traced WHY [2]'s formula diverges from the reference, which would have revealed the conceptual error.\n\nA component comparison table would have made this visible: [2] gets the breakpoint and piecewise structure right but has r\u00b2 \u2192 t\u00b2 in the denominator; [1] gets the probability reasoning right but botches the final transcription. The judge's impressionistic assessment awarded [2] higher because more of its surface components visually matched, obscuring the deeper conceptual flaw.\n\n### Entry Assessment Rationale\n\n- **342f27b9** (neutral): Successfully guided reference derivation but was insufficient for the comparison step\u2014its instruction to 'compare each candidate's final answer and critical derivation steps against your reference' is too vague and permitted holistic impressions. This is the entry most in need of strengthening.\n- **005004a4** (neutral): Contains a symmetry clause ('after penalizing candidate X for flaw F, search your top-ranked candidate for the same flaw F') that should have caught the asymmetric scrutiny, but wasn't followed. The entry's content is correct; the gap is enforcement, which is better addressed by adding a mandatory comparison artifact than by modifying this entry.\n- **4abe1be4** (helpful): Successfully guided candidate identification.\n- **93b0e8f9** (helpful): Its instruction to 'confirm the top-rated candidate genuinely best satisfies [decisive criteria]' points in the right direction, though it was insufficiently specific to catch this math-domain failure.\n- **8e0d9579** (neutral): Warns against letting presentation outweigh correctness\u2014relevant to how [2]'s organized format swayed the judge\u2014but the real fix is a math-specific comparison artifact, not strengthening this general-purpose warning.\n\n### Playbook Gap: Mandatory Comparison Artifact\n\nAll three source reflections converge on the same primary gap: entry 342f27b9 tells the judge to derive a reference and compare, but provides no structured procedure for HOW to compare. The fix is adding a mandatory component comparison table to 342f27b9. When a reference answer has multiple discrete components (pieces of a piecewise function, boundary values, qualitative conclusions), the judge must construct a grid mapping each candidate's components against the reference, mark each correct/incorrect, and count correct components before scoring. This makes it mechanically difficult to award the highest score to a candidate with a deep conceptual error just because its surface structure looks closest.\n\nA secondary gap\u2014error severity classification (conceptual vs. computational vs. transcription)\u2014is identified by two of three reflections. However, the component table alone would likely have prevented this failure by surfacing the denominator mismatch, so the primary mutation should be the table. The error severity classification is a plausible future addition but introducing two new concepts from one trace is less conservative than a single targeted update.\n\n### Winner-vs-Reference Verification Gate\n\nThe principle extraction reflection adds a complementary insight: after ranking, the judge should write its reference answer and the winner's answer side-by-side. This is a natural extension of the component table\u2014effectively its final step\u2014and can be folded into the same update to 342f27b9 without requiring a separate entry.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The judge derived a correct reference answer but compared candidates impressionistically ('closest in overall structure') rather than via explicit component-by-component matching. This caused a candidate with a deep conceptual error (wrong probability space) to outscore the correct candidate whose surface-level formula had transcription errors. The fix is updating entry 342f27b9 to mandate a component comparison table.\",\n  \"important_disagreements\": [\n    \"Credit attribution tagged 005004a4 as 'harmful' and 8e0d9579 as 'harmful'; anchor and principle extraction tagged both as 'neutral.' Resolved toward neutral: both entries contain correct guidance that was not followed. The root cause is the missing comparison artifact, not defective entries. The fix should target 342f27b9 (the comparison methodology gap) rather than entries that are directionally correct but under-enforced.\",\n    \"Credit attribution tagged 342f27b9 as 'helpful'; anchor and principle extraction tagged it 'neutral.' Resolved toward neutral: it successfully guided reference derivation (partial credit) but was insufficient for the comparison step (where the actual failure occurred). Since the proposed mutation targets this entry for improvement, 'neutral' better captures that it partially worked but needs strengthening.\",\n    \"Anchor characterizes all of Candidate [1]'s errors as transcription-level; principle extraction notes that [1]'s claim 'S IS continuous' is a conceptual error and its breakpoint error may also be conceptual. Resolved by acknowledging the nuance: [1] has a mix of error types, but its intermediate probability reasoning is methodologically sound, which is the key differentiator. The component table would surface these distinctions mechanically without requiring the judge to pre-classify error types.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry 342f27b9 already covers 'derive a reference and compare,' but its comparison step is too vague. All three reflections converge on the need for a mandatory component comparison table. This is a targeted update to an existing entry, not a new concept. The error severity classification gap is real but secondary\u2014the component table alone would have prevented this failure\u2014and introducing it from a single trace is less conservative.\",\n  \"conservatism_rationale\": \"One trace, two identical rollouts with the same systematic error. The diagnosis is high-confidence and unanimous across reflections. However, the fix is a single targeted update to 342f27b9 rather than multiple new entries, because: (1) the component table subsumes much of the error severity classification need by making discrepancies visible; (2) the binary conclusion check and intermediate reasoning credit gaps are real but domain-specific and derive from one task; (3) conservative principle favors a single high-confidence edit over several medium-confidence ones.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\nProblem 7. Alvin throws darts at a circular target of radius r and is equally likely to hit any point in the target. Let X be the distance of Alvin's hit from the center. (a) Find the PDF, the mean. and the variance of X. (b) The target has an inner circle of radius t. If X < t, Alvin gets a score of S = 1/X. Otherwise his score is S = 0. Find the CDF of S. Is S a continuous random variable? b\ubc88 \ubb38\uc81c\ub97c \uc790\uc138\ud788 \ud480\uc5b4\uc918\n\n## Candidate Responses\n\n[1]\n(a) Since Alvin is equally likely to hit any point in the target, X follows a uniform distribution on the interval [0, r]. The PDF of X is given by:\n\\[f_X(x) = \\frac{1}{\\pi r^2}\\] for \\(0 \\leq x \\leq r\\), and 0 otherwise.\n\nThe mean of X is given by:\n\\[\\mathbb{E}[X] = \\int_0^r xf_X(x) dx = \\int_0^r x \\cdot \\frac{1}{\\pi r^2} dx = \\frac{1}{\\pi r^2} \\cdot \\frac{x^2}{2}\\Big|_0^r = \\frac{r}{2}.\\]\n\nThe variance of X is given by:\n\\[\\text{Var}[X] = \\mathbb{E}[X^2] - \\left(\\mathbb{E}[X]\\right)^2.\\]\nFirst, we find \\(\\mathbb{E}[X^2]\\):\n\\[\\mathbb{E}[X^2] = \\int_0^r x^2f_X(x) dx = \\int_0^r x^2 \\cdot \\frac{1}{\\pi r^2} dx = \\frac{1}{\\pi r^2} \\cdot \\frac{x^3}{3}\\Big|_0^r = \\frac{r^2}{3}.\\]\nSo, \\(\\text{Var}[X] = \\frac{r^2}{3} - \\left(\\frac{r}{2}\\right)^2 = \\frac{r^2}{12}\\).\n\n(b) The CDF of S is given by \\(P(S \\leq s)\\). If \\(s = 0\\), then \\(P(S \\leq 0) = P(X \\geq t) = 1 - P(X < t) = 1 - \\frac{\\pi t^2}{\\pi r^2} = 1 - \\left(\\frac{t}{r}\\right)^2\\). If \\(s = \\frac{1}{x}\\) for some \\(x\\) with \\(0 < x < r\\), then \\(P(S \\leq \\frac{1}{x}) = P(X \\geq x) = 1 - P(X < x) = 1 - \\frac{\\pi x^2}{\\pi r^2} = 1 - \\left(\\frac{x}{r}\\right)^2\\). So, the CDF of S is given by:\n\\[F_S(s) = \\begin{cases} 0 & \\text{if } s \\leq 0 \\\\ 1 - \\left(\\frac{t}{r}\\right)^2 & \\text{if } s = 0 \\\\ 1 - \\left(\\frac{\\sqrt{\\frac{1}{s}}}{r}\\right)^2 & \\text{if } 0 < s \\leq \\frac{1}{t^2} \\\\ 1 & \\text{if } s > \\frac{1}{t^2} \\end{cases}.\\]\nSince the CDF is a non-decreasing function of s and has a non-zero derivative on the interval \\((0, \\frac{1}{t^2})\\), S is a continuous random variable. The answer is: True\n\n[2]\nTo solve this problem, let's first review the situation. Alvin is throwing darts at a circular target, and the distance \\( X \\) from the center is the random variable of interest. We're particularly interested in the score \\( S \\), which is determined based on whether the dart lands within a smaller inner circle of radius \\( t \\).\n\n### Step-by-Step Solution for Part (b)\n\nWe need to find the cumulative distribution function (CDF) of the score \\( S \\). The score \\( S \\) is defined as follows:\n\n- If \\( X < t \\), Alvin gets a score of \\( S = \\frac{1}{X} \\).\n- If \\( X \\geq t \\), the score is \\( S = 0 \\).\n\n#### Step 1: Understanding the Distribution of \\( X \\)\n\nSince Alvin is equally likely to hit any point within the circular target of radius \\( r \\), the distribution of \\( X \\) (the distance from the center) is uniform over the area of the circle.\n\nThe probability that a dart lands within a distance \\( x \\) from the center is proportional to the area of a circle of radius \\( x \\), which is \\( \\pi x^2 \\). Thus, the CDF of \\( X \\) is:\n\n\\[\nF_X(x) = \\frac{\\pi x^2}{\\pi r^2} = \\frac{x^2}{r^2}, \\quad 0 \\leq x \\leq r\n\\]\n\nThe PDF of \\( X \\) is then the derivative of \\( F_X(x) \\):\n\n\\[\nf_X(x) = \\frac{d}{dx} \\left(\\frac{x^2}{r^2}\\right) = \\frac{2x}{r^2}, \\quad 0 \\leq x \\leq r\n\\]\n\n#### Step 2: Determine the CDF of \\( S \\)\n\nThe CDF of \\( S \\), denoted as \\( F_S(s) \\), is the probability that \\( S \\leq s \\).\n\n1. **For \\( s = 0 \\):**\n\n   - \\( S = 0 \\) occurs when \\( X \\geq t \\).\n   - Therefore, \\( F_S(0) \\) is the probability that \\( X \\geq t \\):\n   \n   \\[\n   F_S(0) = P(X \\geq t) = 1 - P(X < t) = 1 - \\frac{t^2}{r^2}\n   \\]\n\n2. **For \\( s > 0 \\):**\n\n   - \\( S = \\frac{1}{X} \\leq s \\) implies \\( X \\geq \\frac{1}{s} \\).\n   - \\( S \\) can only be positive if \\( X < t \\), so we must have \\( \\frac{1}{s} < t \\), or equivalently, \\( s > \\frac{1}{t} \\).\n   - If \\( \\frac{1}{s} < t \\), the probability that \\( \\frac{1}{X} \\leq s \\) is \\( P(X \\geq \\frac{1}{s} \\mid X < t) \\).\n   \n   \\[\n   F_S(s) = P(X \\geq \\frac{1}{s} \\mid X < t) = \\frac{t^2 - \\left(\\frac{1}{s}\\right)^2}{t^2}, \\quad \\frac{1}{s} < t\n   \\]\n\n   Thus, for \\( s > \\frac{1}{t} \\):\n\n   \\[\n   F_S(s) = \\frac{t^2 - \\frac{1}{s^2}}{t^2} = 1 - \\frac{1}{s^2 t^2}\n   \\]\n\n3. **For \\( 0 < s \\leq \\frac{1}{t} \\):**\n\n   - \\( S \\leq s \\) implies either \\( X \\geq t \\) or \\( X < \\frac{1}{s} \\).\n   - However, we immediately have \\( S = 0 \\) since \\( 1/X \\) cannot be less than or equal to \\( s \\).\n\nThus, combining all cases:\n\n\\[\nF_S(s) = \n\\begin{cases} \n1 - \\frac{t^2}{r^2}, & s = 0 \\\\ \n1 - \\frac{1}{s^2 t^2}, & s > \\frac{1}{t} \\\\\n1 - \\frac{t^2}{r^2}, & 0 < s \\leq \\frac{1}{t}\n\\end{cases}\n\\]\n\n#### Step 3: Is \\( S \\) a Continuous Random Variable?\n\nThe CDF \\( F_S(s) \\) is discontinuous at \\( s = \n\n[3]\nTo solve part (b) of Problem 7, we need to find the cumulative distribution function (CDF) of the score \\( S \\). First, we need to understand how \\( S \\) is determined based on the distance \\( X \\) from the center of the target. The score rule is as follows:\n\n- If \\( X < t \\), the score \\( S = \\frac{1}{X} \\).\n- If \\( X \\geq t \\), the score \\( S = 0 \\).\n\nLet's denote the CDF of \\( S \\) by \\( F_S(s) \\), which is defined as\n\n\\[\nF_S(s) = P(S \\leq s)\n\\]\n\n### Step-by-Step Solution:\n\n1. **Understanding \\( S \\) when \\( X < t \\):**\n\n   When \\( X < t \\), \\( S = \\frac{1}{X} \\). We need to consider different cases for \\( s \\):\n\n   - If \\( s \\leq 0 \\), then \\( F_S(s) = 0 \\) since scores can't be negative.\n   - If \\( s > 0 \\), we have:\n     \\[\n     S = \\frac{1}{X} \\leq s \\quad \\Rightarrow \\quad X \\geq \\frac{1}{s}\n     \\]\n\n   However, for \\( X \\) to be in the range \\([0, t)\\), we need \\( \\frac{1}{s} < t \\), which means \\( s > \\frac{1}{t} \\). For such \\( s \\), \\( X \\) can never be greater than or equal to \\( \\frac{1}{s} \\).\n\n2. **For \\( s \\leq \\frac{1}{t} \\):**\n\n   \\( F_S(s) = P(S \\leq s) = 0 \\) because for any \\( s \\leq \\frac{1}{t} \\), \\( X \\) cannot simultaneously satisfy \\( X < t \\) and \\( X \\geq \\frac{1}{s} \\).\n\n3. **When \\( s > \\frac{1}{t} \\):**\n\n   Here, \\( \\frac{1}{s} < t \\), and so \\( S = 0 \\) can also be possible. We compute:\n\n   \\[\n   F_S(s) = P(S \\leq s) = P(X \\geq \\frac{1}{s}) + P(X \\geq t)\n   \\]\n\n   Given the condition \\( s > \\frac{1}{t} \\), we compute:\n\n   - \\( P(X \\geq t) = 1 - P(X < t) \\)\n   - \\( P(X \\geq \\frac{1}{s}) = P(X \\geq \\frac{1}{s}) = \\frac{\\pi (r^2 - (\\frac{1}{s})^2)}{\\pi r^2} \\) for \\( \\frac{1}{s} < r \\) and 0 otherwise.\n\n4. **Putting it all together for \\( s > \\frac{1}{t} \\):**\n\n   \\( F_S(s) = 1 - P(X < \\frac{1}{s}) = \\frac{\\pi (r^2 - (\\frac{1}{s})^2)}{\\pi r^2} \\) for \\( s > \\frac{1}{t} \\).\n\n5. **Checking continuity:**\n\n   Since \\( S \\) can take on a value of 0 with positive probability when \\( X \\geq t \\), \\( S \\) is not a continuous random variable. It has a point mass at \\( S = 0 \\).\n\nTherefore, the answer is:\n\nThe CDF of \\( S \\) is given by:\n- \\( F_S(s) = 0 \\) for \\( s \\leq \\frac{1}{t} \\)\n- \\( F_S(s) = \\frac{\\pi (r^2 - (\\frac{1}{s})^2)}{\\pi r^2} \\) for \\( \\frac{1}{t} < s \\leq \\frac{1}{t} \\)\n- \\( F_S(s) = 1 \\) for \\( s > 1 \\)\n\n\\( S \\) is not a continuous random variable due to a point mass at \\( S = 0 \\).\n\n[4]\nTo solve the problem, we need to address both parts (a) and (b) step by step.\n\n**Part (a):**\n\n1. **PDF of \\(X\\):**\n\n   The distance \\(X\\) from the center of the target is uniformly distributed over the area of the circle. The area of the circle of radius \\(r\\) is \\(\\pi r^2\\). The probability density function (pdf) of \\(X\\) is proportional to the circumference of the circle at distance \\(X\\), which is \\(2\\pi X\\). Therefore, the pdf \\(f_X(x)\\) is given by:\n   \\[\n   f_X(x) = \\frac{2x}{\\pi r^2} \\quad \\text{for} \\quad 0 \\leq x \\leq r\n   \\]\n   and \\(f_X(x) = 0\\) otherwise.\n\n2. **Mean of \\(X\\):**\n\n   The mean \\(\\mu\\) of \\(X\\) is calculated as:\n   \\[\n   \\mu = \\int_0^r x f_X(x) \\, dx = \\int_0^r x \\cdot \\frac{2x}{\\pi r^2} \\, dx = \\frac{2}{\\pi r^2} \\int_0^r x^2 \\, dx = \\frac{2}{\\pi r^2} \\left[ \\frac{x^3}{3} \\right]_0^r = \\frac{2}{\\pi r^2} \\cdot \\frac{r^3}{3} = \\frac{2r}{3\\pi}\n   \\]\n\n3. **Variance of \\(X\\):**\n\n   The variance \\(\\sigma^2\\) of \\(X\\) is given by:\n   \\[\n   \\sigma^2 = E[X^2] - (E[X])^2\n   \\]\n   First, we calculate \\(E[X^2]\\):\n   \\[\n   E[X^2] = \\int_0^r x^2 f_X(x) \\, dx = \\int_0^r x^2 \\cdot \\frac{2x}{\\pi r^2} \\, dx = \\frac{2}{\\pi r^2} \\int_0^r x^3 \\, dx = \\frac{2}{\\pi r^2} \\left[ \\frac{x^4}{4} \\right]_0^r = \\frac{2}{\\pi r^2} \\cdot \\frac{r^4}{4} = \\frac{r^2}{2\\pi}\n   \\]\n   Then, we calculate the variance:\n   \\[\n   \\sigma^2 = \\frac{r^2}{2\\pi} - \\left( \\frac{2r}{3\\pi} \\right)^2 = \\frac{r^2}{2\\pi} - \\frac{4r^2}{9\\pi^2} = \\frac{9\\pi r^2 - 8r^2}{18\\pi^2} = \\frac{r^2(9\\pi - 8)}{18\\pi^2} = \\frac{r^2(9\\pi - 8)}{18\\pi^2}\n   \\]\n\n**Part (b):**\n\n1. **CDF of \\(S\\):**\n\n   The score \\(S\\) is defined as \\(S = \\frac{1}{X}\\) if \\(X < t\\) and \\(S = 0\\) if \\(X \\geq t\\). The cumulative distribution function (CDF) of \\(S\\), denoted \\(F_S(s)\\), is given by:\n   \\[\n   F_S(s) = P(S \\leq s)\n   \\]\n   We need to consider two cases: \\(s \\leq 0\\) and \\(s > 0\\).\n\n   - For \\(s \\leq 0\\), \\(F_S(s) = P(S \\leq s) = P(0) = 0\\).\n   - For \\(s > 0\\), \\(F_S(s) = P(S \\leq s) = P\\left(\\frac{1}{X} \\leq s\\right) = P(X \\geq \\frac{1}{s})\\). Since \\(X\\) is uniformly distributed, we have:\n     \\[\n     P(X \\geq \\frac{1}{s}) = 1 - P\\left(X < \\frac{1}{s}\\right) = 1 - \\int_0^{\\frac{1}{s}} f_X(x) \\, dx = 1 - \\int_0^{\\frac{1}{s}} \\frac{2x}{\\pi r^2} \\, dx = 1 - \\frac{\n\n## Judge Reasoning\nCorrect part (b) requires a piecewise CDF: F_S(s)=0 for s<0, F_S(s)=1-(t^2/r^2) for 0<=s<=1/t, and F_S(s)=1-1/(r^2 s^2) for s>1/t, with S not continuous due to a jump at 0. Candidate [2] is closest in overall structure and the correct breakpoint s=1/t, but it uses an incorrect denominator (t^2 instead of r^2) for the s>1/t branch and does not finish the continuity conclusion. Candidate [1] has an incorrect breakpoint (1/t^2) and wrong dependence on s, while [3] gives an essentially inconsistent/incorrect piecewise CDF and [4] is truncated and also uses a wrong f_X (introducing likely errors into part (b)).\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Correct part (b) requires a piecewise CDF: F_S(s)=0 for s<0, F_S(s)=1-(t^2/r^2) for 0<=s<=1/t, and F_S(s)=1-1/(r^2 s^2) for s>1/t, with S not continuous due to a jump at 0. Candidate [2] is closest in overall structure and the correct breakpoint s=1/t, but it uses an incorrect denominator (t^2 instead of r^2) for the s>1/t branch and does not finish the continuity conclusion. Candidate [1] has an incorrect breakpoint (1/t^2) and wrong dependence on s, while [3] gives an essentially inconsistent/incorrect piecewise CDF and [4] is truncated and also uses a wrong f_X (introducing likely errors into part (b)).\",\n  \"ratings\": [\n    1.5,\n    4.0,\n    0.5,\n    0.8\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\nProblem 7. Alvin throws darts at a circular target of radius r and is equally likely to hit any point in the target. Let X be the distance of Alvin's hit from the center. (a) Find the PDF, the mean. and the variance of X. (b) The target has an inner circle of radius t. If X < t, Alvin gets a score of S = 1/X. Otherwise his score is S = 0. Find the CDF of S. Is S a continuous random variable? b\ubc88 \ubb38\uc81c\ub97c \uc790\uc138\ud788 \ud480\uc5b4\uc918\n\n## Candidate Responses\n\n[1]\n(a) Since Alvin is equally likely to hit any point in the target, X follows a uniform distribution on the interval [0, r]. The PDF of X is given by:\n\\[f_X(x) = \\frac{1}{\\pi r^2}\\] for \\(0 \\leq x \\leq r\\), and 0 otherwise.\n\nThe mean of X is given by:\n\\[\\mathbb{E}[X] = \\int_0^r xf_X(x) dx = \\int_0^r x \\cdot \\frac{1}{\\pi r^2} dx = \\frac{1}{\\pi r^2} \\cdot \\frac{x^2}{2}\\Big|_0^r = \\frac{r}{2}.\\]\n\nThe variance of X is given by:\n\\[\\text{Var}[X] = \\mathbb{E}[X^2] - \\left(\\mathbb{E}[X]\\right)^2.\\]\nFirst, we find \\(\\mathbb{E}[X^2]\\):\n\\[\\mathbb{E}[X^2] = \\int_0^r x^2f_X(x) dx = \\int_0^r x^2 \\cdot \\frac{1}{\\pi r^2} dx = \\frac{1}{\\pi r^2} \\cdot \\frac{x^3}{3}\\Big|_0^r = \\frac{r^2}{3}.\\]\nSo, \\(\\text{Var}[X] = \\frac{r^2}{3} - \\left(\\frac{r}{2}\\right)^2 = \\frac{r^2}{12}\\).\n\n(b) The CDF of S is given by \\(P(S \\leq s)\\). If \\(s = 0\\), then \\(P(S \\leq 0) = P(X \\geq t) = 1 - P(X < t) = 1 - \\frac{\\pi t^2}{\\pi r^2} = 1 - \\left(\\frac{t}{r}\\right)^2\\). If \\(s = \\frac{1}{x}\\) for some \\(x\\) with \\(0 < x < r\\), then \\(P(S \\leq \\frac{1}{x}) = P(X \\geq x) = 1 - P(X < x) = 1 - \\frac{\\pi x^2}{\\pi r^2} = 1 - \\left(\\frac{x}{r}\\right)^2\\). So, the CDF of S is given by:\n\\[F_S(s) = \\begin{cases} 0 & \\text{if } s \\leq 0 \\\\ 1 - \\left(\\frac{t}{r}\\right)^2 & \\text{if } s = 0 \\\\ 1 - \\left(\\frac{\\sqrt{\\frac{1}{s}}}{r}\\right)^2 & \\text{if } 0 < s \\leq \\frac{1}{t^2} \\\\ 1 & \\text{if } s > \\frac{1}{t^2} \\end{cases}.\\]\nSince the CDF is a non-decreasing function of s and has a non-zero derivative on the interval \\((0, \\frac{1}{t^2})\\), S is a continuous random variable. The answer is: True\n\n[2]\nTo solve this problem, let's first review the situation. Alvin is throwing darts at a circular target, and the distance \\( X \\) from the center is the random variable of interest. We're particularly interested in the score \\( S \\), which is determined based on whether the dart lands within a smaller inner circle of radius \\( t \\).\n\n### Step-by-Step Solution for Part (b)\n\nWe need to find the cumulative distribution function (CDF) of the score \\( S \\). The score \\( S \\) is defined as follows:\n\n- If \\( X < t \\), Alvin gets a score of \\( S = \\frac{1}{X} \\).\n- If \\( X \\geq t \\), the score is \\( S = 0 \\).\n\n#### Step 1: Understanding the Distribution of \\( X \\)\n\nSince Alvin is equally likely to hit any point within the circular target of radius \\( r \\), the distribution of \\( X \\) (the distance from the center) is uniform over the area of the circle.\n\nThe probability that a dart lands within a distance \\( x \\) from the center is proportional to the area of a circle of radius \\( x \\), which is \\( \\pi x^2 \\). Thus, the CDF of \\( X \\) is:\n\n\\[\nF_X(x) = \\frac{\\pi x^2}{\\pi r^2} = \\frac{x^2}{r^2}, \\quad 0 \\leq x \\leq r\n\\]\n\nThe PDF of \\( X \\) is then the derivative of \\( F_X(x) \\):\n\n\\[\nf_X(x) = \\frac{d}{dx} \\left(\\frac{x^2}{r^2}\\right) = \\frac{2x}{r^2}, \\quad 0 \\leq x \\leq r\n\\]\n\n#### Step 2: Determine the CDF of \\( S \\)\n\nThe CDF of \\( S \\), denoted as \\( F_S(s) \\), is the probability that \\( S \\leq s \\).\n\n1. **For \\( s = 0 \\):**\n\n   - \\( S = 0 \\) occurs when \\( X \\geq t \\).\n   - Therefore, \\( F_S(0) \\) is the probability that \\( X \\geq t \\):\n   \n   \\[\n   F_S(0) = P(X \\geq t) = 1 - P(X < t) = 1 - \\frac{t^2}{r^2}\n   \\]\n\n2. **For \\( s > 0 \\):**\n\n   - \\( S = \\frac{1}{X} \\leq s \\) implies \\( X \\geq \\frac{1}{s} \\).\n   - \\( S \\) can only be positive if \\( X < t \\), so we must have \\( \\frac{1}{s} < t \\), or equivalently, \\( s > \\frac{1}{t} \\).\n   - If \\( \\frac{1}{s} < t \\), the probability that \\( \\frac{1}{X} \\leq s \\) is \\( P(X \\geq \\frac{1}{s} \\mid X < t) \\).\n   \n   \\[\n   F_S(s) = P(X \\geq \\frac{1}{s} \\mid X < t) = \\frac{t^2 - \\left(\\frac{1}{s}\\right)^2}{t^2}, \\quad \\frac{1}{s} < t\n   \\]\n\n   Thus, for \\( s > \\frac{1}{t} \\):\n\n   \\[\n   F_S(s) = \\frac{t^2 - \\frac{1}{s^2}}{t^2} = 1 - \\frac{1}{s^2 t^2}\n   \\]\n\n3. **For \\( 0 < s \\leq \\frac{1}{t} \\):**\n\n   - \\( S \\leq s \\) implies either \\( X \\geq t \\) or \\( X < \\frac{1}{s} \\).\n   - However, we immediately have \\( S = 0 \\) since \\( 1/X \\) cannot be less than or equal to \\( s \\).\n\nThus, combining all cases:\n\n\\[\nF_S(s) = \n\\begin{cases} \n1 - \\frac{t^2}{r^2}, & s = 0 \\\\ \n1 - \\frac{1}{s^2 t^2}, & s > \\frac{1}{t} \\\\\n1 - \\frac{t^2}{r^2}, & 0 < s \\leq \\frac{1}{t}\n\\end{cases}\n\\]\n\n#### Step 3: Is \\( S \\) a Continuous Random Variable?\n\nThe CDF \\( F_S(s) \\) is discontinuous at \\( s = \n\n[3]\nTo solve part (b) of Problem 7, we need to find the cumulative distribution function (CDF) of the score \\( S \\). First, we need to understand how \\( S \\) is determined based on the distance \\( X \\) from the center of the target. The score rule is as follows:\n\n- If \\( X < t \\), the score \\( S = \\frac{1}{X} \\).\n- If \\( X \\geq t \\), the score \\( S = 0 \\).\n\nLet's denote the CDF of \\( S \\) by \\( F_S(s) \\), which is defined as\n\n\\[\nF_S(s) = P(S \\leq s)\n\\]\n\n### Step-by-Step Solution:\n\n1. **Understanding \\( S \\) when \\( X < t \\):**\n\n   When \\( X < t \\), \\( S = \\frac{1}{X} \\). We need to consider different cases for \\( s \\):\n\n   - If \\( s \\leq 0 \\), then \\( F_S(s) = 0 \\) since scores can't be negative.\n   - If \\( s > 0 \\), we have:\n     \\[\n     S = \\frac{1}{X} \\leq s \\quad \\Rightarrow \\quad X \\geq \\frac{1}{s}\n     \\]\n\n   However, for \\( X \\) to be in the range \\([0, t)\\), we need \\( \\frac{1}{s} < t \\), which means \\( s > \\frac{1}{t} \\). For such \\( s \\), \\( X \\) can never be greater than or equal to \\( \\frac{1}{s} \\).\n\n2. **For \\( s \\leq \\frac{1}{t} \\):**\n\n   \\( F_S(s) = P(S \\leq s) = 0 \\) because for any \\( s \\leq \\frac{1}{t} \\), \\( X \\) cannot simultaneously satisfy \\( X < t \\) and \\( X \\geq \\frac{1}{s} \\).\n\n3. **When \\( s > \\frac{1}{t} \\):**\n\n   Here, \\( \\frac{1}{s} < t \\), and so \\( S = 0 \\) can also be possible. We compute:\n\n   \\[\n   F_S(s) = P(S \\leq s) = P(X \\geq \\frac{1}{s}) + P(X \\geq t)\n   \\]\n\n   Given the condition \\( s > \\frac{1}{t} \\), we compute:\n\n   - \\( P(X \\geq t) = 1 - P(X < t) \\)\n   - \\( P(X \\geq \\frac{1}{s}) = P(X \\geq \\frac{1}{s}) = \\frac{\\pi (r^2 - (\\frac{1}{s})^2)}{\\pi r^2} \\) for \\( \\frac{1}{s} < r \\) and 0 otherwise.\n\n4. **Putting it all together for \\( s > \\frac{1}{t} \\):**\n\n   \\( F_S(s) = 1 - P(X < \\frac{1}{s}) = \\frac{\\pi (r^2 - (\\frac{1}{s})^2)}{\\pi r^2} \\) for \\( s > \\frac{1}{t} \\).\n\n5. **Checking continuity:**\n\n   Since \\( S \\) can take on a value of 0 with positive probability when \\( X \\geq t \\), \\( S \\) is not a continuous random variable. It has a point mass at \\( S = 0 \\).\n\nTherefore, the answer is:\n\nThe CDF of \\( S \\) is given by:\n- \\( F_S(s) = 0 \\) for \\( s \\leq \\frac{1}{t} \\)\n- \\( F_S(s) = \\frac{\\pi (r^2 - (\\frac{1}{s})^2)}{\\pi r^2} \\) for \\( \\frac{1}{t} < s \\leq \\frac{1}{t} \\)\n- \\( F_S(s) = 1 \\) for \\( s > 1 \\)\n\n\\( S \\) is not a continuous random variable due to a point mass at \\( S = 0 \\).\n\n[4]\nTo solve the problem, we need to address both parts (a) and (b) step by step.\n\n**Part (a):**\n\n1. **PDF of \\(X\\):**\n\n   The distance \\(X\\) from the center of the target is uniformly distributed over the area of the circle. The area of the circle of radius \\(r\\) is \\(\\pi r^2\\). The probability density function (pdf) of \\(X\\) is proportional to the circumference of the circle at distance \\(X\\), which is \\(2\\pi X\\). Therefore, the pdf \\(f_X(x)\\) is given by:\n   \\[\n   f_X(x) = \\frac{2x}{\\pi r^2} \\quad \\text{for} \\quad 0 \\leq x \\leq r\n   \\]\n   and \\(f_X(x) = 0\\) otherwise.\n\n2. **Mean of \\(X\\):**\n\n   The mean \\(\\mu\\) of \\(X\\) is calculated as:\n   \\[\n   \\mu = \\int_0^r x f_X(x) \\, dx = \\int_0^r x \\cdot \\frac{2x}{\\pi r^2} \\, dx = \\frac{2}{\\pi r^2} \\int_0^r x^2 \\, dx = \\frac{2}{\\pi r^2} \\left[ \\frac{x^3}{3} \\right]_0^r = \\frac{2}{\\pi r^2} \\cdot \\frac{r^3}{3} = \\frac{2r}{3\\pi}\n   \\]\n\n3. **Variance of \\(X\\):**\n\n   The variance \\(\\sigma^2\\) of \\(X\\) is given by:\n   \\[\n   \\sigma^2 = E[X^2] - (E[X])^2\n   \\]\n   First, we calculate \\(E[X^2]\\):\n   \\[\n   E[X^2] = \\int_0^r x^2 f_X(x) \\, dx = \\int_0^r x^2 \\cdot \\frac{2x}{\\pi r^2} \\, dx = \\frac{2}{\\pi r^2} \\int_0^r x^3 \\, dx = \\frac{2}{\\pi r^2} \\left[ \\frac{x^4}{4} \\right]_0^r = \\frac{2}{\\pi r^2} \\cdot \\frac{r^4}{4} = \\frac{r^2}{2\\pi}\n   \\]\n   Then, we calculate the variance:\n   \\[\n   \\sigma^2 = \\frac{r^2}{2\\pi} - \\left( \\frac{2r}{3\\pi} \\right)^2 = \\frac{r^2}{2\\pi} - \\frac{4r^2}{9\\pi^2} = \\frac{9\\pi r^2 - 8r^2}{18\\pi^2} = \\frac{r^2(9\\pi - 8)}{18\\pi^2} = \\frac{r^2(9\\pi - 8)}{18\\pi^2}\n   \\]\n\n**Part (b):**\n\n1. **CDF of \\(S\\):**\n\n   The score \\(S\\) is defined as \\(S = \\frac{1}{X}\\) if \\(X < t\\) and \\(S = 0\\) if \\(X \\geq t\\). The cumulative distribution function (CDF) of \\(S\\), denoted \\(F_S(s)\\), is given by:\n   \\[\n   F_S(s) = P(S \\leq s)\n   \\]\n   We need to consider two cases: \\(s \\leq 0\\) and \\(s > 0\\).\n\n   - For \\(s \\leq 0\\), \\(F_S(s) = P(S \\leq s) = P(0) = 0\\).\n   - For \\(s > 0\\), \\(F_S(s) = P(S \\leq s) = P\\left(\\frac{1}{X} \\leq s\\right) = P(X \\geq \\frac{1}{s})\\). Since \\(X\\) is uniformly distributed, we have:\n     \\[\n     P(X \\geq \\frac{1}{s}) = 1 - P\\left(X < \\frac{1}{s}\\right) = 1 - \\int_0^{\\frac{1}{s}} f_X(x) \\, dx = 1 - \\int_0^{\\frac{1}{s}} \\frac{2x}{\\pi r^2} \\, dx = 1 - \\frac{\n\n## Judge Reasoning\nCorrect part (b) requires a piecewise CDF: F_S(s)=0 for s<0, F_S(s)=1-(t^2/r^2) for 0<=s<=1/t, and F_S(s)=1-1/(r^2 s^2) for s>1/t, with S not continuous due to a jump at 0. Candidate [2] is closest in overall structure and the correct breakpoint s=1/t, but it uses an incorrect denominator (t^2 instead of r^2) for the s>1/t branch and does not finish the continuity conclusion. Candidate [1] has an incorrect breakpoint (1/t^2) and wrong dependence on s, while [3] gives an essentially inconsistent/incorrect piecewise CDF and [4] is truncated and also uses a wrong f_X (introducing likely errors into part (b)).\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Correct part (b) requires a piecewise CDF: F_S(s)=0 for s<0, F_S(s)=1-(t^2/r^2) for 0<=s<=1/t, and F_S(s)=1-1/(r^2 s^2) for s>1/t, with S not continuous due to a jump at 0. Candidate [2] is closest in overall structure and the correct breakpoint s=1/t, but it uses an incorrect denominator (t^2 instead of r^2) for the s>1/t branch and does not finish the continuity conclusion. Candidate [1] has an incorrect breakpoint (1/t^2) and wrong dependence on s, while [3] gives an essentially inconsistent/incorrect piecewise CDF and [4] is truncated and also uses a wrong f_X (introducing likely errors into part (b)).\",\n  \"ratings\": [\n    1.5,\n    4.0,\n    0.5,\n    0.8\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Math\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=1.500\n  [2] INCORRECT score=4.000\n  [3] INCORRECT score=0.500\n  [4] INCORRECT score=0.800\n\n## rollout_2 Evaluation\n\nSubset: Math\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=1.500\n  [2] INCORRECT score=4.000\n  [3] INCORRECT score=0.500\n  [4] INCORRECT score=0.800",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Failure Pattern: Both rollouts are identical (same ratings, same reasoning), confirming this is a systematic evaluation error, not random variance.\n\n### What Happened\nThe judge correctly derived the reference CDF: F_S(s)=0 for s<0, F_S(s)=1\u2212t\u00b2/r\u00b2 for 0\u2264s\u22641/t, F_S(s)=1\u22121/(r\u00b2s\u00b2) for s>1/t. It then compared candidates and concluded Candidate [2] was 'closest in overall structure' \u2014 giving it score 4.0 \u2014 while scoring the ground-truth correct Candidate [1] at 1.5. The judge identified specific errors in both but misjudged their relative severity.\n\n### Root Cause: 'Structural Similarity' as a Proxy for Correctness\nThe judge used an impressionistic 'closeness to correct' assessment rather than a component-by-component verification. Candidate [2] had the right breakpoint (1/t) and a detailed step-by-step format, but made a fundamental conceptual error: it computed P(X \u2265 1/s | X < t) (conditional probability) instead of P(S \u2264 s) directly, yielding the wrong denominator (t\u00b2 instead of r\u00b2). Candidate [1] had correct intermediate reasoning \u2014 P(S \u2264 1/x) = P(X \u2265 x) = 1\u2212(x/r)\u00b2 \u2014 which correctly captures both the S=0 mass and the continuous component, but transcribed the final piecewise formula incorrectly (breakpoint 1/t\u00b2 instead of 1/t, and exponent error in the formula).\n\nThe judge was swayed by Candidate [2]'s more organized presentation and the surface-level correctness of its breakpoint, without recognizing that (a) Candidate [2]'s conceptual error (conditional vs. total probability) is deeper than Candidate [1]'s transcription error, and (b) Candidate [1]'s intermediate derivation is the most sound of all candidates.\n\n### Missing Playbook Procedures\n\n**1. Component-wise verification table for math problems.** Entry 342f27b9 says to derive a reference answer and compare, but doesn't specify HOW to compare. When all candidates have errors, the judge needs a structured procedure:\n- TRIGGER: Multiple candidates for a math problem, each with errors.\n- PROCEDURE: Create a comparison table with columns: (candidate ID | component | candidate value | reference value | correct?). Components for a piecewise CDF include: number of pieces, breakpoint values, formula in each piece, boundary conditions, and qualitative conclusion.\n- VERIFICATION: Count correct components per candidate. A candidate with more individually correct components ranks higher, unless it has a conceptual error that invalidates its entire approach.\n\n**2. Error severity classification for math.** The playbook lacks guidance on distinguishing conceptual errors from computational/transcription errors:\n- CONCEPTUAL ERROR: Using the wrong method or formula setup (e.g., conditional probability where total probability is needed). These indicate misunderstanding.\n- TRANSCRIPTION ERROR: Correct intermediate reasoning but wrong final expression (e.g., writing 1/s instead of 1/s\u00b2). These indicate carelessness, not misunderstanding.\n- Conceptual errors should be weighted more heavily because they suggest the candidate would produce wrong answers on related problems, while transcription errors may coexist with genuine understanding.\n\n**3. Separate binary criterion for qualitative conclusions.** When a problem asks a yes/no or classification question (like 'Is S continuous?'), this should be evaluated as a separate, decisive criterion. Candidate [1] incorrectly says S IS continuous; Candidates [2] and [3] correctly say S is NOT continuous. The judge's reasoning never explicitly calls out this binary factual error in [1] or credits the correct answer in [2] and [3], likely because it was subsumed into the overall impression.\n\n**4. 'Correct intermediate reasoning' as a signal.** When a candidate shows correct intermediate algebra/logic but botches the final formula, this is a strong positive signal relative to a candidate whose intermediate reasoning is conceptually flawed. The judge should explicitly trace whether each candidate's approach is methodologically sound before comparing final formulas.\n\n### Refinement of Existing Entries\n\n**Entry 342f27b9** needs a concrete comparison-table requirement, not just 'compare each candidate's final answer and critical derivation steps against your reference.' The current wording allows the judge to do a holistic, impressionistic comparison. It should mandate an itemized component checklist with explicit correct/incorrect marks per component per candidate.\n\n**Entry 005004a4** says to penalize mathematical mistakes, but gives no guidance on comparing severity across candidates when ALL candidates have mistakes. It needs a tiebreaking clause: 'When all candidates contain mathematical errors, count and classify errors (conceptual vs. computational vs. transcription) per candidate. A candidate with fewer or less severe errors ranks higher, regardless of presentation quality.'\n\n**Entry 8e0d9579** (don't let verbosity outweigh correctness) is relevant here \u2014 Candidate [2]'s detailed step-by-step format and organized headers likely contributed to the judge's 'closest in overall structure' assessment. This entry should be reinforced for math contexts: step-by-step formatting that leads to a wrong answer is not a positive signal.\n\n### Key Insight for the Curator\nThe judge's failure is not about missing the reference answer (it derived it correctly) but about the comparison methodology. The playbook needs a mandatory structured comparison artifact for math problems \u2014 a grid of formula components checked against the reference \u2014 that makes it mechanically difficult to award the highest score to a candidate with a fundamental conceptual error just because its structure 'looks closest.'"
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "342f27b9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The judge compared math candidates against a correct reference using holistic impressions ('closest in overall structure') rather than checking individual formula components, leading to a candidate with a conceptual error being rated above one with transcription errors.",
+          "gap_type": "artifact",
+          "suggested_content": "When evaluating math candidates against a reference solution, produce a COMPONENT COMPARISON TABLE before scoring. For piecewise functions: list (component | reference value | candidate value | correct?). Components include: number of pieces, breakpoint values, formula in each piece, boundary values, qualitative conclusions (e.g., continuity, type of distribution). Count correct components per candidate. A candidate with more individually correct components ranks higher unless it has a conceptual error that invalidates its entire method. This table must be written out explicitly \u2014 no impressionistic 'overall structure' judgments allowed.",
+          "trigger": "Whenever a math/computation task requires comparing multiple candidates' piecewise formulas, CDFs, PDFs, or multi-part mathematical expressions against a derived reference."
+        },
+        {
+          "situation": "All four candidates had mathematical errors. The judge needed to rank by error severity but had no framework for distinguishing conceptual errors (wrong probability space/conditioning) from transcription/computation errors (wrong exponent, wrong breakpoint). Candidate [2]'s conditioning error (P(X \u2265 1/s | X < t) yielding denominator t\u00b2 instead of unconditional probability yielding r\u00b2) was treated as less severe than Candidate [1]'s formula typos.",
+          "gap_type": "checklist",
+          "suggested_content": "ERROR SEVERITY CLASSIFICATION FOR MATH \u2014 When all candidates contain errors, classify each error before weighting: (a) CONCEPTUAL \u2014 wrong method, wrong probability space, wrong conditioning, wrong transformation (indicates misunderstanding, invalidates approach). (b) COMPUTATIONAL \u2014 arithmetic mistake within a correct method (indicates carelessness, not misunderstanding). (c) TRANSCRIPTION \u2014 correct intermediate reasoning but wrong final expression, wrong exponent, wrong variable in piecewise boundary (indicates carelessness at final step). Rank severity: conceptual > computational > transcription. A candidate with only transcription errors and sound intermediate reasoning ranks above a candidate with a conceptual error regardless of presentation quality.",
+          "trigger": "Whenever multiple math candidates all contain errors and the judge must rank imperfect answers against each other."
+        },
+        {
+          "situation": "The problem asked 'Is S a continuous random variable?' \u2014 a binary yes/no question. Candidate [1] answered YES (wrong), Candidates [2] and [3] answered NO (correct). The judge never isolated this binary factual question as a separate evaluation criterion, subsuming it into the overall impression.",
+          "gap_type": "verification_gate",
+          "suggested_content": "BINARY CONCLUSION CHECK \u2014 When a math or science problem contains an explicit yes/no or classification sub-question (e.g., 'Is X continuous?', 'Does the series converge?', 'Is the function injective?'), evaluate it as a SEPARATE BINARY CRITERION with its own correct/incorrect label per candidate. A candidate that gets the binary conclusion wrong has a concrete factual error that must be weighted independently of its derivation quality. Record the binary check result explicitly in the evaluation.",
+          "trigger": "Whenever the problem contains a direct yes/no, true/false, or categorical classification sub-question alongside a derivation task."
+        },
+        {
+          "situation": "Candidate [1] showed correct intermediate reasoning (P(S \u2264 1/x) = P(X \u2265 x) = 1 - x\u00b2/r\u00b2, correctly using area-based probability) but made errors in the final piecewise formula. Candidate [2] had a methodologically flawed approach (conditional probability instead of total probability) but a cleaner-looking final answer. The judge had no guidance on crediting sound methodology vs. surface-level formula correctness.",
+          "gap_type": "principle",
+          "suggested_content": "INTERMEDIATE REASONING CREDIT \u2014 When comparing math candidates, trace each candidate's reasoning chain from setup through intermediate steps to final answer. A candidate with a correct method/setup that makes errors only in final transcription demonstrates understanding and is a stronger answer than a candidate with a flawed method/setup that happens to produce a cleaner-looking (but wrong) final expression. Explicitly note whether each candidate's intermediate reasoning is methodologically sound before comparing final formulas.",
+          "trigger": "Whenever math candidates show differing levels of correctness between their intermediate reasoning and their final answers."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nBoth rollouts produced identical outputs (same ratings, same reasoning), confirming a systematic evaluation failure rather than variance. The judge correctly derived the reference CDF but ranked the ground-truth correct Candidate [1] at 1.5 while scoring incorrect Candidate [2] at 4.0.\n\n### Where I AGREE with the anchor\n- The root cause is the comparison methodology, not the reference derivation. The judge derived the right answer but compared wrong.\n- Candidate [2]'s conceptual error (conditional probability with denominator t\u00b2 instead of unconditional probability with r\u00b2) is more severe than Candidate [1]'s transcription-level errors.\n- The judge was swayed by Candidate [2]'s organized step-by-step format, exactly the pattern entry 8e0d9579 warns against.\n- The most impactful missing playbook element is a mandatory structured comparison artifact (component table) for math evaluations.\n\n### Where I REFINE the anchor\n- The anchor characterizes ALL of Candidate [1]'s errors as transcription errors. I disagree partially: Candidate [1]'s claim that 'S IS continuous' is a conceptual error (failing to recognize the point mass at S=0), not a transcription error. The breakpoint error (1/t\u00b2 vs 1/t) may also reflect conceptual confusion rather than a typo. This matters because the error classification gap needs to handle cases where a single candidate has BOTH conceptual and transcription errors.\n- The anchor's entry assessment of 005004a4 as 'neutral' understates its role. This entry was the primary framework the judge used to evaluate mathematical correctness, and its application was asymmetric \u2014 it actively drove the wrong ranking by enabling heavier penalization of surface-level errors in [1] than the conceptual error in [2]. The symmetry check clause exists but was not executed. I tag it harmful.\n- The anchor doesn't note that Candidate [3] actually gets the correct formula for s > 1/t (1 - 1/(r\u00b2s\u00b2)) while getting the flat piece wrong (0 instead of 1-t\u00b2/r\u00b2). This is relevant because the judge scored [3] at 0.5, the lowest score, despite having the correct continuous-piece formula \u2014 further evidence that the comparison methodology was impressionistic rather than component-based.\n\n### Where I DISAGREE with the anchor\n- The anchor tags entry 8e0d9579 as 'neutral.' I tag it harmful because the judge explicitly used structural similarity as a positive signal for [2] ('closest in overall structure'), which is the exact failure mode the entry warns against. The entry either was consulted and failed, or should have been consulted and wasn't \u2014 either way, its current wording was insufficient to prevent the documented failure.\n\n### Key Playbook Implication\nThe playbook has a derivation entry (342f27b9) and an error-penalization entry (005004a4) but nothing that bridges the two: a mandatory comparison artifact that mechanically maps each candidate's formula components against the reference. This artifact would make it structurally impossible to award the highest score to a candidate whose conceptual approach produces the wrong probability space (t\u00b2 denominator instead of r\u00b2) just because its breakpoint value looks right. The four gaps identified (component table, error severity classification, binary conclusion check, intermediate reasoning credit) are ordered by impact \u2014 the component table alone would likely have prevented this failure."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "**Agreement with anchor:** The anchor correctly identifies the root cause: the judge derived a correct reference answer but then used impressionistic 'closest in overall structure' reasoning to rank candidates, selecting an incorrect candidate ([2], score 4.0) over the correct one ([1], score 1.5). Both rollouts are identical, confirming a systematic procedural failure. The anchor rightly notes that Candidate [2]'s conceptual error (computing a conditional CDF instead of an unconditional one, yielding denominator t\u00b2 instead of r\u00b2) is more severe than Candidate [1]'s transcription-level errors.\n\n**Refinement of anchor:** The anchor overstates Candidate [1]'s quality. Candidate [1] actually has three errors: wrong breakpoint (1/t\u00b2 vs 1/t), wrong exponent in the formula (1/s vs 1/s\u00b2), and wrong continuity conclusion (claims S is continuous). Its sole strength is correct intermediate probability reasoning: P(X \u2265 x) = 1 \u2212 x\u00b2/r\u00b2, which is methodologically sound. Candidate [2], despite its conceptual error, gets more structural components correct: correct breakpoint (1/t), correct flat-region formula (1 \u2212 t\u00b2/r\u00b2), and correct overall piecewise structure. The judge's preference for [2] wasn't irrational on surface inspection\u2014[2] matches the reference in more visible components. The failure is that the judge never traced WHY [2]'s formula diverges from the reference, which would have revealed the conceptual error.\n\n**Disagreement with anchor:** The anchor frames this primarily as needing a new 'component-wise verification table' artifact and 'error severity classification.' While useful, the more universal lesson is about a missing verification gate: after the judge derived a reference and chose a winner, it never explicitly checked whether the winner's formula matched the reference. Entry 93b0e8f9 says 'confirm the top-rated candidate genuinely best satisfies [your decisive criteria],' and entry 342f27b9 says 'compare each candidate's final answer against your reference,' but neither mandates a final gate where the judge writes out the reference formula and the winner's formula side-by-side and checks for match. This gate would have caught the error mechanically.\n\n**Causal chain:** (1) Judge derives correct reference. (2) Judge scans candidates holistically for 'structural closeness.' (3) Candidate [2]'s organized headers, correct breakpoint, and plausible-looking formula win the impression contest. (4) Judge never performs explicit formula-matching between reference and selected winner. (5) Conceptual error in [2] (conditional probability \u2192 wrong denominator) goes undetected. (6) Correct candidate [1] is penalized for visible surface errors despite having the sounder underlying methodology.\n\nThe playbook's current entries enabled step 1 (reference derivation) but provided no structured enforcement for step 4 (winner-vs-reference match). The gap is procedural: the comparison between reference and candidates lacks an externalized artifact that forces explicit formula/component matching.",
+      "principles": [
+        {
+          "statement": "After ranking, write your reference answer and the top candidate's answer side-by-side. If they disagree on any component, explain why you still chose that candidate before finalizing.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "342f27b9",
+          "trigger": "Fires after initial ranking is drafted but before final JSON output, whenever a reference answer was derived during evaluation.",
+          "verification_or_artifact": "Write two columns: (reference component | winner's component). For any row where they differ, state either (a) the reference was wrong, or (b) the discrepancy is minor enough to justify the ranking. If neither holds, re-rank.",
+          "evidence": "The judge derived F_S(s) = 1 \u2212 1/(r\u00b2s\u00b2) as the reference but gave the highest score to Candidate [2] which has F_S(s) = 1 \u2212 1/(s\u00b2t\u00b2). A side-by-side check would have surfaced the denominator mismatch (r\u00b2 vs t\u00b2) and forced the judge to account for it."
+        },
+        {
+          "statement": "When all candidates contain errors, classify each error as conceptual (wrong method/approach) or mechanical (slip in executing a correct approach). A correct approach with mechanical errors outranks a wrong approach that looks well-organized.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "Fires when the evaluator has identified errors in every candidate and must decide relative ranking among imperfect options.",
+          "verification_or_artifact": "For each candidate error, write: (error description | conceptual or mechanical | reasoning). Use this classification to inform severity weighting.",
+          "evidence": "Candidate [2] used conditional probability (wrong method) producing denominator t\u00b2 instead of r\u00b2\u2014a conceptual error. Candidate [1] had correct intermediate reasoning but transcribed the final formula incorrectly\u2014a mechanical error. The judge ranked the conceptual error above the mechanical error because [2]'s organized presentation made the error less visible."
+        },
+        {
+          "statement": "When comparing imperfect candidates against a reference, build an explicit component-match table (candidate \u00d7 component \u2192 match/mismatch) before scoring. Do not rely on holistic 'closeness' impressions.",
+          "entry_kind": "artifact",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "342f27b9",
+          "trigger": "Fires when a derived reference answer has multiple discrete components (e.g., piecewise formulas, multi-step outputs, structured answers) and candidates vary in which components they get right.",
+          "verification_or_artifact": "Construct a grid: rows = candidates, columns = reference components (e.g., each piece of a piecewise function, boundary values, qualitative conclusions). Mark each cell correct/incorrect. Count correct components per candidate before assigning relative scores.",
+          "evidence": "A component table for this task would show: [1] gets 1/4 components correct (F(0) value) but has sound methodology; [2] gets 3/4 surface components but has a fundamental denominator error; [3] gets 2/4. The judge's holistic impression missed this granularity, awarding [2] the top score despite its conceptual error."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Unified Diagnosis\n\nBoth rollouts produced identical outputs (same ratings, same reasoning), confirming a systematic evaluation failure. The judge correctly derived the reference CDF for the random variable S = 1/X (where X is uniform on a disk), obtaining F_S(s) with breakpoint at 1/t, flat region 1\u2212t\u00b2/r\u00b2, and continuous piece 1\u22121/(r\u00b2s\u00b2). It then compared four candidates\u2014all containing errors\u2014and awarded the highest score (4.0) to incorrect Candidate [2], while scoring the ground-truth correct Candidate [1] at only 1.5.\n\n### Root Cause: Impressionistic Comparison After Correct Derivation\n\nThe failure is NOT in reference derivation (entry 342f27b9 successfully guided that). The failure is in the comparison step. The judge evaluated candidates using holistic 'closest in overall structure' reasoning rather than explicit component-by-component matching against the reference. Candidate [2] had organized headers, a correct breakpoint (1/t), and a plausible-looking formula\u2014but committed a fundamental conceptual error: it computed P(X \u2265 1/s | X < t) (conditional probability, yielding denominator t\u00b2) instead of the unconditional P(S \u2264 s) (which should yield denominator r\u00b2). This is a wrong-probability-space error that invalidates the approach. Meanwhile, Candidate [1]'s intermediate reasoning\u2014P(S \u2264 1/x) = P(X \u2265 x) = 1\u2212x\u00b2/r\u00b2\u2014is methodologically sound, but the final piecewise formula contains transcription-level errors (wrong breakpoint 1/t\u00b2 instead of 1/t, wrong exponent). The judge never traced WHY [2]'s formula diverges from the reference, which would have revealed the conceptual error.\n\nA component comparison table would have made this visible: [2] gets the breakpoint and piecewise structure right but has r\u00b2 \u2192 t\u00b2 in the denominator; [1] gets the probability reasoning right but botches the final transcription. The judge's impressionistic assessment awarded [2] higher because more of its surface components visually matched, obscuring the deeper conceptual flaw.\n\n### Entry Assessment Rationale\n\n- **342f27b9** (neutral): Successfully guided reference derivation but was insufficient for the comparison step\u2014its instruction to 'compare each candidate's final answer and critical derivation steps against your reference' is too vague and permitted holistic impressions. This is the entry most in need of strengthening.\n- **005004a4** (neutral): Contains a symmetry clause ('after penalizing candidate X for flaw F, search your top-ranked candidate for the same flaw F') that should have caught the asymmetric scrutiny, but wasn't followed. The entry's content is correct; the gap is enforcement, which is better addressed by adding a mandatory comparison artifact than by modifying this entry.\n- **4abe1be4** (helpful): Successfully guided candidate identification.\n- **93b0e8f9** (helpful): Its instruction to 'confirm the top-rated candidate genuinely best satisfies [decisive criteria]' points in the right direction, though it was insufficiently specific to catch this math-domain failure.\n- **8e0d9579** (neutral): Warns against letting presentation outweigh correctness\u2014relevant to how [2]'s organized format swayed the judge\u2014but the real fix is a math-specific comparison artifact, not strengthening this general-purpose warning.\n\n### Playbook Gap: Mandatory Comparison Artifact\n\nAll three source reflections converge on the same primary gap: entry 342f27b9 tells the judge to derive a reference and compare, but provides no structured procedure for HOW to compare. The fix is adding a mandatory component comparison table to 342f27b9. When a reference answer has multiple discrete components (pieces of a piecewise function, boundary values, qualitative conclusions), the judge must construct a grid mapping each candidate's components against the reference, mark each correct/incorrect, and count correct components before scoring. This makes it mechanically difficult to award the highest score to a candidate with a deep conceptual error just because its surface structure looks closest.\n\nA secondary gap\u2014error severity classification (conceptual vs. computational vs. transcription)\u2014is identified by two of three reflections. However, the component table alone would likely have prevented this failure by surfacing the denominator mismatch, so the primary mutation should be the table. The error severity classification is a plausible future addition but introducing two new concepts from one trace is less conservative than a single targeted update.\n\n### Winner-vs-Reference Verification Gate\n\nThe principle extraction reflection adds a complementary insight: after ranking, the judge should write its reference answer and the winner's answer side-by-side. This is a natural extension of the component table\u2014effectively its final step\u2014and can be folded into the same update to 342f27b9 without requiring a separate entry.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The judge derived a correct reference answer but compared candidates impressionistically ('closest in overall structure') rather than via explicit component-by-component matching. This caused a candidate with a deep conceptual error (wrong probability space) to outscore the correct candidate whose surface-level formula had transcription errors. The fix is updating entry 342f27b9 to mandate a component comparison table.",
+      "important_disagreements": [
+        "Credit attribution tagged 005004a4 as 'harmful' and 8e0d9579 as 'harmful'; anchor and principle extraction tagged both as 'neutral.' Resolved toward neutral: both entries contain correct guidance that was not followed. The root cause is the missing comparison artifact, not defective entries. The fix should target 342f27b9 (the comparison methodology gap) rather than entries that are directionally correct but under-enforced.",
+        "Credit attribution tagged 342f27b9 as 'helpful'; anchor and principle extraction tagged it 'neutral.' Resolved toward neutral: it successfully guided reference derivation (partial credit) but was insufficient for the comparison step (where the actual failure occurred). Since the proposed mutation targets this entry for improvement, 'neutral' better captures that it partially worked but needs strengthening.",
+        "Anchor characterizes all of Candidate [1]'s errors as transcription-level; principle extraction notes that [1]'s claim 'S IS continuous' is a conceptual error and its breakpoint error may also be conceptual. Resolved by acknowledging the nuance: [1] has a mix of error types, but its intermediate probability reasoning is methodologically sound, which is the key differentiator. The component table would surface these distinctions mechanically without requiring the judge to pre-classify error types."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry 342f27b9 already covers 'derive a reference and compare,' but its comparison step is too vague. All three reflections converge on the need for a mandatory component comparison table. This is a targeted update to an existing entry, not a new concept. The error severity classification gap is real but secondary\u2014the component table alone would have prevented this failure\u2014and introducing it from a single trace is less conservative.",
+      "conservatism_rationale": "One trace, two identical rollouts with the same systematic error. The diagnosis is high-confidence and unanimous across reflections. However, the fix is a single targeted update to 342f27b9 rather than multiple new entries, because: (1) the component table subsumes much of the error severity classification need by making discrepancies visible; (2) the binary conclusion check and intermediate reasoning credit gaps are real but domain-specific and derive from one task; (3) conservative principle favors a single high-confidence edit over several medium-confidence ones.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\n      \"entry_id\": \"342f27b9\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"005004a4\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"4abe1be4\",\n      \"tag\": \"helpful\"\n    },\n    {\n      \"entry_id\": \"93b0e8f9\",\n      \"tag\": \"helpful\"\n    },\n    {\n      \"entry_id\": \"8e0d9579\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"295257e2\",\n      \"tag\": \"neutral\"\n    }\n  ],\n  \"analysis\": \"## Unified Diagnosis\\n\\nBoth rollouts produced identical outputs (same ratings, same reasoning), confirming a systematic evaluation failure. The judge correctly derived the reference CDF for the random variable S = 1/X (where X is uniform on a disk), obtaining F_S(s) with breakpoint at 1/t, flat region 1\u2212t\u00b2/r\u00b2, and continuous piece 1\u22121/(r\u00b2s\u00b2). It then compared four candidates\u2014all containing errors\u2014and awarded the highest score (4.0) to incorrect Candidate [2], while scoring the ground-truth correct Candidate [1] at only 1.5.\\n\\n### Root Cause: Impressionistic Comparison After Correct Derivation\\n\\nThe failure is NOT in reference derivation (entry 342f27b9 successfully guided that). The failure is in the comparison step. The judge evaluated candidates using holistic 'closest in overall structure' reasoning rather than explicit component-by-component matching against the reference. Candidate [2] had organized headers, a correct breakpoint (1/t), and a plausible-looking formula\u2014but committed a fundamental conceptual error: it computed P(X \u2265 1/s | X < t) (conditional probability, yielding denominator t\u00b2) instead of the unconditional P(S \u2264 s) (which should yield denominator r\u00b2). This is a wrong-probability-space error that invalidates the approach. Meanwhile, Candidate [1]'s intermediate reasoning\u2014P(S \u2264 1/x) = P(X \u2265 x) = 1\u2212x\u00b2/r\u00b2\u2014is methodologically sound, but the final piecewise formula contains transcription-level errors (wrong breakpoint 1/t\u00b2 instead of 1/t, wrong exponent). The judge never traced WHY [2]'s formula diverges from the reference, which would have revealed the conceptual error.\\n\\nA component comparison table would have made this visible: [2] gets the breakpoint and piecewise structure right but has r\u00b2 \u2192 t\u00b2 in the denominator; [1] gets the probability reasoning right but botches the final transcription. The judge's impressionistic assessment awarded [2] higher because more of its surface components visually matched, obscuring the deeper conceptual flaw.\\n\\n### Entry Assessment Rationale\\n\\n- **342f27b9** (neutral): Successfully guided reference derivation but was insufficient for the comparison step\u2014its instruction to 'compare each candidate's final answer and critical derivation steps against your reference' is too vague and permitted holistic impressions. This is the entry most in need of strengthening.\\n- **005004a4** (neutral): Contains a symmetry clause ('after penalizing candidate X for flaw F, search your top-ranked candidate for the same flaw F') that should have caught the asymmetric scrutiny, but wasn't followed. The entry's content is correct; the gap is enforcement, which is better addressed by adding a mandatory comparison artifact than by modifying this entry.\\n- **4abe1be4** (helpful): Successfully guided candidate identification.\\n- **93b0e8f9** (helpful): Its instruction to 'confirm the top-rated candidate genuinely best satisfies [decisive criteria]' points in the right direction, though it was insufficiently specific to catch this math-domain failure.\\n- **8e0d9579** (neutral): Warns against letting presentation outweigh correctness\u2014relevant to how [2]'s organized format swayed the judge\u2014but the real fix is a math-specific comparison artifact, not strengthening this general-purpose warning.\\n\\n### Playbook Gap: Mandatory Comparison Artifact\\n\\nAll three source reflections converge on the same primary gap: entry 342f27b9 tells the judge to derive a reference and compare, but provides no structured procedure for HOW to compare. The fix is adding a mandatory component comparison table to 342f27b9. When a reference answer has multiple discrete components (pieces of a piecewise function, boundary values, qualitative conclusions), the judge must construct a grid mapping each candidate's components against the reference, mark each correct/incorrect, and count correct components before scoring. This makes it mechanically difficult to award the highest score to a candidate with a deep conceptual error just because its surface structure looks closest.\\n\\nA secondary gap\u2014error severity classification (conceptual vs. computational vs. transcription)\u2014is identified by two of three reflections. However, the component table alone would likely have prevented this failure by surfacing the denominator mismatch, so the primary mutation should be the table. The error severity classification is a plausible future addition but introducing two new concepts from one trace is less conservative than a single targeted update.\\n\\n### Winner-vs-Reference Verification Gate\\n\\nThe principle extraction reflection adds a complementary insight: after ranking, the judge should write its reference answer and the winner's answer side-by-side. This is a natural extension of the component table\u2014effectively its final step\u2014and can be folded into the same update to 342f27b9 without requiring a separate entry.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The judge derived a correct reference answer but compared candidates impressionistically ('closest in overall structure') rather than via explicit component-by-component matching. This caused a candidate with a deep conceptual error (wrong probability space) to outscore the correct candidate whose surface-level formula had transcription errors. The fix is updating entry 342f27b9 to mandate a component comparison table.\",\n    \"important_disagreements\": [\n      \"Credit attribution tagged 005004a4 as 'harmful' and 8e0d9579 as 'harmful'; anchor and principle extraction tagged both as 'neutral.' Resolved toward neutral: both entries contain correct guidance that was not followed. The root cause is the missing comparison artifact, not defective entries. The fix should target 342f27b9 (the comparison methodology gap) rather than entries that are directionally correct but under-enforced.\",\n      \"Credit attribution tagged 342f27b9 as 'helpful'; anchor and principle extraction tagged it 'neutral.' Resolved toward neutral: it successfully guided reference derivation (partial credit) but was insufficient for the comparison step (where the actual failure occurred). Since the proposed mutation targets this entry for improvement, 'neutral' better captures that it partially worked but needs strengthening.\",\n      \"Anchor characterizes all of Candidate [1]'s errors as transcription-level; principle extraction notes that [1]'s claim 'S IS continuous' is a conceptual error and its breakpoint error may also be conceptual. Resolved by acknowledging the nuance: [1] has a mix of error types, but its intermediate probability reasoning is methodologically sound, which is the key differentiator. The component table would surface these distinctions mechanically without requiring the judge to pre-classify error types.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry 342f27b9 already covers 'derive a reference and compare,' but its comparison step is too vague. All three reflections converge on the need for a mandatory component comparison table. This is a targeted update to an existing entry, not a new concept. The error severity classification gap is real but secondary\u2014the component table alone would have prevented this failure\u2014and introducing it from a single trace is less conservative.\",\n    \"conservatism_rationale\": \"One trace, two identical rollouts with the same systematic error. The diagnosis is high-confidence and unanimous across reflections. However, the fix is a single targeted update to 342f27b9 rather than multiple new entries, because: (1) the component table subsumes much of the error severity classification need by making discrepancies visible; (2) the binary conclusion check and intermediate reasoning credit gaps are real but domain-specific and derive from one task; (3) conservative principle favors a single high-confidence edit over several medium-confidence ones.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 1,
+        "helpful": 2
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

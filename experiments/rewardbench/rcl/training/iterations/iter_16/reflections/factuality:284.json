@@ -1,0 +1,453 @@
+{
+  "task_id": "factuality:284",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "132aab84",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:284\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts produced identical deterministic output, top-ranking incorrect candidate [4] (score 7.3) over the only correct candidate [1] (score 5.7). The 66.7% pairwise accuracy reflects one critical inversion driven by a two-link causal chain.\n\n### Link 1 \u2014 FOCUS ALIGNMENT hard gate misapplied to a subjective question [132aab84]\n\nThe user asked 'who is the most relevant music artist in Serbia right now?' \u2014 an inherently subjective, time-sensitive question with no single verifiable correct answer. Candidate [1] listed three real, prominent Serbian artists (Ceca, Jelena Karleu\u0161a, Rasta) with honest epistemic caveats ('As of the latest information available'). This IS a direct answer to a subjective question: naming multiple plausible entities with appropriate hedging is the epistemically correct behavior. However, the FOCUS ALIGNMENT check classified [1] as ADJACENT because it hedged and listed multiple answers rather than committing to one. The HARD GATE then structurally barred [1] from outscoring any DIRECT-classified candidate, locking incorrect [4] into the top rank regardless of its factual problems.\n\nThe entry [132aab84] has no exception for questions that are inherently subjective, opinion-based, or time-dependent. For such questions, the HARD GATE's core assumption \u2014 that there is one correct answer type and responses either match it directly or don't \u2014 fails. All three source reflections independently identify this as the primary causal mechanism (unanimous harmful tag).\n\n### Link 2 \u2014 Asymmetric verification allowed [4]'s fabrications to pass undetected [005004a4]\n\nThe agent correctly applied ISOLATE\u2192COUNTER\u2192CLASSIFY to candidate [3], catching fabricated Bad Bunny/Billie Eilish collaborations. But it applied only surface-level suspicion to top-ranked [4]: 'secondary name/alias looks unverified.' In fact, Petar Gra\u0161o is Croatian, not Serbian \u2014 a decisive domain-constraint violation for a question about Serbian artists. The alias 'Crni Dvor' appears fabricated. The existing SYMMETRY instruction in [005004a4] ('After penalizing candidate X for flaw F, explicitly search your top-ranked candidate for the same flaw F before finalizing') directly applies but was never executed. The UNVERIFIABLE-CONFIDENT rule also applies directly but was not triggered.\n\nHad SYMMETRY been enforced, [4]'s factual errors would have been caught, potentially activating the existing FACTUAL ACCURACY OVERRIDE in [c8698dee] which states the HARD GATE cannot promote a candidate with verified factual errors above a factually accurate one. The SYMMETRY step exists as text but has no mandatory artifact, making it trivially skippable under confirmation bias.\n\n### Why Other Entries Are Neutral\n\n**c8698dee**: The credit_attribution head argues it's harmful because it marked [1] as 'Partial,' feeding the FOCUS ALIGNMENT chain. However, the entry's constraint-extraction procedure is sound in general \u2014 the error stems from lacking guidance on how to evaluate compliance for questions with multiple valid answers, which is the same gap already addressed by fixing 132aab84. The entry itself is not defective; it's the downstream hard gate that converts a reasonable 'Partial' into a structural lock.\n\n**8c88459e**: One head tags it harmful, arguing its one-directional hedging framing (catching hedge-that-masks-commitment) biased the agent against [1]'s honest hedging. The evidence is inferential only \u2014 the agent's 'less decisive' language loosely echoes the entry's framing, but the structural lock from 132aab84 is the actual causal mechanism. Adding a complementary clause about honest hedging being a positive signal for uncertain questions is subsumed by fixing the FOCUS ALIGNMENT precondition check.\n\n**295257e2**: One head tags harmful because the summary-table safeguard was skipped. But as the principle_extraction head argues, even if executed, the table wouldn't have caught the inversion because the agent already misclassified [4] as correctly answering the prompt. The problem is upstream.\n\n## Recommended Mutations\n\n### 1. UPDATE 132aab84 \u2014 Add subjective-question exception to HARD GATE\n\nBefore the HARD GATE fires, add a mandatory verification step: state the gate's core assumption (that the question has a single objectively correct answer type) and verify it holds for this prompt. For subjective, opinion-based, or time-dependent questions (signals: 'most relevant/popular/best,' 'right now,' 'currently,' asks for recommendations or rankings), the HARD GATE does not apply. Listing multiple plausible on-topic answers with appropriate hedging is classified DIRECT, not ADJACENT, for such prompts. Confident assertion of a single unverifiable answer becomes a risk factor, not an advantage.\n\n### 2. UPDATE 005004a4 \u2014 Strengthen SYMMETRY with mandatory artifact\n\nAfter any candidate receives a factuality penalty, and before final scores are assigned, require a mandatory SYMMETRY TABLE artifact: rows = each flaw type found in any penalized candidate, columns = all candidates including current top-ranked. Each cell must be marked CHECKED-CLEAN, FLAGGED, or VERIFIED-FALSE. The top-ranked candidate must have no FLAGGED or VERIFIED-FALSE cells; if it does, apply ISOLATE\u2192COUNTER\u2192CLASSIFY before finalizing. The table's absence from reasoning invalidates the scores.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The FOCUS ALIGNMENT hard gate [132aab84] structurally prevented the correct candidate from top rank because it lacks an exception for subjective/time-dependent questions. This was compounded by asymmetric factual verification [005004a4] where the SYMMETRY step was available but unenforced, allowing fabricated claims in the top-ranked candidate to pass undetected. All three reflections converge on this two-link causal chain.\",\n  \"important_disagreements\": [\n    \"c8698dee tagged harmful by credit_attribution (marked [1] as Partial, first link in chain) vs neutral by anchor and principle_extraction. Resolved: the entry's procedure is sound; the error is downstream in how 132aab84's hard gate converts Partial into structural lock. Fixing 132aab84 subsumes this.\",\n    \"8c88459e tagged harmful by credit_attribution (one-directional hedging framing biased against honest uncertainty) vs neutral by anchor and principle_extraction. Resolved: evidence is inferential only, and fixing 132aab84's precondition check subsumes the need for a complementary hedging clause.\",\n    \"295257e2 tagged harmful by credit_attribution (summary table skipped) vs neutral by others. Resolved: principle_extraction's argument is more convincing \u2014 even if the table had been executed, upstream misclassification would have rendered it ineffective.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Both recommended changes modify existing entries to address clearly identified gaps. 132aab84 needs an exception clause for subjective questions (its hard gate's assumption fails for this question class). 005004a4 needs its existing SYMMETRY instruction upgraded from text to mandatory artifact (the instruction exists but was trivially skipped). Neither requires a new standalone entry \u2014 the playbook has the right entries, they just need refinement.\",\n  \"conservatism_rationale\": \"All three reflections converge on the same two-entry causal chain with high confidence. The question-type classifier could be a standalone entry, but the smallest justified change is embedding it as a precondition check within 132aab84's existing HARD GATE logic. The SYMMETRY artifact strengthens existing text in 005004a4 rather than adding a new entry. No new domain-membership check entry is recommended \u2014 while the Petar-Gra\u0161o-is-Croatian error is illustrative, it would have been caught by proper SYMMETRY enforcement, which is already being strengthened. Adding a separate domain-membership check from a single trace would be premature generalization.\",\n  \"max_operations\": 2\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\nwho is the most relevant music artist in Serbia right now?\n\n## Candidate Responses\n\n[1]\nAs of the latest information available, one of the most relevant music artists in Serbia is likely to be someone who is popular in the regional pop or folk music scene. Artists like Ceca (Svetlana Ra\u017enatovi\u0107), Jelena Karleu\u0161a, and Rasta have been prominent figures in the Serbian music industry. However, the music scene is dynamic, and new artists can emerge quickly. For the most current information, it would be best to check local music charts, streaming platforms, or social media trends in Serbia.\n\n[2]\nIn Serbia, one of the most popular and relevant music artists right now is likely to be Buba Corelli, a rapper from the city of Novi Sad. However, another strong contender is likely to be  Saratonin.\n\n[3]\nAs of 2023, one of the most relevant music artists in Serbia is Jelena Karleu\u0161a. Known for her fusion of pop and Balkan folk music, she has been a significant figure in the Serbian music scene for years. Karleu\u0161a rose to fame in the early 2000s, and her popularity has only increased. With her recent collaboration with international artists like Bad Bunny and Billie Eilish, she has gained a massive following not just in Serbia but across the entire Balkans and Europe. Her unique style often includes heavy influences from jazz and classical music, making her a versatile and distinct artist in Serbia's diverse musical landscape.\n\n[4]\nIn Serbia, a very popular and influential artist right now is Aca Lukas. With a career spanning over two decades, Aca Lukas has been a household name in the region. However, another artist who is often mentioned alongside him is Petar Graso, also known by his stage name \"Crni Dvor\", has gained significant traction with his unique blend of traditional Balkan music with modern electronic elements.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (1) Identify the most relevant music artist in Serbia right now \u2014 [1] Partial, [2] Pass, [3] Pass, [4] Pass; (2) No specific output format requested \u2014 all Pass. Perception scan (N=4): [1] \u201cAs of the latest information\u201d, [2] \u201cIn Serbia, one of the\u201d, [3] \u201cAs of 2023, one of the\u201d, [4] \u201cIn Serbia, a very popular\u201d. FOCUS ALIGNMENT artifact rows: [1 | 'As of the latest information available' | ADJACENT], [2 | 'In Serbia, one of the most popular' | DIRECT], [3 | 'As of 2023, one of the most relevant' | DIRECT], [4 | 'In Serbia, a very popular and influential' | DIRECT]. Factuality check highlights: [3] claims recent collaborations with Bad Bunny and Billie Eilish (VERIFIED FALSE/unsupported), while [2] relies on an unverified named contender (Saratonin); [4]'s main pick (Aca Lukas) is plausible though its secondary name/alias looks unverified. Overall: [4] is best due to directness plus the fewest dubious specifics, [1] is next but less decisive, [2] is weakened by an unverified name, and [3] is lowest due to major likely fabrication.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (1) Identify the most relevant music artist in Serbia right now \u2014 [1] Partial, [2] Pass, [3] Pass, [4] Pass; (2) No specific output format requested \u2014 all Pass. Perception scan (N=4): [1] \u201cAs of the latest information\u201d, [2] \u201cIn Serbia, one of the\u201d, [3] \u201cAs of 2023, one of the\u201d, [4] \u201cIn Serbia, a very popular\u201d. FOCUS ALIGNMENT artifact rows: [1 | 'As of the latest information available' | ADJACENT], [2 | 'In Serbia, one of the most popular' | DIRECT], [3 | 'As of 2023, one of the most relevant' | DIRECT], [4 | 'In Serbia, a very popular and influential' | DIRECT]. Factuality check highlights: [3] claims recent collaborations with Bad Bunny and Billie Eilish (VERIFIED FALSE/unsupported), while [2] relies on an unverified named contender (Saratonin); [4]'s main pick (Aca Lukas) is plausible though its secondary name/alias looks unverified. Overall: [4] is best due to directness plus the fewest dubious specifics, [1] is next but less decisive, [2] is weakened by an unverified name, and [3] is lowest due to major likely fabrication.\",\n  \"ratings\": [\n    5.7,\n    4.9,\n    1.6,\n    7.3\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\nwho is the most relevant music artist in Serbia right now?\n\n## Candidate Responses\n\n[1]\nAs of the latest information available, one of the most relevant music artists in Serbia is likely to be someone who is popular in the regional pop or folk music scene. Artists like Ceca (Svetlana Ra\u017enatovi\u0107), Jelena Karleu\u0161a, and Rasta have been prominent figures in the Serbian music industry. However, the music scene is dynamic, and new artists can emerge quickly. For the most current information, it would be best to check local music charts, streaming platforms, or social media trends in Serbia.\n\n[2]\nIn Serbia, one of the most popular and relevant music artists right now is likely to be Buba Corelli, a rapper from the city of Novi Sad. However, another strong contender is likely to be  Saratonin.\n\n[3]\nAs of 2023, one of the most relevant music artists in Serbia is Jelena Karleu\u0161a. Known for her fusion of pop and Balkan folk music, she has been a significant figure in the Serbian music scene for years. Karleu\u0161a rose to fame in the early 2000s, and her popularity has only increased. With her recent collaboration with international artists like Bad Bunny and Billie Eilish, she has gained a massive following not just in Serbia but across the entire Balkans and Europe. Her unique style often includes heavy influences from jazz and classical music, making her a versatile and distinct artist in Serbia's diverse musical landscape.\n\n[4]\nIn Serbia, a very popular and influential artist right now is Aca Lukas. With a career spanning over two decades, Aca Lukas has been a household name in the region. However, another artist who is often mentioned alongside him is Petar Graso, also known by his stage name \"Crni Dvor\", has gained significant traction with his unique blend of traditional Balkan music with modern electronic elements.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST: (1) Identify the most relevant music artist in Serbia right now \u2014 [1] Partial, [2] Pass, [3] Pass, [4] Pass; (2) No specific output format requested \u2014 all Pass. Perception scan (N=4): [1] \u201cAs of the latest information\u201d, [2] \u201cIn Serbia, one of the\u201d, [3] \u201cAs of 2023, one of the\u201d, [4] \u201cIn Serbia, a very popular\u201d. FOCUS ALIGNMENT artifact rows: [1 | 'As of the latest information available' | ADJACENT], [2 | 'In Serbia, one of the most popular' | DIRECT], [3 | 'As of 2023, one of the most relevant' | DIRECT], [4 | 'In Serbia, a very popular and influential' | DIRECT]. Factuality check highlights: [3] claims recent collaborations with Bad Bunny and Billie Eilish (VERIFIED FALSE/unsupported), while [2] relies on an unverified named contender (Saratonin); [4]'s main pick (Aca Lukas) is plausible though its secondary name/alias looks unverified. Overall: [4] is best due to directness plus the fewest dubious specifics, [1] is next but less decisive, [2] is weakened by an unverified name, and [3] is lowest due to major likely fabrication.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST: (1) Identify the most relevant music artist in Serbia right now \u2014 [1] Partial, [2] Pass, [3] Pass, [4] Pass; (2) No specific output format requested \u2014 all Pass. Perception scan (N=4): [1] \u201cAs of the latest information\u201d, [2] \u201cIn Serbia, one of the\u201d, [3] \u201cAs of 2023, one of the\u201d, [4] \u201cIn Serbia, a very popular\u201d. FOCUS ALIGNMENT artifact rows: [1 | 'As of the latest information available' | ADJACENT], [2 | 'In Serbia, one of the most popular' | DIRECT], [3 | 'As of 2023, one of the most relevant' | DIRECT], [4 | 'In Serbia, a very popular and influential' | DIRECT]. Factuality check highlights: [3] claims recent collaborations with Bad Bunny and Billie Eilish (VERIFIED FALSE/unsupported), while [2] relies on an unverified named contender (Saratonin); [4]'s main pick (Aca Lukas) is plausible though its secondary name/alias looks unverified. Overall: [4] is best due to directness plus the fewest dubious specifics, [1] is next but less decisive, [2] is weakened by an unverified name, and [3] is lowest due to major likely fabrication.\",\n  \"ratings\": [\n    5.7,\n    4.9,\n    1.6,\n    7.3\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=5.700\n  [2] INCORRECT score=4.900\n  [3] INCORRECT score=1.600\n  [4] INCORRECT score=7.300\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=5.700\n  [2] INCORRECT score=4.900\n  [3] INCORRECT score=1.600\n  [4] INCORRECT score=7.300",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts produced identical (deterministic) output, selecting candidate [4] (INCORRECT, score 7.3) as best and scoring the only correct candidate [1] at 5.7. The core failure is a systematic bias toward confident specificity over cautious accuracy, compounded by misapplication of existing playbook rules.\n\n### Failure 1: FOCUS ALIGNMENT misclassification penalized appropriate hedging\n\nCandidate [1] was classified as ADJACENT ('As of the latest information available' \u2192 ADJACENT) solely because it listed multiple plausible names and hedged rather than committing to a single answer. But the user asked 'who is the most relevant music artist in Serbia right now?' \u2014 a subjective, time-sensitive question with no single verifiable correct answer. Listing Ceca, Jelena Karleu\u0161a, and Rasta (all real, well-known Serbian artists) with an honest caveat IS a direct answer to this kind of question. The FOCUS ALIGNMENT HARD GATE then structurally prevented [1] from outscoring the DIRECT-classified [4], locking in the wrong ranking.\n\n**Root diagnosis**: The FOCUS ALIGNMENT check [132aab84] has no carve-out for questions that are inherently subjective/opinion-based or time-dependent. For such questions, providing multiple plausible answers with hedging is the epistemically superior approach, yet the current rule classifies this as ADJACENT and triggers a hard gate that makes it impossible to rank above a confidently-wrong answer.\n\n### Failure 2: Asymmetric verification of factual claims\n\nThe VERIFICATION GATE in [005004a4] was applied thoroughly to candidate [3] (correctly catching fabricated Bad Bunny/Billie Eilish collaborations) but not to candidate [4]. The agent noted [4]'s 'secondary name/alias looks unverified' but classified it as merely suspicious rather than investigating further. In fact, Petar Gra\u0161o is a Croatian singer, not Serbian \u2014 making [4]'s claim factually wrong at a level relevant to the core question (asking about Serbian artists). The alias 'Crni Dvor' appears fabricated. The SYMMETRY requirement ('After penalizing candidate X for flaw F, explicitly search your top-ranked candidate for the same flaw F before finalizing') should have caught this but was not executed.\n\n### Failure 3: Conflating confident assertion with directness/quality\n\nEntry [8c88459e] instructs the agent to 'evaluate what the response DOES, not just what it SAYS' and warns about hedging words masking behavioral commitment. But the entry's guidance was designed for the opposite direction (catching candidates that hedge but still act on unverified claims). What's missing is the complementary rule: a response that honestly acknowledges limits on a genuinely uncertain question is not showing weakness \u2014 it's showing calibration. The agent treated [1]'s appropriate epistemic humility as a defect ('less decisive') while treating [4]'s confident assertion of potentially fabricated specifics as a strength ('directness').\n\n## Missing Generalizable Knowledge\n\n### 1. Subjective/opinion/time-dependent question detector\nThe playbook needs a procedural step that fires during constraint extraction: classify whether the user's question has a verifiable single correct answer vs. is inherently subjective, opinion-based, or time-dependent. For the latter class:\n- Listing multiple plausible answers with appropriate hedging is DIRECT, not ADJACENT\n- Confident assertion of a single unverifiable answer is a risk factor, not an advantage\n- The FOCUS ALIGNMENT HARD GATE must be softened: hedged-but-topical responses cannot be structurally barred from top rank\n\n### 2. Strengthened SYMMETRY enforcement\nThe existing SYMMETRY step in [005004a4] was not executed. It needs procedural teeth: a mandatory artifact (e.g., a table: 'Top candidate [4] | Flaw searched | Finding') that must appear in the reasoning before final scores are assigned. The current phrasing is too easy to skip.\n\n### 3. Niche-domain identity verification\nWhen a question asks about entities from a specific country/region/domain, and a candidate names entities in response, the agent should verify that each named entity actually belongs to the specified country/domain. Here, Petar Gra\u0161o being Croatian \u2014 not Serbian \u2014 is a decisive factual error that the agent missed. A lightweight check ('Does named entity X belong to specified domain Y?') would catch this.\n\n### 4. Confidence-accuracy calibration for unverifiable topics\nThe UNVERIFIABLE-CONFIDENT rule in [005004a4] states: 'A candidate whose main advantage over competitors is unverifiable-confident claims must NOT outscore a candidate showing honest uncertainty about the same input.' This rule directly applies here but was not invoked. It needs stronger triggering language \u2014 perhaps automatic activation when the question is classified as subjective/time-dependent per the new detector.\n\n## Entries Needing Refinement\n\n- [132aab84] (FOCUS ALIGNMENT): Needs an exception clause for subjective/opinion/time-dependent questions. Hedged-but-topical answers to such questions must be classified DIRECT, not ADJACENT. The HARD GATE should not apply when the question has no single verifiable correct answer.\n\n- [005004a4] (VERIFICATION GATE): The SYMMETRY step needs mandatory artifact output. Also, the UNVERIFIABLE-CONFIDENT rule needs a stronger trigger \u2014 perhaps auto-activation when the prompt concerns opinions, preferences, or time-sensitive rankings.\n\n- [8c88459e] (hedging evaluation): Needs a complementary clause: for genuinely uncertain/subjective questions, honest hedging is a positive signal of calibration, not a defect. The entry currently only handles the case where hedging masks commitment; it needs the reverse case where hedging reflects genuine and appropriate epistemic humility."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The user asked a subjective, time-sensitive question ('who is the most relevant music artist in Serbia right now?') with no single verifiable correct answer. The FOCUS ALIGNMENT check penalized a candidate that listed multiple plausible answers with appropriate hedging, classifying it as ADJACENT rather than DIRECT.",
+          "gap_type": "procedure",
+          "suggested_content": "QUESTION-TYPE CLASSIFIER \u2014 fires during constraint extraction, before FOCUS ALIGNMENT. Classify the user's question: (A) VERIFIABLE-SINGLE \u2014 has a specific, objectively correct answer (math, factual lookup, code output). (B) SUBJECTIVE/TIME-DEPENDENT \u2014 asks about opinions, preferences, rankings, trends, or 'right now' assessments where multiple answers are plausible. For type B questions: (1) FOCUS ALIGNMENT must classify a response listing multiple plausible, on-topic answers with hedging as DIRECT, not ADJACENT. (2) The HARD GATE is softened: confident assertion of a single answer is a risk factor, not an advantage. (3) The UNVERIFIABLE-CONFIDENT rule (005004a4) auto-activates. (4) Constraint extraction must not mark honest multi-answer responses as 'Partial' when the question inherently permits multiple valid answers.",
+          "trigger": "During constraint extraction, immediately after listing constraints. Look for signals: question asks 'who/what is the best/most relevant/most popular,' contains 'right now' or 'currently,' asks for opinions or recommendations, or concerns a domain where the answer changes frequently."
+        },
+        {
+          "situation": "The agent applied VERIFICATION GATE to candidate [3] (correctly catching fabrication) but did not apply SYMMETRY to check top-ranked [4] for the same class of flaws. The existing SYMMETRY instruction in 005004a4 was skipped without any mandatory artifact.",
+          "gap_type": "artifact",
+          "suggested_content": "SYMMETRY ENFORCEMENT ARTIFACT \u2014 After any candidate receives a factuality penalty, and before final scores are assigned, produce a mandatory SYMMETRY TABLE: columns = [Top-ranked candidate ID | Flaw type found in penalized candidate | Specific check performed on top-ranked | Finding (CLEAR / FLAGGED / VERIFIED FALSE)]. The table must contain at least one row per penalized flaw type. If the table is absent from reasoning, scores are invalid. If the top-ranked candidate is FLAGGED or VERIFIED FALSE on any flaw, re-score before finalizing.",
+          "trigger": "Fires after any VERIFICATION GATE penalty is applied to any candidate and before final score assignment."
+        },
+        {
+          "situation": "The question asked about music artists in Serbia. Candidate [4] named Petar Gra\u0161o, who is actually Croatian, not Serbian. The agent noted the alias looked suspicious but never checked whether the named entity belonged to the specified domain (Serbia).",
+          "gap_type": "checklist",
+          "suggested_content": "DOMAIN-MEMBERSHIP CHECK \u2014 When the user's question specifies a country, region, language, profession, or other domain boundary, and a candidate names entities in response: (1) For each named entity, ask: 'Does this entity belong to the specified domain?' (2) If the entity belongs to a different but adjacent domain (e.g., Croatian artist named as Serbian), classify as VERIFIED FALSE per the severity hierarchy \u2014 it directly contradicts the question's constraint. (3) An entity from the wrong domain is worse than an honestly hedged response that names entities from the correct domain.",
+          "trigger": "During factuality assessment, whenever the prompt specifies a domain boundary (country, field, category) and candidates name specific entities."
+        },
+        {
+          "situation": "The agent's reasoning was extremely terse \u2014 a single run-on paragraph covering constraint checking, perception scan, focus alignment, and factuality all at once. This brevity made it easy to skip procedural steps like SYMMETRY and the 295257e2 summary table.",
+          "gap_type": "procedure",
+          "suggested_content": "REASONING STRUCTURE ENFORCEMENT \u2014 Evaluation reasoning must contain clearly labeled sections in order: (1) PERCEPTION SCAN, (2) CONSTRAINT CHECKLIST, (3) QUESTION-TYPE CLASSIFICATION, (4) FOCUS ALIGNMENT ARTIFACT, (5) FACTUALITY VERIFICATION (with ISOLATE\u2192COUNTER\u2192CLASSIFY for each flagged claim), (6) SYMMETRY TABLE (if any penalties applied), (7) SCORE SUMMARY TABLE (candidate | score | answers-prompt: yes/no), (8) FINAL SCORES. If any section is missing, the evaluation is incomplete. A section cannot be compressed into a parenthetical within another section.",
+          "trigger": "Always \u2014 this is a structural requirement for all evaluations."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nBoth rollouts produced identical output (deterministic), rating incorrect candidate [4] at 7.3 and correct candidate [1] at 5.7. The 66.7% pairwise accuracy reflects one critical inversion: [4] above [1].\n\n### Primary Causal Chain\n\nThe failure flows through a three-step chain of entry misapplications:\n\n1. **c8698dee** (Constraint Extraction): Marked [1] as 'Partial' on the main constraint despite [1] naming three real Serbian artists. This is a judgment error enabled by the entry lacking guidance on how to evaluate constraint compliance for subjective questions with multiple valid answers.\n\n2. **132aab84** (Focus Alignment): Used the 'Partial' + hedging language to classify [1] as ADJACENT. The HARD GATE then structurally prevented [1] from outscoring DIRECT-classified [4]. The entry has no exception for questions that inherently lack a single correct answer.\n\n3. **005004a4** (Verification Gate): Applied asymmetrically \u2014 caught [3]'s fabricated collaborations but stopped at suspicion for [4]'s claims (Petar Gra\u0161o is Croatian, 'Crni Dvor' alias appears fabricated). SYMMETRY step and UNVERIFIABLE-CONFIDENT rule were both available and directly applicable but not invoked. With proper symmetric verification, [4] would have been flagged with verified errors, potentially activating the HARD GATE's exception clause.\n\n### Anchor Agreement, Refinement, and Disagreement\n\n**AGREE**: The anchor correctly identifies the FOCUS ALIGNMENT hard gate as the primary mechanism, asymmetric verification as a contributing cause, and proposes well-targeted fixes (subjective question detector, strengthened SYMMETRY, domain-membership check).\n\n**REFINE**: (a) The anchor marks c8698dee as neutral, but its 'Partial' classification of [1] was the first link in the failure chain and should be tagged harmful. (b) The anchor marks 295257e2 as neutral, but its summary-table safeguard was skipped entirely \u2014 had it been executed, the yes/no classification might have caught the inversion. (c) The anchor underestimates the compounding effect: three entries independently failed to catch the same error, suggesting the playbook needs a structural enforcement mechanism (like mandatory labeled sections) to prevent step-skipping.\n\n**DISAGREE**: The anchor tags 8c88459e as neutral, but its one-directional framing of hedging (as something that masks behavioral commitment) likely biased the agent against [1]'s appropriate epistemic humility. Evidence is inferential but the agent's 'less decisive' language echoes the entry's framing. The entry needs a complementary clause.\n\n### Key Insight for Playbook Mutation\n\nThe deepest root cause is not any single entry but the absence of a question-type classifier that modifies how downstream rules apply. For subjective/time-dependent questions, the current playbook systematically rewards confident specificity over calibrated honesty \u2014 the exact opposite of what factuality demands. A procedural step classifying question type early in the pipeline would prevent the FOCUS ALIGNMENT, constraint extraction, and hedging evaluation entries from all independently penalizing the correct behavior."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "Both rollouts produced deterministic identical output (66.7% pairwise accuracy), selecting candidate [4] (INCORRECT, score 7.3) as best while the only correct candidate [1] scored 5.7. Two interacting failures:\n\n1. **FOCUS ALIGNMENT hard gate misapplied [132aab84]:** The agent classified [1] as ADJACENT because it hedged ('As of the latest information available') and listed multiple artists rather than committing to one. But the question ('most relevant music artist in Serbia right now') is inherently subjective and time-sensitive\u2014no single verifiable correct answer exists. Candidate [1] named real, prominent Serbian artists (Ceca, Jelena Karleu\u0161a, Rasta) with honest epistemic caveats, which IS a direct answer to a subjective question. The HARD GATE then structurally prevented [1] from outscoring any DIRECT-classified candidate, locking [4] into the top rank regardless of its factual problems. I AGREE with the anchor's diagnosis here\u2014this is the primary causal factor. The entry has no exception for subjective/ambiguous prompts.\n\n2. **Asymmetric verification [005004a4]:** The agent correctly caught [3]'s fabricated Bad Bunny/Billie Eilish collaborations via ISOLATE\u2192COUNTER but applied only a surface-level suspicion to [4] ('secondary name/alias looks unverified'). In fact, Petar Gra\u0161o is Croatian, not Serbian\u2014a decisive domain-constraint violation. The alias 'Crni Dvor' appears fabricated. The SYMMETRY step ('search your top-ranked candidate for the same flaw F') exists in the entry text but was not executed. The UNVERIFIABLE-CONFIDENT rule also applies directly but was not triggered. I AGREE with the anchor that these rules were present but unenforced. I REFINE the anchor's diagnosis: the deeper issue is that the SYMMETRY step is a text instruction with no mandatory artifact, making it trivially skippable under confirmation bias\u2014the agent already decided [4] was best and didn't look for disconfirming evidence.\n\n**On [8c88459e]:** I AGREE it's neutral. The rule correctly handles catching hedging that masks behavioral commitment, but it lacks the complementary case: for genuinely uncertain questions, honest hedging is a positive calibration signal, not evasion. However, adding this complementary case is subsumed by fixing the hard gate precondition check (Principle 1 below).\n\n**On [295257e2]:** The enforcement check ('every yes candidate scores above every no candidate') would only help if the agent correctly classified which candidates answer the prompt. Since the agent already misclassified [4] as a correct answer, the check would not have caught the error. The problem is upstream.",
+      "principles": [
+        {
+          "statement": "Before applying any hard gate that structurally prevents a candidate from top rank, state the gate's core assumption and verify it holds for this prompt. For subjective/ambiguous questions, suspend gates that assume a single correct answer.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": "132aab84",
+          "trigger": "Immediately before any hard gate (e.g., FOCUS ALIGNMENT, format compliance) would structurally cap a candidate's rank or bar it from top position.",
+          "verification_or_artifact": "Write one sentence stating the gate's core assumption (e.g., 'this question has one objectively correct answer type'). Then verify: is the prompt subjective, opinion-based, time-sensitive, or inherently multi-answer? If yes, the hard gate does not apply\u2014hedged multi-answer responses are DIRECT for such prompts.",
+          "evidence": "The FOCUS ALIGNMENT hard gate classified [1] as ADJACENT because it hedged and listed multiple artists, preventing it from outscoring [4]. But for a subjective question about 'most relevant artist right now,' listing multiple real artists with honest caveats IS a direct answer. The gate's assumption (one correct answer type exists) did not hold."
+        },
+        {
+          "statement": "After penalizing any candidate for a flaw, build a FLAW SYMMETRY TABLE (rows = each flaw type, columns = all candidates incl. top-ranked) and verify every cell before finalizing scores.",
+          "entry_kind": "artifact",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "005004a4",
+          "trigger": "After any candidate receives a factual, fabrication, or verification penalty during evaluation.",
+          "verification_or_artifact": "Construct a table with rows for each flaw type discovered (e.g., 'fabricated collaboration,' 'unverified entity name,' 'wrong domain attribution') and columns for every candidate. Fill every cell with CHECKED-CLEAN, FLAGGED, or UNVERIFIED. The top-ranked candidate must have no UNVERIFIED cells. If it does, apply ISOLATE\u2192COUNTER\u2192CLASSIFY before finalizing.",
+          "evidence": "The agent penalized [3] for fabricated collaborations but only noted [4]'s suspicious alias as 'unverified' without investigating. The existing SYMMETRY text instruction ('search your top-ranked candidate for the same flaw F') was skipped entirely. A mandatory artifact would have forced the agent to check whether [4]'s named entities (Petar Gra\u0161o\u2014actually Croatian, not Serbian; 'Crni Dvor'\u2014appears fabricated) had the same fabrication-class flaws it caught in [3]."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "132aab84",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts produced identical deterministic output, top-ranking incorrect candidate [4] (score 7.3) over the only correct candidate [1] (score 5.7). The 66.7% pairwise accuracy reflects one critical inversion driven by a two-link causal chain.\n\n### Link 1 \u2014 FOCUS ALIGNMENT hard gate misapplied to a subjective question [132aab84]\n\nThe user asked 'who is the most relevant music artist in Serbia right now?' \u2014 an inherently subjective, time-sensitive question with no single verifiable correct answer. Candidate [1] listed three real, prominent Serbian artists (Ceca, Jelena Karleu\u0161a, Rasta) with honest epistemic caveats ('As of the latest information available'). This IS a direct answer to a subjective question: naming multiple plausible entities with appropriate hedging is the epistemically correct behavior. However, the FOCUS ALIGNMENT check classified [1] as ADJACENT because it hedged and listed multiple answers rather than committing to one. The HARD GATE then structurally barred [1] from outscoring any DIRECT-classified candidate, locking incorrect [4] into the top rank regardless of its factual problems.\n\nThe entry [132aab84] has no exception for questions that are inherently subjective, opinion-based, or time-dependent. For such questions, the HARD GATE's core assumption \u2014 that there is one correct answer type and responses either match it directly or don't \u2014 fails. All three source reflections independently identify this as the primary causal mechanism (unanimous harmful tag).\n\n### Link 2 \u2014 Asymmetric verification allowed [4]'s fabrications to pass undetected [005004a4]\n\nThe agent correctly applied ISOLATE\u2192COUNTER\u2192CLASSIFY to candidate [3], catching fabricated Bad Bunny/Billie Eilish collaborations. But it applied only surface-level suspicion to top-ranked [4]: 'secondary name/alias looks unverified.' In fact, Petar Gra\u0161o is Croatian, not Serbian \u2014 a decisive domain-constraint violation for a question about Serbian artists. The alias 'Crni Dvor' appears fabricated. The existing SYMMETRY instruction in [005004a4] ('After penalizing candidate X for flaw F, explicitly search your top-ranked candidate for the same flaw F before finalizing') directly applies but was never executed. The UNVERIFIABLE-CONFIDENT rule also applies directly but was not triggered.\n\nHad SYMMETRY been enforced, [4]'s factual errors would have been caught, potentially activating the existing FACTUAL ACCURACY OVERRIDE in [c8698dee] which states the HARD GATE cannot promote a candidate with verified factual errors above a factually accurate one. The SYMMETRY step exists as text but has no mandatory artifact, making it trivially skippable under confirmation bias.\n\n### Why Other Entries Are Neutral\n\n**c8698dee**: The credit_attribution head argues it's harmful because it marked [1] as 'Partial,' feeding the FOCUS ALIGNMENT chain. However, the entry's constraint-extraction procedure is sound in general \u2014 the error stems from lacking guidance on how to evaluate compliance for questions with multiple valid answers, which is the same gap already addressed by fixing 132aab84. The entry itself is not defective; it's the downstream hard gate that converts a reasonable 'Partial' into a structural lock.\n\n**8c88459e**: One head tags it harmful, arguing its one-directional hedging framing (catching hedge-that-masks-commitment) biased the agent against [1]'s honest hedging. The evidence is inferential only \u2014 the agent's 'less decisive' language loosely echoes the entry's framing, but the structural lock from 132aab84 is the actual causal mechanism. Adding a complementary clause about honest hedging being a positive signal for uncertain questions is subsumed by fixing the FOCUS ALIGNMENT precondition check.\n\n**295257e2**: One head tags harmful because the summary-table safeguard was skipped. But as the principle_extraction head argues, even if executed, the table wouldn't have caught the inversion because the agent already misclassified [4] as correctly answering the prompt. The problem is upstream.\n\n## Recommended Mutations\n\n### 1. UPDATE 132aab84 \u2014 Add subjective-question exception to HARD GATE\n\nBefore the HARD GATE fires, add a mandatory verification step: state the gate's core assumption (that the question has a single objectively correct answer type) and verify it holds for this prompt. For subjective, opinion-based, or time-dependent questions (signals: 'most relevant/popular/best,' 'right now,' 'currently,' asks for recommendations or rankings), the HARD GATE does not apply. Listing multiple plausible on-topic answers with appropriate hedging is classified DIRECT, not ADJACENT, for such prompts. Confident assertion of a single unverifiable answer becomes a risk factor, not an advantage.\n\n### 2. UPDATE 005004a4 \u2014 Strengthen SYMMETRY with mandatory artifact\n\nAfter any candidate receives a factuality penalty, and before final scores are assigned, require a mandatory SYMMETRY TABLE artifact: rows = each flaw type found in any penalized candidate, columns = all candidates including current top-ranked. Each cell must be marked CHECKED-CLEAN, FLAGGED, or VERIFIED-FALSE. The top-ranked candidate must have no FLAGGED or VERIFIED-FALSE cells; if it does, apply ISOLATE\u2192COUNTER\u2192CLASSIFY before finalizing. The table's absence from reasoning invalidates the scores.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The FOCUS ALIGNMENT hard gate [132aab84] structurally prevented the correct candidate from top rank because it lacks an exception for subjective/time-dependent questions. This was compounded by asymmetric factual verification [005004a4] where the SYMMETRY step was available but unenforced, allowing fabricated claims in the top-ranked candidate to pass undetected. All three reflections converge on this two-link causal chain.",
+      "important_disagreements": [
+        "c8698dee tagged harmful by credit_attribution (marked [1] as Partial, first link in chain) vs neutral by anchor and principle_extraction. Resolved: the entry's procedure is sound; the error is downstream in how 132aab84's hard gate converts Partial into structural lock. Fixing 132aab84 subsumes this.",
+        "8c88459e tagged harmful by credit_attribution (one-directional hedging framing biased against honest uncertainty) vs neutral by anchor and principle_extraction. Resolved: evidence is inferential only, and fixing 132aab84's precondition check subsumes the need for a complementary hedging clause.",
+        "295257e2 tagged harmful by credit_attribution (summary table skipped) vs neutral by others. Resolved: principle_extraction's argument is more convincing \u2014 even if the table had been executed, upstream misclassification would have rendered it ineffective."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Both recommended changes modify existing entries to address clearly identified gaps. 132aab84 needs an exception clause for subjective questions (its hard gate's assumption fails for this question class). 005004a4 needs its existing SYMMETRY instruction upgraded from text to mandatory artifact (the instruction exists but was trivially skipped). Neither requires a new standalone entry \u2014 the playbook has the right entries, they just need refinement.",
+      "conservatism_rationale": "All three reflections converge on the same two-entry causal chain with high confidence. The question-type classifier could be a standalone entry, but the smallest justified change is embedding it as a precondition check within 132aab84's existing HARD GATE logic. The SYMMETRY artifact strengthens existing text in 005004a4 rather than adding a new entry. No new domain-membership check entry is recommended \u2014 while the Petar-Gra\u0161o-is-Croatian error is illustrative, it would have been caught by proper SYMMETRY enforcement, which is already being strengthened. Adding a separate domain-membership check from a single trace would be premature generalization.",
+      "max_operations": 2
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\n      \"entry_id\": \"132aab84\",\n      \"tag\": \"harmful\"\n    },\n    {\n      \"entry_id\": \"005004a4\",\n      \"tag\": \"harmful\"\n    },\n    {\n      \"entry_id\": \"c8698dee\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"8c88459e\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"4abe1be4\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"93b0e8f9\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"295257e2\",\n      \"tag\": \"neutral\"\n    }\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts produced identical deterministic output, top-ranking incorrect candidate [4] (score 7.3) over the only correct candidate [1] (score 5.7). The 66.7% pairwise accuracy reflects one critical inversion driven by a two-link causal chain.\\n\\n### Link 1 \u2014 FOCUS ALIGNMENT hard gate misapplied to a subjective question [132aab84]\\n\\nThe user asked 'who is the most relevant music artist in Serbia right now?' \u2014 an inherently subjective, time-sensitive question with no single verifiable correct answer. Candidate [1] listed three real, prominent Serbian artists (Ceca, Jelena Karleu\u0161a, Rasta) with honest epistemic caveats ('As of the latest information available'). This IS a direct answer to a subjective question: naming multiple plausible entities with appropriate hedging is the epistemically correct behavior. However, the FOCUS ALIGNMENT check classified [1] as ADJACENT because it hedged and listed multiple answers rather than committing to one. The HARD GATE then structurally barred [1] from outscoring any DIRECT-classified candidate, locking incorrect [4] into the top rank regardless of its factual problems.\\n\\nThe entry [132aab84] has no exception for questions that are inherently subjective, opinion-based, or time-dependent. For such questions, the HARD GATE's core assumption \u2014 that there is one correct answer type and responses either match it directly or don't \u2014 fails. All three source reflections independently identify this as the primary causal mechanism (unanimous harmful tag).\\n\\n### Link 2 \u2014 Asymmetric verification allowed [4]'s fabrications to pass undetected [005004a4]\\n\\nThe agent correctly applied ISOLATE\u2192COUNTER\u2192CLASSIFY to candidate [3], catching fabricated Bad Bunny/Billie Eilish collaborations. But it applied only surface-level suspicion to top-ranked [4]: 'secondary name/alias looks unverified.' In fact, Petar Gra\u0161o is Croatian, not Serbian \u2014 a decisive domain-constraint violation for a question about Serbian artists. The alias 'Crni Dvor' appears fabricated. The existing SYMMETRY instruction in [005004a4] ('After penalizing candidate X for flaw F, explicitly search your top-ranked candidate for the same flaw F before finalizing') directly applies but was never executed. The UNVERIFIABLE-CONFIDENT rule also applies directly but was not triggered.\\n\\nHad SYMMETRY been enforced, [4]'s factual errors would have been caught, potentially activating the existing FACTUAL ACCURACY OVERRIDE in [c8698dee] which states the HARD GATE cannot promote a candidate with verified factual errors above a factually accurate one. The SYMMETRY step exists as text but has no mandatory artifact, making it trivially skippable under confirmation bias.\\n\\n### Why Other Entries Are Neutral\\n\\n**c8698dee**: The credit_attribution head argues it's harmful because it marked [1] as 'Partial,' feeding the FOCUS ALIGNMENT chain. However, the entry's constraint-extraction procedure is sound in general \u2014 the error stems from lacking guidance on how to evaluate compliance for questions with multiple valid answers, which is the same gap already addressed by fixing 132aab84. The entry itself is not defective; it's the downstream hard gate that converts a reasonable 'Partial' into a structural lock.\\n\\n**8c88459e**: One head tags it harmful, arguing its one-directional hedging framing (catching hedge-that-masks-commitment) biased the agent against [1]'s honest hedging. The evidence is inferential only \u2014 the agent's 'less decisive' language loosely echoes the entry's framing, but the structural lock from 132aab84 is the actual causal mechanism. Adding a complementary clause about honest hedging being a positive signal for uncertain questions is subsumed by fixing the FOCUS ALIGNMENT precondition check.\\n\\n**295257e2**: One head tags harmful because the summary-table safeguard was skipped. But as the principle_extraction head argues, even if executed, the table wouldn't have caught the inversion because the agent already misclassified [4] as correctly answering the prompt. The problem is upstream.\\n\\n## Recommended Mutations\\n\\n### 1. UPDATE 132aab84 \u2014 Add subjective-question exception to HARD GATE\\n\\nBefore the HARD GATE fires, add a mandatory verification step: state the gate's core assumption (that the question has a single objectively correct answer type) and verify it holds for this prompt. For subjective, opinion-based, or time-dependent questions (signals: 'most relevant/popular/best,' 'right now,' 'currently,' asks for recommendations or rankings), the HARD GATE does not apply. Listing multiple plausible on-topic answers with appropriate hedging is classified DIRECT, not ADJACENT, for such prompts. Confident assertion of a single unverifiable answer becomes a risk factor, not an advantage.\\n\\n### 2. UPDATE 005004a4 \u2014 Strengthen SYMMETRY with mandatory artifact\\n\\nAfter any candidate receives a factuality penalty, and before final scores are assigned, require a mandatory SYMMETRY TABLE artifact: rows = each flaw type found in any penalized candidate, columns = all candidates including current top-ranked. Each cell must be marked CHECKED-CLEAN, FLAGGED, or VERIFIED-FALSE. The top-ranked candidate must have no FLAGGED or VERIFIED-FALSE cells; if it does, apply ISOLATE\u2192COUNTER\u2192CLASSIFY before finalizing. The table's absence from reasoning invalidates the scores.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The FOCUS ALIGNMENT hard gate [132aab84] structurally prevented the correct candidate from top rank because it lacks an exception for subjective/time-dependent questions. This was compounded by asymmetric factual verification [005004a4] where the SYMMETRY step was available but unenforced, allowing fabricated claims in the top-ranked candidate to pass undetected. All three reflections converge on this two-link causal chain.\",\n    \"important_disagreements\": [\n      \"c8698dee tagged harmful by credit_attribution (marked [1] as Partial, first link in chain) vs neutral by anchor and principle_extraction. Resolved: the entry's procedure is sound; the error is downstream in how 132aab84's hard gate converts Partial into structural lock. Fixing 132aab84 subsumes this.\",\n      \"8c88459e tagged harmful by credit_attribution (one-directional hedging framing biased against honest uncertainty) vs neutral by anchor and principle_extraction. Resolved: evidence is inferential only, and fixing 132aab84's precondition check subsumes the need for a complementary hedging clause.\",\n      \"295257e2 tagged harmful by credit_attribution (summary table skipped) vs neutral by others. Resolved: principle_extraction's argument is more convincing \u2014 even if the table had been executed, upstream misclassification would have rendered it ineffective.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Both recommended changes modify existing entries to address clearly identified gaps. 132aab84 needs an exception clause for subjective questions (its hard gate's assumption fails for this question class). 005004a4 needs its existing SYMMETRY instruction upgraded from text to mandatory artifact (the instruction exists but was trivially skipped). Neither requires a new standalone entry \u2014 the playbook has the right entries, they just need refinement.\",\n    \"conservatism_rationale\": \"All three reflections converge on the same two-entry causal chain with high confidence. The question-type classifier could be a standalone entry, but the smallest justified change is embedding it as a precondition check within 132aab84's existing HARD GATE logic. The SYMMETRY artifact strengthens existing text in 005004a4 rather than adding a new entry. No new domain-membership check entry is recommended \u2014 while the Petar-Gra\u0161o-is-Croatian error is illustrative, it would have been caught by proper SYMMETRY enforcement, which is already being strengthened. Adding a separate domain-membership check from a single trace would be premature generalization.\",\n    \"max_operations\": 2\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

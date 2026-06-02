@@ -1,0 +1,42 @@
+{
+  "task_id": "635",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "06920986",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "1f931f4e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "056f0a9e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "66f87cbc",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c67e6085",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "7ca56b8b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "843d2ff0",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f9a44264",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "All rollouts (baseline rollout_1, rollout_2, and the PP supplementary trace) terminated with identical 'Error: timeout' \u2014 no execution trace, no partial answer, no evaluation beyond 0%. This universal failure mode across every attempt indicates a systemic issue, not execution variance.\n\n**Root Cause Analysis:**\n\nThe most probable cause is that the agent's per-turn reasoning overhead \u2014 driven by consulting, citing, and following the increasingly large playbook (~20 detailed entries, many with multi-step procedures and checklists) \u2014 consumed the time budget before enough searches could be completed or an answer submitted. The playbook has grown to approximately 6,000+ words of procedural guidance. Even if the agent only consults a subset per turn, the cognitive overhead of scanning triggers, running checklists, and generating verbose reasoning between searches adds up.\n\nThe Fast-Start entry [06920986] already instructs 'LEAN REASONING: Between searches, write 3-5 sentences max' and 'NEVER TIME OUT,' but this single entry competes against 19 other entries that each demand multi-step procedures, explicit checklist execution, and written articulation of scores/assessments. The sheer volume of procedural demands contradicts the brevity instruction. The agent likely follows the detailed procedures (which feel more specific and authoritative) over the general brevity instruction.\n\nThe Graduated Commitment Countdown [1f931f4e] uses search-count thresholds (25/30/35/40), but if the agent times out before reaching 25 searches \u2014 because each search cycle involves extensive reasoning \u2014 these checkpoints never fire. The entry assumes the bottleneck is search count, when the actual bottleneck is wall-clock time consumed by reasoning.\n\n**Key Diagnostic Signals:**\n1. ALL rollouts failed identically \u2192 not random variance, but a structural problem\n2. No partial trace content \u2192 the timeout likely occurred during the agent's reasoning, not during search execution\n3. The PP trace also timed out \u2192 behavioral annotation overhead may compound the problem, but the baseline also failed, confirming the issue is fundamental\n\n**What's Missing:**\n1. **Response-count-based checkpoints**: The playbook has search-count-based checkpoints but no response-count-based ones. If the agent produces 15 responses before completing 25 searches (due to verbose reasoning), none of the Graduated Commitment checkpoints fire. A checkpoint at response 8-10 saying 'you must have a candidate by now or submit your best guess' would catch this.\n\n2. **Playbook consultation budget**: No entry tells the agent to limit how many playbook entries it consults per turn. The agent may be re-reading and evaluating triggers for all 20 entries between each search. An explicit rule like 'consult at most 2 playbook entries per turn' would reduce overhead.\n\n3. **Emergency submission trigger based on progress stalls**: The current entries define 'stuck' in terms of search repetition. They don't define 'stuck' in terms of elapsed turns without actionable progress. An entry saying 'if you have written 3+ responses without issuing a search or submitting an answer, submit immediately' would catch analysis paralysis.\n\n4. **Playbook brevity meta-rule**: The playbook needs a meta-instruction (perhaps as a preamble) that caps total reasoning per turn at a hard word count, with explicit priority: 'If following a playbook procedure would require more than 100 words of reasoning, abbreviate. Speed > thoroughness.'\n\n**Why Existing Entries Didn't Help:**\n- Fast-Start [06920986] says 'LEAN REASONING' but doesn't quantify what 'lean' means relative to the playbook's own demands. Running the Name Copy-Check (4 steps), Constraint Scoring (4 steps), and Verification Loop Trap (4 diagnostics) already exceeds '3-5 sentences.'\n- Graduated Commitment [1f931f4e] never fires because the agent doesn't reach 25 searches before timeout.\n- All other entries are 'neutral' \u2014 they didn't cause harm but their existence adds to the playbook's bulk, increasing per-turn reasoning time.",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\nError: timeout\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\nError: timeout",
+  "evaluation_details": "## rollout_1 Evaluation\n\nError: timeout\n\n## rollout_2 Evaluation\n\nError: timeout"
+}

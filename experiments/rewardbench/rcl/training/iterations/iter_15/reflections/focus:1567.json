@@ -1,0 +1,458 @@
+{
+  "task_id": "focus:1567",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "c8698dee",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task focus:1567\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts failed identically (66.7% pairwise accuracy): the agent rated candidate [4] (INCORRECT, 9.4) above candidate [1] (CORRECT, 9.0). The prompt asks 'how a website was developed.' Candidate [1] opens 'Developing a website involves several stages\u2026' \u2014 directly answering the question. Candidate [4] opens 'The role of a web developer is crucial\u2026' \u2014 answering a different question about a developer's responsibilities. Both cover similar lifecycle phases (planning, design, development, testing, deployment), but only [1] frames them as the development process; [4] frames them as a developer's role.\n\nThe failure is deterministic across both rollouts \u2014 identical constraint checklists, identical coverage grids, identical scores \u2014 confirming a structural methodology gap, not execution variance.\n\n## Why Existing Entries Failed\n\n**c8698dee (constraint extraction)** is the primary contributor. The agent extracted three constraints: (1) 'Explain how a website is developed,' (2) 'Cover the overall lifecycle,' (3) 'Be structured and sufficiently complete.' It then marked both [1] and [4] as Pass/Pass/Pass because both mention the same lifecycle keywords (planning, design, development, testing, deployment). The entry's compliance-checking procedure treats keyword/topic overlap as constraint satisfaction \u2014 it is structurally blind to whether a candidate's *framing* matches the prompt's question. The HARD GATE ('No FAILing candidate may outscore a PASSing one') then locked in the misleading Pass signals, preventing downstream correction. The entry is not giving bad advice, but it is missing a crucial sub-step for framing alignment.\n\n**93b0e8f9 (core ranking verification)** gave correct guidance: 'confirm the top-rated candidate genuinely best satisfies [your stated decisive criteria].' In principle, this should have caught the inconsistency between criterion 1 ('Explain how a website is developed') and [4]'s thesis ('The role of a web developer'). However, the entry lacks sufficient specificity to force deeper scrutiny of framing vs. topic overlap. It provided the right instruction but didn't prevent the error \u2014 making it neutral rather than harmful. The real gap is upstream: no procedure forces the agent to check framing alignment before the coverage grid runs.\n\n**4abe1be4 (perception scan)** correctly captured each candidate's opening words, including the reframing signal ('The role of a web developer' vs. 'Developing a website involves'). The perception scan worked as designed but its output was used only for candidate counting, never for focus evaluation.\n\n## The Coverage Grid Bias\n\nThe agent built a lifecycle-phase coverage grid (Planning/Design/Dev/Test/Launch/Security/Deployment) and scored candidates by cell count. Candidate [4] covered more cells (e.g., separate Security section, Collaboration/Communication) precisely because it answers a *broader* question (a developer's full role encompasses more than how development works). The coverage grid approach is systematically blind to focus alignment \u2014 it mechanically rewards breadth regardless of whether that breadth comes from answering the right question. There was no 'directly answers the prompt's question' row with veto power.\n\n## What Is Missing\n\nAll three analytical perspectives converge on the same primary gap: a **Focus Alignment Check** \u2014 a mandatory procedural step between constraint extraction and coverage/completeness scoring that compares each candidate's thesis to the user's literal question. The procedure should:\n1. For each candidate, identify the THESIS \u2014 what question does this response actually answer? \u2014 using the opening sentence/paragraph as primary evidence.\n2. Compare each candidate's thesis to the user's verbatim question.\n3. Classify as DIRECT (answers the exact question), ADJACENT (answers a related but reframed question \u2014 e.g., 'role of X' instead of 'how X works'), or OFF-TOPIC.\n4. Produce a per-candidate artifact row: [Candidate ID | User's question | Candidate's thesis (quoted opener) | Classification].\n5. Enforce a hard gate: No ADJACENT or OFF-TOPIC candidate may outscore a DIRECT candidate unless the DIRECT candidate has a verified factual error or critical structural defect.\n\nCommon reframing patterns to flag: substituting actor for process ('role of developer' for 'how development works'), substituting part for whole ('UI design' for 'website development'), substituting comparison for explanation.\n\n## Why One Entry Suffices\n\nThe anchor reflection proposed four changes (new entry + updates to c8698dee, 93b0e8f9, and 8e0d9579). The principle_extraction reflection correctly argues the failure has a single root cause addressable with one well-constructed entry. The coverage grid bias, the completeness-as-superiority error, and the perception-scan underutilization are all downstream consequences of the missing framing-alignment step. Adding the Focus Alignment Check as a standalone entry that fires between c8698dee and coverage scoring addresses the root cause without requiring changes to entries that are otherwise sound for other task types.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent has no procedure to distinguish a candidate that directly answers the prompt's question from one that answers a related but reframed question. Its constraint extraction (c8698dee) checks keyword/topic overlap, and its coverage grid rewards breadth \u2014 both systematically blind to framing alignment. Adding a Focus Alignment Check with a DIRECT/ADJACENT/OFF-TOPIC classification and hard gate directly addresses this gap.\",\n  \"important_disagreements\": [\n    \"93b0e8f9 assessment: Anchor and credit_attribution tag it harmful; principle_extraction tags neutral. Resolved in favor of neutral \u2014 the entry's guidance ('confirm top-rated candidate satisfies your criteria') is correct and would have caught the error if applied rigorously. The root cause is a missing upstream procedure (framing alignment), not bad guidance from this entry. The entry is insufficiently specific, not wrong.\",\n    \"Number of mutations: Anchor proposes 4 changes; principle_extraction proposes 1. Resolved in favor of 1 \u2014 the failure has a single root cause (missing framing-alignment check). Updating c8698dee, 93b0e8f9, and 8e0d9579 would be bundling downstream symptoms. The standalone Focus Alignment Check entry is cleaner, more modular, and doesn't risk over-complicating already-lengthy entries.\"\n  ],\n  \"mutation_posture\": \"add\",\n  \"why_this_posture\": \"All three reflections independently identify the same missing capability \u2014 a focus/thesis alignment check between constraint extraction and coverage scoring. No existing entry covers this. The evidence is strong (deterministic failure across both rollouts, clear causal chain from missing procedure to misranking), and the proposed entry is well-scoped with a clear trigger, intermediate artifact, and hard gate.\",\n  \"conservatism_rationale\": \"One ADD is the minimal change that addresses the root cause. The proposed entry is a genuinely missing reusable capability (not covered by any existing entry), addresses a class of tasks (Focus subset and open-ended prompts generally, not just this specific task), and is supported by converging evidence from all three analytical perspectives. Updating c8698dee or 93b0e8f9 is unnecessary since those entries are sound for their intended purpose \u2014 the gap is a missing step between them, not a flaw within either.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\nGive me an explanation on how a website was developed\n\n## Candidate Responses\n\n[1]\nDeveloping a website involves several stages, from planning and designing to building and launching. Here's a step-by-step explanation of the process:\n\n**1. Planning and Conceptualization**\n\n*   Define the website's purpose, target audience, and goals.\n*   Identify the website's features and functionalities.\n*   Determine the website's structure and organization.\n*   Develop a unique value proposition (UVP) and brand identity.\n\n**2. Designing**\n\n*   Create wireframes and mockups of the website's layout and user interface.\n*   Develop a visual design concept, including colors, typography, and imagery.\n*   Create a responsive design that adapts to different screen sizes and devices.\n*   Design a user-friendly navigation and information architecture.\n\n**3. Content Creation**\n\n*   Develop a content strategy and plan.\n*   Create high-quality, engaging, and relevant content (text, images, videos, etc.).\n*   Optimize content for search engines (SEO).\n*   Develop a content management system (CMS) to manage and update content.\n\n**4. Front-end Development**\n\n*   Write HTML, CSS, and JavaScript code to bring the design to life.\n*   Use front-end frameworks and libraries (e.g., React, Angular, Vue.js).\n*   Implement responsive design and mobile-first approach.\n*   Ensure cross-browser compatibility and accessibility.\n\n**5. Back-end Development**\n\n*   Choose a programming language and framework (e.g., PHP, Ruby, Python).\n*   Design and implement a database to store and manage data.\n*   Develop server-side logic and API integrations.\n*   Implement security measures (e.g., authentication, authorization).\n\n**6. Testing and Quality Assurance**\n\n*   Conduct unit testing, integration testing, and UI testing.\n*   Test for usability, accessibility, and performance.\n*   Identify and fix bugs and issues.\n*   Ensure compatibility with different browsers and devices.\n\n**7. Launch and Deployment**\n\n*   Set up a hosting environment (e.g., shared hosting, VPS, cloud hosting).\n*   Configure domain and DNS settings.\n*   Deploy the website to the production environment.\n*   Monitor website performance and fix any issues.\n\n**8. Maintenance and Updates**\n\n*   Regularly update content and software.\n*   Monitor website analytics and performance metrics.\n*   Fix bugs and issues.\n*   Improve website security and scalability.\n\nThis is a general overview of the website development process. The specifics may vary depending on the project's complexity, technology stack, and team size.\n\n[2]\nDesigning a website's user interface (UI) involves several steps to ensure a visually appealing, user-friendly, and effective digital experience. Here's a simplified process:\n\n1. **Understand the project requirements**: Gather information about the website's purpose, target audience, and business goals. This will help in creating a UI that meets the needs of the users and achieves the desired outcomes.\n\n2. **Research and gather inspiration**: Look at other websites in the same industry or with similar goals to identify best practices, trends, and potential design elements that could be incorporated into the new UI.\n\n3. **Create user personas**: Develop detailed profiles of the intended users, including their demographics, preferences, behaviors, and pain points. This will help in making design decisions that cater to the users' needs and expectations.\n\n4. **Define the information architecture**: Organize the content and features of the website into a clear and logical structure. This includes creating a sitemap, wireframes, and navigation menus.\n\n5. **Sketch and wireframe**: Create rough sketches or low-fidelity wireframes to visualize the layout and arrangement of elements on each page. Wireframes help in organizing content and ensuring a smooth user flow.\n\n6. **Design the user interface**: Develop high-fidelity mockups of the website, incorporating typography, colors, images, and other visual elements. These mockups should reflect the brand identity and adhere to the principles of usability and accessibility.\n\n7. **Prototype and test**: Create an interactive prototype of the website using tools like Adobe XD, Sketch, or InVision. Test the prototype with users to gather feedback and identify any usability issues.\n\n8. **Iterate and refine**: Based on user feedback, make necessary adjustments to the design, and repeat the testing process until the UI meets the desired standards of usability and effectiveness.\n\n9. **Handoff to developers**: Once the UI design is finalized, provide the design files, specifications, and any necessary assets to the development team to implement the design in the actual website.\n\n10. **Review and launch**: Collaborate with the development team during the development process to ensure the final product aligns with the original design vision. After the website is launched, continue to monitor user feedback and make improvements as needed.\n\n[3]\nFront-end development and back-end development are two distinct aspects of web development, each with its own responsibilities and technologies.\n\n**Front-end Development:**\n\n* **Focus:** Front-end development is concerned with what users see and interact with on a website. It involves creating the user interface (UI) and user experience (UX).\n* **Technologies:** Front-end developers use HTML, CSS, and JavaScript to build the visual elements of a website, such as layout, colors, fonts, and interactive features. Frameworks like React, Angular, and Vue.js are also commonly used to enhance the development process.\n* **Responsibilities:** Front-end developers ensure that the website is visually appealing, intuitive, and responsive across different devices (desktop, tablet, mobile). They work on the client-side of the application, meaning the part that the user interacts with directly.\n* **Tools:** Tools such as code editors (e.g., Visual Studio Code, Sublime Text), version control systems (e.g., Git), and task runners (e.g., Gulp, Grunt) are often used.\n\n**Back-end Development:**\n\n* **Focus:** Back-end development deals with the server-side logic of a web application. It involves handling the data, business logic, and application logic that enable the website to function properly.\n* **Technologies:** Back-end developers use server-side programming languages like Python (with frameworks like Django or Flask), Ruby (with Ruby on Rails), JavaScript (with Node.js), PHP, Java (with Spring), and.NET. They also work with databases (e.g., MySQL, PostgreSQL, MongoDB) to store and retrieve data.\n* **Responsibilities:** Back-end developers build the server-side components, APIs, and services that enable the front-end to function. They manage data, handle user authentication, perform database operations, and ensure the security and performance of the application.\n* **Tools:** Tools such as Integrated Development Environments (IDEs), database management systems, and API development tools are commonly used.\n\n**Key Differences:**\n\n* **Interaction:** Front-end developers work on the client-side (user's browser), while back-end developers work on the server-side.\n* **Focus:** Front-end focuses on the presentation and user interaction, while back-end focuses on data management and application logic.\n* **Technologies:** Different sets of technologies are used, with front-end focusing on client-side languages and frameworks, and back-end focusing on server-side languages and databases.\n* **Responsibilities:** Front-end developers are responsible for the visual and interactive aspects of the website, while back-end developers handle the data, logic, and server-side operations.\n\nIn summary, front-end development is about creating the user interface and experience, while back-end development is about managing data and application logic. Both are crucial for a fully functional and user-friendly web application.\n\n[4]\nThe role of a web developer is crucial in the successful launch of a website. Their responsibilities span from the initial planning stages to the final deployment and maintenance of the site. Here\u2019s a detailed look at the various aspects of a web developer's role during a website launch:\n\n### 1. **Requirements Gathering and Planning**\n- **Understanding Client Needs:** Web developers work closely with clients or project managers to understand the specific requirements, goals, and objectives of the website.\n- **Scope Definition:** They define the scope of the project, including features, functionalities, and design elements.\n- **Technical Feasibility:** Assessing the technical feasibility of the project and suggesting any necessary adjustments.\n\n### 2. **Design and Prototyping**\n- **Wireframing and Mockups:** Creating wireframes and mockups to visualize the layout and user interface (UI) of the website.\n- **Responsive Design:** Ensuring that the website is responsive and works well on different devices and screen sizes.\n- **User Experience (UX):** Focusing on creating an intuitive and user-friendly experience for visitors.\n\n### 3. **Frontend Development**\n- **HTML/CSS/JavaScript:** Writing clean, semantic HTML, styling with CSS, and adding interactivity using JavaScript.\n- **Frameworks and Libraries:** Utilizing frameworks like React, Angular, or Vue.js for complex applications.\n- **Accessibility:** Ensuring the website meets accessibility standards to accommodate users with disabilities.\n\n### 4. **Backend Development**\n- **Server-Side Logic:** Implementing server-side logic using languages like PHP, Python, Ruby, or Node.js.\n- **Database Management:** Setting up and managing databases to store and retrieve data efficiently.\n- **API Integration:** Integrating third-party APIs for functionalities such as payment gateways, social media sharing, or content management.\n\n### 5. **Testing and Quality Assurance**\n- **Unit Testing:** Writing tests to ensure individual components function correctly.\n- **Integration Testing:** Testing how different parts of the application work together.\n- **User Acceptance Testing (UAT):** Conducting tests with real users to gather feedback and identify issues.\n- **Performance Optimization:** Ensuring the website loads quickly and performs well under various conditions.\n\n### 6. **Deployment**\n- **Version Control:** Using tools like Git for version control and collaboration.\n- **Environment Setup:** Configuring the development, staging, and production environments.\n- **Deployment Strategies:** Choosing appropriate deployment strategies such as continuous integration/continuous deployment (CI/CD).\n\n### 7. **Security**\n- **Secure Coding Practices:** Implementing secure coding practices to prevent common vulnerabilities like SQL injection and cross-site scripting (XSS).\n- **SSL/TLS Certificates:** Ensuring the website uses HTTPS to protect user data.\n- **Regular Updates:** Keeping all software and dependencies up-to-date to mitigate security risks.\n\n### 8. **Maintenance and Support**\n- **Bug Fixes:** Addressing any bugs or issues that arise after launch.\n- **Performance Monitoring:** Continuously monitoring the website\u2019s performance and making optimizations as needed.\n- **User Feedback:** Collecting and incorporating user feedback to improve the website over time.\n\n### 9. **Collaboration and Communication**\n- **Team Coordination:** Working closely with designers, project managers, and other stakeholders.\n- **Documentation:** Maintaining clear documentation for future reference and ease of maintenance.\n- **Stakeholder Communication:** Regularly updating stakeholders on progress and addressing any concerns.\n\nIn summary, a web developer plays a multifaceted role in the website launch process, encompassing everything from initial planning and design to testing, deployment, and ongoing support. Their expertise ensures that the website not only meets functional requirements but also provides a seamless and secure user experience.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST:\n1) Explain how a website is developed.\n2) Cover the overall lifecycle (not only UI design or only FE/BE).\n3) Be structured and sufficiently complete.\n\nPerception scan: N=4 markers. After [1] the first 5 words are \"Developing a website involves several\"; after [2] \"Designing a website's user interface\"; after [3] \"Front-end development and back-end\"; after [4] \"The role of a web developer\".\n\nCompliance (Pass/Partial/Fail): [1] Pass/Pass/Pass; [2] Partial/Fail/Pass; [3] Partial/Fail/Pass; [4] Pass/Pass/Pass. Component coverage grid (Planning/Design/Dev/Test/Launch/Security/Deployment): [1] \u2713\u2713\u2713\u2713\u2713/\u2014/\u2713, [2] \u2713\u2713Partial/Missing/Missing/Missing/Missing, [3] Missing/Missing/Partial/Missing/Missing/Missing/Missing, [4] \u2713\u2713\u2713\u2713\u2713/\u2713/\u2713. Overall, 4 is the most complete and directly aligned to the lifecycle (including security/testing/deployment), while 1 is also strong but slightly less detailed; 2 and 3 focus too narrowly (UI design only; FE/BE comparison only).\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST:\\n1) Explain how a website is developed.\\n2) Cover the overall lifecycle (not only UI design or only FE/BE).\\n3) Be structured and sufficiently complete.\\n\\nPerception scan: N=4 markers. After [1] the first 5 words are \\\"Developing a website involves several\\\"; after [2] \\\"Designing a website's user interface\\\"; after [3] \\\"Front-end development and back-end\\\"; after [4] \\\"The role of a web developer\\\".\\n\\nCompliance (Pass/Partial/Fail): [1] Pass/Pass/Pass; [2] Partial/Fail/Pass; [3] Partial/Fail/Pass; [4] Pass/Pass/Pass. Component coverage grid (Planning/Design/Dev/Test/Launch/Security/Deployment): [1] \u2713\u2713\u2713\u2713\u2713/\u2014/\u2713, [2] \u2713\u2713Partial/Missing/Missing/Missing/Missing, [3] Missing/Missing/Partial/Missing/Missing/Missing/Missing, [4] \u2713\u2713\u2713\u2713\u2713/\u2713/\u2713. Overall, 4 is the most complete and directly aligned to the lifecycle (including security/testing/deployment), while 1 is also strong but slightly less detailed; 2 and 3 focus too narrowly (UI design only; FE/BE comparison only).\",\n  \"ratings\": [\n    9.0,\n    7.0,\n    6.0,\n    9.4\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\nGive me an explanation on how a website was developed\n\n## Candidate Responses\n\n[1]\nDeveloping a website involves several stages, from planning and designing to building and launching. Here's a step-by-step explanation of the process:\n\n**1. Planning and Conceptualization**\n\n*   Define the website's purpose, target audience, and goals.\n*   Identify the website's features and functionalities.\n*   Determine the website's structure and organization.\n*   Develop a unique value proposition (UVP) and brand identity.\n\n**2. Designing**\n\n*   Create wireframes and mockups of the website's layout and user interface.\n*   Develop a visual design concept, including colors, typography, and imagery.\n*   Create a responsive design that adapts to different screen sizes and devices.\n*   Design a user-friendly navigation and information architecture.\n\n**3. Content Creation**\n\n*   Develop a content strategy and plan.\n*   Create high-quality, engaging, and relevant content (text, images, videos, etc.).\n*   Optimize content for search engines (SEO).\n*   Develop a content management system (CMS) to manage and update content.\n\n**4. Front-end Development**\n\n*   Write HTML, CSS, and JavaScript code to bring the design to life.\n*   Use front-end frameworks and libraries (e.g., React, Angular, Vue.js).\n*   Implement responsive design and mobile-first approach.\n*   Ensure cross-browser compatibility and accessibility.\n\n**5. Back-end Development**\n\n*   Choose a programming language and framework (e.g., PHP, Ruby, Python).\n*   Design and implement a database to store and manage data.\n*   Develop server-side logic and API integrations.\n*   Implement security measures (e.g., authentication, authorization).\n\n**6. Testing and Quality Assurance**\n\n*   Conduct unit testing, integration testing, and UI testing.\n*   Test for usability, accessibility, and performance.\n*   Identify and fix bugs and issues.\n*   Ensure compatibility with different browsers and devices.\n\n**7. Launch and Deployment**\n\n*   Set up a hosting environment (e.g., shared hosting, VPS, cloud hosting).\n*   Configure domain and DNS settings.\n*   Deploy the website to the production environment.\n*   Monitor website performance and fix any issues.\n\n**8. Maintenance and Updates**\n\n*   Regularly update content and software.\n*   Monitor website analytics and performance metrics.\n*   Fix bugs and issues.\n*   Improve website security and scalability.\n\nThis is a general overview of the website development process. The specifics may vary depending on the project's complexity, technology stack, and team size.\n\n[2]\nDesigning a website's user interface (UI) involves several steps to ensure a visually appealing, user-friendly, and effective digital experience. Here's a simplified process:\n\n1. **Understand the project requirements**: Gather information about the website's purpose, target audience, and business goals. This will help in creating a UI that meets the needs of the users and achieves the desired outcomes.\n\n2. **Research and gather inspiration**: Look at other websites in the same industry or with similar goals to identify best practices, trends, and potential design elements that could be incorporated into the new UI.\n\n3. **Create user personas**: Develop detailed profiles of the intended users, including their demographics, preferences, behaviors, and pain points. This will help in making design decisions that cater to the users' needs and expectations.\n\n4. **Define the information architecture**: Organize the content and features of the website into a clear and logical structure. This includes creating a sitemap, wireframes, and navigation menus.\n\n5. **Sketch and wireframe**: Create rough sketches or low-fidelity wireframes to visualize the layout and arrangement of elements on each page. Wireframes help in organizing content and ensuring a smooth user flow.\n\n6. **Design the user interface**: Develop high-fidelity mockups of the website, incorporating typography, colors, images, and other visual elements. These mockups should reflect the brand identity and adhere to the principles of usability and accessibility.\n\n7. **Prototype and test**: Create an interactive prototype of the website using tools like Adobe XD, Sketch, or InVision. Test the prototype with users to gather feedback and identify any usability issues.\n\n8. **Iterate and refine**: Based on user feedback, make necessary adjustments to the design, and repeat the testing process until the UI meets the desired standards of usability and effectiveness.\n\n9. **Handoff to developers**: Once the UI design is finalized, provide the design files, specifications, and any necessary assets to the development team to implement the design in the actual website.\n\n10. **Review and launch**: Collaborate with the development team during the development process to ensure the final product aligns with the original design vision. After the website is launched, continue to monitor user feedback and make improvements as needed.\n\n[3]\nFront-end development and back-end development are two distinct aspects of web development, each with its own responsibilities and technologies.\n\n**Front-end Development:**\n\n* **Focus:** Front-end development is concerned with what users see and interact with on a website. It involves creating the user interface (UI) and user experience (UX).\n* **Technologies:** Front-end developers use HTML, CSS, and JavaScript to build the visual elements of a website, such as layout, colors, fonts, and interactive features. Frameworks like React, Angular, and Vue.js are also commonly used to enhance the development process.\n* **Responsibilities:** Front-end developers ensure that the website is visually appealing, intuitive, and responsive across different devices (desktop, tablet, mobile). They work on the client-side of the application, meaning the part that the user interacts with directly.\n* **Tools:** Tools such as code editors (e.g., Visual Studio Code, Sublime Text), version control systems (e.g., Git), and task runners (e.g., Gulp, Grunt) are often used.\n\n**Back-end Development:**\n\n* **Focus:** Back-end development deals with the server-side logic of a web application. It involves handling the data, business logic, and application logic that enable the website to function properly.\n* **Technologies:** Back-end developers use server-side programming languages like Python (with frameworks like Django or Flask), Ruby (with Ruby on Rails), JavaScript (with Node.js), PHP, Java (with Spring), and.NET. They also work with databases (e.g., MySQL, PostgreSQL, MongoDB) to store and retrieve data.\n* **Responsibilities:** Back-end developers build the server-side components, APIs, and services that enable the front-end to function. They manage data, handle user authentication, perform database operations, and ensure the security and performance of the application.\n* **Tools:** Tools such as Integrated Development Environments (IDEs), database management systems, and API development tools are commonly used.\n\n**Key Differences:**\n\n* **Interaction:** Front-end developers work on the client-side (user's browser), while back-end developers work on the server-side.\n* **Focus:** Front-end focuses on the presentation and user interaction, while back-end focuses on data management and application logic.\n* **Technologies:** Different sets of technologies are used, with front-end focusing on client-side languages and frameworks, and back-end focusing on server-side languages and databases.\n* **Responsibilities:** Front-end developers are responsible for the visual and interactive aspects of the website, while back-end developers handle the data, logic, and server-side operations.\n\nIn summary, front-end development is about creating the user interface and experience, while back-end development is about managing data and application logic. Both are crucial for a fully functional and user-friendly web application.\n\n[4]\nThe role of a web developer is crucial in the successful launch of a website. Their responsibilities span from the initial planning stages to the final deployment and maintenance of the site. Here\u2019s a detailed look at the various aspects of a web developer's role during a website launch:\n\n### 1. **Requirements Gathering and Planning**\n- **Understanding Client Needs:** Web developers work closely with clients or project managers to understand the specific requirements, goals, and objectives of the website.\n- **Scope Definition:** They define the scope of the project, including features, functionalities, and design elements.\n- **Technical Feasibility:** Assessing the technical feasibility of the project and suggesting any necessary adjustments.\n\n### 2. **Design and Prototyping**\n- **Wireframing and Mockups:** Creating wireframes and mockups to visualize the layout and user interface (UI) of the website.\n- **Responsive Design:** Ensuring that the website is responsive and works well on different devices and screen sizes.\n- **User Experience (UX):** Focusing on creating an intuitive and user-friendly experience for visitors.\n\n### 3. **Frontend Development**\n- **HTML/CSS/JavaScript:** Writing clean, semantic HTML, styling with CSS, and adding interactivity using JavaScript.\n- **Frameworks and Libraries:** Utilizing frameworks like React, Angular, or Vue.js for complex applications.\n- **Accessibility:** Ensuring the website meets accessibility standards to accommodate users with disabilities.\n\n### 4. **Backend Development**\n- **Server-Side Logic:** Implementing server-side logic using languages like PHP, Python, Ruby, or Node.js.\n- **Database Management:** Setting up and managing databases to store and retrieve data efficiently.\n- **API Integration:** Integrating third-party APIs for functionalities such as payment gateways, social media sharing, or content management.\n\n### 5. **Testing and Quality Assurance**\n- **Unit Testing:** Writing tests to ensure individual components function correctly.\n- **Integration Testing:** Testing how different parts of the application work together.\n- **User Acceptance Testing (UAT):** Conducting tests with real users to gather feedback and identify issues.\n- **Performance Optimization:** Ensuring the website loads quickly and performs well under various conditions.\n\n### 6. **Deployment**\n- **Version Control:** Using tools like Git for version control and collaboration.\n- **Environment Setup:** Configuring the development, staging, and production environments.\n- **Deployment Strategies:** Choosing appropriate deployment strategies such as continuous integration/continuous deployment (CI/CD).\n\n### 7. **Security**\n- **Secure Coding Practices:** Implementing secure coding practices to prevent common vulnerabilities like SQL injection and cross-site scripting (XSS).\n- **SSL/TLS Certificates:** Ensuring the website uses HTTPS to protect user data.\n- **Regular Updates:** Keeping all software and dependencies up-to-date to mitigate security risks.\n\n### 8. **Maintenance and Support**\n- **Bug Fixes:** Addressing any bugs or issues that arise after launch.\n- **Performance Monitoring:** Continuously monitoring the website\u2019s performance and making optimizations as needed.\n- **User Feedback:** Collecting and incorporating user feedback to improve the website over time.\n\n### 9. **Collaboration and Communication**\n- **Team Coordination:** Working closely with designers, project managers, and other stakeholders.\n- **Documentation:** Maintaining clear documentation for future reference and ease of maintenance.\n- **Stakeholder Communication:** Regularly updating stakeholders on progress and addressing any concerns.\n\nIn summary, a web developer plays a multifaceted role in the website launch process, encompassing everything from initial planning and design to testing, deployment, and ongoing support. Their expertise ensures that the website not only meets functional requirements but also provides a seamless and secure user experience.\n\n## Judge Reasoning\nCONSTRAINT CHECKLIST:\n1) Explain how a website is developed.\n2) Cover the overall lifecycle (not only UI design or only FE/BE).\n3) Be structured and sufficiently complete.\n\nPerception scan: N=4 markers. After [1] the first 5 words are \"Developing a website involves several\"; after [2] \"Designing a website's user interface\"; after [3] \"Front-end development and back-end\"; after [4] \"The role of a web developer\".\n\nCompliance (Pass/Partial/Fail): [1] Pass/Pass/Pass; [2] Partial/Fail/Pass; [3] Partial/Fail/Pass; [4] Pass/Pass/Pass. Component coverage grid (Planning/Design/Dev/Test/Launch/Security/Deployment): [1] \u2713\u2713\u2713\u2713\u2713/\u2014/\u2713, [2] \u2713\u2713Partial/Missing/Missing/Missing/Missing, [3] Missing/Missing/Partial/Missing/Missing/Missing/Missing, [4] \u2713\u2713\u2713\u2713\u2713/\u2713/\u2713. Overall, 4 is the most complete and directly aligned to the lifecycle (including security/testing/deployment), while 1 is also strong but slightly less detailed; 2 and 3 focus too narrowly (UI design only; FE/BE comparison only).\n\n## Judge Output JSON\n{\n  \"reasoning\": \"CONSTRAINT CHECKLIST:\\n1) Explain how a website is developed.\\n2) Cover the overall lifecycle (not only UI design or only FE/BE).\\n3) Be structured and sufficiently complete.\\n\\nPerception scan: N=4 markers. After [1] the first 5 words are \\\"Developing a website involves several\\\"; after [2] \\\"Designing a website's user interface\\\"; after [3] \\\"Front-end development and back-end\\\"; after [4] \\\"The role of a web developer\\\".\\n\\nCompliance (Pass/Partial/Fail): [1] Pass/Pass/Pass; [2] Partial/Fail/Pass; [3] Partial/Fail/Pass; [4] Pass/Pass/Pass. Component coverage grid (Planning/Design/Dev/Test/Launch/Security/Deployment): [1] \u2713\u2713\u2713\u2713\u2713/\u2014/\u2713, [2] \u2713\u2713Partial/Missing/Missing/Missing/Missing, [3] Missing/Missing/Partial/Missing/Missing/Missing/Missing, [4] \u2713\u2713\u2713\u2713\u2713/\u2713/\u2713. Overall, 4 is the most complete and directly aligned to the lifecycle (including security/testing/deployment), while 1 is also strong but slightly less detailed; 2 and 3 focus too narrowly (UI design only; FE/BE comparison only).\",\n  \"ratings\": [\n    9.0,\n    7.0,\n    6.0,\n    9.4\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Focus\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=9.000\n  [2] INCORRECT score=7.000\n  [3] INCORRECT score=6.000\n  [4] INCORRECT score=9.400\n\n## rollout_2 Evaluation\n\nSubset: Focus\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=9.000\n  [2] INCORRECT score=7.000\n  [3] INCORRECT score=6.000\n  [4] INCORRECT score=9.400",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts failed identically: the agent rated candidate [4] (INCORRECT, score 9.4) above candidate [1] (CORRECT, score 9.0). This is a Focus-subset task. The prompt asks 'how a website was developed,' and the ground truth says only [1] correctly addresses this. The agent's error stems from a specific failure mode: **it valued breadth/completeness over direct alignment with the question's framing**.\n\n### The Framing Problem\n\n- Candidate [1] opens with 'Developing a website involves several stages...' \u2014 directly addressing the process of development.\n- Candidate [4] opens with 'The role of a web developer is crucial...' \u2014 reframing the question to be about a developer's role rather than the development process itself.\n\nThese are related but distinct framings. The prompt asked HOW a website was developed, not WHAT a web developer does. Candidate [4] answers an adjacent question. The agent's constraint checklist missed this distinction entirely, assigning both [1] and [4] 'Pass/Pass/Pass' on all three self-extracted constraints.\n\n### Why Existing Entries Failed\n\n**[c8698dee] (Constraint Extraction)**: The agent extracted constraints too coarsely: (1) 'Explain how a website is developed,' (2) 'Cover the overall lifecycle,' (3) 'Be structured and sufficiently complete.' These constraints are necessary but insufficient. They do not distinguish between a response that directly answers the question vs. one that covers similar ground through a different framing. The entry needs a refinement: constraint extraction should include checking whether each candidate's framing/thesis directly maps to the user's question, not just whether topic keywords overlap.\n\n**[93b0e8f9] (Core Ranking/Verification)**: The entry instructs the agent to 're-read your own stated decisive criteria and confirm the top-rated candidate genuinely best satisfies them.' The agent's own criterion #1 was 'Explain how a website is developed.' Candidate [4] explains a developer's role, not directly how development works. This verification step should have caught the inconsistency, but the agent applied it superficially, treating topic-area overlap as direct compliance.\n\n### What Generalizable Knowledge Is Missing\n\n1. **FOCUS/TOPIC-ALIGNMENT CHECK (new procedure needed)**: After constraint extraction, the agent should perform a 'focus alignment' step: For each candidate, identify the THESIS or FRAMING of the response (what question does this response actually answer?). Compare that framing to the user's literal question. If the response reframes the question \u2014 e.g., substitutes 'the role of X' for 'how X works,' or substitutes 'designing the UI' for 'developing the website' \u2014 flag this as a FOCUS DRIFT. A response with focus drift has a structural defect in the Focus subset and should not outscore a response that directly answers the question asked, even if the drifted response is more comprehensive.\n\n   **Trigger**: Any open-ended prompt where multiple candidates might address related but non-identical questions.\n   **Intermediate artifact**: A per-candidate row: [Candidate ID | User's question (verbatim) | Candidate's actual thesis (first sentence / opening framing) | Match: DIRECT / ADJACENT / OFF-TOPIC].\n   **Verification gate**: No candidate marked ADJACENT or OFF-TOPIC may outscore a candidate marked DIRECT, unless the DIRECT candidate has a verified factual error.\n\n2. **COMPLETENESS \u2260 SUPERIORITY (clarification needed for existing entry [8e0d9579])**: The current entry warns against letting 'generic verbosity' outweigh correctness, but this case isn't about verbosity \u2014 it's about completeness on an adjacent topic. The playbook should explicitly state: covering MORE lifecycle stages does not make a response better if the additional coverage is achieved by answering a different question. A response that directly answers the question with moderate detail beats one that exhaustively answers an adjacent question.\n\n3. **REFRAMING DETECTION HEURISTIC**: The agent should specifically check the opening sentence/paragraph of each candidate for alignment with the prompt's subject. When the prompt says 'how X' and the candidate's opener says 'the role of Y in X,' that's a detectable signal of reframing that should be flagged.\n\n### Not a Playbook Knowledge Gap Alone\n\nThe agent's reasoning was deterministic across both rollouts \u2014 identical constraint checklists, identical coverage grids, identical scores. This suggests the failure is systematic, not due to execution variance. The coverage grid approach (checking if each lifecycle phase is mentioned) is inherently blind to focus alignment. The grid needs a row for 'directly answers the prompt's question' as its first and highest-weighted criterion.\n\n### Actionable Recommendations\n\n1. Add a new entry: FOCUS ALIGNMENT GATE \u2014 mandatory for the Focus subset and useful generally. Procedure: extract each candidate's thesis framing, compare to user's literal question, flag DIRECT/ADJACENT/OFF-TOPIC. Hard gate: ADJACENT/OFF-TOPIC cannot outscore DIRECT.\n\n2. Refine [c8698dee]: Add a sub-step after constraint extraction: 'For each constraint, verify not just keyword/topic overlap but whether the candidate's framing directly addresses the constraint's intent. A response about the role of a developer is not the same as a response about how development works.'\n\n3. Strengthen [93b0e8f9]: Add explicit instruction: 'When the top-rated candidate's opening framing addresses a different subject than the prompt, this is an inconsistency that must be resolved before finalizing.'\n\n4. Add to [8e0d9579] or create a sibling: 'Greater comprehensiveness or broader coverage does NOT justify a higher score when the additional coverage comes from answering an adjacent or reframed question. Focus on the exact question asked is a prerequisite before completeness becomes a differentiator.'"
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The agent needed to distinguish between a candidate that directly answers the prompt's question ('how is a website developed') and one that answers an adjacent question ('what is the role of a web developer'). Both candidates cover similar lifecycle phases with similar depth, but only one matches the prompt's framing. The constraint extraction (c8698dee) and verification (93b0e8f9) procedures were too coarse to detect this framing mismatch.",
+          "gap_type": "procedure",
+          "suggested_content": "FOCUS ALIGNMENT CHECK \u2014 mandatory for Focus subset tasks, recommended for all open-ended prompts. After constraint extraction: (1) For each candidate, identify the THESIS \u2014 what question does this response actually answer? Use the opening sentence/paragraph as primary evidence. (2) Compare each candidate's thesis to the user's literal question. (3) Classify: DIRECT (answers the exact question asked), ADJACENT (answers a related but reframed question \u2014 e.g., 'role of X' instead of 'how X works'), OFF-TOPIC (answers an unrelated question). (4) Produce a per-candidate row: [Candidate ID | User's question verbatim | Candidate's thesis (quoted opening) | Classification: DIRECT/ADJACENT/OFF-TOPIC]. HARD GATE: No ADJACENT or OFF-TOPIC candidate may outscore a DIRECT candidate unless the DIRECT candidate has a verified factual error or critical structural defect (truncation, nonsense). Coverage/completeness is only a differentiator among candidates in the same classification tier.",
+          "trigger": "After constraint extraction and before the compliance matrix, whenever the prompt asks an open-ended question and multiple candidates could address related but non-identical questions."
+        },
+        {
+          "situation": "The agent's perception scan captured opening words for each candidate \u2014 including clear evidence of [4]'s reframing ('The role of a web developer' vs. the prompt's 'how a website was developed') \u2014 but no procedure directed the agent to use this signal for focus evaluation. The perception scan output was treated solely as a candidate-counting mechanism.",
+          "gap_type": "tactic",
+          "suggested_content": "PERCEPTION-TO-FOCUS BRIDGE: After the perception scan captures each candidate's opening words, immediately compare each opening to the prompt's core question. If a candidate's opener introduces a different subject (e.g., 'the role of X' when asked 'how X works'; 'designing the UI' when asked about full development), flag it as a REFRAMING SIGNAL. This signal feeds into the Focus Alignment Check and must be resolved before the compliance matrix is finalized. Common reframing patterns: substituting actor for process ('role of developer' for 'how development works'), substituting part for whole ('UI design' for 'website development'), substituting comparison for explanation ('FE vs. BE' for 'how development works').",
+          "trigger": "Immediately after perception scan, before constraint extraction compliance evaluation."
+        },
+        {
+          "situation": "The agent used a coverage grid (Planning/Design/Dev/Test/Launch/Security/Deployment) to compare candidates. [4] scored higher because it covered more grid cells (including Security as a separate section and Collaboration/Communication). But [4]'s broader coverage arises precisely because it answers a broader question (a developer's full role). The coverage grid approach is systematically blind to focus alignment \u2014 it rewards breadth regardless of whether that breadth comes from answering the right question.",
+          "gap_type": "principle",
+          "suggested_content": "COMPLETENESS HIERARCHY: Greater breadth or lifecycle coverage does NOT justify a higher score when the additional coverage results from answering a different or broader question than the one asked. Focus alignment is a prerequisite gate; completeness is a tiebreaker among candidates that pass the focus gate. A response that directly answers the question with moderate detail must outscore one that exhaustively covers a reframed or adjacent question. When building coverage grids, the first row must always be: 'Directly answers the prompt's question: YES/NO.' This row has veto power over all other rows.",
+          "trigger": "When constructing coverage grids or completeness comparisons, especially when candidates vary in scope or framing."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nBoth rollouts failed identically (66.7% pairwise accuracy): the agent rated candidate [4] (INCORRECT, 9.4) above candidate [1] (CORRECT, 9.0). This is deterministic \u2014 identical reasoning, scores, and best_response_ids across both rollouts \u2014 confirming a systematic playbook gap rather than execution variance.\n\n### Where I AGREE with the Anchor\n\n1. **Root cause identification is correct**: The failure stems from the agent valuing lifecycle completeness over direct focus alignment. [1] answers 'how a website is developed' while [4] answers 'what is the role of a web developer' \u2014 related but distinct questions.\n\n2. **c8698dee (constraint extraction) is harmful**: The extracted constraints were too coarse to distinguish direct from adjacent answering. Both [1] and [4] received Pass/Pass/Pass, preventing focus discrimination.\n\n3. **The Focus Alignment Gate is the primary missing capability**: The anchor's proposed procedure (per-candidate thesis extraction, DIRECT/ADJACENT/OFF-TOPIC classification, hard gate) is well-specified and directly addresses the failure.\n\n### Where I REFINE the Anchor\n\n1. **93b0e8f9 assessment**: The anchor tags it as harmful, which I agree with, but I add nuance \u2014 the entry's instruction is sound in principle ('confirm the top-rated candidate genuinely best satisfies your criteria'), but its current formulation allows loose matching (topic overlap treated as direct compliance). The fix is adding explicit guidance to check framing/thesis match, not just topical overlap.\n\n2. **Perception scan underutilization**: The anchor doesn't note that entry 4abe1be4 already captures the key reframing signal in its output ('The role of a web developer' vs. 'Developing a website involves several'). A new tactic bridging perception scan output to focus alignment would leverage existing infrastructure rather than adding a fully independent procedure.\n\n3. **Coverage grid bias**: The anchor identifies that the coverage grid is 'blind to focus alignment' but doesn't explain the structural reason. The grid inherently rewards breadth, and a candidate answering a broader question (developer's full role vs. the development process) will systematically score more grid cells. The fix is making 'directly answers the prompt' the first and highest-weighted grid row with veto power.\n\n### Key Playbook Implication\n\nThe most impactful change is adding a FOCUS ALIGNMENT CHECK as a mandatory procedural step between constraint extraction and the compliance matrix. This should produce an explicit artifact (thesis-vs-prompt comparison table) and enforce a hard gate (ADJACENT cannot outscore DIRECT). This addresses the root cause \u2014 the agent currently has no mechanism to detect when a candidate answers the right topic but the wrong question."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "AGREE with anchor's core diagnosis: The agent misranked candidate [4] (INCORRECT, 9.4) above [1] (CORRECT, 9.0) because it scored topic-area coverage without checking whether each candidate actually answers the question asked. Candidate [1] opens 'Developing a website involves several stages...' \u2014 directly answering 'how a website was developed.' Candidate [4] opens 'The role of a web developer is crucial...' \u2014 answering a different question about a developer's responsibilities. The agent's perception scan correctly recorded both openers but never acted on the signal.\n\nREFINE the anchor's assessment of c8698dee: The anchor calls this 'harmful' for extracting coarse constraints. I agree the entry is harmful but for a more specific reason \u2014 the entry's compliance-checking procedure treats keyword/topic overlap as constraint satisfaction. The agent marked [4] as Pass on 'Explain how a website is developed' because [4] mentions planning, design, development, testing, and deployment \u2014 the same topic keywords. But [4] addresses these through the lens of 'a developer's role,' not 'how development works.' The entry's HARD GATE ('No FAILing candidate may outscore a PASSing one') then locked in the misleading Pass signals, preventing correction downstream. The entry is structurally blind to framing drift.\n\nREFINE the anchor's assessment of 93b0e8f9: The anchor calls this 'harmful,' but the entry actually gave correct guidance ('re-read your stated decisive criteria and confirm the top-rated candidate genuinely best satisfies them'). If followed carefully, this should have caught the inconsistency between criterion 1 ('Explain how a website is developed') and [4]'s thesis ('The role of a web developer'). The entry is neutral \u2014 it provided the right instruction but lacked enough specificity to trigger deeper scrutiny of framing alignment.\n\nDISAGREE with the anchor's proposal for 4 separate playbook changes. The failure has a single root cause (missing framing alignment check) that can be addressed with one well-constructed entry. The anchor's proposals for updating 8e0d9579, 93b0e8f9, and c8698dee are all downstream consequences of the same gap.\n\nKey evidence: The failure was deterministic across both rollouts \u2014 identical compliance matrices, identical coverage grids, identical scores. This proves a structural methodology gap, not execution variance. The coverage grid counted lifecycle phases (Planning/Design/Dev/Test/Launch/Security/Deployment) without a 'directly answers the question' dimension, so [4]'s additional Security section mechanically pushed it ahead despite its framing drift. The PP trace shows no uncertainty or missing-guidance annotations, meaning the agent was confidently wrong \u2014 the playbook did not flag this as a risk area.",
+      "principles": [
+        {
+          "statement": "After constraint extraction, check each candidate's thesis against the prompt's actual question. If it reframes the question (e.g., 'role of X' vs. 'how X works'), mark ADJACENT. No ADJACENT candidate may outscore a DIRECT-match candidate.",
+          "entry_kind": "artifact",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "Fires after constraint extraction (c8698dee) and before coverage/completeness scoring, whenever the prompt asks an open-ended question and multiple candidates could address related but non-identical questions.",
+          "verification_or_artifact": "Construct a per-candidate row: [Candidate ID | Prompt's question (verbatim) | Candidate's actual thesis (first sentence/opener) | Alignment: DIRECT / ADJACENT / OFF-TOPIC]. GATE: If any candidate is ADJACENT or OFF-TOPIC, it cannot outscore any DIRECT candidate unless the DIRECT candidate has a verified factual error. This artifact must be completed before any coverage grid or completeness comparison.",
+          "evidence": "Both rollouts recorded [4]'s opener as 'The role of a web developer' during the perception scan but never compared this to the prompt's question 'how a website was developed.' A structured framing-alignment row would have flagged [4] as ADJACENT (answering 'what does a web developer do?' rather than 'how is a website developed?'), preventing it from outscoring [1] on coverage breadth alone."
+        }
+      ],
+      "mutation_implication": "add",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "c8698dee",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts failed identically (66.7% pairwise accuracy): the agent rated candidate [4] (INCORRECT, 9.4) above candidate [1] (CORRECT, 9.0). The prompt asks 'how a website was developed.' Candidate [1] opens 'Developing a website involves several stages\u2026' \u2014 directly answering the question. Candidate [4] opens 'The role of a web developer is crucial\u2026' \u2014 answering a different question about a developer's responsibilities. Both cover similar lifecycle phases (planning, design, development, testing, deployment), but only [1] frames them as the development process; [4] frames them as a developer's role.\n\nThe failure is deterministic across both rollouts \u2014 identical constraint checklists, identical coverage grids, identical scores \u2014 confirming a structural methodology gap, not execution variance.\n\n## Why Existing Entries Failed\n\n**c8698dee (constraint extraction)** is the primary contributor. The agent extracted three constraints: (1) 'Explain how a website is developed,' (2) 'Cover the overall lifecycle,' (3) 'Be structured and sufficiently complete.' It then marked both [1] and [4] as Pass/Pass/Pass because both mention the same lifecycle keywords (planning, design, development, testing, deployment). The entry's compliance-checking procedure treats keyword/topic overlap as constraint satisfaction \u2014 it is structurally blind to whether a candidate's *framing* matches the prompt's question. The HARD GATE ('No FAILing candidate may outscore a PASSing one') then locked in the misleading Pass signals, preventing downstream correction. The entry is not giving bad advice, but it is missing a crucial sub-step for framing alignment.\n\n**93b0e8f9 (core ranking verification)** gave correct guidance: 'confirm the top-rated candidate genuinely best satisfies [your stated decisive criteria].' In principle, this should have caught the inconsistency between criterion 1 ('Explain how a website is developed') and [4]'s thesis ('The role of a web developer'). However, the entry lacks sufficient specificity to force deeper scrutiny of framing vs. topic overlap. It provided the right instruction but didn't prevent the error \u2014 making it neutral rather than harmful. The real gap is upstream: no procedure forces the agent to check framing alignment before the coverage grid runs.\n\n**4abe1be4 (perception scan)** correctly captured each candidate's opening words, including the reframing signal ('The role of a web developer' vs. 'Developing a website involves'). The perception scan worked as designed but its output was used only for candidate counting, never for focus evaluation.\n\n## The Coverage Grid Bias\n\nThe agent built a lifecycle-phase coverage grid (Planning/Design/Dev/Test/Launch/Security/Deployment) and scored candidates by cell count. Candidate [4] covered more cells (e.g., separate Security section, Collaboration/Communication) precisely because it answers a *broader* question (a developer's full role encompasses more than how development works). The coverage grid approach is systematically blind to focus alignment \u2014 it mechanically rewards breadth regardless of whether that breadth comes from answering the right question. There was no 'directly answers the prompt's question' row with veto power.\n\n## What Is Missing\n\nAll three analytical perspectives converge on the same primary gap: a **Focus Alignment Check** \u2014 a mandatory procedural step between constraint extraction and coverage/completeness scoring that compares each candidate's thesis to the user's literal question. The procedure should:\n1. For each candidate, identify the THESIS \u2014 what question does this response actually answer? \u2014 using the opening sentence/paragraph as primary evidence.\n2. Compare each candidate's thesis to the user's verbatim question.\n3. Classify as DIRECT (answers the exact question), ADJACENT (answers a related but reframed question \u2014 e.g., 'role of X' instead of 'how X works'), or OFF-TOPIC.\n4. Produce a per-candidate artifact row: [Candidate ID | User's question | Candidate's thesis (quoted opener) | Classification].\n5. Enforce a hard gate: No ADJACENT or OFF-TOPIC candidate may outscore a DIRECT candidate unless the DIRECT candidate has a verified factual error or critical structural defect.\n\nCommon reframing patterns to flag: substituting actor for process ('role of developer' for 'how development works'), substituting part for whole ('UI design' for 'website development'), substituting comparison for explanation.\n\n## Why One Entry Suffices\n\nThe anchor reflection proposed four changes (new entry + updates to c8698dee, 93b0e8f9, and 8e0d9579). The principle_extraction reflection correctly argues the failure has a single root cause addressable with one well-constructed entry. The coverage grid bias, the completeness-as-superiority error, and the perception-scan underutilization are all downstream consequences of the missing framing-alignment step. Adding the Focus Alignment Check as a standalone entry that fires between c8698dee and coverage scoring addresses the root cause without requiring changes to entries that are otherwise sound for other task types.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent has no procedure to distinguish a candidate that directly answers the prompt's question from one that answers a related but reframed question. Its constraint extraction (c8698dee) checks keyword/topic overlap, and its coverage grid rewards breadth \u2014 both systematically blind to framing alignment. Adding a Focus Alignment Check with a DIRECT/ADJACENT/OFF-TOPIC classification and hard gate directly addresses this gap.",
+      "important_disagreements": [
+        "93b0e8f9 assessment: Anchor and credit_attribution tag it harmful; principle_extraction tags neutral. Resolved in favor of neutral \u2014 the entry's guidance ('confirm top-rated candidate satisfies your criteria') is correct and would have caught the error if applied rigorously. The root cause is a missing upstream procedure (framing alignment), not bad guidance from this entry. The entry is insufficiently specific, not wrong.",
+        "Number of mutations: Anchor proposes 4 changes; principle_extraction proposes 1. Resolved in favor of 1 \u2014 the failure has a single root cause (missing framing-alignment check). Updating c8698dee, 93b0e8f9, and 8e0d9579 would be bundling downstream symptoms. The standalone Focus Alignment Check entry is cleaner, more modular, and doesn't risk over-complicating already-lengthy entries."
+      ],
+      "mutation_posture": "add",
+      "why_this_posture": "All three reflections independently identify the same missing capability \u2014 a focus/thesis alignment check between constraint extraction and coverage scoring. No existing entry covers this. The evidence is strong (deterministic failure across both rollouts, clear causal chain from missing procedure to misranking), and the proposed entry is well-scoped with a clear trigger, intermediate artifact, and hard gate.",
+      "conservatism_rationale": "One ADD is the minimal change that addresses the root cause. The proposed entry is a genuinely missing reusable capability (not covered by any existing entry), addresses a class of tasks (Focus subset and open-ended prompts generally, not just this specific task), and is supported by converging evidence from all three analytical perspectives. Updating c8698dee or 93b0e8f9 is unnecessary since those entries are sound for their intended purpose \u2014 the gap is a missing step between them, not a flaw within either.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"c8698dee\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts failed identically (66.7% pairwise accuracy): the agent rated candidate [4] (INCORRECT, 9.4) above candidate [1] (CORRECT, 9.0). The prompt asks 'how a website was developed.' Candidate [1] opens 'Developing a website involves several stages\u2026' \u2014 directly answering the question. Candidate [4] opens 'The role of a web developer is crucial\u2026' \u2014 answering a different question about a developer's responsibilities. Both cover similar lifecycle phases (planning, design, development, testing, deployment), but only [1] frames them as the development process; [4] frames them as a developer's role.\\n\\nThe failure is deterministic across both rollouts \u2014 identical constraint checklists, identical coverage grids, identical scores \u2014 confirming a structural methodology gap, not execution variance.\\n\\n## Why Existing Entries Failed\\n\\n**c8698dee (constraint extraction)** is the primary contributor. The agent extracted three constraints: (1) 'Explain how a website is developed,' (2) 'Cover the overall lifecycle,' (3) 'Be structured and sufficiently complete.' It then marked both [1] and [4] as Pass/Pass/Pass because both mention the same lifecycle keywords (planning, design, development, testing, deployment). The entry's compliance-checking procedure treats keyword/topic overlap as constraint satisfaction \u2014 it is structurally blind to whether a candidate's *framing* matches the prompt's question. The HARD GATE ('No FAILing candidate may outscore a PASSing one') then locked in the misleading Pass signals, preventing downstream correction. The entry is not giving bad advice, but it is missing a crucial sub-step for framing alignment.\\n\\n**93b0e8f9 (core ranking verification)** gave correct guidance: 'confirm the top-rated candidate genuinely best satisfies [your stated decisive criteria].' In principle, this should have caught the inconsistency between criterion 1 ('Explain how a website is developed') and [4]'s thesis ('The role of a web developer'). However, the entry lacks sufficient specificity to force deeper scrutiny of framing vs. topic overlap. It provided the right instruction but didn't prevent the error \u2014 making it neutral rather than harmful. The real gap is upstream: no procedure forces the agent to check framing alignment before the coverage grid runs.\\n\\n**4abe1be4 (perception scan)** correctly captured each candidate's opening words, including the reframing signal ('The role of a web developer' vs. 'Developing a website involves'). The perception scan worked as designed but its output was used only for candidate counting, never for focus evaluation.\\n\\n## The Coverage Grid Bias\\n\\nThe agent built a lifecycle-phase coverage grid (Planning/Design/Dev/Test/Launch/Security/Deployment) and scored candidates by cell count. Candidate [4] covered more cells (e.g., separate Security section, Collaboration/Communication) precisely because it answers a *broader* question (a developer's full role encompasses more than how development works). The coverage grid approach is systematically blind to focus alignment \u2014 it mechanically rewards breadth regardless of whether that breadth comes from answering the right question. There was no 'directly answers the prompt's question' row with veto power.\\n\\n## What Is Missing\\n\\nAll three analytical perspectives converge on the same primary gap: a **Focus Alignment Check** \u2014 a mandatory procedural step between constraint extraction and coverage/completeness scoring that compares each candidate's thesis to the user's literal question. The procedure should:\\n1. For each candidate, identify the THESIS \u2014 what question does this response actually answer? \u2014 using the opening sentence/paragraph as primary evidence.\\n2. Compare each candidate's thesis to the user's verbatim question.\\n3. Classify as DIRECT (answers the exact question), ADJACENT (answers a related but reframed question \u2014 e.g., 'role of X' instead of 'how X works'), or OFF-TOPIC.\\n4. Produce a per-candidate artifact row: [Candidate ID | User's question | Candidate's thesis (quoted opener) | Classification].\\n5. Enforce a hard gate: No ADJACENT or OFF-TOPIC candidate may outscore a DIRECT candidate unless the DIRECT candidate has a verified factual error or critical structural defect.\\n\\nCommon reframing patterns to flag: substituting actor for process ('role of developer' for 'how development works'), substituting part for whole ('UI design' for 'website development'), substituting comparison for explanation.\\n\\n## Why One Entry Suffices\\n\\nThe anchor reflection proposed four changes (new entry + updates to c8698dee, 93b0e8f9, and 8e0d9579). The principle_extraction reflection correctly argues the failure has a single root cause addressable with one well-constructed entry. The coverage grid bias, the completeness-as-superiority error, and the perception-scan underutilization are all downstream consequences of the missing framing-alignment step. Adding the Focus Alignment Check as a standalone entry that fires between c8698dee and coverage scoring addresses the root cause without requiring changes to entries that are otherwise sound for other task types.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent has no procedure to distinguish a candidate that directly answers the prompt's question from one that answers a related but reframed question. Its constraint extraction (c8698dee) checks keyword/topic overlap, and its coverage grid rewards breadth \u2014 both systematically blind to framing alignment. Adding a Focus Alignment Check with a DIRECT/ADJACENT/OFF-TOPIC classification and hard gate directly addresses this gap.\",\n    \"important_disagreements\": [\n      \"93b0e8f9 assessment: Anchor and credit_attribution tag it harmful; principle_extraction tags neutral. Resolved in favor of neutral \u2014 the entry's guidance ('confirm top-rated candidate satisfies your criteria') is correct and would have caught the error if applied rigorously. The root cause is a missing upstream procedure (framing alignment), not bad guidance from this entry. The entry is insufficiently specific, not wrong.\",\n      \"Number of mutations: Anchor proposes 4 changes; principle_extraction proposes 1. Resolved in favor of 1 \u2014 the failure has a single root cause (missing framing-alignment check). Updating c8698dee, 93b0e8f9, and 8e0d9579 would be bundling downstream symptoms. The standalone Focus Alignment Check entry is cleaner, more modular, and doesn't risk over-complicating already-lengthy entries.\"\n    ],\n    \"mutation_posture\": \"add\",\n    \"why_this_posture\": \"All three reflections independently identify the same missing capability \u2014 a focus/thesis alignment check between constraint extraction and coverage scoring. No existing entry covers this. The evidence is strong (deterministic failure across both rollouts, clear causal chain from missing procedure to misranking), and the proposed entry is well-scoped with a clear trigger, intermediate artifact, and hard gate.\",\n    \"conservatism_rationale\": \"One ADD is the minimal change that addresses the root cause. The proposed entry is a genuinely missing reusable capability (not covered by any existing entry), addresses a class of tasks (Focus subset and open-ended prompts generally, not just this specific task), and is supported by converging evidence from all three analytical perspectives. Updating c8698dee or 93b0e8f9 is unnecessary since those entries are sound for their intended purpose \u2014 the gap is a missing step between them, not a flaw within either.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

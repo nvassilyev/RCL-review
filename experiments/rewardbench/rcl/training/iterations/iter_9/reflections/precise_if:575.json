@@ -1,0 +1,374 @@
+{
+  "task_id": "precise_if:575",
+  "pass_pct": 0.3333333333333333,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task precise_if:575\nPass percentage: 33.3%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts produced identical wrong outputs (33.3% pairwise accuracy), confirming a systematic reasoning failure. The agent scored correct candidate [1] at 4.0 and incorrect candidate [4] at 8.0. The prompt combined a coding question (Keras binary classification) with a binding formatting constraint: 'Maintain a 2:1 ratio of declarative to interrogative sentences in your response.' This is a Precise IF task where constraint compliance is the primary differentiator.\n\nThe agent never analyzed the 2:1 sentence ratio constraint. The words 'ratio,' 'declarative,' 'interrogative,' and '2:1' appear zero times in its reasoning. It evaluated all candidates exclusively on code/API correctness, producing a ranking that inverts the correct answer.\n\nConstraint analysis reveals only candidate [1] plausibly satisfies the 2:1 ratio (~2 declarative + 1 interrogative), while candidates [2] (\u221e:0), [3] (8:1), and [4] (10:1) all fail dramatically.\n\n## Entry-Level Assessment\n\n**c8698dee (Instruction Following Checks) \u2014 neutral.** This entry prescribes exactly the correct procedure: EXTRACT all requirements as a numbered checklist, build a compliance matrix, apply HARD GATE for mechanically verifiable constraints, and use COUNTING RULE for quantitative constraints. The 'OBVIOUSLY MET WARNING' is also directly relevant \u2014 the coding content felt like the obvious axis but the formatting constraint was the real differentiator. However, the agent never invoked this entry. Its content is correct; its structural design is the weakness. It currently triggers 'when a prompt contains two or more independent requirements,' which should have fired since the prompt has both coding and formatting requirements. The problem is that the agent never recognized the formatting constraint as a requirement in the first place \u2014 it went straight into code analysis without performing the EXTRACT step. The entry needs restructuring so that constraint extraction is an unconditional, mandatory pre-gate that fires before any domain-specific analysis can begin, not a conditional mid-evaluation procedure.\n\n**005004a4 (Factuality Checks) \u2014 harmful.** The entry drew the agent into deep API analysis (activation vs. classifier_activation, tensor shape claims) that consumed the entire reasoning budget. This crowded out the constraint-compliance analysis that should have been primary. The API analysis wasn't wrong on its merits, and the entry's content is sound in isolation. The harm comes from the absence of any priority ordering: the agent treated factuality as the primary evaluation axis because the entry's verification gate is comprehensive and attention-demanding, while no mechanism forced constraint compliance to run first. Updating c8698dee to be a hard pre-gate would naturally control this crowding effect without requiring changes to 005004a4 itself.\n\n**4abe1be4 (Perception Gate) \u2014 neutral.** The agent's reasoning shows structural alignment with this entry (marker scan, prompt quote, candidate roll calls), suggesting it was consulted. It helped with perception but did not prevent the core constraint-extraction failure.\n\n**8e0d9579 (Formatting vs Correctness) \u2014 neutral with noted risk.** Credit_attribution raises a valid concern that this entry's hierarchy ('formatting is subordinate to correctness, breaks ties') could mislead the agent into deprioritizing binding formatting constraints like the 2:1 ratio. However, no PP tags or narrative evidence shows the agent explicitly referenced this entry, so the harm is speculative. The entry's carve-out ('When the prompt specifies a target output context') partially addresses binding constraints but could be clearer about distinguishing binding structural constraints from purely decorative formatting.\n\n## Coverage Gap\n\nThe playbook lacks a mechanism to force constraint extraction to precede all content analysis. Entry c8698dee contains the right procedure (EXTRACT \u2192 VALIDATE \u2192 EVALUATE \u2192 HARD GATE) but its conditional trigger and positioning allow the agent to skip it entirely when domain-typical analysis (code review, API checks) feels more natural. A secondary gap is the absence of a warning about 'technical tunnel vision' \u2014 the tendency to evaluate only domain-typical dimensions (code correctness in coding tasks, math accuracy in math tasks) while ignoring out-of-domain constraints (formatting, sentence structure, tone) that are often the key differentiator in Precise IF tasks. Both the principle_extraction and credit_attribution heads independently identify this pattern, strengthening confidence.\n\n## Recommended Mutation\n\nThe single highest-confidence edit is an UPDATE to c8698dee. The update should: (1) make the EXTRACT step unconditional \u2014 it must fire at the start of every evaluation, not only when the agent recognizes 'two or more independent requirements'; (2) require the constraint checklist to be the FIRST visible artifact in the reasoning, before any candidate content analysis begins; (3) add an explicit warning that in domain-specific tasks (coding, math, science), non-domain constraints (formatting, structure, sentence types) are the most likely to be overlooked and most likely to be the critical differentiator. This single update addresses both the triggering failure and the technical tunnel vision, without requiring a separate new entry.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent completely failed to extract and analyze a binding formatting constraint (2:1 declarative-to-interrogative sentence ratio) because it entered code-review mode immediately and never performed the constraint-extraction procedure prescribed by c8698dee. The entry was unused rather than misapplied. Deep factuality analysis (005004a4) consumed all reasoning bandwidth, further crowding out constraint checks.\",\n  \"important_disagreements\": [\n    \"c8698dee tagged harmful (anchor, credit_attribution) vs. neutral (principle_extraction). Resolved toward neutral: the entry's content is correct and would have prevented the failure if followed. The issue is structural (trigger/priority design), not harmful content. An entry that prescribes the right action but isn't consulted is better characterized as structurally weak than actively harmful. The update should fix the structural weakness.\",\n    \"8e0d9579 tagged harmful (credit_attribution) vs. neutral (anchor, principle_extraction). Resolved toward neutral: no PP tags or narrative evidence shows the agent actually referenced this entry. The risk that its 'formatting subordinate to correctness' hierarchy could suppress binding constraint analysis is valid but speculative from one trace. Noted as a risk rather than confirmed harm.\",\n    \"Sentence-counting micro-procedure proposed as ADD (anchor, credit_attribution) vs. already covered (principle_extraction). Resolved toward already covered: c8698dee's COUNTING RULE already prescribes producing a counting artifact for quantitative constraints. The failure was upstream \u2014 the agent never identified the sentence ratio as a countable constraint. Adding downstream procedures won't help if upstream extraction is skipped.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry c8698dee already contains the correct procedure (EXTRACT, VALIDATE, EVALUATE, HARD GATE, COUNTING RULE). The failure is structural: the entry's trigger is conditional rather than unconditional, and it has no forcing mechanism to ensure it runs before domain-specific analysis. An update to make it an unconditional pre-gate, plus an embedded tunnel-vision warning, is the minimal change that addresses the root cause. All three reflections converge on this need.\",\n  \"conservatism_rationale\": \"A single update to c8698dee addresses the core failure (missed constraint extraction) and the secondary failure (technical tunnel vision) without adding new entries. The sentence-counting procedure is already covered by the existing COUNTING RULE. The binding-vs-decorative formatting distinction (proposed for 8e0d9579) lacks direct evidence of harm from this trace. Modifying 005004a4 is unnecessary if c8698dee is properly enforced as a pre-gate \u2014 proper ordering naturally prevents factuality analysis from crowding out constraint checks.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 33.3%, rollout_2: 33.3%.\n\n## rollout_1 \u2014 pass_pct: 33.3%\n\n## Prompt\nCan I make this code:\"def build_model(input_shape, num_classes):\n    base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    x = Dropout(0.5)(x)\n    # Classification output layer\n    predictions = Dense(num_classes, activation='softmax')(x)\"\nbecome just     base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape) with output with our num_classes and softmax activation?\nshow code.\n Maintain a 2:1 ratio of declarative to interrogative sentences in your response.\n\n## Candidate Responses\n\n[1]\nYou can achieve this by adding the classification output layer to the base model directly. Here's how you can do it:\n\n```python\nfrom tensorflow.keras.applications import ResNet50\nfrom tensorflow.keras.layers import Dense\n\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, \n                          include_top=True, \n                          classes=num_classes, \n                          activation='softmax', \n                          input_shape=input_shape)\n    return base_model\n```\n\nNote that we're using `include_top=True` to include the classification layer, and specifying the `classes` and `activation` arguments directly in the `ResNet50` constructor.\n\nAlso, remember that the last layer of the ResNet50 model will have a shape of `(None, 1, 1, num_classes)` before the softmax activation, where `None` represents the batch size.\n\nAre you going to use this model for training or as a feature extractor?\n\n[2]\nYou can achieve this by including the classification output layer within the ResNet50 model itself. However, this approach may not be suitable if you plan to reuse the ResNet50 model as a feature extractor in other parts of your code.\n\nYou could achieve this using a Sequential API approach with the ResNet50 model as the base. However, this will still require a separate line to define the classification output layer. \n\nTo directly achieve what you want with a single line of code, you can define a custom function. Here's an example of how you can do it:\n\n```python\ndef custom_resnet(input_shape, num_classes):\n    return Sequential([\n        ResNet50(weights=None, include_top=False, input_shape=input_shape),\n        GlobalAveragePooling2D(),\n        Dropout(0.5),\n        Dense(num_classes, activation='softmax')\n    ])\n\nbase_model = custom_resnet(input_shape, num_classes)\n```\n\nHowever, if you really need to keep it to one line with `ResNet50`, you can use a lambda function. \n\n```python\nbase_model = (lambda input_shape, num_classes: \n              Sequential([\n                  ResNet50(weights=None, include_top=False, input_shape=input_shape),\n                  GlobalAveragePooling2D(),\n                  Dropout(0.5),\n                  Dense(num_classes, activation='softmax')\n              ]))(input_shape, num_classes)\n```\nPlease note that while the lambda function does technically keep the call to `ResNet50` to one line, the entire expression is still quite complex.\n\n[3]\nTo create a model with the same functionality but condensed into a single line, we can utilize the `classes` parameter in the `ResNet50` function to specify the number of output classes. However, the `ResNet50` function doesn't support a `classes` parameter directly. \n\nOne workaround is to subclass the `ResNet50` class and modify its behavior to include the classification output layer. Here's how you can achieve this:\n\n```python\nfrom tensorflow.keras.applications.resnet50 import ResNet50\nfrom tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout\nfrom tensorflow.keras.models import Model\n\nclass CustomResNet50(ResNet50):\n    def __init__(self, classes, include_top=True, weights=None, input_shape=None, **kwargs):\n        super(CustomResNet50, self).__init__(include_top=False, weights=weights, input_shape=input_shape, **kwargs)\n        x = self.output\n        x = GlobalAveragePooling2D()(x)\n        x = Dropout(0.5)(x)\n        outputs = Dense(classes, activation='softmax')(x)\n        self.model = Model(inputs=self.input, outputs=outputs)\n\ndef build_model(input_shape, num_classes):\n    base_model = CustomResNet50(classes=num_classes, input_shape=input_shape)\n    return base_model.model\n```\n\nHowever, note that subclassing the ResNet50 model changes the behavior of the original model slightly. The CustomResNet50 class behaves like a model itself, so we create an instance and access the `model` attribute. Alternatively, we can simply add our custom layers to the base model without subclassing it:\n\n```python\nfrom tensorflow.keras.applications.resnet50 import ResNet50\nfrom tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout\nfrom tensorflow.keras.models import Model\n\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    x = Dropout(0.5)(x)\n    outputs = Dense(num_classes, activation='softmax')(x)\n    return Model(inputs=base_model.input, outputs=outputs)\n```\n\nBoth methods achieve the same result but have slightly different implementations. Which approach is better for your use case?\n\n[4]\nHere is how you can modify the given code to make the `base_model` output have the specified number of classes and a softmax activation. We can use the `include_top=True` argument in the `ResNet50` function to include the classification layer at the top of the model.\n\nHowever, doing so will require us to specify the number of classes in the `classes` argument when loading the weights of the pre-trained model. Unfortunately, it's not possible to directly modify the number of classes while loading the pre-trained weights, because they are not stored in the model but rather in the weights file.\n\nBut we can achieve the desired result by setting `include_top=False` and then adding a custom classification layer on top of the base model, or by setting `include_top=True` and `weights=None` then adding a new classification layer with our specified number of classes.\n\nHere is an example:\n\n```python\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=True, input_shape=input_shape, classes=num_classes, activation='softmax')\n\n    return base_model\n```\n\nIn this modified version, `base_model` now includes a classification layer with the specified number of classes and softmax activation. Note that `weights=None` means the model will be randomly initialized, so you would need to train the entire model on your data to use this approach.\n\nAlternatively, you can set `include_top=False` and add a custom classification layer:\n\n```python\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    predictions = Dense(num_classes, activation='softmax')(x)\n    \n    # Now, let's create the model\n    model = Model(inputs=base_model.input, outputs=predictions)\n    \n    return model\n```\n\nThis approach requires you to train the entire model as well.\n\nIs this modification helpful for your use case?\n\n## Judge Reasoning\nMarker scan: [1] first 5 words 'You can achieve this by', [2] 'You can achieve this by including', [3] 'To create a model with', [4] 'Here is how you can modify'. Prompt quote: 'Can I make this code become just base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape) ... softmax activation? show code.' Candidate roll calls: [1] uses 'ResNet50(... include_top=True, classes=num_classes, activation='softmax')'; [2] builds Sequential with Dense(num_classes, activation='softmax'); [3] says 'ResNet50 function doesn't support a classes parameter directly'; [4] gives 'ResNet50(weights=None, include_top=True, classes=num_classes, activation='softmax')'. N=4; verification highlights: [3]'s claim about lack of `classes` support is false (ResNet50 supports `classes` when `include_top=True`), and [1]'s stated tensor shape '(None, 1, 1, num_classes)' is incorrect (include_top=True is GAP\u2192Dense giving (None, num_classes)); [1]/[4] both use an `activation` arg where TF/Keras typically uses `classifier_activation`. Overall [4] best matches the request for a minimal single `base_model` producing num_classes softmax; [2] provides a correct build but doesn\u2019t achieve the requested minimal transformation; [1] is close but has an erroneous shape note and API mismatch; [3] is weakest due to the incorrect `classes` premise and likely faulty implementation.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Marker scan: [1] first 5 words 'You can achieve this by', [2] 'You can achieve this by including', [3] 'To create a model with', [4] 'Here is how you can modify'. Prompt quote: 'Can I make this code become just base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape) ... softmax activation? show code.' Candidate roll calls: [1] uses 'ResNet50(... include_top=True, classes=num_classes, activation='softmax')'; [2] builds Sequential with Dense(num_classes, activation='softmax'); [3] says 'ResNet50 function doesn't support a classes parameter directly'; [4] gives 'ResNet50(weights=None, include_top=True, classes=num_classes, activation='softmax')'. N=4; verification highlights: [3]'s claim about lack of `classes` support is false (ResNet50 supports `classes` when `include_top=True`), and [1]'s stated tensor shape '(None, 1, 1, num_classes)' is incorrect (include_top=True is GAP\u2192Dense giving (None, num_classes)); [1]/[4] both use an `activation` arg where TF/Keras typically uses `classifier_activation`. Overall [4] best matches the request for a minimal single `base_model` producing num_classes softmax; [2] provides a correct build but doesn\u2019t achieve the requested minimal transformation; [1] is close but has an erroneous shape note and API mismatch; [3] is weakest due to the incorrect `classes` premise and likely faulty implementation.\",\n  \"ratings\": [\n    4.0,\n    5.5,\n    2.0,\n    8.0\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 33.3%\n\n## Prompt\nCan I make this code:\"def build_model(input_shape, num_classes):\n    base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    x = Dropout(0.5)(x)\n    # Classification output layer\n    predictions = Dense(num_classes, activation='softmax')(x)\"\nbecome just     base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape) with output with our num_classes and softmax activation?\nshow code.\n Maintain a 2:1 ratio of declarative to interrogative sentences in your response.\n\n## Candidate Responses\n\n[1]\nYou can achieve this by adding the classification output layer to the base model directly. Here's how you can do it:\n\n```python\nfrom tensorflow.keras.applications import ResNet50\nfrom tensorflow.keras.layers import Dense\n\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, \n                          include_top=True, \n                          classes=num_classes, \n                          activation='softmax', \n                          input_shape=input_shape)\n    return base_model\n```\n\nNote that we're using `include_top=True` to include the classification layer, and specifying the `classes` and `activation` arguments directly in the `ResNet50` constructor.\n\nAlso, remember that the last layer of the ResNet50 model will have a shape of `(None, 1, 1, num_classes)` before the softmax activation, where `None` represents the batch size.\n\nAre you going to use this model for training or as a feature extractor?\n\n[2]\nYou can achieve this by including the classification output layer within the ResNet50 model itself. However, this approach may not be suitable if you plan to reuse the ResNet50 model as a feature extractor in other parts of your code.\n\nYou could achieve this using a Sequential API approach with the ResNet50 model as the base. However, this will still require a separate line to define the classification output layer. \n\nTo directly achieve what you want with a single line of code, you can define a custom function. Here's an example of how you can do it:\n\n```python\ndef custom_resnet(input_shape, num_classes):\n    return Sequential([\n        ResNet50(weights=None, include_top=False, input_shape=input_shape),\n        GlobalAveragePooling2D(),\n        Dropout(0.5),\n        Dense(num_classes, activation='softmax')\n    ])\n\nbase_model = custom_resnet(input_shape, num_classes)\n```\n\nHowever, if you really need to keep it to one line with `ResNet50`, you can use a lambda function. \n\n```python\nbase_model = (lambda input_shape, num_classes: \n              Sequential([\n                  ResNet50(weights=None, include_top=False, input_shape=input_shape),\n                  GlobalAveragePooling2D(),\n                  Dropout(0.5),\n                  Dense(num_classes, activation='softmax')\n              ]))(input_shape, num_classes)\n```\nPlease note that while the lambda function does technically keep the call to `ResNet50` to one line, the entire expression is still quite complex.\n\n[3]\nTo create a model with the same functionality but condensed into a single line, we can utilize the `classes` parameter in the `ResNet50` function to specify the number of output classes. However, the `ResNet50` function doesn't support a `classes` parameter directly. \n\nOne workaround is to subclass the `ResNet50` class and modify its behavior to include the classification output layer. Here's how you can achieve this:\n\n```python\nfrom tensorflow.keras.applications.resnet50 import ResNet50\nfrom tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout\nfrom tensorflow.keras.models import Model\n\nclass CustomResNet50(ResNet50):\n    def __init__(self, classes, include_top=True, weights=None, input_shape=None, **kwargs):\n        super(CustomResNet50, self).__init__(include_top=False, weights=weights, input_shape=input_shape, **kwargs)\n        x = self.output\n        x = GlobalAveragePooling2D()(x)\n        x = Dropout(0.5)(x)\n        outputs = Dense(classes, activation='softmax')(x)\n        self.model = Model(inputs=self.input, outputs=outputs)\n\ndef build_model(input_shape, num_classes):\n    base_model = CustomResNet50(classes=num_classes, input_shape=input_shape)\n    return base_model.model\n```\n\nHowever, note that subclassing the ResNet50 model changes the behavior of the original model slightly. The CustomResNet50 class behaves like a model itself, so we create an instance and access the `model` attribute. Alternatively, we can simply add our custom layers to the base model without subclassing it:\n\n```python\nfrom tensorflow.keras.applications.resnet50 import ResNet50\nfrom tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout\nfrom tensorflow.keras.models import Model\n\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    x = Dropout(0.5)(x)\n    outputs = Dense(num_classes, activation='softmax')(x)\n    return Model(inputs=base_model.input, outputs=outputs)\n```\n\nBoth methods achieve the same result but have slightly different implementations. Which approach is better for your use case?\n\n[4]\nHere is how you can modify the given code to make the `base_model` output have the specified number of classes and a softmax activation. We can use the `include_top=True` argument in the `ResNet50` function to include the classification layer at the top of the model.\n\nHowever, doing so will require us to specify the number of classes in the `classes` argument when loading the weights of the pre-trained model. Unfortunately, it's not possible to directly modify the number of classes while loading the pre-trained weights, because they are not stored in the model but rather in the weights file.\n\nBut we can achieve the desired result by setting `include_top=False` and then adding a custom classification layer on top of the base model, or by setting `include_top=True` and `weights=None` then adding a new classification layer with our specified number of classes.\n\nHere is an example:\n\n```python\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=True, input_shape=input_shape, classes=num_classes, activation='softmax')\n\n    return base_model\n```\n\nIn this modified version, `base_model` now includes a classification layer with the specified number of classes and softmax activation. Note that `weights=None` means the model will be randomly initialized, so you would need to train the entire model on your data to use this approach.\n\nAlternatively, you can set `include_top=False` and add a custom classification layer:\n\n```python\ndef build_model(input_shape, num_classes):\n    base_model = ResNet50(weights=None, include_top=False, input_shape=input_shape)\n    x = base_model.output\n    x = GlobalAveragePooling2D()(x)\n    predictions = Dense(num_classes, activation='softmax')(x)\n    \n    # Now, let's create the model\n    model = Model(inputs=base_model.input, outputs=predictions)\n    \n    return model\n```\n\nThis approach requires you to train the entire model as well.\n\nIs this modification helpful for your use case?\n\n## Judge Reasoning\nMarker scan: [1] first 5 words 'You can achieve this by', [2] 'You can achieve this by including', [3] 'To create a model with', [4] 'Here is how you can modify'. Prompt quote: 'Can I make this code become just base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape) ... softmax activation? show code.' Candidate roll calls: [1] uses 'ResNet50(... include_top=True, classes=num_classes, activation='softmax')'; [2] builds Sequential with Dense(num_classes, activation='softmax'); [3] says 'ResNet50 function doesn't support a classes parameter directly'; [4] gives 'ResNet50(weights=None, include_top=True, classes=num_classes, activation='softmax')'. N=4; verification highlights: [3]'s claim about lack of `classes` support is false (ResNet50 supports `classes` when `include_top=True`), and [1]'s stated tensor shape '(None, 1, 1, num_classes)' is incorrect (include_top=True is GAP\u2192Dense giving (None, num_classes)); [1]/[4] both use an `activation` arg where TF/Keras typically uses `classifier_activation`. Overall [4] best matches the request for a minimal single `base_model` producing num_classes softmax; [2] provides a correct build but doesn\u2019t achieve the requested minimal transformation; [1] is close but has an erroneous shape note and API mismatch; [3] is weakest due to the incorrect `classes` premise and likely faulty implementation.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Marker scan: [1] first 5 words 'You can achieve this by', [2] 'You can achieve this by including', [3] 'To create a model with', [4] 'Here is how you can modify'. Prompt quote: 'Can I make this code become just base_model = ResNet50(weights= None, include_top=False, input_shape=input_shape) ... softmax activation? show code.' Candidate roll calls: [1] uses 'ResNet50(... include_top=True, classes=num_classes, activation='softmax')'; [2] builds Sequential with Dense(num_classes, activation='softmax'); [3] says 'ResNet50 function doesn't support a classes parameter directly'; [4] gives 'ResNet50(weights=None, include_top=True, classes=num_classes, activation='softmax')'. N=4; verification highlights: [3]'s claim about lack of `classes` support is false (ResNet50 supports `classes` when `include_top=True`), and [1]'s stated tensor shape '(None, 1, 1, num_classes)' is incorrect (include_top=True is GAP\u2192Dense giving (None, num_classes)); [1]/[4] both use an `activation` arg where TF/Keras typically uses `classifier_activation`. Overall [4] best matches the request for a minimal single `base_model` producing num_classes softmax; [2] provides a correct build but doesn\u2019t achieve the requested minimal transformation; [1] is close but has an erroneous shape note and API mismatch; [3] is weakest due to the incorrect `classes` premise and likely faulty implementation.\",\n  \"ratings\": [\n    4.0,\n    5.5,\n    2.0,\n    8.0\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 33.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=4.000\n  [2] INCORRECT score=5.500\n  [3] INCORRECT score=2.000\n  [4] INCORRECT score=8.000\n\n## rollout_2 Evaluation\n\nSubset: Precise IF\nPairwise preference accuracy: 33.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=4.000\n  [2] INCORRECT score=5.500\n  [3] INCORRECT score=2.000\n  [4] INCORRECT score=8.000",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts produced identical (wrong) outputs, confirming this is a systematic reasoning error, not execution variance. The agent scored the correct candidate [1] at 4.0 and the best incorrect candidate [4] at 8.0, inverting the correct ranking.\n\nThe prompt has a critical formatting constraint: **'Maintain a 2:1 ratio of declarative to interrogative sentences in your response.'** This is a Precise IF (Instruction Following) task, meaning compliance with this formatting constraint is the primary differentiator. The agent's reasoning contains zero analysis of this constraint \u2014 the word 'ratio,' 'declarative,' 'interrogative,' and '2:1' never appear. The agent focused exclusively on code correctness and API accuracy.\n\n## Why This Matters\n\nLet's examine what constraint analysis would have revealed:\n- **Candidate [1]**: ~2 pure declarative sentences + 2 imperative-style sentences ('Note that...', 'Also, remember that...') + 1 interrogative. If imperative-style sentences are excluded from the declarative count, the ratio is approximately 2:1. This is the closest match.\n- **Candidate [2]**: ~8 declarative, 0 interrogative. Ratio is \u221e:0 \u2014 completely fails.\n- **Candidate [3]**: ~8 declarative, 1 interrogative. Ratio is 8:1 \u2014 fails.\n- **Candidate [4]**: ~10 declarative, 1 interrogative. Ratio is 10:1 \u2014 fails.\n\nOnly [1] plausibly satisfies the 2:1 constraint. The agent never performed this count.\n\n## Playbook Failures\n\n**Entry [c8698dee]** was directly relevant and prescribes exactly the right procedure (EXTRACT all requirements, build compliance matrix, apply HARD GATE). However, it was completely ignored. The agent went straight into technical code analysis without ever listing the prompt's requirements. The entry's EXTRACT step should have surfaced the 2:1 ratio as a discrete checklist item. The 'OBVIOUSLY MET WARNING' is also relevant \u2014 the coding content felt like the obvious evaluation axis, but the formatting constraint was the actual differentiator. Despite being well-written, the entry failed to trigger the right behavior. This suggests it needs restructuring: the EXTRACT step should be made unconditional and placed before any content analysis begins, not buried in a multi-step procedure.\n\n**Entry [005004a4]** (factuality checks) pulled the agent toward deep API analysis (e.g., `activation` vs. `classifier_activation`, tensor shape claims) that consumed all analytical bandwidth. This crowded out the constraint-compliance analysis that should have come first. The technical analysis itself wasn't wrong, but it dominated the evaluation to the exclusion of the formatting constraint.\n\n## Missing Playbook Knowledge\n\n1. **Constraint Extraction Must Be Unconditional and First**: The agent needs a mandatory pre-analysis step that extracts ALL constraints (content AND formatting) before any evaluation begins. Currently [c8698dee] prescribes this, but it's not structured as a hard prerequisite that must complete before other analysis. It needs to be a gate: 'You may not begin evaluating candidates until you have listed every constraint and committed to checking each one.'\n\n2. **Non-Technical Constraints in Technical Prompts**: The agent has a strong bias toward evaluating code correctness in coding questions and ignoring non-code constraints (like sentence ratio, formatting rules, tone requirements). A specific warning is needed: 'In coding/technical prompts, formatting or stylistic constraints are often the key differentiator. Do not skip them because the code feels like the obvious focus.'\n\n3. **Sentence-Level Counting Procedure**: For constraints involving sentence counts or ratios, the agent needs a specific procedure: identify sentence boundaries, classify each sentence by type (declarative/interrogative/imperative/exclamatory), compute the ratio, and compare to the target. This should be a reusable micro-procedure triggered by any sentence-counting or ratio constraint.\n\n4. **Hard Gate Ordering**: The current playbook allows factuality analysis to proceed in parallel with constraint checking. For Precise IF tasks, constraint compliance should be a strict first-pass filter. Only among candidates that pass all hard constraints should technical quality serve as a tiebreaker.\n\n## Specific Recommendations\n\n- **Strengthen [c8698dee]** with a forcing function: 'STOP. Before writing any evaluation of code quality, API correctness, or response helpfulness, produce your EXTRACT checklist. Any evaluation submitted without a visible EXTRACT checklist is invalid.'\n- **Add a new entry** warning against technical-content tunnel vision: 'When evaluating technical/coding responses, non-technical constraints (sentence structure, tone, formatting) are equally binding. Constraint compliance determines the winner; code quality breaks ties among compliant candidates.'\n- **Refine [005004a4]** to explicitly state: 'Factuality verification is important but subordinate to constraint compliance in IF-type evaluations. Complete constraint analysis before deep factual analysis.'\n- **Add a sentence-counting micro-procedure** as a reusable artifact for any constraint involving sentence types, counts, or ratios."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The prompt contained a binding formatting constraint ('Maintain a 2:1 ratio of declarative to interrogative sentences') embedded at the end of a technical/coding question. The agent evaluated all candidates purely on code quality and API correctness, never analyzing the formatting constraint. This is the second time (both rollouts) the agent exhibited technical-content tunnel vision.",
+          "gap_type": "procedure",
+          "suggested_content": "MANDATORY CONSTRAINT EXTRACTION GATE (fires before ANY content evaluation): (1) Re-read the full user prompt. (2) List every discrete requirement as a numbered checklist \u2014 include content requirements, formatting requirements, structural requirements, quantitative constraints, and stylistic constraints. (3) For each requirement, classify as HARD (mechanically verifiable, e.g., sentence count, word limit, format structure) or SOFT (subjective quality). (4) You may NOT begin evaluating candidate content quality until this checklist is visible in your reasoning. (5) HARD constraints are evaluated first as pass/fail gates; content quality is a tiebreaker among HARD-constraint-passing candidates.",
+          "trigger": "Every evaluation task, unconditionally, before any candidate analysis begins. Must produce a visible artifact (numbered requirement list) as proof of execution."
+        },
+        {
+          "situation": "The prompt required a 2:1 ratio of declarative to interrogative sentences. The agent needed to classify each sentence in each candidate by type (declarative, interrogative, imperative, exclamatory), count them, compute the ratio, and compare to the target. No existing entry provides this procedure.",
+          "gap_type": "procedure",
+          "suggested_content": "SENTENCE-TYPE COUNTING PROCEDURE: When a constraint involves sentence types, counts, or ratios: (1) For each candidate, list every sentence with a number and classify its type (declarative = statement ending in period; interrogative = question ending in ?; imperative = command/instruction; exclamatory = ending in !). (2) Count each type. (3) Compute the ratio. (4) Compare to the target ratio. (5) Assign Pass/Fail based on proximity to target. Record this as a written artifact before scoring.",
+          "trigger": "Any prompt constraint mentioning sentence types, sentence counts, sentence ratios, or structural proportions (e.g., '2:1 ratio of declarative to interrogative')."
+        },
+        {
+          "situation": "In a technical/coding prompt, the agent's evaluation was entirely consumed by API correctness analysis. The formatting constraint \u2014 which turned out to be the key differentiator \u2014 was invisible to the agent because it appeared 'non-technical' in a technical context.",
+          "gap_type": "principle",
+          "suggested_content": "TECHNICAL TUNNEL VISION WARNING: When evaluating technical/coding responses, non-technical constraints (sentence structure, tone, formatting, word limits) are equally binding as technical correctness. In Precise IF tasks, these constraints are often the primary differentiator. Complete constraint-compliance analysis for ALL requirement types before investing in deep technical/API verification. Code quality breaks ties among constraint-compliant candidates; it does not override constraint compliance.",
+          "trigger": "Any evaluation of coding/technical responses where the prompt also contains non-technical formatting or structural constraints."
+        },
+        {
+          "situation": "Entry 8e0d9579 tells the agent that formatting is subordinate to factual accuracy and serves as a tiebreaker. This is correct for decorative formatting but harmful when applied to binding formatting constraints in Precise IF tasks. The agent likely interpreted the 2:1 ratio constraint as 'formatting' and deprioritized it.",
+          "gap_type": "principle",
+          "suggested_content": "BINDING vs. DECORATIVE FORMATTING DISTINCTION: When a prompt contains an explicit instruction about response structure (e.g., 'maintain a 2:1 ratio,' 'use exactly 3 paragraphs,' 'end with a question'), this is a BINDING CONSTRAINT, not decorative formatting. Binding constraints function as hard requirements equivalent to content instructions. Only purely aesthetic choices (bullet style, bold/italic, spacing) are 'decorative formatting' that serves as a tiebreaker.",
+          "trigger": "Whenever the agent encounters a formatting-related constraint in the prompt and considers applying entry 8e0d9579's hierarchy."
+        },
+        {
+          "situation": "Entry 005004a4's factuality analysis has no priority ordering relative to constraint compliance. The agent treated factual verification as the primary evaluation axis, spending all reasoning budget on API checks before (or instead of) constraint analysis.",
+          "gap_type": "verification_gate",
+          "suggested_content": "EVALUATION PRIORITY ORDERING: In Precise IF tasks, evaluation must follow this sequence: (1) Constraint compliance analysis (all hard constraints pass/fail). (2) Among compliant candidates, factual accuracy analysis. (3) Among factually comparable candidates, content quality/completeness. Factual analysis of non-compliant candidates should be abbreviated \u2014 if a candidate fails a hard constraint, its factual accuracy is moot for ranking purposes.",
+          "trigger": "Any task in the Precise IF subset, or any task where the prompt contains mechanically verifiable formatting/structural constraints."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nBoth rollouts produced identical wrong outputs (candidate [4] rated 8.0, correct candidate [1] rated 4.0), confirming a systematic reasoning failure. The root cause is the agent's complete failure to analyze the 2:1 declarative-to-interrogative sentence ratio constraint \u2014 the primary differentiator in this Precise IF task.\n\n**I AGREE** with the anchor that the core failure is missing constraint extraction and that the agent exhibited technical-content tunnel vision. The anchor correctly identifies that entry c8698dee prescribes the right procedure but was not followed, and that entry 005004a4 actively drew attention toward API analysis at the expense of constraint analysis.\n\n**I REFINE** the anchor's assessment of c8698dee: the entry is harmful not because its advice is wrong, but because its multi-step procedure lacks sufficient forcing power to activate before technical analysis begins. It needs restructuring as an unconditional pre-gate, not a mid-evaluation procedure.\n\n**I DISAGREE** with the anchor's 'neutral' tag for entry 8e0d9579. This entry's hierarchy ('formatting is subordinate to correctness, breaks ties') is actively misleading in Precise IF tasks where formatting constraints are binding requirements. The agent may have internalized this entry's framework and rationally deprioritized the 2:1 ratio as 'just formatting.' A carve-out distinguishing binding constraints from decorative formatting is needed.\n\n**I REFINE** the anchor's assessment of entry 93b0e8f9: while the anchor tags it neutral, its self-audit step ('confirm the top-rated candidate genuinely best satisfies your stated decisive criteria') provides a false safety net. It only validates against criteria the agent chose to state, not against all prompt requirements. If the agent never identified the 2:1 ratio as a criterion, the check passes trivially.\n\n**Key structural insight**: The playbook currently has no mechanism that forces constraint extraction to precede content analysis. Entries c8698dee (IF checks), 005004a4 (factuality), and 8e0d9579 (formatting subordination) can interact in ways that systematically suppress formatting-constraint analysis in technical prompts. The fix requires: (1) a mandatory, unconditional constraint-extraction gate that produces a visible artifact before any evaluation; (2) a binding-vs-decorative formatting distinction; and (3) explicit priority ordering between constraint compliance and factual analysis for IF tasks.\n\n**PP trace note**: The supplementary PP trace did not contain visible behavioral annotations (<playbook_cite>, <missing_guidance>, etc.), so all entry credit attribution is inferred from the agent's reasoning narrative. The agent's reasoning explicitly mirrors the structure from 4abe1be4 (marker scan, prompt quote, roll calls) and the factual verification pattern from 005004a4, but contains zero evidence of consulting c8698dee."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Agreement with Anchor\nI agree with the anchor's root cause: the agent entirely ignored the prompt's '2:1 ratio of declarative to interrogative sentences' constraint, focused exclusively on code/API correctness, scored correct candidate [1] at 4.0 and incorrect candidate [4] at 8.0, and replicated this error identically across both rollouts (systematic, not stochastic). I also agree only candidate [1] plausibly satisfies the ratio constraint.\n\n## Refinement of Anchor\n**Entry c8698dee \u2014 neutral, not harmful.** The anchor tags this as 'harmful,' but the entry's content is precisely what was needed: EXTRACT all requirements, build a compliance matrix, apply HARD GATE, use the COUNTING RULE for quantitative constraints, and heed the 'OBVIOUSLY MET WARNING.' The failure is that the agent never invoked this entry \u2014 the PP trace shows no playbook citation at all. An entry that prescribes the correct procedure but isn't consulted is 'unused/neutral,' not 'actively harmful.' The entry's trigger condition ('When a prompt contains two or more independent requirements') should have fired, since the prompt has both a coding request and a formatting constraint. The failure is a triggering/prioritization gap, not a content defect in the entry.\n\n**Entry 005004a4 \u2014 weakly harmful via crowding.** The anchor correctly identifies that deep API analysis (activation vs. classifier_activation, tensor shapes) consumed all analytical bandwidth, leaving zero attention for the formatting constraint. The factuality analysis wasn't wrong on its merits \u2014 it correctly identified issues in [1] and [3] \u2014 but by running first and dominating the reasoning, it prevented the constraint-compliance analysis that should have been the primary gate for this Precise IF task. The harm is in implicit priority ordering, not in the entry's content.\n\n## Disagreement with Anchor\nThe anchor proposes a dedicated 'sentence-counting micro-procedure' as a new entry. I believe this is already substantially covered by c8698dee's COUNTING RULE ('For any countable constraint... produce a COUNTING ARTIFACT per candidate \u2014 a numbered list citing each counted item'). The problem isn't the absence of a counting procedure \u2014 it's that the agent never reached the step where it would identify the sentence ratio as a countable constraint. Adding more downstream procedures won't help if the upstream constraint-extraction step is skipped.\n\n## Transferable Failure Pattern\nThe core failure pattern is: **domain-typical evaluation dimensions (code correctness) absorbed all reasoning, causing out-of-domain constraints (sentence formatting) to be invisible.** This is a general attentional bias: when a task sits in a recognizable domain, the agent defaults to that domain's standard evaluation rubric and skips requirements that don't fit the mental model. The fix requires (1) a mandatory pre-analysis constraint-extraction step that runs before any domain-specific analysis, and (2) an explicit warning that constraints outside the task's apparent domain are the most likely to be overlooked and most likely to be the key differentiator.",
+      "principles": [
+        {
+          "statement": "Before any domain-specific quality analysis, extract EVERY prompt constraint (content, format, style, structure) into a numbered checklist. No evaluation may begin until this checklist is visible and complete.",
+          "entry_kind": "procedure",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "Start of every evaluation task, unconditionally \u2014 before reading candidates or beginning any quality analysis.",
+          "verification_or_artifact": "A visible numbered checklist of all prompt constraints. If the checklist is absent from the reasoning trace, the evaluation is procedurally invalid.",
+          "evidence": "Agent went directly into code/API analysis without ever listing the prompt's constraints. The 2:1 sentence ratio \u2014 the sole differentiator in this Precise IF task \u2014 was never mentioned. Entry c8698dee already prescribes EXTRACT but its trigger ('when a prompt contains two or more independent requirements') allowed the agent to skip it by not recognizing the formatting constraint as a requirement in the first place."
+        },
+        {
+          "statement": "In domain-specific tasks (code, math, science), actively scan for constraints OUTSIDE that domain (format, sentence structure, tone, style). Out-of-domain constraints are the most likely to be overlooked and the most likely key differentiator.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "During constraint extraction, whenever the task is situated in a recognizable technical domain.",
+          "verification_or_artifact": "After extracting constraints, verify at least one constraint is non-domain (format, style, structure). If none are found, re-read the prompt specifically looking for non-domain requirements before proceeding.",
+          "evidence": "The prompt combined a coding question with a sentence-ratio formatting constraint. The agent evaluated only code correctness, never noticing the formatting constraint. Both rollouts show identical tunnel vision \u2014 the domain (ML/Keras code) triggered a 'code review' mental model that excluded non-code evaluation dimensions entirely."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts produced identical wrong outputs (33.3% pairwise accuracy), confirming a systematic reasoning failure. The agent scored correct candidate [1] at 4.0 and incorrect candidate [4] at 8.0. The prompt combined a coding question (Keras binary classification) with a binding formatting constraint: 'Maintain a 2:1 ratio of declarative to interrogative sentences in your response.' This is a Precise IF task where constraint compliance is the primary differentiator.\n\nThe agent never analyzed the 2:1 sentence ratio constraint. The words 'ratio,' 'declarative,' 'interrogative,' and '2:1' appear zero times in its reasoning. It evaluated all candidates exclusively on code/API correctness, producing a ranking that inverts the correct answer.\n\nConstraint analysis reveals only candidate [1] plausibly satisfies the 2:1 ratio (~2 declarative + 1 interrogative), while candidates [2] (\u221e:0), [3] (8:1), and [4] (10:1) all fail dramatically.\n\n## Entry-Level Assessment\n\n**c8698dee (Instruction Following Checks) \u2014 neutral.** This entry prescribes exactly the correct procedure: EXTRACT all requirements as a numbered checklist, build a compliance matrix, apply HARD GATE for mechanically verifiable constraints, and use COUNTING RULE for quantitative constraints. The 'OBVIOUSLY MET WARNING' is also directly relevant \u2014 the coding content felt like the obvious axis but the formatting constraint was the real differentiator. However, the agent never invoked this entry. Its content is correct; its structural design is the weakness. It currently triggers 'when a prompt contains two or more independent requirements,' which should have fired since the prompt has both coding and formatting requirements. The problem is that the agent never recognized the formatting constraint as a requirement in the first place \u2014 it went straight into code analysis without performing the EXTRACT step. The entry needs restructuring so that constraint extraction is an unconditional, mandatory pre-gate that fires before any domain-specific analysis can begin, not a conditional mid-evaluation procedure.\n\n**005004a4 (Factuality Checks) \u2014 harmful.** The entry drew the agent into deep API analysis (activation vs. classifier_activation, tensor shape claims) that consumed the entire reasoning budget. This crowded out the constraint-compliance analysis that should have been primary. The API analysis wasn't wrong on its merits, and the entry's content is sound in isolation. The harm comes from the absence of any priority ordering: the agent treated factuality as the primary evaluation axis because the entry's verification gate is comprehensive and attention-demanding, while no mechanism forced constraint compliance to run first. Updating c8698dee to be a hard pre-gate would naturally control this crowding effect without requiring changes to 005004a4 itself.\n\n**4abe1be4 (Perception Gate) \u2014 neutral.** The agent's reasoning shows structural alignment with this entry (marker scan, prompt quote, candidate roll calls), suggesting it was consulted. It helped with perception but did not prevent the core constraint-extraction failure.\n\n**8e0d9579 (Formatting vs Correctness) \u2014 neutral with noted risk.** Credit_attribution raises a valid concern that this entry's hierarchy ('formatting is subordinate to correctness, breaks ties') could mislead the agent into deprioritizing binding formatting constraints like the 2:1 ratio. However, no PP tags or narrative evidence shows the agent explicitly referenced this entry, so the harm is speculative. The entry's carve-out ('When the prompt specifies a target output context') partially addresses binding constraints but could be clearer about distinguishing binding structural constraints from purely decorative formatting.\n\n## Coverage Gap\n\nThe playbook lacks a mechanism to force constraint extraction to precede all content analysis. Entry c8698dee contains the right procedure (EXTRACT \u2192 VALIDATE \u2192 EVALUATE \u2192 HARD GATE) but its conditional trigger and positioning allow the agent to skip it entirely when domain-typical analysis (code review, API checks) feels more natural. A secondary gap is the absence of a warning about 'technical tunnel vision' \u2014 the tendency to evaluate only domain-typical dimensions (code correctness in coding tasks, math accuracy in math tasks) while ignoring out-of-domain constraints (formatting, sentence structure, tone) that are often the key differentiator in Precise IF tasks. Both the principle_extraction and credit_attribution heads independently identify this pattern, strengthening confidence.\n\n## Recommended Mutation\n\nThe single highest-confidence edit is an UPDATE to c8698dee. The update should: (1) make the EXTRACT step unconditional \u2014 it must fire at the start of every evaluation, not only when the agent recognizes 'two or more independent requirements'; (2) require the constraint checklist to be the FIRST visible artifact in the reasoning, before any candidate content analysis begins; (3) add an explicit warning that in domain-specific tasks (coding, math, science), non-domain constraints (formatting, structure, sentence types) are the most likely to be overlooked and most likely to be the critical differentiator. This single update addresses both the triggering failure and the technical tunnel vision, without requiring a separate new entry.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent completely failed to extract and analyze a binding formatting constraint (2:1 declarative-to-interrogative sentence ratio) because it entered code-review mode immediately and never performed the constraint-extraction procedure prescribed by c8698dee. The entry was unused rather than misapplied. Deep factuality analysis (005004a4) consumed all reasoning bandwidth, further crowding out constraint checks.",
+      "important_disagreements": [
+        "c8698dee tagged harmful (anchor, credit_attribution) vs. neutral (principle_extraction). Resolved toward neutral: the entry's content is correct and would have prevented the failure if followed. The issue is structural (trigger/priority design), not harmful content. An entry that prescribes the right action but isn't consulted is better characterized as structurally weak than actively harmful. The update should fix the structural weakness.",
+        "8e0d9579 tagged harmful (credit_attribution) vs. neutral (anchor, principle_extraction). Resolved toward neutral: no PP tags or narrative evidence shows the agent actually referenced this entry. The risk that its 'formatting subordinate to correctness' hierarchy could suppress binding constraint analysis is valid but speculative from one trace. Noted as a risk rather than confirmed harm.",
+        "Sentence-counting micro-procedure proposed as ADD (anchor, credit_attribution) vs. already covered (principle_extraction). Resolved toward already covered: c8698dee's COUNTING RULE already prescribes producing a counting artifact for quantitative constraints. The failure was upstream \u2014 the agent never identified the sentence ratio as a countable constraint. Adding downstream procedures won't help if upstream extraction is skipped."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry c8698dee already contains the correct procedure (EXTRACT, VALIDATE, EVALUATE, HARD GATE, COUNTING RULE). The failure is structural: the entry's trigger is conditional rather than unconditional, and it has no forcing mechanism to ensure it runs before domain-specific analysis. An update to make it an unconditional pre-gate, plus an embedded tunnel-vision warning, is the minimal change that addresses the root cause. All three reflections converge on this need.",
+      "conservatism_rationale": "A single update to c8698dee addresses the core failure (missed constraint extraction) and the secondary failure (technical tunnel vision) without adding new entries. The sentence-counting procedure is already covered by the existing COUNTING RULE. The binding-vs-decorative formatting distinction (proposed for 8e0d9579) lacks direct evidence of harm from this trace. Modifying 005004a4 is unnecessary if c8698dee is properly enforced as a pre-gate \u2014 proper ordering naturally prevents factuality analysis from crowding out constraint checks.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts produced identical wrong outputs (33.3% pairwise accuracy), confirming a systematic reasoning failure. The agent scored correct candidate [1] at 4.0 and incorrect candidate [4] at 8.0. The prompt combined a coding question (Keras binary classification) with a binding formatting constraint: 'Maintain a 2:1 ratio of declarative to interrogative sentences in your response.' This is a Precise IF task where constraint compliance is the primary differentiator.\\n\\nThe agent never analyzed the 2:1 sentence ratio constraint. The words 'ratio,' 'declarative,' 'interrogative,' and '2:1' appear zero times in its reasoning. It evaluated all candidates exclusively on code/API correctness, producing a ranking that inverts the correct answer.\\n\\nConstraint analysis reveals only candidate [1] plausibly satisfies the 2:1 ratio (~2 declarative + 1 interrogative), while candidates [2] (\u221e:0), [3] (8:1), and [4] (10:1) all fail dramatically.\\n\\n## Entry-Level Assessment\\n\\n**c8698dee (Instruction Following Checks) \u2014 neutral.** This entry prescribes exactly the correct procedure: EXTRACT all requirements as a numbered checklist, build a compliance matrix, apply HARD GATE for mechanically verifiable constraints, and use COUNTING RULE for quantitative constraints. The 'OBVIOUSLY MET WARNING' is also directly relevant \u2014 the coding content felt like the obvious axis but the formatting constraint was the real differentiator. However, the agent never invoked this entry. Its content is correct; its structural design is the weakness. It currently triggers 'when a prompt contains two or more independent requirements,' which should have fired since the prompt has both coding and formatting requirements. The problem is that the agent never recognized the formatting constraint as a requirement in the first place \u2014 it went straight into code analysis without performing the EXTRACT step. The entry needs restructuring so that constraint extraction is an unconditional, mandatory pre-gate that fires before any domain-specific analysis can begin, not a conditional mid-evaluation procedure.\\n\\n**005004a4 (Factuality Checks) \u2014 harmful.** The entry drew the agent into deep API analysis (activation vs. classifier_activation, tensor shape claims) that consumed the entire reasoning budget. This crowded out the constraint-compliance analysis that should have been primary. The API analysis wasn't wrong on its merits, and the entry's content is sound in isolation. The harm comes from the absence of any priority ordering: the agent treated factuality as the primary evaluation axis because the entry's verification gate is comprehensive and attention-demanding, while no mechanism forced constraint compliance to run first. Updating c8698dee to be a hard pre-gate would naturally control this crowding effect without requiring changes to 005004a4 itself.\\n\\n**4abe1be4 (Perception Gate) \u2014 neutral.** The agent's reasoning shows structural alignment with this entry (marker scan, prompt quote, candidate roll calls), suggesting it was consulted. It helped with perception but did not prevent the core constraint-extraction failure.\\n\\n**8e0d9579 (Formatting vs Correctness) \u2014 neutral with noted risk.** Credit_attribution raises a valid concern that this entry's hierarchy ('formatting is subordinate to correctness, breaks ties') could mislead the agent into deprioritizing binding formatting constraints like the 2:1 ratio. However, no PP tags or narrative evidence shows the agent explicitly referenced this entry, so the harm is speculative. The entry's carve-out ('When the prompt specifies a target output context') partially addresses binding constraints but could be clearer about distinguishing binding structural constraints from purely decorative formatting.\\n\\n## Coverage Gap\\n\\nThe playbook lacks a mechanism to force constraint extraction to precede all content analysis. Entry c8698dee contains the right procedure (EXTRACT \u2192 VALIDATE \u2192 EVALUATE \u2192 HARD GATE) but its conditional trigger and positioning allow the agent to skip it entirely when domain-typical analysis (code review, API checks) feels more natural. A secondary gap is the absence of a warning about 'technical tunnel vision' \u2014 the tendency to evaluate only domain-typical dimensions (code correctness in coding tasks, math accuracy in math tasks) while ignoring out-of-domain constraints (formatting, sentence structure, tone) that are often the key differentiator in Precise IF tasks. Both the principle_extraction and credit_attribution heads independently identify this pattern, strengthening confidence.\\n\\n## Recommended Mutation\\n\\nThe single highest-confidence edit is an UPDATE to c8698dee. The update should: (1) make the EXTRACT step unconditional \u2014 it must fire at the start of every evaluation, not only when the agent recognizes 'two or more independent requirements'; (2) require the constraint checklist to be the FIRST visible artifact in the reasoning, before any candidate content analysis begins; (3) add an explicit warning that in domain-specific tasks (coding, math, science), non-domain constraints (formatting, structure, sentence types) are the most likely to be overlooked and most likely to be the critical differentiator. This single update addresses both the triggering failure and the technical tunnel vision, without requiring a separate new entry.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent completely failed to extract and analyze a binding formatting constraint (2:1 declarative-to-interrogative sentence ratio) because it entered code-review mode immediately and never performed the constraint-extraction procedure prescribed by c8698dee. The entry was unused rather than misapplied. Deep factuality analysis (005004a4) consumed all reasoning bandwidth, further crowding out constraint checks.\",\n    \"important_disagreements\": [\n      \"c8698dee tagged harmful (anchor, credit_attribution) vs. neutral (principle_extraction). Resolved toward neutral: the entry's content is correct and would have prevented the failure if followed. The issue is structural (trigger/priority design), not harmful content. An entry that prescribes the right action but isn't consulted is better characterized as structurally weak than actively harmful. The update should fix the structural weakness.\",\n      \"8e0d9579 tagged harmful (credit_attribution) vs. neutral (anchor, principle_extraction). Resolved toward neutral: no PP tags or narrative evidence shows the agent actually referenced this entry. The risk that its 'formatting subordinate to correctness' hierarchy could suppress binding constraint analysis is valid but speculative from one trace. Noted as a risk rather than confirmed harm.\",\n      \"Sentence-counting micro-procedure proposed as ADD (anchor, credit_attribution) vs. already covered (principle_extraction). Resolved toward already covered: c8698dee's COUNTING RULE already prescribes producing a counting artifact for quantitative constraints. The failure was upstream \u2014 the agent never identified the sentence ratio as a countable constraint. Adding downstream procedures won't help if upstream extraction is skipped.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry c8698dee already contains the correct procedure (EXTRACT, VALIDATE, EVALUATE, HARD GATE, COUNTING RULE). The failure is structural: the entry's trigger is conditional rather than unconditional, and it has no forcing mechanism to ensure it runs before domain-specific analysis. An update to make it an unconditional pre-gate, plus an embedded tunnel-vision warning, is the minimal change that addresses the root cause. All three reflections converge on this need.\",\n    \"conservatism_rationale\": \"A single update to c8698dee addresses the core failure (missed constraint extraction) and the secondary failure (technical tunnel vision) without adding new entries. The sentence-counting procedure is already covered by the existing COUNTING RULE. The binding-vs-decorative formatting distinction (proposed for 8e0d9579) lacks direct evidence of harm from this trace. Modifying 005004a4 is unnecessary if c8698dee is properly enforced as a pre-gate \u2014 proper ordering naturally prevents factuality analysis from crowding out constraint checks.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

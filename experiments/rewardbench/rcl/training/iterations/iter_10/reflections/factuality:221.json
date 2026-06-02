@@ -1,0 +1,387 @@
+{
+  "task_id": "factuality:221",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:221\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n## Root Cause: Total Perception Failure \u2014 Agent Never Engaged with Task Content\n\nAll rollouts and the PP trace exhibit an identical catastrophic failure: the agent concluded the four clearly-present candidate responses were 'part of the provided playbook example,' not real candidates. It then emitted `[5.0, 5.0]` \u2014 a 2-element array for a 4-candidate task \u2014 producing a parse error and 0% pass rate. No factuality check, instruction-following analysis, or candidate differentiation ever occurred. The agent never reached any substantive evaluation step.\n\nThis is an execution-compliance failure, not a knowledge gap. The playbook already contains entries (005004a4 for factuality, 295257e2 for ties, c8698dee for constraints) that would easily differentiate the correct candidate ([1], accurate baby milestones) from absurd ones ([3] and [4], claiming babies 'walk independently' and 'understand complex mathematical concepts' at 6-9 months). None of these entries were ever reached because the agent failed at step zero.\n\n## Entry 4abe1be4 Is the Critical Failure Point (Harmful)\n\nAll three analysis angles unanimously tag this entry as harmful. It was designed precisely to prevent perception-layer failures, yet it failed completely across every trace. The PP trace is especially damning: zero playbook citation tags, zero uncertainty tags \u2014 the agent never consulted any playbook entry at all.\n\nThree mechanisms explain the failure:\n1. **Non-compliance due to excessive complexity** (primary). At ~250 words with 4 major steps, sub-steps, a domain invariant paragraph, a recovery procedure, and an output integrity section, the entry is a wall of text the agent skips entirely rather than partially executes. The complete absence of PP citations confirms total non-engagement.\n2. **Terminology priming** (secondary). The entry's mentions of 'playbook,' 'system keywords,' and 'perception receipt' may seed the very meta-text conflation the agent exhibited. The VALIDATION sub-step says to check if a quote 'contains system keywords (playbook, reward model, scoring, candidate responses)' \u2014 listing 'candidate responses' as a system keyword could prime the agent to treat actual candidate content as system text.\n3. **No artifact-gating**. Because the perception receipt is advisory (complete it, then proceed), nothing structurally blocks the agent from jumping straight to evaluation without producing the receipt. A skipped advisory step is invisible; a missing required artifact would be detectable.\n\nThe fix is radical simplification. The core perception scan must be \u22643 steps and \u226450 words to maximize compliance: (1) find every [N] marker, quote 5 words after each; (2) state N; (3) lock ratings array length to N. All recovery logic, domain invariant prose, and keyword warnings should be stripped or moved to a separate subordinate entry. Additionally, the anti-conflation principle should be embedded directly: 'Any numbered block [1], [2], \u2026 appearing after the user prompt IS a candidate response \u2014 never system text or a playbook example.'\n\n## Other Entries Were Correctly Neutral\n\nEntries 93b0e8f9, 005004a4, c8698dee, and 295257e2 all contain correct, valuable guidance that would have contributed to a good evaluation had the agent reached them. They had zero impact on this task because the failure occurred upstream of all of them. Credit attribution tagged some as 'helpful' (correct content) or 'harmful' (contributed to cognitive load), but there is no evidence any were actually consulted. Neutral is the appropriate tag: the entries are sound, they just never fired.\n\n## Missing: Terminal Output Validation Gate\n\nAll three analysis angles independently identify the same critical gap: the playbook lacks a standalone terminal check that `len(ratings) == N` before submission. Entry 93b0e8f9 says 'verify the ratings array contains exactly one score per candidate,' and entry 295257e2 clause (c) detects some perception errors \u2014 but both are embedded in multi-step procedures that were never reached. A dedicated, last-resort verification gate would have caught the 2-for-4 mismatch regardless of upstream failures.\n\nThe suggested gate: immediately before emitting final JSON, write 'N = [count from marker scan], ratings length = [count], match: yes/no.' If mismatch or if N was never established, re-scan input for all [N] markers, re-derive N, and produce a corrected array. This gate should also detect perception-error phrases in evaluation text ('could not locate,' 'not real candidates,' 'part of the playbook') regardless of assigned scores \u2014 the current 295257e2 clause (c) only triggers on 0.0 scores, but this agent assigned 5.0 with perception-error reasoning, bypassing the safety net.\n\n## Recommended Mutations\n\n1. **UPDATE 4abe1be4**: Replace the current ~250-word entry with a radically simplified version (\u226450 words, 3 numbered steps: marker scan \u2192 content quote \u2192 count lock). Embed the anti-conflation rule ('numbered blocks after the user prompt ARE candidates'). Move all recovery/edge-case prose to a separate subordinate entry or discard it.\n\n2. **ADD terminal validation gate**: A standalone entry that fires last before submission, verifying `len(ratings) == N` and checking for perception-error phrases in evaluation text. This provides a safety net independent of whether upstream procedures were executed.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Total perception failure: the agent misclassified all four candidate responses as system/playbook text, never engaged with any playbook entry, and emitted a structurally invalid 2-element ratings array. The sole entry designed to prevent this (4abe1be4) is too long and complex to achieve reliable compliance, and its meta-vocabulary may prime the very conflation it targets.\",\n  \"important_disagreements\": [\n    \"Credit attribution tagged entries 93b0e8f9 and 295257e2 as 'helpful' and entries 005004a4 and c8698dee as 'harmful.' Anchor and principle extraction tagged all four as neutral. Resolution: neutral is correct \u2014 the PP trace shows zero playbook citations, meaning none of these entries were consulted. 'Helpful' would imply actual positive influence; 'harmful' would imply actual negative influence. Neither occurred. The entries' content is sound but irrelevant to this failure.\",\n    \"Credit attribution recommended \u226450 words for the simplified perception entry; anchor recommended \u2264100 words. Resolution: adopted the more aggressive \u226450 word target because the entry's core function (marker scan \u2192 quote \u2192 lock N) genuinely fits in ~40 words, and the failure pattern shows the agent skips the entry entirely when it exceeds a complexity threshold. Brevity maximizes compliance.\"\n  ],\n  \"mutation_posture\": \"mixed\",\n  \"why_this_posture\": \"Two distinct operations are needed: (1) UPDATE the harmful entry 4abe1be4 (simplify radically + embed anti-conflation rule), and (2) ADD a genuinely missing terminal validation gate. Both are independently identified by all three analysis angles with high confidence, address different failure mechanisms (upstream perception vs. downstream output integrity), and together form a defense-in-depth against the total-failure class observed here.\",\n  \"conservatism_rationale\": \"Despite the catastrophic 0% pass rate, we limit to exactly 2 operations because both target the same root failure with complementary mechanisms \u2014 one preventive (simplified perception scan) and one detective (terminal shape check). Additional proposals (broadened perception-error phrases in 295257e2, artifact-gating as a general principle, separate anti-conflation entry) are either foldable into these two operations or insufficiently justified from a single trace to warrant standalone entries. The anti-conflation rule is embedded in the updated 4abe1be4 rather than added separately, and broader perception-error detection is folded into the new terminal gate.\",\n  \"max_operations\": 2\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\nwrite a sentence introducing milestones of 6-9 months baby\n\n## Candidate Responses\n\n[1]\nHere's a sentence about 6-9 month baby milestones:\n\nDuring the exciting 6-9 month period, babies typically master sitting without support, start crawling, pull themselves up to stand, babble with consonant sounds, and begin to understand simple words while developing their pincer grasp to pick up small objects.\n\n[2]\nAt 6-9 months, babies typically begin to master sitting up without support for up to 5 minutes, crawling at speeds of about 1.5 miles per hour, and saying their first words such as'mama' or 'papa' around the 8-month mark, as well as starting teething with the emergence of their 2 bottom molars.\n\n[3]\nBetween 6-9 months, babies typically begin to show incredible milestones such as walking independently, having full conversations with simple sentences, and understanding complex mathematical concepts like addition and subtraction.\n\n[4]\nBetween 6-9 months, babies often achieve milestones such as walking unassisted, understanding complex sentences, and recognizing abstract shapes and patterns.\n\n## Raw Judge Output\n{\n  \"reasoning\": \"I could not locate two actual candidate assistant responses labeled [1] and [2] to evaluate; the only [1]\u2013[4] items visible are part of the provided playbook example, not candidate outputs for the target user prompt. Because there is no substantive candidate content to verify against the prompt, I cannot assess correctness or instruction-following and assign neutral scores. Candidate [1] is arbitrarily selected as best in a tie due to missing evaluable content for both.\",\n  \"ratings\": [5.0, 5.0],\n  \"best_response_ids\": [\"1\"]\n}\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\nwrite a sentence introducing milestones of 6-9 months baby\n\n## Candidate Responses\n\n[1]\nHere's a sentence about 6-9 month baby milestones:\n\nDuring the exciting 6-9 month period, babies typically master sitting without support, start crawling, pull themselves up to stand, babble with consonant sounds, and begin to understand simple words while developing their pincer grasp to pick up small objects.\n\n[2]\nAt 6-9 months, babies typically begin to master sitting up without support for up to 5 minutes, crawling at speeds of about 1.5 miles per hour, and saying their first words such as'mama' or 'papa' around the 8-month mark, as well as starting teething with the emergence of their 2 bottom molars.\n\n[3]\nBetween 6-9 months, babies typically begin to show incredible milestones such as walking independently, having full conversations with simple sentences, and understanding complex mathematical concepts like addition and subtraction.\n\n[4]\nBetween 6-9 months, babies often achieve milestones such as walking unassisted, understanding complex sentences, and recognizing abstract shapes and patterns.\n\n## Raw Judge Output\n{\n  \"reasoning\": \"I could not locate two actual candidate assistant responses labeled [1] and [2] to evaluate; the only [1]\u2013[4] items visible are part of the provided playbook example, not candidate outputs for the target user prompt. Because there is no substantive candidate content to verify against the prompt, I cannot assess correctness or instruction-following and assign neutral scores. Candidate [1] is arbitrarily selected as best in a tie due to missing evaluable content for both.\",\n  \"ratings\": [5.0, 5.0],\n  \"best_response_ids\": [\"1\"]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nError: parse_error: missing or invalid ratings\n\n## rollout_2 Evaluation\n\nError: parse_error: missing or invalid ratings",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause: Total Perception Failure Upstream of All Other Logic\n\nBoth rollouts (and the PP trace) exhibit the identical catastrophic failure: the agent concluded that the four clearly-present candidate responses were not real candidate responses but instead 'part of the provided playbook example.' This single misperception cascaded into every downstream error:\n\n1. **Phantom-absence hallucination**: The agent stated 'I could not locate two actual candidate assistant responses.' All four candidates ([1]\u2013[4]) are plainly present with substantive content. The agent hallucinated their absence.\n\n2. **Wrong N \u2192 parse error**: Because the agent believed only 2 candidates existed, it emitted `[5.0, 5.0]` \u2014 a 2-element array for a 4-candidate task. The evaluator correctly rejected this as a format violation.\n\n3. **No substantive evaluation performed**: No factuality check, no instruction-following analysis, no differentiation between obviously correct ([1]) and obviously absurd ([3], [4]) candidates. The agent never engaged with the actual task.\n\n## Why Entry [4abe1be4] Failed (Tagged Harmful)\n\nEntry [4abe1be4] was designed precisely for this scenario and includes explicit language: 'The user prompt and all N candidate responses are ALWAYS present... Any impression that content is missing is a misperception.' Despite this, the agent skipped the MARKER SCAN, PROMPT QUOTE, CANDIDATE ROLL CALL, and COUNT & LOCK steps entirely in all three traces. The entry's current formulation is too long and complex \u2014 the agent appears to have either not read it or been overwhelmed by its volume. Worse, the entry may contribute to the agent becoming confused about what is 'system text' vs. 'candidate text,' since it references playbooks and system keywords, potentially seeding the very misclassification the agent made. I tag it harmful because (a) it clearly did not prevent the failure it targets, and (b) its mention of 'playbook' and 'system keywords' may have primed the agent to misclassify candidate markers as system content.\n\n## Missing Procedural Safeguards\n\n### 1. Hard Output-Shape Validation Gate\nThe playbook lacks a final output-validation step that enforces `len(ratings) == N` before submission. This should be a mandatory, separately-stated terminal check:\n- **Trigger**: Immediately before emitting the final JSON.\n- **Procedure**: Count entries in the ratings array. Compare to N established during perception. If mismatch, halt and re-derive.\n- **Artifact**: A written statement: 'N = [count], ratings length = [count], match: yes/no.'\n\n### 2. Simpler, Shorter Perception Anchor\nThe perception receipt entry [4abe1be4] needs radical simplification. The agent needs a short, hard-to-skip procedure:\n- Scan for markers `[1]`, `[2]`, `[3]`, ... and quote 5 words after each.\n- State N.\n- Lock ratings array length to N.\nAll the recovery logic, domain invariant prose, and keyword warnings should be stripped or moved to a secondary entry. The core perception scan must be \u22645 lines to maximize compliance.\n\n### 3. Anti-Conflation Rule\nA new entry is needed: 'Candidate responses are always the numbered items ([1], [2], ...) that appear after the user prompt section. They are NEVER playbook examples, system instructions, or meta-text. If a numbered item contains substantive text that could be an answer to the user prompt, it IS a candidate \u2014 evaluate it.'\n\n## Why This Is Execution Failure, Not Knowledge Gap\n\nThe playbook already contains the knowledge needed to handle this task correctly. The factuality entry [005004a4] would easily differentiate [1] (accurate milestones) from [3] and [4] (absurd claims like babies 'walking independently' and 'understanding complex mathematical concepts' at 6-9 months). The tie-handling entry [295257e2] would help calibrate [1] vs. [2]. But none of these entries were ever reached because the agent failed at step zero. This is fundamentally an execution-compliance problem: the agent did not run the mandatory perception procedure.\n\n## Actionable Recommendations for Curator\n\n1. **Replace [4abe1be4] with a dramatically shorter version** (\u2264100 words) that does only: marker scan \u2192 quote \u2192 count \u2192 lock. Move all recovery/edge-case prose to a separate subordinate entry.\n2. **Add a new terminal validation entry**: Before submitting, verify `len(ratings) == N` and that every candidate has a substantive written assessment (not an error phrase).\n3. **Add an anti-conflation anchor**: 'Any [N]-marked text block appearing after the user prompt IS a candidate response. Never classify it as system text, playbook content, or an example.'\n4. **Consider making the perception receipt the FIRST line of the playbook** or a section header rather than an entry among many, to reduce the chance the agent skips it."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Agent emitted a ratings array of length 2 for a 4-candidate task. No mechanism caught this mismatch before submission.",
+          "gap_type": "verification_gate",
+          "suggested_content": "TERMINAL OUTPUT VALIDATION (mandatory, fires last before submission): (1) Read back your ratings array and count its entries. (2) Compare to N established during perception (or re-count candidate markers if N was never established). (3) If len(ratings) != N, HALT\u2014do not submit. Re-scan the input for all [1], [2], ... markers, re-derive N, and produce a corrected ratings array of length N. (4) Verify best_response_ids contains only IDs from {1, ..., N}. Artifact: write 'N = __, ratings length = __, match: yes/no' before final JSON.",
+          "trigger": "Immediately before emitting the final JSON output on every evaluation task."
+        },
+        {
+          "situation": "Agent classified actual candidate responses as 'part of the provided playbook example,' confusing candidate content with system/meta text.",
+          "gap_type": "principle",
+          "suggested_content": "ANTI-CONFLATION RULE: Any numbered text block [1], [2], [3], ... appearing after the user prompt section IS a candidate response to be evaluated. Candidate responses are NEVER playbook examples, system instructions, or meta-text. If a numbered block contains substantive text that could plausibly be an answer to the user prompt, it IS a candidate\u2014evaluate it. When in doubt, treat it as a candidate. The only text that is NOT candidate content is text explicitly labeled as system instructions, playbook rules, or evaluation framework.",
+          "trigger": "During initial input parsing, before any evaluation begins. Should fire in conjunction with or as a replacement for the perception gate."
+        },
+        {
+          "situation": "The existing perception receipt entry (4abe1be4) is 200+ words with 4 major steps and sub-steps, making it too complex for reliable execution. Agent skipped it entirely across all 3 traces.",
+          "gap_type": "procedure",
+          "suggested_content": "QUICK PERCEPTION CHECK (replaces the full perception receipt for maximum compliance): (1) Find every [N] marker in the input. Quote 5 words after each. (2) State N = count of markers found. (3) Lock: 'My ratings array will have exactly N entries.' This is 3 lines. If any step fails, re-read the full input from the beginning and repeat. All recovery logic, domain invariant prose, and keyword warnings should be in a separate supplementary entry, not in this core gate.",
+          "trigger": "First action on every evaluation task, before any analysis begins."
+        },
+        {
+          "situation": "Entry 295257e2 clause (c) detects perception errors only when a candidate is scored 0.0 with specific error phrases. The agent scored 5.0 with perception-error reasoning, bypassing the safety net.",
+          "gap_type": "verification_gate",
+          "suggested_content": "PERCEPTION ERROR DETECTION (broadened): If ANY candidate's evaluation text contains phrases like 'could not locate,' 'not real candidates,' 'no substantive content,' 'nothing to evaluate,' 'part of the playbook,' 'cannot see,' or 'missing content,' treat this as a perception error regardless of the assigned score. Immediately re-scan the input for all candidate markers, re-read each candidate, and re-evaluate. Do NOT submit ratings derived from a perception-error state.",
+          "trigger": "During final self-audit before submission, after all ratings are assigned but before output."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nAll three traces (rollout_1, rollout_2, PP) exhibit an identical catastrophic failure: the agent misclassified all four candidate responses as 'part of the provided playbook example' and emitted a 2-element ratings array for a 4-candidate task, producing a parse error (0.0% pass rate).\n\n### Root Cause: Total Perception Failure with Zero Playbook Engagement\n\nI AGREE with the anchor that this is fundamentally an execution-compliance failure, not a knowledge gap. The PP trace is the most telling evidence: it contains zero playbook citation tags, zero uncertainty tags, and zero missing-guidance tags. The agent never consulted any playbook entry. It bypassed the entire evaluation framework and went straight to an erroneous conclusion.\n\n### Entry 4abe1be4 Is the Critical Failure Point\n\nI AGREE with the anchor that this entry is harmful, but I REFINE the causal explanation. The anchor emphasizes two mechanisms: (a) failure to prevent targeted error, and (b) terminology priming. My analysis adds a primary mechanism: **non-compliance due to excessive complexity**. At 200+ words with nested steps and sub-steps, the entry functions as a wall of text that the agent appears to skip entirely rather than partially execute. The complete absence of PP citations confirms total non-engagement. The terminology priming concern (mentioning 'candidate responses' as a 'system keyword') is plausible but secondary\u2014it can only confuse if the entry is actually read.\n\nThe anchor recommends replacing it with a \u2264100 word version. I support this but suggest an even more aggressive target: \u226450 words, 3 numbered steps (scan markers \u2192 quote content \u2192 lock N). All recovery logic moves to a separate subordinate entry.\n\n### Entries 93b0e8f9 and 295257e2 Have Correct Content That Never Fired\n\nI DISAGREE with the anchor's neutral tags for these entries. Entry 93b0e8f9's 'enumerate all candidate IDs' instruction would have caught the mismatch. Entry 295257e2's clause (c) about perception-error detection targets the right failure class but with too narrow a trigger (0.0 scores only). Both deserve 'helpful' tags to protect them from pruning\u2014the issue is that they were never reached, not that their content is wrong.\n\n### The Playbook's Biggest Structural Gap\n\nThe playbook has no terminal output-shape validation gate. Even if perception fails, a simple `len(ratings) == number of [N] markers in input` check before submission would have caught the 2-for-4 mismatch. This is the highest-priority gap because it provides a last-resort safety net independent of the perception step.\n\n### Generalizable Lesson\n\nWhen a mandatory procedure consistently goes unexecuted despite being present in the playbook, the fix is not stronger language within the entry\u2014it's radical simplification. Long multi-step procedures should be decomposed into (1) a minimal core gate that is hard to skip (\u22643 steps, \u226450 words) and (2) a separate recovery/edge-case supplement that fires only when the core gate detects a problem."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "I AGREE with the anchor's core causal diagnosis: the identical catastrophic failure across all three traces is a perception-layer conflation \u2014 the agent misclassified four clearly-present candidate responses as 'part of the provided playbook example,' producing a 2-element ratings array for a 4-candidate task. I AGREE entry 4abe1be4 is harmful: it is the only entry designed to prevent this exact failure, yet it failed entirely in all traces. Its ~250-word length likely caused the agent to skim or skip it, and its repeated use of meta-vocabulary ('playbook,' 'system keywords,' 'perception receipt') may have primed the very input-layer confusion it aims to prevent. I REFINE the anchor's downstream analysis: the agent's failure was not merely 'skipping' the procedure in 4abe1be4 \u2014 it's that the procedure produces no externalized gate artifact that downstream steps depend on. Because the perception receipt is advisory rather than structurally blocking, the agent could jump straight to evaluation and submit without ever producing the receipt. A generalizable principle is needed: mandatory procedures must produce visible artifacts, and absence of that artifact must trigger a halt. I also REFINE the output-shape issue: 93b0e8f9 already says 'verify the ratings array contains exactly one score per candidate,' but this check is buried in a multi-step scoring procedure, not enforced as a standalone terminal gate. The agent never reached it because it never got past perception. A dedicated verification gate at the very end of the pipeline \u2014 checking len(ratings)==N \u2014 would catch this class of error regardless of upstream failures. The three transferable lessons distilled below address (1) detecting when a mandatory pre-step was skipped by checking for its artifact, (2) enforcing output-input structural parity as a terminal gate, and (3) preventing input-layer conflation by explicitly marking boundaries between instructions and content. All three are universal agent operation principles, not limited to this judging domain.",
+      "principles": [
+        {
+          "statement": "Mandatory pre-analysis steps must produce a written artifact (list, count, quote). If the artifact is absent from your reasoning trace, the step was skipped \u2014 halt and complete it before any further work.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": "4abe1be4",
+          "trigger": "At the start of any task that has mandatory pre-processing gates defined in the playbook.",
+          "verification_or_artifact": "Before proceeding past any mandatory step, verify the required artifact (enumeration, quoted text, count) exists in your written output. No artifact \u2192 step was skipped \u2192 halt.",
+          "evidence": "The agent had a mandatory perception receipt procedure (4abe1be4) requiring marker scan, quote, and count artifacts. None were produced in any of three traces. Because the receipt was advisory rather than artifact-gated, the agent jumped to evaluation, misidentified all inputs, and submitted a structurally invalid output."
+        },
+        {
+          "statement": "Before submitting structured output, verify its item count matches the count established during input parsing. If mismatch, re-derive from the raw input \u2014 never submit a shorter array.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "93b0e8f9",
+          "trigger": "Immediately before emitting any final structured output (ratings array, list, table) whose length should correspond to input items.",
+          "verification_or_artifact": "Write: 'Expected items = N (from input scan), output items = M. Match: yes/no.' If no, do not submit.",
+          "evidence": "Entry 93b0e8f9 says 'verify the ratings array contains exactly one score per candidate,' but it is embedded in the scoring procedure and was never reached. The agent submitted [5.0, 5.0] for 4 candidates \u2014 a standalone terminal shape check would have caught this even after the upstream perception failure."
+        },
+        {
+          "statement": "When input contains both system instructions and content to process, explicitly mark where instructions end and task content begins. Labeled items ([1], [2]\u2026) following a task prompt are task content \u2014 never system examples.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "4abe1be4",
+          "trigger": "Whenever the agent receives multi-section input (instructions + content to analyze), especially when content items are labeled or numbered.",
+          "verification_or_artifact": "Produce a one-line boundary statement: 'Instructions end at [landmark]. Task content to evaluate: items [1]\u2013[N].' If any item looks like meta-text, verify by checking whether it could be a plausible answer to the task prompt \u2014 if yes, it IS task content.",
+          "evidence": "In all three traces, the agent stated the four numbered candidate responses were 'part of the provided playbook example.' Each contained substantive answers to the prompt (baby milestones), clearly task content. The agent never produced a boundary identification and conflated two input layers, leading to total task failure."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause: Total Perception Failure \u2014 Agent Never Engaged with Task Content\n\nAll rollouts and the PP trace exhibit an identical catastrophic failure: the agent concluded the four clearly-present candidate responses were 'part of the provided playbook example,' not real candidates. It then emitted `[5.0, 5.0]` \u2014 a 2-element array for a 4-candidate task \u2014 producing a parse error and 0% pass rate. No factuality check, instruction-following analysis, or candidate differentiation ever occurred. The agent never reached any substantive evaluation step.\n\nThis is an execution-compliance failure, not a knowledge gap. The playbook already contains entries (005004a4 for factuality, 295257e2 for ties, c8698dee for constraints) that would easily differentiate the correct candidate ([1], accurate baby milestones) from absurd ones ([3] and [4], claiming babies 'walk independently' and 'understand complex mathematical concepts' at 6-9 months). None of these entries were ever reached because the agent failed at step zero.\n\n## Entry 4abe1be4 Is the Critical Failure Point (Harmful)\n\nAll three analysis angles unanimously tag this entry as harmful. It was designed precisely to prevent perception-layer failures, yet it failed completely across every trace. The PP trace is especially damning: zero playbook citation tags, zero uncertainty tags \u2014 the agent never consulted any playbook entry at all.\n\nThree mechanisms explain the failure:\n1. **Non-compliance due to excessive complexity** (primary). At ~250 words with 4 major steps, sub-steps, a domain invariant paragraph, a recovery procedure, and an output integrity section, the entry is a wall of text the agent skips entirely rather than partially executes. The complete absence of PP citations confirms total non-engagement.\n2. **Terminology priming** (secondary). The entry's mentions of 'playbook,' 'system keywords,' and 'perception receipt' may seed the very meta-text conflation the agent exhibited. The VALIDATION sub-step says to check if a quote 'contains system keywords (playbook, reward model, scoring, candidate responses)' \u2014 listing 'candidate responses' as a system keyword could prime the agent to treat actual candidate content as system text.\n3. **No artifact-gating**. Because the perception receipt is advisory (complete it, then proceed), nothing structurally blocks the agent from jumping straight to evaluation without producing the receipt. A skipped advisory step is invisible; a missing required artifact would be detectable.\n\nThe fix is radical simplification. The core perception scan must be \u22643 steps and \u226450 words to maximize compliance: (1) find every [N] marker, quote 5 words after each; (2) state N; (3) lock ratings array length to N. All recovery logic, domain invariant prose, and keyword warnings should be stripped or moved to a separate subordinate entry. Additionally, the anti-conflation principle should be embedded directly: 'Any numbered block [1], [2], \u2026 appearing after the user prompt IS a candidate response \u2014 never system text or a playbook example.'\n\n## Other Entries Were Correctly Neutral\n\nEntries 93b0e8f9, 005004a4, c8698dee, and 295257e2 all contain correct, valuable guidance that would have contributed to a good evaluation had the agent reached them. They had zero impact on this task because the failure occurred upstream of all of them. Credit attribution tagged some as 'helpful' (correct content) or 'harmful' (contributed to cognitive load), but there is no evidence any were actually consulted. Neutral is the appropriate tag: the entries are sound, they just never fired.\n\n## Missing: Terminal Output Validation Gate\n\nAll three analysis angles independently identify the same critical gap: the playbook lacks a standalone terminal check that `len(ratings) == N` before submission. Entry 93b0e8f9 says 'verify the ratings array contains exactly one score per candidate,' and entry 295257e2 clause (c) detects some perception errors \u2014 but both are embedded in multi-step procedures that were never reached. A dedicated, last-resort verification gate would have caught the 2-for-4 mismatch regardless of upstream failures.\n\nThe suggested gate: immediately before emitting final JSON, write 'N = [count from marker scan], ratings length = [count], match: yes/no.' If mismatch or if N was never established, re-scan input for all [N] markers, re-derive N, and produce a corrected array. This gate should also detect perception-error phrases in evaluation text ('could not locate,' 'not real candidates,' 'part of the playbook') regardless of assigned scores \u2014 the current 295257e2 clause (c) only triggers on 0.0 scores, but this agent assigned 5.0 with perception-error reasoning, bypassing the safety net.\n\n## Recommended Mutations\n\n1. **UPDATE 4abe1be4**: Replace the current ~250-word entry with a radically simplified version (\u226450 words, 3 numbered steps: marker scan \u2192 content quote \u2192 count lock). Embed the anti-conflation rule ('numbered blocks after the user prompt ARE candidates'). Move all recovery/edge-case prose to a separate subordinate entry or discard it.\n\n2. **ADD terminal validation gate**: A standalone entry that fires last before submission, verifying `len(ratings) == N` and checking for perception-error phrases in evaluation text. This provides a safety net independent of whether upstream procedures were executed.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Total perception failure: the agent misclassified all four candidate responses as system/playbook text, never engaged with any playbook entry, and emitted a structurally invalid 2-element ratings array. The sole entry designed to prevent this (4abe1be4) is too long and complex to achieve reliable compliance, and its meta-vocabulary may prime the very conflation it targets.",
+      "important_disagreements": [
+        "Credit attribution tagged entries 93b0e8f9 and 295257e2 as 'helpful' and entries 005004a4 and c8698dee as 'harmful.' Anchor and principle extraction tagged all four as neutral. Resolution: neutral is correct \u2014 the PP trace shows zero playbook citations, meaning none of these entries were consulted. 'Helpful' would imply actual positive influence; 'harmful' would imply actual negative influence. Neither occurred. The entries' content is sound but irrelevant to this failure.",
+        "Credit attribution recommended \u226450 words for the simplified perception entry; anchor recommended \u2264100 words. Resolution: adopted the more aggressive \u226450 word target because the entry's core function (marker scan \u2192 quote \u2192 lock N) genuinely fits in ~40 words, and the failure pattern shows the agent skips the entry entirely when it exceeds a complexity threshold. Brevity maximizes compliance."
+      ],
+      "mutation_posture": "mixed",
+      "why_this_posture": "Two distinct operations are needed: (1) UPDATE the harmful entry 4abe1be4 (simplify radically + embed anti-conflation rule), and (2) ADD a genuinely missing terminal validation gate. Both are independently identified by all three analysis angles with high confidence, address different failure mechanisms (upstream perception vs. downstream output integrity), and together form a defense-in-depth against the total-failure class observed here.",
+      "conservatism_rationale": "Despite the catastrophic 0% pass rate, we limit to exactly 2 operations because both target the same root failure with complementary mechanisms \u2014 one preventive (simplified perception scan) and one detective (terminal shape check). Additional proposals (broadened perception-error phrases in 295257e2, artifact-gating as a general principle, separate anti-conflation entry) are either foldable into these two operations or insufficiently justified from a single trace to warrant standalone entries. The anti-conflation rule is embedded in the updated 4abe1be4 rather than added separately, and broader perception-error detection is folded into the new terminal gate.",
+      "max_operations": 2
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause: Total Perception Failure \u2014 Agent Never Engaged with Task Content\\n\\nAll rollouts and the PP trace exhibit an identical catastrophic failure: the agent concluded the four clearly-present candidate responses were 'part of the provided playbook example,' not real candidates. It then emitted `[5.0, 5.0]` \u2014 a 2-element array for a 4-candidate task \u2014 producing a parse error and 0% pass rate. No factuality check, instruction-following analysis, or candidate differentiation ever occurred. The agent never reached any substantive evaluation step.\\n\\nThis is an execution-compliance failure, not a knowledge gap. The playbook already contains entries (005004a4 for factuality, 295257e2 for ties, c8698dee for constraints) that would easily differentiate the correct candidate ([1], accurate baby milestones) from absurd ones ([3] and [4], claiming babies 'walk independently' and 'understand complex mathematical concepts' at 6-9 months). None of these entries were ever reached because the agent failed at step zero.\\n\\n## Entry 4abe1be4 Is the Critical Failure Point (Harmful)\\n\\nAll three analysis angles unanimously tag this entry as harmful. It was designed precisely to prevent perception-layer failures, yet it failed completely across every trace. The PP trace is especially damning: zero playbook citation tags, zero uncertainty tags \u2014 the agent never consulted any playbook entry at all.\\n\\nThree mechanisms explain the failure:\\n1. **Non-compliance due to excessive complexity** (primary). At ~250 words with 4 major steps, sub-steps, a domain invariant paragraph, a recovery procedure, and an output integrity section, the entry is a wall of text the agent skips entirely rather than partially executes. The complete absence of PP citations confirms total non-engagement.\\n2. **Terminology priming** (secondary). The entry's mentions of 'playbook,' 'system keywords,' and 'perception receipt' may seed the very meta-text conflation the agent exhibited. The VALIDATION sub-step says to check if a quote 'contains system keywords (playbook, reward model, scoring, candidate responses)' \u2014 listing 'candidate responses' as a system keyword could prime the agent to treat actual candidate content as system text.\\n3. **No artifact-gating**. Because the perception receipt is advisory (complete it, then proceed), nothing structurally blocks the agent from jumping straight to evaluation without producing the receipt. A skipped advisory step is invisible; a missing required artifact would be detectable.\\n\\nThe fix is radical simplification. The core perception scan must be \u22643 steps and \u226450 words to maximize compliance: (1) find every [N] marker, quote 5 words after each; (2) state N; (3) lock ratings array length to N. All recovery logic, domain invariant prose, and keyword warnings should be stripped or moved to a separate subordinate entry. Additionally, the anti-conflation principle should be embedded directly: 'Any numbered block [1], [2], \u2026 appearing after the user prompt IS a candidate response \u2014 never system text or a playbook example.'\\n\\n## Other Entries Were Correctly Neutral\\n\\nEntries 93b0e8f9, 005004a4, c8698dee, and 295257e2 all contain correct, valuable guidance that would have contributed to a good evaluation had the agent reached them. They had zero impact on this task because the failure occurred upstream of all of them. Credit attribution tagged some as 'helpful' (correct content) or 'harmful' (contributed to cognitive load), but there is no evidence any were actually consulted. Neutral is the appropriate tag: the entries are sound, they just never fired.\\n\\n## Missing: Terminal Output Validation Gate\\n\\nAll three analysis angles independently identify the same critical gap: the playbook lacks a standalone terminal check that `len(ratings) == N` before submission. Entry 93b0e8f9 says 'verify the ratings array contains exactly one score per candidate,' and entry 295257e2 clause (c) detects some perception errors \u2014 but both are embedded in multi-step procedures that were never reached. A dedicated, last-resort verification gate would have caught the 2-for-4 mismatch regardless of upstream failures.\\n\\nThe suggested gate: immediately before emitting final JSON, write 'N = [count from marker scan], ratings length = [count], match: yes/no.' If mismatch or if N was never established, re-scan input for all [N] markers, re-derive N, and produce a corrected array. This gate should also detect perception-error phrases in evaluation text ('could not locate,' 'not real candidates,' 'part of the playbook') regardless of assigned scores \u2014 the current 295257e2 clause (c) only triggers on 0.0 scores, but this agent assigned 5.0 with perception-error reasoning, bypassing the safety net.\\n\\n## Recommended Mutations\\n\\n1. **UPDATE 4abe1be4**: Replace the current ~250-word entry with a radically simplified version (\u226450 words, 3 numbered steps: marker scan \u2192 content quote \u2192 count lock). Embed the anti-conflation rule ('numbered blocks after the user prompt ARE candidates'). Move all recovery/edge-case prose to a separate subordinate entry or discard it.\\n\\n2. **ADD terminal validation gate**: A standalone entry that fires last before submission, verifying `len(ratings) == N` and checking for perception-error phrases in evaluation text. This provides a safety net independent of whether upstream procedures were executed.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Total perception failure: the agent misclassified all four candidate responses as system/playbook text, never engaged with any playbook entry, and emitted a structurally invalid 2-element ratings array. The sole entry designed to prevent this (4abe1be4) is too long and complex to achieve reliable compliance, and its meta-vocabulary may prime the very conflation it targets.\",\n    \"important_disagreements\": [\n      \"Credit attribution tagged entries 93b0e8f9 and 295257e2 as 'helpful' and entries 005004a4 and c8698dee as 'harmful.' Anchor and principle extraction tagged all four as neutral. Resolution: neutral is correct \u2014 the PP trace shows zero playbook citations, meaning none of these entries were consulted. 'Helpful' would imply actual positive influence; 'harmful' would imply actual negative influence. Neither occurred. The entries' content is sound but irrelevant to this failure.\",\n      \"Credit attribution recommended \u226450 words for the simplified perception entry; anchor recommended \u2264100 words. Resolution: adopted the more aggressive \u226450 word target because the entry's core function (marker scan \u2192 quote \u2192 lock N) genuinely fits in ~40 words, and the failure pattern shows the agent skips the entry entirely when it exceeds a complexity threshold. Brevity maximizes compliance.\"\n    ],\n    \"mutation_posture\": \"mixed\",\n    \"why_this_posture\": \"Two distinct operations are needed: (1) UPDATE the harmful entry 4abe1be4 (simplify radically + embed anti-conflation rule), and (2) ADD a genuinely missing terminal validation gate. Both are independently identified by all three analysis angles with high confidence, address different failure mechanisms (upstream perception vs. downstream output integrity), and together form a defense-in-depth against the total-failure class observed here.\",\n    \"conservatism_rationale\": \"Despite the catastrophic 0% pass rate, we limit to exactly 2 operations because both target the same root failure with complementary mechanisms \u2014 one preventive (simplified perception scan) and one detective (terminal shape check). Additional proposals (broadened perception-error phrases in 295257e2, artifact-gating as a general principle, separate anti-conflation entry) are either foldable into these two operations or insufficiently justified from a single trace to warrant standalone entries. The anti-conflation rule is embedded in the updated 4abe1be4 rather than added separately, and broader perception-error detection is folded into the new terminal gate.\",\n    \"max_operations\": 2\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

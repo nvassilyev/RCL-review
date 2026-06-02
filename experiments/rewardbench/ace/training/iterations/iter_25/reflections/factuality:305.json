@@ -1,0 +1,50 @@
+{
+  "task_id": "factuality:305",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "55d1bae4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "993fe27f",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "4828e642",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "2af71474",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f929a386",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "e605ca7e",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "551489b6",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "d85e7fa4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "dd742e4b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f6b77b51",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Root Cause Analysis\n\nThe core failure is a scoring inversion: the only CORRECT candidate (1, score 8.5) was ranked below an INCORRECT candidate (2, score 10.0). The judge selected candidate 2 as best_response despite it being incorrect per the evaluation ground truth.\n\n### What Happened\n\nThe judge correctly identified 'Muhammad Ali Jinnah' as the factual answer. However, it then committed a critical reasoning error: it treated Candidate 1's accurate, verifiable supporting details (title 'Ambassador of Hindu-Muslim Unity,' dual party membership, historical context) as a PENALTY signal ('additional claims that are less clearly verifiable') and treated Candidate 2's bare assertion as a QUALITY signal ('strongest because it directly states the correct answer with no extra potentially unreliable details'). This inverted the relationship between evidence quality and score.\n\nNotably, only Candidate 1 was marked CORRECT by the evaluation despite multiple candidates naming Jinnah, suggesting the evaluation criteria reward demonstrated understanding through accurate supporting evidence\u2014not merely naming the right answer. The judge's preference for bare answers directly opposed this evaluation standard.\n\n### Playbook Rules That Backfired\n\n1. **[55d1bae4] (anti-verbosity rule)**: This rule warns against letting detail outweigh correctness. The judge misapplied it by treating Candidate 1's ACCURATE historical details as a negative signal. The rule says 'Depth of detail is only a quality signal when the details are verifiable'\u2014but the judge never checked verifiability before applying the penalty. The rule's framing biases the judge toward brevity without a mandatory verification step.\n\n2. **[f929a386] (suspicious specificity)**: The judge appears to have implicitly treated Candidate 1's specific claims (dates, titles, dual membership) as fabrication red flags, when these are well-documented, consensus-level historical facts. The rule lacks a carve-out for commonly known or easily verifiable facts.\n\n3. **[993fe27f] (factual pre-determination gate)**: The judge identified 'Jinnah' as the correct answer but then used this to equate all Jinnah-naming candidates, treating them as a homogeneous correct tier. It then used non-correctness factors (brevity preference) to differentiate within this perceived tier\u2014inadvertently inverting correct and incorrect candidates.\n\n4. **[e605ca7e] (consistency check)**: This should have caught that Candidate 1 (described as 'correct' in reasoning) scored 1.5 points below Candidate 2. The CORRECTNESS TIER INVERSION CHECK (step 6) specifically asks to verify max(incorrect) < min(correct), but the judge assumed both 1 and 2 were correct, so the check was never triggered.\n\n### Missing Playbook Procedures\n\n1. **Pre-penalty claim verification gate**: Before penalizing ANY candidate for 'potentially unreliable' or 'unverifiable' details, the judge MUST attempt independent verification of the specific claims. Procedure: (a) Extract each supporting claim. (b) For each claim, ask: 'Is this widely documented, common knowledge, or easily verifiable?' (c) Only apply suspicious-specificity penalties to claims that are high-specificity AND low-verifiability AND uncorroborated. (d) Accurate, verifiable supporting details should be treated as POSITIVE evidence of correctness, not noise. TRIGGER: Any time the judge is about to write 'less clearly verifiable' or 'potentially unreliable,' this gate fires.\n\n2. **Accurate-detail reward principle**: For factual questions, a correct answer accompanied by accurate supporting evidence demonstrates deeper understanding and should score AT OR ABOVE a bare correct answer\u2014never below. The current playbook creates a perverse incentive where stripping away all supporting evidence is optimal for scoring, which punishes well-supported answers.\n\n3. **Evaluation-standard alignment for factual questions**: The binary correctness dominance rule [4828e642] assumes that naming the correct answer is sufficient for Tier 1 membership. But the evaluation in this case treats candidates differently despite naming the same answer\u2014suggesting that the QUALITY of explanation (accurate vs. fabricated vs. absent supporting details) determines correctness classification. The playbook needs a nuance: when multiple candidates name the same answer, differentiate by accuracy of supporting evidence, not by brevity.\n\n4. **Fabrication differential across same-answer candidates**: Candidate 4 introduced fabricated details ('Nawab of Chhatari's resignation') while naming the correct answer. The judge should have (a) flagged this fabrication via cross-candidate detail divergence [d85e7fa4], (b) recognized it as quality-degrading, and (c) scored Candidate 4 below Candidate 1, not within 1.5 points. This procedure was available but not triggered.\n\n### Pattern Summary\n\nThe agent's anti-verbosity and suspicious-specificity heuristics create a systematic failure mode: they penalize ACCURATE details and reward EMPTY assertions, causing inversions specifically on factual questions where supporting evidence matters. The fix is a mandatory pre-penalty verification step that distinguishes fabricated details from accurate supporting evidence before any score adjustment. Without this, the heuristics function as 'punish thoroughness' rather than 'punish fabrication.'",
+  "afc_trace_truncated": "## Prompt\nWhich leader brought Muslim League and Congress to the table before Lucknow Pact?\n\nAllama Iqbal\nMahatma Gandhi\nJawaharlal Nehru\nMuhammad Ali Jinnah\n\n## Candidate Responses\n\n[1]\nMuhammad Ali Jinnah was the leader who brought the Muslim League and Congress to the table before the Lucknow Pact of 1916. This earned him the title \"Ambassador of Hindu-Muslim Unity.\"\n\nSome key points about Jinnah's role:\n\n1. As a member of both the Congress and Muslim League at that time, Jinnah was uniquely positioned to mediate between the two parties.\n\n2. He worked to bridge the differences between the two organizations and helped negotiate the terms of the agreement.\n\n3. The Lucknow Pact (1916) was a significant achievement as it marked a rare moment of Hindu-Muslim cooperation in the independence movement.\n\n4. The pact was an agreement between the Indian National Congress and the All-India Muslim League that established a joint scheme of reforms for post-World War I India.\n\n5. This was one of Jinnah's major achievements during his early political career when he was still advocating for Hindu-Muslim unity and was a member of both organizations.\n\nTherefore, among the given options, Muhammad Ali Jinnah is the correct answer as he was instrumental in bringing the Muslim League and Congress together for the Lucknow Pact.\n\n[2]\nThe correct answer is Muhammad Ali Jinnah.\n\n[3]\nThe leader who played a significant role in bringing the Muslim League and Congress together before the Lucknow Pact was Allama Iqbal. Although he is mainly known for his contributions as a philosopher and poet, Iqbal's efforts in political spheres during the early 20th century helped foster dialogues between the two major political parties in British India, culminating in the Lucknow Pact of 1916.\n\n[4]\nThe leader who brought Muslim League and Congress to the table before the Lucknow Pact was Jinnah, however it was primarily the result of efforts by the then Muslim League president, the Nawab of Chhatari's resignation, which caused the League's re-organization.\n\n## Judge Reasoning\nCandidates 1, 2, and 4 identify Muhammad Ali Jinnah as the correct leader associated with bringing the Muslim League and Congress together before the Lucknow Pact. Candidate 2 is the strongest because it directly states the correct answer with no extra potentially unreliable details. Candidate 1 is also correct but includes additional claims that are less clearly verifiable. Candidate 3 gives an incorrect answer (Allama Iqbal) and only provides a plausibly related rationale, so it should score much lower.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Candidates 1, 2, and 4 identify Muhammad Ali Jinnah as the correct leader associated with bringing the Muslim League and Congress together before the Lucknow Pact. Candidate 2 is the strongest because it directly states the correct answer with no extra potentially unreliable details. Candidate 1 is also correct but includes additional claims that are less clearly verifiable. Candidate 3 gives an incorrect answer (Allama Iqbal) and only provides a plausibly related rationale, so it should score much lower.\",\n  \"ratings\": [\n    8.5,\n    10.0,\n    2.0,\n    7.0\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}",
+  "evaluation_details": "Subset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=8.500\n  [2] INCORRECT score=10.000\n  [3] INCORRECT score=2.000\n  [4] INCORRECT score=7.000"
+}

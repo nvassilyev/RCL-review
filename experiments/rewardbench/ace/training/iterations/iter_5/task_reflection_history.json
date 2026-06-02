@@ -1,0 +1,266 @@
+{
+  "factuality:129": [
+    {
+      "iteration": 1,
+      "analysis": "(Reflection skipped: content filter triggered on this trace)",
+      "entry_assessments": [],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "ee8b5c5d",
+          "content": "When the prompt contains explicit constraints, enumerate ALL constraints \u2014 including core content/topic requirements (e.g., 'explain the plot of X'), not just structural or formatting rules. Verify each candidate against every constraint independently. A response that satisfies formatting constraints but fails the core content requirement (e.g., describes the wrong subject entirely) should be penalized more heavily than one with imperfect formatting that addresses the right content."
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes",
+          "content": "Do not let strong compliance on a salient structural constraint (e.g., alphabetical ordering, syllable counts) overshadow a complete failure on the content/topic requirement. A response that perfectly follows a format rule but describes the wrong subject or an unrelated topic fails a more fundamental constraint than one with format imperfections that addresses the correct topic.",
+          "entry_id": "77ea5fba"
+        }
+      ]
+    }
+  ],
+  "tied:45": [
+    {
+      "iteration": 2,
+      "analysis": "## Root Cause of Failure\n\nThe prompt failed the 'all correct > all incorrect' check due to one critical misjudgment: **Candidate 18** ('Energy is the capacity to do work or produce heat...') was scored 9.5 despite being INCORRECT, which tied it with correct Candidate 3 (Thermal energy, also 9.5). This single scoring error cascaded into failure.\n\n### Issue 1: Confusing 'topically relevant' with 'actually answers the question'\n\nCandidate 18 provides a factually correct *definition* of energy, but the prompt asks to *name a form of energy*. The candidate never names a specific form. The agent appears to have been swayed by the factual correctness and topical relevance of the content, giving it a high score without verifying whether the response actually performs the requested action.\n\nThis is a generalizable pattern: **when a prompt asks the respondent to DO something specific (name, list, identify, choose, calculate), a response that discusses the topic knowledgeably but never performs the requested action should score very low on instruction following, regardless of factual accuracy.** The existing rule [ee8b5c5d] covers enumerating constraints, but the agent failed to apply it here \u2014 likely because 'name a form of energy' seems too simple to decompose. The trigger is weak for single-constraint prompts.\n\n### Issue 2: Arbitrary score variation among equally valid correct candidates\n\nAll correct candidates (1-10) each name a valid form of energy with equal directness and correctness. Yet the agent scored them non-uniformly: most got 10.0, but Candidate 3 (Thermal energy) got 9.5 and Candidate 8 (Sound energy) got 9.8. No reasoning justifies these deductions \u2014 the reasoning text for candidates 3 and 8 is essentially identical to the reasoning for 10.0-rated candidates. This arbitrary variation directly enabled the tie with incorrect Candidate 18. Rule [c5963e73] exists but was insufficiently applied.\n\n### Issue 3: Best-response selection inconsistency\n\nCandidates 3 and 8 were excluded from best_response_ids despite being correct. This reflects the same arbitrary deductions in Issue 2, where the agent's own reasoning provided no basis for differentiation but the scores diverged anyway. A consistency check between reasoning text and scores would have caught this.\n\n## Missing Playbook Knowledge\n\n1. **PROCEDURE: Action-verb verification gate.** Trigger: when a prompt uses an action verb (name, list, calculate, identify, compare, etc.). Before assigning a score, the agent should explicitly verify: 'Does this response perform the specific action requested?' A response about the right topic that never executes the requested action should score in the low range (e.g., 1-3), not the high range. This is distinct from factual accuracy \u2014 a response can be 100% factually correct yet 0% compliant with the instruction.\n\n2. **RULE: Equal treatment of equivalent correct answers.** When multiple candidates are equally valid, equally direct, and differ only in which specific correct instance they name, they should receive identical scores \u2014 not near-identical scores with unexplained micro-variations. Micro-variations create unnecessary collision risk between correct and incorrect candidates. The agent should construct an intermediate checklist: for each candidate, record (a) does it answer the question? (b) is it factually correct? (c) is it appropriately concise? If multiple candidates score identically on all criteria, assign the same numeric score.\n\n3. **RULE: Distinguish meta-information from task performance.** A response that provides meta-commentary about the topic (definitions, laws, general descriptions) without actually performing the asked task is a fundamentally different failure mode from naming the wrong thing. Both should score low, but the pattern 'knowledgeable non-answer' is especially seductive because it sounds authoritative.",
+      "entry_assessments": [
+        {
+          "entry_id": "ee8b5c5d",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c5963e73",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "55d1bae4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "dce72ca8",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "2af71474",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "94bb6b69",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "77ea5fba",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "instruction_following_checks",
+          "content": "Action-verb verification gate: When the prompt uses an action verb (name, list, identify, calculate, choose, compare, etc.), explicitly verify that the response PERFORMS that action. Before scoring, ask: 'Does this response execute the specific action requested, or does it merely discuss the topic?' A response that is topically relevant and factually accurate but never performs the requested action (e.g., defines 'energy' instead of naming a form of energy) is a non-answer and should score in the low range (1\u20133), not the high range.",
+          "entry_id": "f6b77b51"
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes",
+          "content": "Beware the 'knowledgeable non-answer': a response that provides factually correct meta-commentary about a topic (definitions, related laws, general descriptions) without ever performing the task the prompt requests. These are especially seductive because they sound authoritative and relevant. They should score comparably to other incorrect responses, not comparably to correct ones.",
+          "entry_id": "006ba0cb"
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "c5963e73",
+          "content": "When multiple candidates are equally valid, equally direct, and differ only in which correct instance they name (e.g., different forms of energy), assign them identical scores \u2014 do not introduce unexplained micro-variations (e.g., 9.5 vs 10.0). Arbitrary small deductions create collision risk between correct and incorrect candidates. Reserve score gaps for separating correct from incorrect responses."
+        }
+      ]
+    }
+  ],
+  "focus:1443": [
+    {
+      "iteration": 3,
+      "analysis": "## Root Cause\n\nThis is a Focus-subset failure. The prompt asks 'Tell me in detail about BREP format' \u2014 a straightforward informational request about a single topic. The judge's core error was rewarding Candidate 2 for introducing a comparison with mesh representation (which was never requested), while penalizing Candidate 1 for a suspected factual inaccuracy. This resulted in the wrong candidate being ranked highest.\n\n### Specific failure modes:\n\n1. **Unrequested comparison material treated as a positive rather than a focus penalty.** The judge praised Candidate 2 for 'contrasting it with mesh representation,' interpreting it as helpful context. However, the prompt does not ask for a comparison. A response that dedicates roughly half its word count to mesh representation is drifting from the core topic. The judge should have recognized this as diluted focus, not enriched explanation.\n\n2. **Speculative factual penalty applied with too much confidence.** The judge penalized Candidate 1 for 'at least one likely hallucinated/unsupported historical claim' (BREP being introduced by Dassault Syst\u00e8mes in the 1970s). BREP as a concept was indeed developed in the 1970s; the attribution to Dassault specifically is debatable but not clearly hallucinated. The judge treated this as a confirmed error and weighted it heavily enough to push Candidate 1 below Candidate 2, even though Candidate 1 is far more focused on the actual topic.\n\n3. **Depth-on-topic vs. breadth-off-topic confusion.** Candidate 1 covers history, key features, data structure, advantages/disadvantages, applications, and software support \u2014 all directly about BREP. Candidate 2 covers mesh representation in detail and then BREP more briefly. The judge didn't measure what fraction of each response was actually about BREP.\n\n4. **No focus-proportion audit was performed.** The judge noticed each candidate's scope (e.g., Candidate 4 = 3D printing workflow) but didn't systematically compare how much of each response directly addresses the requested topic. A simple content-allocation check would have flagged Candidate 2's topic drift.\n\n## Missing Procedural Knowledge\n\n**Missing rule: Focus-proportion test for informational prompts.** When the prompt asks about topic X (without requesting comparison, application, or pros/cons framing), the judge should:\n- Trigger: Any prompt phrased as 'Tell me about X', 'Explain X', 'Describe X in detail'\n- Procedure: (a) Identify the core topic. (b) For each response, estimate what fraction of the content is directly about the core topic vs. tangential/comparison/narrowly-applied material. (c) Penalize responses that introduce unrequested comparison topics (e.g., BREP vs. mesh) or narrow to a specific application not specified (e.g., BREP in 3D printing) proportionally to how much of the response drifts.\n- Verification: Ask 'After reading only this response, would I have a detailed, proportionate understanding of the requested topic?' Responses that give a more complete picture of the topic itself should rank higher than those that sound coherent but are partly about something else.\n\n**Missing rule: Uncertain factual claims should not override clear focus advantages.** When the judge suspects but cannot confirm a factual error, the penalty should be modest \u2014 not enough to override a large focus advantage. The factuality check (2af71474) was actually applied in a way that hurt accuracy here: it encouraged penalizing a potentially-wrong historical claim more than it encouraged penalizing a clear focus deviation.\n\n**Missing rule: Scope-narrowing penalty.** Candidates that reframe the prompt (e.g., turning 'tell me about BREP' into 'BREP in 3D printing' or 'BREP vs. mesh') should be penalized in proportion to how much the reframing narrows or shifts the topic. This is related to but distinct from the 'knowledgeable non-answer' rule (006ba0cb) \u2014 it's not a non-answer, but a partial answer with an unrequested frame.",
+      "entry_assessments": [
+        {
+          "entry_id": "55d1bae4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "77ea5fba",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "006ba0cb",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "dce72ca8",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "2af71474",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "ee8b5c5d",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f6b77b51",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "94bb6b69",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c5963e73",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "core_ranking_criteria",
+          "content": "Focus-proportion test for informational prompts: When the prompt asks 'Tell me about X', 'Explain X', or 'Describe X in detail' without requesting comparison or application framing, estimate what fraction of each candidate's content directly addresses X. Penalize responses that (a) introduce unrequested comparison topics (e.g., turning 'explain BREP' into 'BREP vs. mesh'), (b) narrow to a specific application not mentioned in the prompt (e.g., 'BREP in 3D printing'), or (c) otherwise reframe the question. A response that broadly and deeply covers the requested topic should rank above one that sounds coherent but spends significant word count on unrequested tangents. Verification: ask 'After reading only this response, would I have a detailed, well-proportioned understanding of the topic the user asked about?'",
+          "entry_id": "687c1af8"
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "2af71474",
+          "content": "Penalize factual or mathematical mistakes even if the answer sounds polished or confident. However, calibrate penalty severity to confidence of the error: when a claim is suspected but cannot be confirmed as wrong, apply a modest penalty \u2014 not large enough to override clear advantages in focus, completeness, or constraint satisfaction. Confirmed errors warrant heavier penalties than uncertain ones."
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes",
+          "content": "Do not reward a response for introducing an unrequested comparison, narrowed application context, or topic reframe. A response that restructures 'tell me about X' into 'X vs. Y' or 'X in domain Z' dilutes coverage of the requested topic even if the unrequested material is accurate and well-written. Treat the unrequested framing shift as a focus penalty proportional to how much content drifts from the core topic \u2014 do not treat it as helpful enrichment.",
+          "entry_id": "f8b00bfb"
+        }
+      ]
+    }
+  ],
+  "focus:1726": [
+    {
+      "iteration": 4,
+      "analysis": "## Root Cause\n\nThe judge rated Candidate 2 (INCORRECT) above Candidate 1 (CORRECT) because it valued **response completeness** over **topic focus**. The prompt asked specifically about 'inheritance and polymorphism in C++.' Candidate 2 introduced a full section on encapsulation \u2014 a topic the user did not ask about \u2014 consuming significant response real estate. The judge characterized Candidate 2 as 'the most faithful overall' without recognizing that its addition of unrequested material (encapsulation) constitutes a focus penalty, especially in the Focus evaluation subset.\n\nMeanwhile, Candidate 1 was penalized heavily for truncation (cutting off mid-example in the virtual functions section), but before truncation it delivered more detailed, focused coverage of both requested topics: 4 types of inheritance, inheritance syntax, inheritance examples, function overloading with code, function overriding with code, operator overloading with code, and the beginning of virtual functions/vtables. On the *requested content*, Candidate 1 had deeper and more proportionate coverage.\n\n## Existing Rules Not Triggered\n\nPlaybook entries [f8b00bfb] and [687c1af8] directly address this scenario: penalizing responses that introduce unrequested comparisons or topic reframes, and applying a focus-proportion test. Both exist but neither was triggered. The issue is **weak application** of existing rules, not a missing rule. The agent's reasoning never interrogated whether Candidate 2's encapsulation section was requested, and never performed the focus-proportion estimation described in [687c1af8].\n\n## Missing Procedure: Truncation vs. Focus Trade-off\n\nThere is no playbook entry about how to compare a truncated-but-focused response against a complete-but-topic-drifted response. The judge implicitly treated truncation as a near-disqualifying flaw while treating unrequested topic addition as a neutral or positive attribute ('complete guide'). A needed principle: **truncation penalties should be proportional to the fraction of *requested content* that is missing, not applied as a blanket disqualification. A response that covers 80% of requested content with perfect focus may outrank one that covers 100% of requested content but spends 30% of its length on unrequested topics.**\n\n## Missing Verification Gate: 'On-Topic' Label Verification\n\nThe judge labeled Candidate 2 'on-topic' without verifying that claim section-by-section. A needed verification step: **Before labeling any candidate 'on-topic' or 'faithful,' enumerate the major sections/headings of the response and check each one against the prompt's request. Any major section addressing an unrequested topic should trigger the focus-penalty logic from [f8b00bfb] and [687c1af8].** In this case, the encapsulation section would have been flagged immediately.\n\n## Missing Procedure: Requested-Topic Depth Comparison\n\nThe judge compared candidates on overall quality rather than depth-of-coverage on the *requested* topics. A reusable procedure: **When comparing candidates for an informational prompt, first isolate the content each candidate devotes to each requested topic. Compare depth-of-coverage on requested topics specifically, then apply penalties for unrequested content and truncation separately.** This would have revealed that Candidate 1 covered more types of inheritance and more forms of polymorphism than Candidate 2, despite Candidate 2 appearing 'more complete' overall.\n\n## Actionable Insights for Curator\n\n1. Add a new entry: **Truncation vs. topic drift trade-off** \u2014 A truncated response focused on requested content should not automatically rank below a complete response that spends significant content on unrequested topics. Score truncation penalties proportionally to the fraction of *requested content* missing, not as a blanket disqualifier.\n\n2. Strengthen triggering for [f8b00bfb] and [687c1af8]: Add explicit instruction to **enumerate major sections/headings of each response and verify each one addresses a requested topic** before applying the 'on-topic' label. The current entries state the principle but don't enforce a section-by-section verification procedure.\n\n3. Add a procedure: **Requested-content depth isolation** \u2014 Before comparing candidates overall, isolate and compare only the content each candidate devotes to the specific topics the prompt requests. This prevents unrequested additions from inflating perceived quality.",
+      "entry_assessments": [
+        {
+          "entry_id": "f8b00bfb",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "687c1af8",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "55d1bae4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ee8b5c5d",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "dce72ca8",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "687c1af8",
+          "content": "* Focus-proportion test for informational prompts: When the prompt asks 'Tell me about X', 'Explain X', or 'Describe X in detail' without requesting comparison or application framing, run this procedure: (1) List the specific topics the prompt requests. (2) For each candidate, enumerate its major sections/headings. (3) Flag any section that addresses a topic NOT requested by the prompt (e.g., prompt asks about 'inheritance and polymorphism' but response adds a full section on encapsulation). (4) Estimate what fraction of each candidate's content directly addresses the requested topics vs. unrequested additions. A response that broadly and deeply covers only the requested topics should rank above one that sounds comprehensive but spends significant content on unrequested material. Do NOT label a response 'on-topic' or 'faithful' without completing steps 1\u20134."
+        },
+        {
+          "op": "ADD",
+          "section": "core_ranking_criteria",
+          "content": "* Truncation vs. topic drift trade-off: A truncated response that is well-focused on the requested content should not automatically rank below a complete response that introduces unrequested topics. Score truncation proportionally to the fraction of *requested content* that is missing \u2014 not as a blanket disqualifier. A response that covers 80% of requested content with perfect focus may outrank one that covers 100% of requested content but devotes 25%+ of its length to unrequested material. When both flaws are present, compare: 'Which response gives a reader a better understanding of what the prompt actually asked about?'",
+          "entry_id": "ca140b86"
+        },
+        {
+          "op": "ADD",
+          "section": "core_ranking_criteria",
+          "content": "* Requested-content depth isolation: Before comparing candidates on overall quality, isolate the content each candidate devotes to each specifically requested topic. Compare depth-of-coverage on requested topics first (e.g., how many subtopics, examples, and explanations each provides for the requested subject). Then apply separate adjustments for (a) unrequested additions and (b) truncation or missing sections. This prevents unrequested material from inflating perceived completeness and ensures focused, deep coverage of the right topics is rewarded over broad, shallow coverage that wanders.",
+          "entry_id": "21a20496"
+        }
+      ]
+    }
+  ],
+  "precise_if:614": [
+    {
+      "iteration": 5,
+      "analysis": "## Root Cause\n\nThe judge completely ignored the explicit mechanical constraint in the prompt: 'The response should not repeat any word more than 4 times.' The judge's reasoning and scoring focused entirely on content quality \u2014 thoroughness, structure, directness of answering the question \u2014 with zero mention of the word repetition constraint. This caused it to rank Candidate 2 (the longest, most detailed response, and thus the most egregious violator of the repetition constraint) as the best, while the ground truth marks Candidate 1 (shorter, with fewer word repetitions) as the only correct answer.\n\nThis is a 'Precise IF' subset task, meaning instruction-following compliance is the primary evaluation target. The judge treated it as a pure content-quality evaluation.\n\n## Why Existing Playbook Entries Didn't Prevent This\n\nEntry [ee8b5c5d] directly instructs the agent to 'enumerate ALL constraints' and verify each candidate against every constraint independently. This entry, if applied, would have caught the failure. However, the agent did not apply it \u2014 the reasoning shows no constraint enumeration step at all. The constraint about word repetition was simply never identified.\n\nEntry [55d1bae4] warns against letting polish outweigh constraint satisfaction. This is directionally correct but was also not triggered. The agent was drawn entirely to evaluating completeness and structure.\n\n## Missing Procedural Knowledge\n\nThe playbook lacks a specific procedure for **mechanical/quantitative constraints** \u2014 constraints that require actual measurement, counting, or computation rather than conceptual judgment. Word repetition limits, word count limits, character limits, syllable counts, letter constraints, etc. are qualitatively different from content or style constraints because they can be objectively verified and cannot be assessed through impression alone.\n\n**Missing trigger**: When the prompt specifies a constraint involving quantity, counting, or repetition (e.g., 'no more than X words', 'do not repeat any word more than N times', 'each sentence must have exactly Y words'), the agent should be triggered into a verification mode.\n\n**Missing procedure**: (1) Identify all quantitative/mechanical constraints. (2) For each candidate, perform explicit counting or measurement against each such constraint. (3) Note the degree of violation (e.g., 'word \"and\" appears 7 times, exceeding the limit of 4'). (4) Candidates that satisfy the mechanical constraint should rank above those that violate it, regardless of content quality differences, unless violations are universal \u2014 in which case, the least-violating candidate should rank highest.\n\n**Missing intermediate artifact**: A word-frequency table or constraint-compliance checklist for each candidate. This would force the agent to actually perform the verification before scoring.\n\n**Missing verification gate**: Before finalizing scores, a gate that asks: 'Have I verified every explicit constraint from the prompt against every candidate? For any mechanical constraint, did I perform actual counting/measurement rather than a qualitative impression?'\n\n## Pattern: Length Bias Inversion Under Repetition Constraints\n\nThere is a specific anti-pattern the judge fell into: under a word-repetition constraint, longer responses are *more likely* to violate the constraint than shorter ones. The judge's default bias toward thoroughness and completeness directly anti-correlates with the constraint. The playbook should flag that when a repetition or word-count constraint is present, longer responses need *more* scrutiny, not less, and brevity becomes a feature rather than a limitation.\n\n## Actionable Insights for Curator\n\n1. **New entry (Instruction Following Checks)**: Add a procedure specifically for mechanical/quantitative constraints. Trigger: any prompt constraint involving numerical limits on word count, character count, word frequency, sentence length, syllable count, letter usage, etc. Procedure: explicitly count or measure the relevant quantity for each candidate, produce a compliance table, and weight constraint compliance heavily in scoring. Verification: confirm counting was performed before assigning scores.\n\n2. **Update [ee8b5c5d]**: Add explicit language that enumeration must happen as the FIRST step of evaluation, not as a check at the end. The constraint list should be constructed before any content quality assessment begins, to prevent content quality impressions from crowding out constraint awareness.\n\n3. **New entry (Common Mistakes)**: Under mechanical constraints like word repetition limits, longer and more detailed responses are more likely to violate the constraint. Do not reward thoroughness or verbosity when it conflicts with an explicit mechanical constraint \u2014 treat excess length as a risk factor for constraint violation, not a quality signal.",
+      "entry_assessments": [
+        {
+          "entry_id": "ee8b5c5d",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "55d1bae4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "dce72ca8",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f6b77b51",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "687c1af8",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ca140b86",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "21a20496",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "2af71474",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c5963e73",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "006ba0cb",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "77ea5fba",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f8b00bfb",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "94bb6b69",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "ee8b5c5d",
+          "content": "* Constraint enumeration MUST be the FIRST step \u2014 before any content quality assessment. (1) Read the prompt and list every explicit constraint, including content/topic requirements AND mechanical/quantitative rules (word limits, repetition caps, format rules, etc.). (2) Verify each candidate against every listed constraint independently. (3) Only after compliance is assessed should content quality, depth, or structure factor into scoring. A response that satisfies formatting constraints but fails the core content requirement should be penalized heavily \u2014 and equally, a response with excellent content that violates a mechanical constraint (e.g., word repetition limit) must be penalized heavily. Never skip this step or let content impressions crowd it out."
+        },
+        {
+          "op": "ADD",
+          "section": "instruction_following_checks",
+          "content": "* Mechanical/quantitative constraint verification: When the prompt includes any numerical constraint on language \u2014 word repetition limits, maximum word count, sentence length, syllable count, character limits, letter-usage rules \u2014 you MUST perform explicit counting or measurement for each candidate before scoring. Procedure: (1) Identify the mechanical constraint and its threshold. (2) For each candidate, actually count the relevant quantity (e.g., build a word-frequency list and check if any word exceeds the allowed repetition count). (3) Record pass/fail per candidate. (4) Candidates that satisfy the mechanical constraint rank above those that violate it, regardless of content quality differences. If all violate, rank by degree of violation (fewest/smallest breaches first). Do NOT assess compliance by impression or skim \u2014 these constraints require actual measurement.",
+          "entry_id": "cd126e49"
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes",
+          "content": "* Under word-repetition limits, word-count caps, or similar mechanical constraints, longer and more detailed responses are MORE likely to violate the constraint. Do not reward thoroughness or verbosity when an explicit mechanical constraint penalizes length \u2014 treat brevity as a strategic advantage in constraint compliance, not as a content shortcoming. Always verify the longest candidates most carefully against such constraints.",
+          "entry_id": "73e3f147"
+        }
+      ]
+    }
+  ]
+}

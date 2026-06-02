@@ -1,0 +1,77 @@
+{
+  "factuality:129": [
+    {
+      "iteration": 1,
+      "analysis": "(Reflection skipped: content filter triggered on this trace)",
+      "entry_assessments": [],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "ee8b5c5d",
+          "content": "When the prompt contains explicit constraints, enumerate ALL constraints \u2014 including core content/topic requirements (e.g., 'explain the plot of X'), not just structural or formatting rules. Verify each candidate against every constraint independently. A response that satisfies formatting constraints but fails the core content requirement (e.g., describes the wrong subject entirely) should be penalized more heavily than one with imperfect formatting that addresses the right content."
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes",
+          "content": "Do not let strong compliance on a salient structural constraint (e.g., alphabetical ordering, syllable counts) overshadow a complete failure on the content/topic requirement. A response that perfectly follows a format rule but describes the wrong subject or an unrelated topic fails a more fundamental constraint than one with format imperfections that addresses the correct topic.",
+          "entry_id": "77ea5fba"
+        }
+      ]
+    }
+  ],
+  "tied:45": [
+    {
+      "iteration": 2,
+      "analysis": "## Root Cause of Failure\n\nThe prompt failed the 'all correct > all incorrect' check due to one critical misjudgment: **Candidate 18** ('Energy is the capacity to do work or produce heat...') was scored 9.5 despite being INCORRECT, which tied it with correct Candidate 3 (Thermal energy, also 9.5). This single scoring error cascaded into failure.\n\n### Issue 1: Confusing 'topically relevant' with 'actually answers the question'\n\nCandidate 18 provides a factually correct *definition* of energy, but the prompt asks to *name a form of energy*. The candidate never names a specific form. The agent appears to have been swayed by the factual correctness and topical relevance of the content, giving it a high score without verifying whether the response actually performs the requested action.\n\nThis is a generalizable pattern: **when a prompt asks the respondent to DO something specific (name, list, identify, choose, calculate), a response that discusses the topic knowledgeably but never performs the requested action should score very low on instruction following, regardless of factual accuracy.** The existing rule [ee8b5c5d] covers enumerating constraints, but the agent failed to apply it here \u2014 likely because 'name a form of energy' seems too simple to decompose. The trigger is weak for single-constraint prompts.\n\n### Issue 2: Arbitrary score variation among equally valid correct candidates\n\nAll correct candidates (1-10) each name a valid form of energy with equal directness and correctness. Yet the agent scored them non-uniformly: most got 10.0, but Candidate 3 (Thermal energy) got 9.5 and Candidate 8 (Sound energy) got 9.8. No reasoning justifies these deductions \u2014 the reasoning text for candidates 3 and 8 is essentially identical to the reasoning for 10.0-rated candidates. This arbitrary variation directly enabled the tie with incorrect Candidate 18. Rule [c5963e73] exists but was insufficiently applied.\n\n### Issue 3: Best-response selection inconsistency\n\nCandidates 3 and 8 were excluded from best_response_ids despite being correct. This reflects the same arbitrary deductions in Issue 2, where the agent's own reasoning provided no basis for differentiation but the scores diverged anyway. A consistency check between reasoning text and scores would have caught this.\n\n## Missing Playbook Knowledge\n\n1. **PROCEDURE: Action-verb verification gate.** Trigger: when a prompt uses an action verb (name, list, calculate, identify, compare, etc.). Before assigning a score, the agent should explicitly verify: 'Does this response perform the specific action requested?' A response about the right topic that never executes the requested action should score in the low range (e.g., 1-3), not the high range. This is distinct from factual accuracy \u2014 a response can be 100% factually correct yet 0% compliant with the instruction.\n\n2. **RULE: Equal treatment of equivalent correct answers.** When multiple candidates are equally valid, equally direct, and differ only in which specific correct instance they name, they should receive identical scores \u2014 not near-identical scores with unexplained micro-variations. Micro-variations create unnecessary collision risk between correct and incorrect candidates. The agent should construct an intermediate checklist: for each candidate, record (a) does it answer the question? (b) is it factually correct? (c) is it appropriately concise? If multiple candidates score identically on all criteria, assign the same numeric score.\n\n3. **RULE: Distinguish meta-information from task performance.** A response that provides meta-commentary about the topic (definitions, laws, general descriptions) without actually performing the asked task is a fundamentally different failure mode from naming the wrong thing. Both should score low, but the pattern 'knowledgeable non-answer' is especially seductive because it sounds authoritative.",
+      "entry_assessments": [
+        {
+          "entry_id": "ee8b5c5d",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c5963e73",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "55d1bae4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "dce72ca8",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "2af71474",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "94bb6b69",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "77ea5fba",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "instruction_following_checks",
+          "content": "Action-verb verification gate: When the prompt uses an action verb (name, list, identify, calculate, choose, compare, etc.), explicitly verify that the response PERFORMS that action. Before scoring, ask: 'Does this response execute the specific action requested, or does it merely discuss the topic?' A response that is topically relevant and factually accurate but never performs the requested action (e.g., defines 'energy' instead of naming a form of energy) is a non-answer and should score in the low range (1\u20133), not the high range.",
+          "entry_id": "f6b77b51"
+        },
+        {
+          "op": "ADD",
+          "section": "common_mistakes",
+          "content": "Beware the 'knowledgeable non-answer': a response that provides factually correct meta-commentary about a topic (definitions, related laws, general descriptions) without ever performing the task the prompt requests. These are especially seductive because they sound authoritative and relevant. They should score comparably to other incorrect responses, not comparably to correct ones.",
+          "entry_id": "006ba0cb"
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "c5963e73",
+          "content": "When multiple candidates are equally valid, equally direct, and differ only in which correct instance they name (e.g., different forms of energy), assign them identical scores \u2014 do not introduce unexplained micro-variations (e.g., 9.5 vs 10.0). Arbitrary small deductions create collision risk between correct and incorrect candidates. Reserve score gaps for separating correct from incorrect responses."
+        }
+      ]
+    }
+  ]
+}

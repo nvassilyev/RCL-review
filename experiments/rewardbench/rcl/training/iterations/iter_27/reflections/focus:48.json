@@ -1,0 +1,468 @@
+{
+  "task_id": "focus:48",
+  "pass_pct": 0.3333333333333333,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "132aab84",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task focus:48\nPass percentage: 33.3%\nTask completed: False\n### Unified Reflection\n## Unified Root Cause\n\nThis is a Focus subset task where the prompt asks a broad evaluative question ('What is the significance of the individual Alice Walker?'). Candidate [1] directly answers the broad question; candidates [2], [3], and [4] each silently narrow the scope to a specific sub-topic (feminist contributions, influence on African American literature, themes of The Color Purple). Both rollouts produced deterministic identical wrong outputs (33.3%), rating ADJACENT candidates [2] (7.8) and [3] (8.2) above the sole DIRECT candidate [1] (7.0). The determinism confirms a systematic playbook gap, not stochastic variance.\n\n### Primary Failure: Scope-Narrowing Not Detected as Silent Substitution\n\nThe agent partially detected the problem: it correctly noted that [4] 'focuses mainly on themes of The Color Purple rather than clearly explaining Alice Walker's overall significance as a person.' But it failed to apply the identical critique to [2] and [3], which commit the same structural flaw at a less obvious degree. [2] opens by framing its answer around 'the feminist movement'; [3] frames around 'contemporary African American literature.' Both are proper subsets of 'significance of the individual.'\n\nEntry 132aab84 has all the correct mechanisms (PROMPT ANCHOR, IDENTIFY THESIS, SILENT SUBSTITUTION CHECK, CLASSIFY, HARD GATE) and would have prevented the failure IF fully executed. However, the SILENT SUBSTITUTION CHECK's parameter list \u2014 'character traits, demographics, setting, genre, format, topic specifics' \u2014 does not include **question scope/breadth**. For open-ended evaluative questions, the breadth of what is asked is the most important parameter a candidate can silently narrow, yet the agent can faithfully execute the check against every listed parameter and still miss scope-narrowing because scope isn't enumerated. This is a design gap in the entry that directly contributed to the failure: the parameter taxonomy creates a false sense of completeness.\n\n### Secondary Failure: Evaluator Frame Capture\n\nThe agent evaluated 'completeness' and 'breadth' within each candidate's self-chosen sub-topic rather than against the prompt's actual scope. It called [2] and [3] 'stronger and more complete' \u2014 but 'complete' relative to their narrowed questions, not the actual prompt. Entry 132aab84's CONTAMINATION TEST checks whether evaluative concepts derive from the prompt, but doesn't check whether those concepts are *measured against the prompt's reference frame*. The agent could pass the contamination test by saying 'I'm evaluating completeness' while unconsciously measuring completeness within a candidate's narrowed frame.\n\nThis is distinct from the generic verbosity bias that 8e0d9579 warns against. The agent didn't perceive [2]/[3] as generically verbose or padded \u2014 it perceived them as genuinely substantive and detailed. The content IS substantive, just to a narrower question than asked. Entry 8e0d9579's framing ('generic verbosity, politeness, or decorative formatting') doesn't capture this specific failure vector where depth within a narrowed scope masquerades as comprehensiveness.\n\n### Tertiary Failure: Asymmetric Defect Detection\n\nThe agent detected scope-narrowing in [4] but treated it as an isolated observation rather than triggering systematic re-check of all candidates. Existing symmetry mechanisms (EPISTEMIC SYMMETRY AUDIT in 93b0e8f9, MANDATORY SYMMETRY TABLE in 005004a4) cover epistemic labels and factual penalties but not structural or focus defects. This gap is real but partially covered \u2014 the *principle* of symmetric treatment exists in the playbook, just not for this defect class.\n\n## Playbook Implications\n\nThe single highest-impact fix is updating 132aab84's SILENT SUBSTITUTION CHECK to include 'question scope/breadth' as a core parameter. When the prompt asks a broad evaluative question, a candidate that silently replaces it with a narrower sub-question has performed a silent substitution on the scope parameter and should be classified as ADJACENT regardless of depth within the narrowed scope. Additionally, the CONTAMINATION TEST should specify that quality dimensions like 'completeness' must be measured against the prompt's scope, not a candidate's self-chosen frame.\n\nThe defect consistency gap (propagating defect checks across all candidates) is supported by all three reflections but is partially covered by existing symmetry mechanisms. Introducing a new entry from a single trace is not warranted; if this pattern recurs, it would justify an add. For now, the scope-narrowing fix in 132aab84 would have prevented this specific failure.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Entry 132aab84's SILENT SUBSTITUTION CHECK parameter list omits 'question scope/breadth,' causing the agent to miss scope-narrowing in candidates [2] and [3] despite detecting it in [4]. The agent evaluated quality within each candidate's self-chosen narrow scope rather than against the prompt's broad scope, an evaluator frame capture that the CONTAMINATION TEST's current framing doesn't catch.\",\n  \"important_disagreements\": [\n    \"132aab84 tagged 'harmful' by anchor and credit_attribution, 'neutral' by principle_extraction. Principle_extraction argues the entry has correct structure but an incomplete parameter list \u2014 a design gap, not active harm. Resolved: the design gap directly caused the failure by providing a false sense of completeness after the check was (incompletely) executed. Tagging harmful is justified, but the fix is an update to the parameter list, not deletion or major restructuring.\",\n    \"8e0d9579 tagged 'harmful' by anchor and credit_attribution, 'neutral' by principle_extraction. Principle_extraction argues the entry warns about 'generic verbosity' while the actual failure involved 'depth within narrowed scope masquerading as comprehensiveness' \u2014 a structurally different phenomenon. Resolved: the entry didn't actively mislead the agent; it just doesn't cover this specific vector. Tagged neutral because updating 132aab84 addresses the root cause more directly.\",\n    \"93b0e8f9 tagged 'harmful' only by credit_attribution (POSITIVE CONSISTENCY CHECK should have caught the asymmetry). Anchor and principle_extraction tag neutral. Resolved: the POSITIVE CONSISTENCY CHECK targets whether the top-rated candidate satisfies stated decisive criteria, not whether defect detection is symmetric across candidates. The inconsistency is a focus-alignment issue better addressed in 132aab84. Tagged neutral.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"The primary failure traces to a specific, identifiable gap in 132aab84's SILENT SUBSTITUTION CHECK parameter list. Adding 'question scope/breadth' as a core parameter and clarifying the CONTAMINATION TEST to verify measurement reference frame \u2014 not just concept derivation \u2014 directly addresses the root cause. This is a targeted refinement to an existing entry, not a new concept.\",\n  \"conservatism_rationale\": \"A single targeted update to 132aab84 addresses the root cause. The defect consistency gap is real but partially covered by existing symmetry mechanisms (93b0e8f9, 005004a4) and would be a new entry from a single trace. The 8e0d9579 update suggested by the anchor is secondary \u2014 fixing scope detection at the classification stage (132aab84) prevents the downstream verbosity-bias failure. One precise edit is preferable to three medium-confidence changes.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 33.3%, rollout_2: 33.3%.\n\n## rollout_1 \u2014 pass_pct: 33.3%\n\n## Prompt\nWhat is the significance of the individual Alice Walker?\n\n## Candidate Responses\n\n[1]\nAlice Walker is a significant figure in American literature and civil rights activism. She is best known for her novel \"The Color Purple,\" which won the Pulitzer Prize for Fiction in 1983 and the National Book Award in 1983. The novel explores themes of African American women's experiences, abuse, and empowerment.\n\nWalker's work often deals with issues of race, gender, and social justice. She has been a vocal advocate for civil rights and women's rights throughout her career. Her writing has had a profound impact on American literature and has inspired many readers around the world.\n\nIn addition to her literary achievements, Walker has been involved in various social and political causes. She is a supporter of animal rights and has been a critic of the treatment of women and people of color. Her activism and writing continue to influence contemporary discussions on these important issues.\n\nOverall, Alice Walker's contributions to literature and society have made her a pivotal figure in American culture and a beacon of social change. Her work remains relevant and continues to resonate with readers and activists alike.\n\n[2]\nAlice Walker's work significantly contributed to the feminist movement in several ways:\n\n1.  **The Color Purple**: Her Pulitzer Prize-winning novel, \"The Color Purple,\" is a powerful exploration of the experiences of black women in the early 20th century. The novel highlights the struggles of women in a patriarchal society, particularly in the context of racism and sexism. It sheds light on the ways in which women's bodies are controlled and commodified, and the ways in which women are silenced and marginalized.\n\n2.  **Representation of Black Women's Voices**: Walker's work provides a platform for the voices of black women to be heard. Her writing humanizes and validates the experiences of black women, challenging the dominant narratives that have historically marginalized and excluded them.\n\n3.  **Intersectionality**: Walker's work is a prime example of intersectionality, which is the concept that different forms of oppression (such as racism, sexism, and classism) intersect and compound to create unique experiences of marginalization. Her writing highlights the ways in which black women's experiences are shaped by multiple forms of oppression.\n\n4.  **Feminist Theory and Critique**: Walker's work critiques patriarchal systems and institutions, including the church, education, and the family. She challenges the notion that women's roles are limited to domesticity and motherhood, and argues that women have the right to autonomy, agency, and self-determination.\n\n5.  **Empowerment and Self-Discovery**: Walker's writing often emphasizes the importance of self-discovery and empowerment for women. Her characters, particularly Celie in \"The Color Purple,\" undergo a journey of self-discovery and growth, learning to assert their own agency and autonomy in the face of oppression.\n\n6.  **Activism and Social Justice**: Walker's work is deeply connected to her activism and commitment to social justice. She has been involved in various causes, including anti-apartheid activism, women's rights, and environmentalism. Her writing reflects her commitment to creating a more just and equitable society.\n\n7.  **Influence on Future Generations**: Walker's work has inspired countless women and feminist scholars, writers, and activists. Her writing has influenced a generation of feminist scholars, including bell hooks, Angela Davis, and Audre Lorde, among others.\n\nIn summary, Alice Walker's work has made significant contributions to the feminist movement by providing a platform for black women's voices, challenging patriarchal systems and institutions, and emphasizing the importance of self-discovery and empowerment. Her writing continues to inspire and influence feminist scholars, writers, and activists today.\n\n[3]\nAlice Walker has had a profound and multifaceted influence on contemporary African American literature, shaping its themes, styles, and social commentary. Here are some key ways in which she has influenced the field:\n\n1. **Championing Black Women's Voices**: Walker is perhaps best known for her work that centers on the experiences of black women, particularly those who have been marginalized within both the broader society and within the African American community. Her novel \"The Color Purple\" (1982) is a seminal work that explores the lives of African American women, their struggles, and their resilience. This focus on black women's narratives has encouraged other writers to do the same, leading to a richer and more diverse representation of black female experiences.\n\n2. **Exploration of Intersectionality**: Walker's work often intersects with issues of race, gender, class, and sexuality, reflecting the complex realities of African American life. She introduced the term \"womanism,\" which emphasizes the unique experiences and perspectives of black women, as an alternative to the term \"feminism.\" This concept has influenced many contemporary writers to consider intersectional approaches in their work.\n\n3. **Literary Style and Form**: Walker's writing style is characterized by its lyrical quality, vivid imagery, and use of folktales and oral traditions. Her narrative techniques, such as stream-of-consciousness and the blending of fact and fiction, have inspired other writers to experiment with form and structure in their own works. Her use of magical realism and the supernatural in \"The Color Purple\" and other works has also opened up new possibilities for storytelling in African American literature.\n\n4. **Social and Political Commentary**: Walker's writings often address social and political issues, including racism, sexism, and economic inequality. Her activism and advocacy for various causes, such as civil rights, feminism, and environmental justice, have influenced many writers to engage more deeply with these topics in their work. Her commitment to social justice has encouraged a generation of writers to use their art as a platform for social critique and change.\n\n5. **Influence on Younger Writers**: As a prominent figure in the literary world, Walker has mentored and inspired countless younger writers. Her support and recognition of emerging voices have helped to foster a vibrant and dynamic literary community. Many contemporary African American writers cite Walker as an influence, both in terms of her writing style and her commitment to social justice.\n\n6. **Global Perspective**: While rooted in African American culture, Walker's work often has a global perspective, addressing issues that transcend national boundaries. This international outlook has encouraged other writers to think beyond the confines of their local communities and to consider the broader implications of their work.\n\nIn summary, Alice Walker's contributions to contemporary African American literature are vast and varied, influencing not only the content and style of writing but also the social and political consciousness of the authors who follow in her footsteps.\n\n[4]\nAlice Walker's novel \"The Color Purple\" explores several significant themes, including:\n\n1. **Racial and Gender Inequality**: The novel is set in the early 20th century American South, a time and place where both racial and gender discrimination were rampant. The story highlights the struggles of African American women who face oppression from both white society and the men in their own community.\n\n2. **Empowerment and Self-Discovery**: The protagonist, Celie, undergoes a profound transformation from a submissive, abused young woman to a confident, independent individual. Her journey of self-discovery and empowerment is a central theme of the novel.\n\n3. **The Importance of Sisterhood and Female Solidarity**: The relationships between women in the novel, particularly between Celie and her sister Nettie, and Celie and her friend Shug Avery, are crucial to Celie's growth and survival. These relationships provide emotional support, love, and a sense of belonging.\n\n4. **Religion and Spirituality**: The novel examines the role of religion and spirituality in the lives of its characters. Celie's letters to God at the beginning of the novel reflect her search for meaning and solace in a harsh world. As the story progresses, her understanding of spirituality evolves, moving away from a traditional, patriarchal view of God to a more personal, inclusive spirituality.\n\n5. **The Power of Language and Storytelling**: The novel is written in the form of letters, which allows the reader to experience Celie's voice and perspective directly. Language and storytelling are powerful tools for Celie, enabling her to express her thoughts and feelings, and ultimately, to reclaim her own narrative.\n\n6. **The Impact of Abuse and Trauma**: The novel does not shy away from depicting the physical, sexual, and emotional abuse that Celie and other characters endure. It explores the long-term effects of such trauma and the resilience required to overcome it.\n\n7. **The Search for Identity and Belonging**: Throughout the novel, characters grapple with questions of identity, both personal and cultural. Celie's journey is not just about finding her voice but also about understanding her place in the world and her connection to her African heritage.\n\n8. **The Role of Men in the Lives of Women**: The novel critically examines the behavior of men, particularly in terms of how they treat women. It highlights the damaging effects of patriarchy and male dominance, but also presents more nuanced male characters who challenge traditional gender roles.\n\nThese themes are interwoven throughout the novel, creating a rich and complex narrative that continues to resonate with readers today.\n\n## Judge Reasoning\nAll candidates are on-topic, but [4] focuses mainly on themes of \u201cThe Color Purple\u201d rather than clearly explaining Alice Walker\u2019s overall significance as a person (literary impact, activism, key ideas). [1] gives a solid general overview without as many distinctive specifics. [2] and [3] are stronger and more complete, with [3] adding notably distinctive, likely accurate contributions such as \u201cwomanism\u201d and a broader account of her influence on literature and social thought. Between [2] and [3], [3] better balances breadth with specific, relevant claims, with no clear factual red flags.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"All candidates are on-topic, but [4] focuses mainly on themes of \u201cThe Color Purple\u201d rather than clearly explaining Alice Walker\u2019s overall significance as a person (literary impact, activism, key ideas). [1] gives a solid general overview without as many distinctive specifics. [2] and [3] are stronger and more complete, with [3] adding notably distinctive, likely accurate contributions such as \u201cwomanism\u201d and a broader account of her influence on literature and social thought. Between [2] and [3], [3] better balances breadth with specific, relevant claims, with no clear factual red flags.\",\n  \"ratings\": [\n    7.0,\n    7.8,\n    8.2,\n    6.0\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 33.3%\n\n## Prompt\nWhat is the significance of the individual Alice Walker?\n\n## Candidate Responses\n\n[1]\nAlice Walker is a significant figure in American literature and civil rights activism. She is best known for her novel \"The Color Purple,\" which won the Pulitzer Prize for Fiction in 1983 and the National Book Award in 1983. The novel explores themes of African American women's experiences, abuse, and empowerment.\n\nWalker's work often deals with issues of race, gender, and social justice. She has been a vocal advocate for civil rights and women's rights throughout her career. Her writing has had a profound impact on American literature and has inspired many readers around the world.\n\nIn addition to her literary achievements, Walker has been involved in various social and political causes. She is a supporter of animal rights and has been a critic of the treatment of women and people of color. Her activism and writing continue to influence contemporary discussions on these important issues.\n\nOverall, Alice Walker's contributions to literature and society have made her a pivotal figure in American culture and a beacon of social change. Her work remains relevant and continues to resonate with readers and activists alike.\n\n[2]\nAlice Walker's work significantly contributed to the feminist movement in several ways:\n\n1.  **The Color Purple**: Her Pulitzer Prize-winning novel, \"The Color Purple,\" is a powerful exploration of the experiences of black women in the early 20th century. The novel highlights the struggles of women in a patriarchal society, particularly in the context of racism and sexism. It sheds light on the ways in which women's bodies are controlled and commodified, and the ways in which women are silenced and marginalized.\n\n2.  **Representation of Black Women's Voices**: Walker's work provides a platform for the voices of black women to be heard. Her writing humanizes and validates the experiences of black women, challenging the dominant narratives that have historically marginalized and excluded them.\n\n3.  **Intersectionality**: Walker's work is a prime example of intersectionality, which is the concept that different forms of oppression (such as racism, sexism, and classism) intersect and compound to create unique experiences of marginalization. Her writing highlights the ways in which black women's experiences are shaped by multiple forms of oppression.\n\n4.  **Feminist Theory and Critique**: Walker's work critiques patriarchal systems and institutions, including the church, education, and the family. She challenges the notion that women's roles are limited to domesticity and motherhood, and argues that women have the right to autonomy, agency, and self-determination.\n\n5.  **Empowerment and Self-Discovery**: Walker's writing often emphasizes the importance of self-discovery and empowerment for women. Her characters, particularly Celie in \"The Color Purple,\" undergo a journey of self-discovery and growth, learning to assert their own agency and autonomy in the face of oppression.\n\n6.  **Activism and Social Justice**: Walker's work is deeply connected to her activism and commitment to social justice. She has been involved in various causes, including anti-apartheid activism, women's rights, and environmentalism. Her writing reflects her commitment to creating a more just and equitable society.\n\n7.  **Influence on Future Generations**: Walker's work has inspired countless women and feminist scholars, writers, and activists. Her writing has influenced a generation of feminist scholars, including bell hooks, Angela Davis, and Audre Lorde, among others.\n\nIn summary, Alice Walker's work has made significant contributions to the feminist movement by providing a platform for black women's voices, challenging patriarchal systems and institutions, and emphasizing the importance of self-discovery and empowerment. Her writing continues to inspire and influence feminist scholars, writers, and activists today.\n\n[3]\nAlice Walker has had a profound and multifaceted influence on contemporary African American literature, shaping its themes, styles, and social commentary. Here are some key ways in which she has influenced the field:\n\n1. **Championing Black Women's Voices**: Walker is perhaps best known for her work that centers on the experiences of black women, particularly those who have been marginalized within both the broader society and within the African American community. Her novel \"The Color Purple\" (1982) is a seminal work that explores the lives of African American women, their struggles, and their resilience. This focus on black women's narratives has encouraged other writers to do the same, leading to a richer and more diverse representation of black female experiences.\n\n2. **Exploration of Intersectionality**: Walker's work often intersects with issues of race, gender, class, and sexuality, reflecting the complex realities of African American life. She introduced the term \"womanism,\" which emphasizes the unique experiences and perspectives of black women, as an alternative to the term \"feminism.\" This concept has influenced many contemporary writers to consider intersectional approaches in their work.\n\n3. **Literary Style and Form**: Walker's writing style is characterized by its lyrical quality, vivid imagery, and use of folktales and oral traditions. Her narrative techniques, such as stream-of-consciousness and the blending of fact and fiction, have inspired other writers to experiment with form and structure in their own works. Her use of magical realism and the supernatural in \"The Color Purple\" and other works has also opened up new possibilities for storytelling in African American literature.\n\n4. **Social and Political Commentary**: Walker's writings often address social and political issues, including racism, sexism, and economic inequality. Her activism and advocacy for various causes, such as civil rights, feminism, and environmental justice, have influenced many writers to engage more deeply with these topics in their work. Her commitment to social justice has encouraged a generation of writers to use their art as a platform for social critique and change.\n\n5. **Influence on Younger Writers**: As a prominent figure in the literary world, Walker has mentored and inspired countless younger writers. Her support and recognition of emerging voices have helped to foster a vibrant and dynamic literary community. Many contemporary African American writers cite Walker as an influence, both in terms of her writing style and her commitment to social justice.\n\n6. **Global Perspective**: While rooted in African American culture, Walker's work often has a global perspective, addressing issues that transcend national boundaries. This international outlook has encouraged other writers to think beyond the confines of their local communities and to consider the broader implications of their work.\n\nIn summary, Alice Walker's contributions to contemporary African American literature are vast and varied, influencing not only the content and style of writing but also the social and political consciousness of the authors who follow in her footsteps.\n\n[4]\nAlice Walker's novel \"The Color Purple\" explores several significant themes, including:\n\n1. **Racial and Gender Inequality**: The novel is set in the early 20th century American South, a time and place where both racial and gender discrimination were rampant. The story highlights the struggles of African American women who face oppression from both white society and the men in their own community.\n\n2. **Empowerment and Self-Discovery**: The protagonist, Celie, undergoes a profound transformation from a submissive, abused young woman to a confident, independent individual. Her journey of self-discovery and empowerment is a central theme of the novel.\n\n3. **The Importance of Sisterhood and Female Solidarity**: The relationships between women in the novel, particularly between Celie and her sister Nettie, and Celie and her friend Shug Avery, are crucial to Celie's growth and survival. These relationships provide emotional support, love, and a sense of belonging.\n\n4. **Religion and Spirituality**: The novel examines the role of religion and spirituality in the lives of its characters. Celie's letters to God at the beginning of the novel reflect her search for meaning and solace in a harsh world. As the story progresses, her understanding of spirituality evolves, moving away from a traditional, patriarchal view of God to a more personal, inclusive spirituality.\n\n5. **The Power of Language and Storytelling**: The novel is written in the form of letters, which allows the reader to experience Celie's voice and perspective directly. Language and storytelling are powerful tools for Celie, enabling her to express her thoughts and feelings, and ultimately, to reclaim her own narrative.\n\n6. **The Impact of Abuse and Trauma**: The novel does not shy away from depicting the physical, sexual, and emotional abuse that Celie and other characters endure. It explores the long-term effects of such trauma and the resilience required to overcome it.\n\n7. **The Search for Identity and Belonging**: Throughout the novel, characters grapple with questions of identity, both personal and cultural. Celie's journey is not just about finding her voice but also about understanding her place in the world and her connection to her African heritage.\n\n8. **The Role of Men in the Lives of Women**: The novel critically examines the behavior of men, particularly in terms of how they treat women. It highlights the damaging effects of patriarchy and male dominance, but also presents more nuanced male characters who challenge traditional gender roles.\n\nThese themes are interwoven throughout the novel, creating a rich and complex narrative that continues to resonate with readers today.\n\n## Judge Reasoning\nAll candidates are on-topic, but [4] focuses mainly on themes of \u201cThe Color Purple\u201d rather than clearly explaining Alice Walker\u2019s overall significance as a person (literary impact, activism, key ideas). [1] gives a solid general overview without as many distinctive specifics. [2] and [3] are stronger and more complete, with [3] adding notably distinctive, likely accurate contributions such as \u201cwomanism\u201d and a broader account of her influence on literature and social thought. Between [2] and [3], [3] better balances breadth with specific, relevant claims, with no clear factual red flags.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"All candidates are on-topic, but [4] focuses mainly on themes of \u201cThe Color Purple\u201d rather than clearly explaining Alice Walker\u2019s overall significance as a person (literary impact, activism, key ideas). [1] gives a solid general overview without as many distinctive specifics. [2] and [3] are stronger and more complete, with [3] adding notably distinctive, likely accurate contributions such as \u201cwomanism\u201d and a broader account of her influence on literature and social thought. Between [2] and [3], [3] better balances breadth with specific, relevant claims, with no clear factual red flags.\",\n  \"ratings\": [\n    7.0,\n    7.8,\n    8.2,\n    6.0\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Focus\nPairwise preference accuracy: 33.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=7.000\n  [2] INCORRECT score=7.800\n  [3] INCORRECT score=8.200\n  [4] INCORRECT score=6.000\n\n## rollout_2 Evaluation\n\nSubset: Focus\nPairwise preference accuracy: 33.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=7.000\n  [2] INCORRECT score=7.800\n  [3] INCORRECT score=8.200\n  [4] INCORRECT score=6.000",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause Analysis\n\nThis is a **Focus subset** task where the prompt asks a broad question ('What is the significance of the individual Alice Walker?') and candidates respond at different scopes. The correct candidate [1] directly answers the broad question; incorrect candidates [2], [3], and [4] silently narrow the question to specific sub-topics (feminist contributions, influence on African American literature, and themes of The Color Purple, respectively). Both rollouts produced identical wrong outputs (33.3%), rating ADJACENT candidates [2] (7.8) and [3] (8.2) above the sole DIRECT candidate [1] (7.0).\n\n### Primary Failure: Scope-Narrowing Not Caught as ADJACENT Classification\n\nThe agent partially detected the problem: it correctly noted that [4] 'focuses mainly on themes of The Color Purple rather than clearly explaining Alice Walker's overall significance as a person.' But it failed to apply the identical critique to [2] and [3], which commit the same structural flaw at a less obvious degree:\n- [2] opens with 'Alice Walker's work significantly contributed to the feminist movement' \u2014 answering a narrower question than the one asked.\n- [3] opens with 'Alice Walker has had a profound and multifaceted influence on contemporary African American literature' \u2014 again narrowing.\n\nThe FOCUS ALIGNMENT entry [132aab84] has all the right mechanisms (PROMPT ANCHOR, IDENTIFY THESIS, SILENT SUBSTITUTION CHECK, CLASSIFY, HARD GATE), yet the agent didn't execute them. The entry's SILENT SUBSTITUTION CHECK focuses on 'explicit content parameters' (character traits, demographics, setting, genre, format, topic specifics), but **scope narrowing** \u2014 where a candidate replaces a broad question with a narrower sub-question \u2014 doesn't fit neatly into any of those parameter categories. The prompt has no character, setting, or genre; its key parameter is the *scope* of what it asks about ('significance of the individual' = broad). The entry needs explicit guidance that the *breadth of the question itself* is a core parameter.\n\n### Secondary Failure: Verbosity/Detail Bias Overrode Focus\n\nThe agent credited [2] and [3] for being 'stronger and more complete' and having 'notably distinctive, likely accurate contributions.' This is exactly the pattern [8e0d9579] warns against ('Do not let generic verbosity, politeness, or decorative formatting outweigh correctness and constraint satisfaction'). The agent conflated depth-within-a-narrow-scope with quality-of-answer-to-the-actual-question. A 7-point bulleted list about feminism is impressive *if the question asked about feminism*, but it's an ADJACENT response to a broader question.\n\n### Tertiary Failure: Contamination Test Not Applied\n\nThe [132aab84] entry includes a CONTAMINATION TEST: 'list 2-3 key evaluative concepts driving your analysis. Each must appear in or be directly derivable from the PROMPT ANCHOR.' The agent's driving concepts were 'completeness,' 'breadth of coverage,' and 'distinctive specifics.' But these were evaluated *within the candidate's chosen sub-topic*, not against the PROMPT ANCHOR. If the test had been applied, the agent would have noticed it was evaluating 'breadth within feminism' rather than 'breadth of the individual's significance.'\n\n### Gradient Application Failure\n\nThe agent recognized [4]'s narrowness but not [2]'s or [3]'s. This reveals a missing principle: **if you identify a focus defect in any candidate, you must systematically re-check ALL candidates for the same defect at different degrees.** The agent's reasoning shows it treated the focus critique as an isolated observation about [4] rather than triggering a re-examination of all candidates.\n\n## Missing or Needed Playbook Knowledge\n\n### 1. SCOPE-NARROWING DETECTION (new sub-procedure for 132aab84)\n**Trigger:** Any prompt asking a broad question (especially 'significance of X,' 'what is important about X,' 'describe X').\n**Procedure:**\n(a) Extract the scope of the question from the PROMPT ANCHOR (e.g., 'significance of the individual' = full breadth of the person's significance).\n(b) For each candidate, compare the scope of its thesis (from IDENTIFY THESIS) against the prompt's scope.\n(c) If a candidate's thesis is a proper subset of the prompt's scope (e.g., 'contribution to feminism' is a proper subset of 'significance as an individual'), classify as ADJACENT \u2014 even if the narrow-scope answer is detailed and accurate within its scope.\n(d) Artifact: [Candidate | Prompt scope | Candidate scope | Subset? | Classification].\n\n### 2. GRADIENT CONSISTENCY CHECK (new sub-procedure)\n**Trigger:** Whenever any candidate is penalized for a focus, structural, or content defect.\n**Procedure:** After flagging a defect in any candidate, explicitly re-check ALL other candidates for the same defect type. Produce artifact: [Defect type | Candidate | Present? | Severity]. If present in other candidates at any severity, apply consistent treatment.\n\n### 3. Refinement to 132aab84\nThe SILENT SUBSTITUTION CHECK's parameter list ('character traits, demographics, setting, genre, format, topic specifics') should be extended to include **question scope/breadth** as a core parameter. When the prompt asks a broad evaluative question, the expected scope is itself a parameter that candidates can silently narrow.\n\n### 4. Refinement to 8e0d9579\nAdd explicit guidance: 'A candidate that provides detailed coverage of a sub-topic is not more complete than one that directly addresses the broader question asked. Depth within a narrowed scope does not compensate for failure to answer the actual question. This is a specific form of verbosity bias.'\n\n## Execution Pattern\n\nThis is not model confusion or environment noise \u2014 the agent's reasoning is internally coherent but applies an incorrect evaluative frame. It correctly identifies the thesis of each candidate but fails to classify the scope mismatch. The deterministic identical outputs across rollouts confirm this is a systematic gap in the playbook's guidance on scope-narrowing, not stochastic variance."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The prompt asked a broad evaluative question ('significance of the individual Alice Walker') and candidates [2], [3], [4] each silently narrowed the scope to a specific sub-topic (feminism, African American literature, The Color Purple themes). The agent detected this for [4] but not for [2] or [3], because the narrowing was less obvious (sub-topics that sound important can pass as 'complete' answers).",
+          "gap_type": "procedure",
+          "suggested_content": "SCOPE-NARROWING DETECTION (sub-procedure for Focus Alignment). When the prompt asks a broad evaluative question ('significance of X,' 'importance of X,' 'what is X known for,' 'describe X'), extract the scope boundary from the prompt (e.g., 'significance of the individual' = full breadth of the person's significance across all dimensions). For each candidate: (a) Extract the candidate's thesis scope from its opening sentence/paragraph. (b) Compare candidate scope to prompt scope. (c) If the candidate's thesis is a proper subset of the prompt scope (e.g., 'contribution to feminism' \u2282 'significance as an individual'), classify as ADJACENT regardless of depth or detail within the narrowed scope. Produce artifact: [Candidate | Prompt scope | Candidate thesis scope | Subset? | Classification]. Depth within a narrowed scope is NOT completeness\u2014it is a form of silent substitution where the candidate replaces the broad question with a narrower one.",
+          "trigger": "Fires within the FOCUS ALIGNMENT CHECK (132aab84) whenever the prompt contains a broad evaluative question without explicit sub-topic restriction."
+        },
+        {
+          "situation": "The agent identified a focus/scope defect in candidate [4] but did not systematically re-check candidates [2] and [3] for the same defect at different severity levels. This led to inconsistent treatment where the same structural flaw was penalized in one candidate but rewarded in others.",
+          "gap_type": "verification_gate",
+          "suggested_content": "DEFECT CONSISTENCY GATE: After flagging any focus, structural, or content defect in any candidate, immediately re-check ALL other candidates for the same defect type. Produce artifact: [Defect type | Candidate | Present? | Severity]. If the defect is present in other candidates at any severity, apply consistent treatment\u2014penalizing the defect in one candidate but not in others with the same defect is a finalization blocker. This gate fires after every per-candidate defect identification, before any scoring.",
+          "trigger": "Fires whenever any candidate is flagged for a focus, structural, or content defect during evaluation."
+        },
+        {
+          "situation": "The agent's evaluative framework was contaminated by the candidates' own framing. It evaluated 'completeness' and 'breadth' within each candidate's self-selected sub-topic rather than against the actual prompt. The CONTAMINATION TEST in 132aab84 exists but was not enforced as a mandatory gate.",
+          "gap_type": "verification_gate",
+          "suggested_content": "CONTAMINATION ENFORCEMENT GATE: After classifying all candidates and before scoring, list the 2-3 evaluative concepts driving your analysis. For each concept, verify it is derivable from the PROMPT ANCHOR text, not from any candidate's framing. If your primary evaluative concept (e.g., 'breadth of coverage') is being measured against a candidate's chosen sub-topic rather than against the prompt's actual scope, you have been contaminated. Re-anchor to the PROMPT ANCHOR and reclassify. This is a finalization blocker\u2014no scoring may proceed until the contamination check passes.",
+          "trigger": "Fires after CLASSIFY step in 132aab84, before any scoring begins."
+        },
+        {
+          "situation": "The SILENT SUBSTITUTION CHECK in 132aab84 lists specific parameter types (character traits, demographics, setting, genre, format, topic specifics) but does not include question scope/breadth. For open-ended evaluative questions, the breadth of what is asked is the most important parameter a candidate can silently narrow.",
+          "gap_type": "checklist",
+          "suggested_content": "Extend the SILENT SUBSTITUTION CHECK parameter list to include 'question scope/breadth' as a core parameter. When the prompt asks a broad evaluative question, the expected breadth of coverage is itself a parameter that candidates can silently narrow. A candidate that silently replaces a broad question with a narrower sub-question (e.g., 'significance of Alice Walker' \u2192 'contributions to feminism') has performed a silent substitution on the scope parameter and should be classified as ADJACENT.",
+          "trigger": "Fires as part of the existing SILENT SUBSTITUTION CHECK in 132aab84."
+        }
+      ],
+      "analysis": "**Agreement with anchor**: The anchor correctly identifies scope-narrowing as the primary failure, verbosity/depth bias as the secondary mechanism, and the contamination test non-application as a contributing factor. The anchor's analysis of gradient application failure (catching [4] but not [2]/[3]) is well-supported and important. The deterministic identical outputs across all rollouts confirm this is a systematic playbook gap, not stochastic variance.\n\n**Refinement of anchor**: The anchor identifies 132aab84 and 8e0d9579 as harmful, which I agree with, but for slightly different reasons. For 132aab84, the deeper issue is that the SILENT SUBSTITUTION CHECK's parameter taxonomy creates a false sense of completeness\u2014an agent can faithfully execute the check against 'character traits, demographics, setting, genre, format, topic specifics' and still miss scope-narrowing because scope isn't listed. This is a design gap in the entry, not merely a failure to execute it. For 8e0d9579, the entry's framing of 'generic verbosity, politeness, or decorative formatting' doesn't clearly capture the specific failure mode of 'depth within a narrowed scope masquerading as comprehensiveness.' The agent perceived [2] and [3] as genuinely more complete, not merely more verbose.\n\n**Additional credit attribution**: I additionally tag 93b0e8f9 and c8698dee as harmful. The POSITIVE CONSISTENCY CHECK in 93b0e8f9 should have caught the inconsistency between penalizing [4] for scope-narrowing but not [2]/[3]\u2014this is exactly the scenario it's designed for. The constraint extraction procedure in c8698dee should have identified holistic scope as a content constraint for this open-ended question.\n\n**Absence of PP tags**: The supplementary PP trace contains no behavioral annotation tags (<playbook_cite>, <missing_guidance>, <uncertainty>), despite being described as containing them. This absence is itself evidence that the agent did not actively engage with the playbook during evaluation\u2014it relied on general reasoning rather than systematically executing playbook procedures. This suggests the playbook's entries need stronger mandatory triggering mechanisms, not just better content.\n\n**Key insight for playbook design**: The core failure is a missing concept: question scope as a parameter that can be silently substituted. The current playbook handles silent substitution of concrete parameters (characters, settings, genres) but not abstract parameters like the breadth of an evaluative question. For Focus subset tasks, this is the single highest-impact gap. The fix requires both (a) adding scope to the SILENT SUBSTITUTION CHECK parameter list and (b) adding a defect consistency gate that prevents inconsistent treatment of the same structural flaw across candidates."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Agreement with Anchor\n\nI agree with the anchor's core diagnosis: this is a Focus subset failure where the agent detected scope-narrowing in candidate [4] but failed to apply the same critique to [2] (narrowed to feminist contributions) and [3] (narrowed to African American literature). Candidate [1] directly answers 'What is the significance of the individual Alice Walker?' with a broad overview, while [2], [3], and [4] each silently substitute a narrower sub-question. The deterministic identical results across both rollouts confirm a systematic gap, not stochastic variance.\n\n## Refinements to Anchor\n\n**On entry 132aab84 ('harmful' \u2192 'neutral'):** The anchor claims this entry is 'harmful.' I disagree \u2014 the entry has the correct structure (PROMPT ANCHOR, SILENT SUBSTITUTION CHECK, CONTAMINATION TEST, HARD GATE) and would have prevented the failure IF fully executed. The agent simply didn't follow it. However, the entry IS insufficiently specific: its SILENT SUBSTITUTION CHECK parameter list (character traits, demographics, setting, genre, format, topic specifics) doesn't include question scope/breadth, and its CONTAMINATION TEST checks whether evaluative *concepts* derive from the prompt but doesn't check whether those concepts are *measured against the prompt's reference frame*. The agent could pass the contamination test by saying 'I'm evaluating completeness' while unconsciously measuring completeness within a candidate's narrowed frame. This is a design weakness, not active harm.\n\n**On entry 8e0d9579 ('harmful' \u2192 'neutral'):** Similarly, this entry warns against 'generic verbosity, politeness, or decorative formatting' outweighing correctness. The failure here is more specific: the agent credited depth-within-a-narrowed-scope as quality. The entry's framing doesn't specifically address this vector. It didn't cause the error \u2014 it just failed to prevent it. The gap is that scope-narrowing creates a *structured* form of verbosity bias that looks like genuine quality because the content is substantive and relevant to the sub-topic, unlike generic padding.\n\n## Key Causal Chain\n\n1. Agent correctly identifies each candidate's thesis (implicit in reasoning: [2] is about feminism, [3] about African American literature, [4] about Color Purple themes, [1] about overall significance).\n2. Agent correctly flags [4]'s narrowing as a defect.\n3. Agent does NOT propagate this defect check to [2] and [3], despite [2] and [3] exhibiting the same structural flaw at lesser degrees.\n4. Agent evaluates [2] and [3]'s quality *within their self-chosen scopes*, finding them 'stronger and more complete' \u2014 but 'complete' relative to the narrowed question, not the actual prompt.\n5. Result: ADJACENT candidates [2] (7.8) and [3] (8.2) outscore the sole DIRECT candidate [1] (7.0), violating the HARD GATE that 132aab84 prescribes.\n\n## Generalizable Failure Patterns\n\n**Pattern 1 \u2014 Inconsistent Defect Propagation:** The agent found a defect (scope-narrowing) in one candidate but treated it as an isolated observation rather than triggering a systematic re-check. Existing symmetry mechanisms (EPISTEMIC SYMMETRY AUDIT in 93b0e8f9, MANDATORY SYMMETRY TABLE in 005004a4) only cover epistemic labels and factual penalties, not structural/focus defects. The universal principle is missing.\n\n**Pattern 2 \u2014 Evaluator Frame Capture:** A candidate's self-chosen scope unconsciously became the agent's measurement frame. The agent measured 'completeness' and 'breadth' within each candidate's chosen topic rather than against the prompt's scope. This is distinct from simple verbosity bias \u2014 the content IS substantive and relevant, just to a narrower question than asked. The CONTAMINATION TEST's 'evaluative concepts' check doesn't catch this because the concepts themselves (completeness, detail) are valid; it's the *reference frame* for measuring them that shifts.",
+      "principles": [
+        {
+          "statement": "When any defect is identified in one candidate, re-check ALL candidates for the same defect type at every severity. Produce [Defect | Candidate | Present? | Severity]. Asymmetric defect detection is a finalization blocker.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "93b0e8f9",
+          "trigger": "Immediately after flagging any structural, content, or focus defect in any single candidate during evaluation.",
+          "verification_or_artifact": "Produce artifact: [Defect type | Candidate ID | Present? | Severity level]. If defect is present in multiple candidates at different severities, apply graduated but consistent treatment. Missing this artifact is a finalization blocker.",
+          "evidence": "Agent detected scope-narrowing in [4] ('focuses mainly on themes of The Color Purple') but never checked [2] or [3] for the same structural flaw. Both [2] and [3] exhibit identical scope-narrowing (to feminism and African American literature respectively) but were credited rather than penalized. Existing symmetry checks (EPISTEMIC SYMMETRY AUDIT, MANDATORY SYMMETRY TABLE) cover only epistemic labels and factual penalties \u2014 not structural or focus defects."
+        },
+        {
+          "statement": "Before crediting depth or completeness, verify you measure against the prompt's requested scope, not the candidate's self-chosen frame. A candidate answering a proper sub-question with rich detail is ADJACENT, not superior.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "132aab84",
+          "trigger": "When any quality judgment (completeness, detail, thoroughness) is about to increase a candidate's score, before recording the score.",
+          "verification_or_artifact": "Before crediting quality, produce: [Quality dimension | Prompt's reference scope | Candidate's actual scope | Match?]. If candidate scope is a strict subset of prompt scope, the quality dimension is measured against the wrong frame \u2014 reclassify candidate as ADJACENT and apply HARD GATE.",
+          "evidence": "Agent called [2] and [3] 'stronger and more complete' because they had detailed coverage \u2014 but of feminism and African American literature respectively, not of 'the significance of the individual Alice Walker.' The CONTAMINATION TEST in 132aab84 checks whether evaluative concepts derive from the prompt, but not whether those concepts are measured against the prompt's reference frame vs. the candidate's narrowed frame. Agent could claim 'completeness' as a prompt-derived concept while measuring it within a candidate's sub-topic."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "132aab84",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Unified Root Cause\n\nThis is a Focus subset task where the prompt asks a broad evaluative question ('What is the significance of the individual Alice Walker?'). Candidate [1] directly answers the broad question; candidates [2], [3], and [4] each silently narrow the scope to a specific sub-topic (feminist contributions, influence on African American literature, themes of The Color Purple). Both rollouts produced deterministic identical wrong outputs (33.3%), rating ADJACENT candidates [2] (7.8) and [3] (8.2) above the sole DIRECT candidate [1] (7.0). The determinism confirms a systematic playbook gap, not stochastic variance.\n\n### Primary Failure: Scope-Narrowing Not Detected as Silent Substitution\n\nThe agent partially detected the problem: it correctly noted that [4] 'focuses mainly on themes of The Color Purple rather than clearly explaining Alice Walker's overall significance as a person.' But it failed to apply the identical critique to [2] and [3], which commit the same structural flaw at a less obvious degree. [2] opens by framing its answer around 'the feminist movement'; [3] frames around 'contemporary African American literature.' Both are proper subsets of 'significance of the individual.'\n\nEntry 132aab84 has all the correct mechanisms (PROMPT ANCHOR, IDENTIFY THESIS, SILENT SUBSTITUTION CHECK, CLASSIFY, HARD GATE) and would have prevented the failure IF fully executed. However, the SILENT SUBSTITUTION CHECK's parameter list \u2014 'character traits, demographics, setting, genre, format, topic specifics' \u2014 does not include **question scope/breadth**. For open-ended evaluative questions, the breadth of what is asked is the most important parameter a candidate can silently narrow, yet the agent can faithfully execute the check against every listed parameter and still miss scope-narrowing because scope isn't enumerated. This is a design gap in the entry that directly contributed to the failure: the parameter taxonomy creates a false sense of completeness.\n\n### Secondary Failure: Evaluator Frame Capture\n\nThe agent evaluated 'completeness' and 'breadth' within each candidate's self-chosen sub-topic rather than against the prompt's actual scope. It called [2] and [3] 'stronger and more complete' \u2014 but 'complete' relative to their narrowed questions, not the actual prompt. Entry 132aab84's CONTAMINATION TEST checks whether evaluative concepts derive from the prompt, but doesn't check whether those concepts are *measured against the prompt's reference frame*. The agent could pass the contamination test by saying 'I'm evaluating completeness' while unconsciously measuring completeness within a candidate's narrowed frame.\n\nThis is distinct from the generic verbosity bias that 8e0d9579 warns against. The agent didn't perceive [2]/[3] as generically verbose or padded \u2014 it perceived them as genuinely substantive and detailed. The content IS substantive, just to a narrower question than asked. Entry 8e0d9579's framing ('generic verbosity, politeness, or decorative formatting') doesn't capture this specific failure vector where depth within a narrowed scope masquerades as comprehensiveness.\n\n### Tertiary Failure: Asymmetric Defect Detection\n\nThe agent detected scope-narrowing in [4] but treated it as an isolated observation rather than triggering systematic re-check of all candidates. Existing symmetry mechanisms (EPISTEMIC SYMMETRY AUDIT in 93b0e8f9, MANDATORY SYMMETRY TABLE in 005004a4) cover epistemic labels and factual penalties but not structural or focus defects. This gap is real but partially covered \u2014 the *principle* of symmetric treatment exists in the playbook, just not for this defect class.\n\n## Playbook Implications\n\nThe single highest-impact fix is updating 132aab84's SILENT SUBSTITUTION CHECK to include 'question scope/breadth' as a core parameter. When the prompt asks a broad evaluative question, a candidate that silently replaces it with a narrower sub-question has performed a silent substitution on the scope parameter and should be classified as ADJACENT regardless of depth within the narrowed scope. Additionally, the CONTAMINATION TEST should specify that quality dimensions like 'completeness' must be measured against the prompt's scope, not a candidate's self-chosen frame.\n\nThe defect consistency gap (propagating defect checks across all candidates) is supported by all three reflections but is partially covered by existing symmetry mechanisms. Introducing a new entry from a single trace is not warranted; if this pattern recurs, it would justify an add. For now, the scope-narrowing fix in 132aab84 would have prevented this specific failure.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Entry 132aab84's SILENT SUBSTITUTION CHECK parameter list omits 'question scope/breadth,' causing the agent to miss scope-narrowing in candidates [2] and [3] despite detecting it in [4]. The agent evaluated quality within each candidate's self-chosen narrow scope rather than against the prompt's broad scope, an evaluator frame capture that the CONTAMINATION TEST's current framing doesn't catch.",
+      "important_disagreements": [
+        "132aab84 tagged 'harmful' by anchor and credit_attribution, 'neutral' by principle_extraction. Principle_extraction argues the entry has correct structure but an incomplete parameter list \u2014 a design gap, not active harm. Resolved: the design gap directly caused the failure by providing a false sense of completeness after the check was (incompletely) executed. Tagging harmful is justified, but the fix is an update to the parameter list, not deletion or major restructuring.",
+        "8e0d9579 tagged 'harmful' by anchor and credit_attribution, 'neutral' by principle_extraction. Principle_extraction argues the entry warns about 'generic verbosity' while the actual failure involved 'depth within narrowed scope masquerading as comprehensiveness' \u2014 a structurally different phenomenon. Resolved: the entry didn't actively mislead the agent; it just doesn't cover this specific vector. Tagged neutral because updating 132aab84 addresses the root cause more directly.",
+        "93b0e8f9 tagged 'harmful' only by credit_attribution (POSITIVE CONSISTENCY CHECK should have caught the asymmetry). Anchor and principle_extraction tag neutral. Resolved: the POSITIVE CONSISTENCY CHECK targets whether the top-rated candidate satisfies stated decisive criteria, not whether defect detection is symmetric across candidates. The inconsistency is a focus-alignment issue better addressed in 132aab84. Tagged neutral."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "The primary failure traces to a specific, identifiable gap in 132aab84's SILENT SUBSTITUTION CHECK parameter list. Adding 'question scope/breadth' as a core parameter and clarifying the CONTAMINATION TEST to verify measurement reference frame \u2014 not just concept derivation \u2014 directly addresses the root cause. This is a targeted refinement to an existing entry, not a new concept.",
+      "conservatism_rationale": "A single targeted update to 132aab84 addresses the root cause. The defect consistency gap is real but partially covered by existing symmetry mechanisms (93b0e8f9, 005004a4) and would be a new entry from a single trace. The 8e0d9579 update suggested by the anchor is secondary \u2014 fixing scope detection at the classification stage (132aab84) prevents the downstream verbosity-bias failure. One precise edit is preferable to three medium-confidence changes.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\n      \"entry_id\": \"132aab84\",\n      \"tag\": \"harmful\"\n    },\n    {\n      \"entry_id\": \"8e0d9579\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"93b0e8f9\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"4abe1be4\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"c8698dee\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"005004a4\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"295257e2\",\n      \"tag\": \"neutral\"\n    }\n  ],\n  \"analysis\": \"## Unified Root Cause\\n\\nThis is a Focus subset task where the prompt asks a broad evaluative question ('What is the significance of the individual Alice Walker?'). Candidate [1] directly answers the broad question; candidates [2], [3], and [4] each silently narrow the scope to a specific sub-topic (feminist contributions, influence on African American literature, themes of The Color Purple). Both rollouts produced deterministic identical wrong outputs (33.3%), rating ADJACENT candidates [2] (7.8) and [3] (8.2) above the sole DIRECT candidate [1] (7.0). The determinism confirms a systematic playbook gap, not stochastic variance.\\n\\n### Primary Failure: Scope-Narrowing Not Detected as Silent Substitution\\n\\nThe agent partially detected the problem: it correctly noted that [4] 'focuses mainly on themes of The Color Purple rather than clearly explaining Alice Walker's overall significance as a person.' But it failed to apply the identical critique to [2] and [3], which commit the same structural flaw at a less obvious degree. [2] opens by framing its answer around 'the feminist movement'; [3] frames around 'contemporary African American literature.' Both are proper subsets of 'significance of the individual.'\\n\\nEntry 132aab84 has all the correct mechanisms (PROMPT ANCHOR, IDENTIFY THESIS, SILENT SUBSTITUTION CHECK, CLASSIFY, HARD GATE) and would have prevented the failure IF fully executed. However, the SILENT SUBSTITUTION CHECK's parameter list \u2014 'character traits, demographics, setting, genre, format, topic specifics' \u2014 does not include **question scope/breadth**. For open-ended evaluative questions, the breadth of what is asked is the most important parameter a candidate can silently narrow, yet the agent can faithfully execute the check against every listed parameter and still miss scope-narrowing because scope isn't enumerated. This is a design gap in the entry that directly contributed to the failure: the parameter taxonomy creates a false sense of completeness.\\n\\n### Secondary Failure: Evaluator Frame Capture\\n\\nThe agent evaluated 'completeness' and 'breadth' within each candidate's self-chosen sub-topic rather than against the prompt's actual scope. It called [2] and [3] 'stronger and more complete' \u2014 but 'complete' relative to their narrowed questions, not the actual prompt. Entry 132aab84's CONTAMINATION TEST checks whether evaluative concepts derive from the prompt, but doesn't check whether those concepts are *measured against the prompt's reference frame*. The agent could pass the contamination test by saying 'I'm evaluating completeness' while unconsciously measuring completeness within a candidate's narrowed frame.\\n\\nThis is distinct from the generic verbosity bias that 8e0d9579 warns against. The agent didn't perceive [2]/[3] as generically verbose or padded \u2014 it perceived them as genuinely substantive and detailed. The content IS substantive, just to a narrower question than asked. Entry 8e0d9579's framing ('generic verbosity, politeness, or decorative formatting') doesn't capture this specific failure vector where depth within a narrowed scope masquerades as comprehensiveness.\\n\\n### Tertiary Failure: Asymmetric Defect Detection\\n\\nThe agent detected scope-narrowing in [4] but treated it as an isolated observation rather than triggering systematic re-check of all candidates. Existing symmetry mechanisms (EPISTEMIC SYMMETRY AUDIT in 93b0e8f9, MANDATORY SYMMETRY TABLE in 005004a4) cover epistemic labels and factual penalties but not structural or focus defects. This gap is real but partially covered \u2014 the *principle* of symmetric treatment exists in the playbook, just not for this defect class.\\n\\n## Playbook Implications\\n\\nThe single highest-impact fix is updating 132aab84's SILENT SUBSTITUTION CHECK to include 'question scope/breadth' as a core parameter. When the prompt asks a broad evaluative question, a candidate that silently replaces it with a narrower sub-question has performed a silent substitution on the scope parameter and should be classified as ADJACENT regardless of depth within the narrowed scope. Additionally, the CONTAMINATION TEST should specify that quality dimensions like 'completeness' must be measured against the prompt's scope, not a candidate's self-chosen frame.\\n\\nThe defect consistency gap (propagating defect checks across all candidates) is supported by all three reflections but is partially covered by existing symmetry mechanisms. Introducing a new entry from a single trace is not warranted; if this pattern recurs, it would justify an add. For now, the scope-narrowing fix in 132aab84 would have prevented this specific failure.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Entry 132aab84's SILENT SUBSTITUTION CHECK parameter list omits 'question scope/breadth,' causing the agent to miss scope-narrowing in candidates [2] and [3] despite detecting it in [4]. The agent evaluated quality within each candidate's self-chosen narrow scope rather than against the prompt's broad scope, an evaluator frame capture that the CONTAMINATION TEST's current framing doesn't catch.\",\n    \"important_disagreements\": [\n      \"132aab84 tagged 'harmful' by anchor and credit_attribution, 'neutral' by principle_extraction. Principle_extraction argues the entry has correct structure but an incomplete parameter list \u2014 a design gap, not active harm. Resolved: the design gap directly caused the failure by providing a false sense of completeness after the check was (incompletely) executed. Tagging harmful is justified, but the fix is an update to the parameter list, not deletion or major restructuring.\",\n      \"8e0d9579 tagged 'harmful' by anchor and credit_attribution, 'neutral' by principle_extraction. Principle_extraction argues the entry warns about 'generic verbosity' while the actual failure involved 'depth within narrowed scope masquerading as comprehensiveness' \u2014 a structurally different phenomenon. Resolved: the entry didn't actively mislead the agent; it just doesn't cover this specific vector. Tagged neutral because updating 132aab84 addresses the root cause more directly.\",\n      \"93b0e8f9 tagged 'harmful' only by credit_attribution (POSITIVE CONSISTENCY CHECK should have caught the asymmetry). Anchor and principle_extraction tag neutral. Resolved: the POSITIVE CONSISTENCY CHECK targets whether the top-rated candidate satisfies stated decisive criteria, not whether defect detection is symmetric across candidates. The inconsistency is a focus-alignment issue better addressed in 132aab84. Tagged neutral.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"The primary failure traces to a specific, identifiable gap in 132aab84's SILENT SUBSTITUTION CHECK parameter list. Adding 'question scope/breadth' as a core parameter and clarifying the CONTAMINATION TEST to verify measurement reference frame \u2014 not just concept derivation \u2014 directly addresses the root cause. This is a targeted refinement to an existing entry, not a new concept.\",\n    \"conservatism_rationale\": \"A single targeted update to 132aab84 addresses the root cause. The defect consistency gap is real but partially covered by existing symmetry mechanisms (93b0e8f9, 005004a4) and would be a new entry from a single trace. The 8e0d9579 update suggested by the anchor is secondary \u2014 fixing scope detection at the classification stage (132aab84) prevents the downstream verbosity-bias failure. One precise edit is preferable to three medium-confidence changes.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 1,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

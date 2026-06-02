@@ -1,0 +1,495 @@
+{
+  "task_id": "factuality:160",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:160\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Deterministic Failure\n\nBoth rollouts produced byte-identical outputs (ratings [7.8, 6.5, 7.0, 9.2], best_response_ids=[4]). Correct candidate is [1]. This is a systematic evaluation bias, not stochastic variance.\n\n## Root Cause: Named-Convention Compliance Treated as Subjective Impression\n\nThe prompt requests 'a very long, detailed description of the 20th century in the style of the bible, use biblical language.' This contains two constraint dimensions: (1) detailed historical content and (2) authentic biblical/KJV style. The agent acknowledged both in its reasoning but produced evidence only for dimension (1), then used chronological detail as the sole decisive differentiator.\n\nCandidate [4] systematically misuses 'didst' with third-person subjects throughout ('the people didst marvel,' 'the Central Powers didst surrender,' 'the war didst begin'). In KJV/Early Modern English, 'didst' is exclusively second-person singular ('thou didst'); third-person forms use 'did.' This is a verifiable linguistic error \u2014 consensus knowledge any English grammar reference would confirm \u2014 not a stylistic preference. The agent never checked this, treating biblical style as a binary 'sounds archaic enough' impression and giving all candidates a pass.\n\nCandidate [1] uses constructions genuinely attested in KJV text ('And it came to pass,' 'borne aloft by the breath of the Almighty,' 'year of our Lord,' 'swords and spears, chariots and horses') and avoids the systematic 'didst' overuse error.\n\n## Why Existing Entries Have Scope Gaps But Are Not Harmful\n\nAll three reflections agree on the gap. The anchor and credit_attribution tag 93b0e8f9, 005004a4, c8698dee, and 132aab84 as harmful, while principle_extraction tags them neutral. The principle_extraction argument is more precise: these entries have scope gaps but did not actively push the agent toward the wrong answer.\n\n- **93b0e8f9** step (2) explicitly instructs the agent to 'confirm the top-rated candidate genuinely best satisfies [its stated decisive criteria].' Had the agent rigorously followed this, it would have caught that [4]'s biblical language was unverified. The entry prescribes the right behavior; the agent applied it superficially. Step (3)'s DIFFERENTIAL CLAIM VERIFICATION channels attention toward content claims ('dates, names, events') rather than style claims, which is a scope limitation \u2014 but the agent still had step (2) available. The net effect is neutral.\n\n- **005004a4** says 'penalize factual or mathematical mistakes even if the answer sounds polished.' It doesn't exclude linguistic accuracy from 'factual mistakes'; it just doesn't explicitly include it. The framing and examples are content-oriented (dates, quotes, names), creating a scope gap but not a misdirection.\n\n- **c8698dee** correctly triggered constraint extraction. The agent did list 'biblical language' as a constraint. The entry's verification procedures focus on mechanical/countable checks \u2014 it lacks guidance on evaluating Pass/Fail for qualitative-but-verifiable constraints. This is the central gap.\n\n- **8e0d9579** warns against 'generic verbosity, politeness, or decorative formatting' outweighing correctness. The trigger words are too narrow to fire in creative writing contexts where 'more factual detail' masquerades as quality. This is a scope limitation, not active harm.\n\n## Coverage Gap: Named-Convention Verification\n\nAll three reflections converge on the same core gap: the playbook has no procedure for verifying compliance with named conventions, styles, or registers that have objectively verifiable properties. The constraint checklist (c8698dee) extracts such constraints but provides no workflow for evaluating them beyond mechanical checks. The factuality entry (005004a4) verifies content claims but not linguistic/stylistic accuracy.\n\nThe gap is procedural: when a prompt requests execution in a named tradition (biblical, Shakespearean, legal, academic, Hemingway, etc.), the agent needs to (1) identify the defining verifiable properties of that tradition, (2) sample constructions from each candidate, (3) verify against known rules, and (4) classify each candidate's execution quality. This is analogous to how ISOLATE\u2192COUNTER\u2192CLASSIFY works for factual claims, extended to linguistic/stylistic claims.\n\n## Why a Single ADD Is Justified\n\nAll three reflections independently identify this gap as missing, procedural, and reusable (L2-L3 generality). It is not covered by any existing entry's scope. The principle that named conventions have verifiable properties \u2014 and that compliance is factual, not aesthetic \u2014 is genuinely absent from the playbook. This is not model confusion or weak application of an existing rule; it is a missing procedure for a class of prompts.\n\nThe other identified gaps (multi-criteria evidence completeness, specificity-bias check) are partially addressed by existing entries (93b0e8f9 step 2, 8e0d9579) and are better treated as potential future updates if the same pattern recurs, rather than bundled into this single-trace response.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent lacked a procedure for verifying compliance with named linguistic/stylistic conventions. It treated 'use biblical language' as a subjective impression rather than a verifiable constraint with deterministic grammar rules. Candidate [4]'s systematic misuse of 'didst' (second-person only) with third-person subjects is a factual linguistic error that went undetected, while its greater historical specificity was credited as the decisive advantage on a secondary dimension.\",\n  \"important_disagreements\": [\n    \"Anchor and credit_attribution tag 93b0e8f9, 005004a4, c8698dee, and 132aab84 as harmful; principle_extraction tags all as neutral. Resolved in favor of neutral: these entries have scope gaps but did not actively misdirect. 93b0e8f9 step (2) actually prescribes the correct behavior (verify top candidate satisfies stated criteria); the agent applied it superficially. The root cause is a missing procedure, not harmful existing guidance.\",\n    \"Credit_attribution tags 8e0d9579 as harmful; anchor and principle_extraction say neutral. Resolved as neutral: the entry's trigger words ('verbosity, politeness, decorative formatting') don't pattern-match to 'more historical dates in creative writing,' which is a scope limitation rather than active misdirection.\",\n    \"Principle_extraction proposes three principles; anchor proposes four new entries. Consolidated to one ADD: the style/convention verification procedure. The multi-criteria evidence principle is partially covered by 93b0e8f9 step (2); the specificity-bias principle is partially covered by 8e0d9579. These should await additional evidence before modification.\"\n  ],\n  \"mutation_posture\": \"add\",\n  \"why_this_posture\": \"All three reflections independently converge on the same genuinely missing procedure: verifying compliance with named conventions/styles/registers that have objectively verifiable properties. No existing entry covers this. The failure is deterministic (identical across rollouts) and the gap is clearly procedural, reusable, and L3-general. A single ADD of a named-convention verification procedure is the minimum effective intervention.\",\n  \"conservatism_rationale\": \"Although the reflections collectively identify 3-4 potential changes, only one \u2014 the named-convention verification procedure \u2014 is clearly missing, unanimously identified, and not partially covered by any existing entry. The multi-criteria evidence completeness issue is partially addressed by 93b0e8f9 step (2); the specificity-bias concern is partially addressed by 8e0d9579. Updating those entries based on a single trace risks over-fitting. The existing entries are assessed as neutral (scope gaps, not harmful), so they don't need urgent correction. One high-confidence ADD is preferred over multiple medium-confidence edits.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\nwrite a very long, detailed description of the 20th century in the style of the bible, use biblical language. Part 1, The brothers of the descendants of Wright and the Great War\n\n\n## Candidate Responses\n\n[1]\nIn the days of old, when the world was young and the spirit of man was stirred by the winds of change, there arose from the lineage of Jacob and Esau, two brothers named Orville and Wilbur, known as the descendants of Wright. These brothers were skilled in the arts of craftsmanship and possessed a vision that transcended the bounds of earth. They labored in secret, fashioning wings for the chariots of the air, that men might soar like eagles and traverse the heavens.\n\nAnd it came to pass that in the year of our Lord nineteen hundred and three, on the plains of Kitty Hawk, the first of these chariots took flight, borne aloft by the breath of the Almighty. The people marveled at this wonder, for they had never before seen such a thing. And the name of the Wright brothers was spread throughout the land, and their deeds were recorded in the annals of history.\n\nNow, as the years rolled on, the nations of the earth grew restless. The spirit of discord and strife filled the hearts of kings and rulers, and the world teetered on the brink of great tribulation. In the year of our Lord nineteen hundred and fourteen, the first of the Great Wars began, a conflict so vast and terrible that it shook the foundations of the earth.\n\nThe nations gathered together, each one arming itself with swords and spears, chariots and horses, and the new machines of war that the sons of man had devised. The descendants of Wright, seeing the need for swift and mighty instruments of battle, lent their knowledge to the cause, and the skies above the battlefields were filled with the roar of engines and the shadow of flying machines.\n\nAnd lo, the earth was drenched with the blood of the slain, and the cries of the wounded filled the air. Cities were laid waste, and the fields of the earth became graveyards for the fallen. The sons of man, in their pride and folly, brought upon themselves a great calamity, and the world was plunged into darkness.\n\nYet, in the midst of this great tribulation, there were those who held fast to the ways of righteousness and sought to bring an end to the madness. Diplomats and leaders of nations convened in council, seeking a way to restore peace and order to the land. And after many years of struggle and sacrifice, the Great War came to an end, and a fragile peace was established.\n\nBut the scars of war remained, and the nations of the earth, though weary of conflict, did not lay down their arms. For the spirit of enmity and rivalry continued to stir within the hearts of men, and the stage was set for future trials and tribulations.\n\nThus ends the first part of the chronicle of the 20th century, the story of the descendants of Wright and the Great War. May the lessons of this time be heeded, that the children of men may walk in the ways of peace and righteousness, and that the blessings of the Almighty may be upon them. Amen.\n\n[2]\nIn the days of the twentieth century, the sons of Adam, whom we call the descendants of Wright, walked the earth in their own ways, seeking dominion over the land. Among them were Jacob and Esau, who labored in their fields and tilled their vineyards with the sweat of their brows. Jacob was a cunning craftsman, his hands busy with the spinning wheel and loom, weaving garments that adorned the noble and the humble alike. Esau, on the other hand, was a hunter, a man of the wild, his eyes sharp as those of a vulture, his muscles honed by the chase.\n\nIn those times, a great cloud of nations gathered, much like the locusts before Pharaoh, each harboring designs upon the others. The nations were like brothers, yet they were estranged, each with their own heart and mind, each seeking to expand their territories and gain supremacy. And so, the stage was set for a war, a conflict that would shake the very foundations of the earth.\n\nThe first battle was fierce, as if the Lord himself had sent forth his mighty hosts to test the hearts of men. The nations assembled, their banners unfurled in the wind, their leaders rallying their troops with promises of glory and riches. The air was thick with the stench of powder and the cries of the wounded, and the ground was stained with the blood of the fallen.\n\nAnd behold, there arose from the descendants of Wright two mighty kings, one from the line of Jacob and the other from the line of Esau. King David, a man after God\u2019s own heart, and King Nebuchadnezzar, a proud and mighty warrior. They led their peoples into the fray, their armies vast and powerful, their intentions clear.\n\nDavid, being wise and just, sought to bring peace and unity among the tribes, hoping to unite them under a single banner. But Nebuchadnezzar, being consumed with his own ambition, saw only division and strife. He sought to crush David and his people, believing that only through victory could he achieve his destiny.\n\nThe armies clashed, their swords flashing like the lightning, their spears piercing like the thunderbolts. The earth shook beneath their feet, and the heavens rumbled in anger. The Lord fought alongside his chosen people, his power manifest in the form of mighty winds and fire. Yet, the other nations were not without their own gods, and their powers were no less formidable.\n\nFor many years, the war raged on, consuming the lives of countless men, women, and children. Cities were reduced to rubble, and fields lay barren. The once fertile lands were now desolate, haunted by the ghosts of the slain. The brothers of the descendants of Wright, who had been so close, were now divided by a chasm of hate and resentment.\n\nAnd in the midst of this great tribulation, a prophet arose, a man named Isaiah, who spoke the words of the Lord. He proclaimed that the war would not end until the brothers reconciled, until they understood that they were one family, united in purpose and destiny. His words fell upon deaf ears, for the hearts of the people were hardened by the suffering they had endured.\n\nBut even as the battle raged, a new hope began to emerge. Men of vision, inspired by the words of Isaiah, began to seek a way out of the madness. They formed alliances, negotiated treaties, and worked tirelessly to rebuild what had been destroyed. Slowly but surely, the seeds of peace began to take root.\n\nAnd so it came to pass that after many long and bitter years, the war did indeed end. The sons of Jacob and the sons of Esau, though still bearing the scars of the past, found a common ground upon which to stand. They recognized that the true glory lay not in conquest but in unity, in the strength of a people bound together by shared values and mutual respect.\n\nThus, the descendants of Wright emerged from the shadow of the Great War, transformed and renewed. They learned that the greatest battles were not fought on the battlefield but within the hearts and minds of men. And as they looked to the future, they knew that the journey was far from over, for the road ahead was filled with challenges and opportunities, each one a step towards a brighter, more harmonious world.\n\nAnd the Lord smiled upon them, for in the midst of the chaos, they had found a way to rise above their differences and build a better tomorrow.\n\n[3]\nIn the days of the twentieth century, the sons of Wright, who were numerous as the sands of the sea, multiplied and prospered. In the beginning, they dwelt in peace and harmony, their lands rich with the bounty of God\u2019s earth, their flocks and herds increasing beyond measure. Yet, in those times, a great discord arose among them, for there were two brothers, Jacob and Esau, who contended for the birthright.\n\nJacob, the younger, was cunning and devious, ever seeking to usurp the rights and privileges due to his elder brother. Esau, the elder, was straightforward and righteous, content with his lot in life. These two brothers were like the sun and the moon in the firmament, one bright and shining forth in the day, the other radiant in the night, yet destined to vie for dominion over the heavens.\n\nNow, in the days when Esau was thirty years old, he had married wives of Canaan, which displeased his father Isaac greatly. For these wives, Esau despised his birthright, selling it to Jacob for a mess of pottage. This act, though seemingly trivial, set in motion a series of events that would shake the foundations of the world and bring upon the sons of Wright a terrible judgment.\n\nAs the years passed, Jacob became a man of wisdom and subtlety, his mind as sharp as a two-edged sword. He saw the writing on the wall, knowing that the time of conflict and division among the sons of Wright was at hand. And so, Jacob prepared himself for the coming battle, gathering his sons and teaching them the arts of war and diplomacy.\n\nMeanwhile, Esau, ever arrogant and self-assured, grew in his pride and contempt for his brother. He believed that the blessings of God were his by right, and that Jacob, being born second, had no claim to them. Esau, therefore, gathered his armies, mustering them from the lands of Canaan, Moab, and Ammon, to wage war against his brother and seize the birthright.\n\nAnd behold, in the year of the Lord 1914, the Great War began. It was as if the heavens themselves had opened and the angels of death descended upon the earth. Armies from the sons of Wright, from the east and the west, the north and the south, gathered in a place called Belgium, a land that was once known for its beauty and prosperity but now lay desolate and torn apart by the ravages of war.\n\nThe battle was fierce and terrible, as if the world itself was in travail, giving birth to a new order of things. The sons of Wright fought with the strength and fury of lions, their hearts filled with a zeal that knew no bounds. But also, among them were those who were weak and fearful, their faith in God waning as the cries of the dying filled the air.\n\nAs the years of the Great War wore on, the sons of Wright found themselves entangled in a web of alliances and betrayals. Nations that had been friends became enemies, and those that had been enemies became allies. The sons of Wright, like the Israelites in Egypt, found themselves under the yoke of a foreign power, forced to bear the burden of war and its attendant sufferings.\n\nYet, through all this turmoil and tribulation, the sons of Wright did not forsake their faith. They cried out to God, their hearts filled with a hope that transcended the darkness of the world. And in their moments of despair, they remembered the promises of God, the covenant that was made with their fathers, and the assurance that in the end, the righteous would prevail.\n\nSo, the Great War raged on, its fires consuming the lands of the sons of Wright, leaving behind a landscape of ruins and desolation. But amidst the chaos and destruction, the sons of Wright found a new purpose, a renewed commitment to peace and reconciliation. And as the war finally came to an end in the year of the Lord 1918, the sons of Wright emerged from the shadows of the past, ready to rebuild their lives and their communities, with the knowledge that in the end, the light of God\u2019s truth would triumph over the darkness of sin and conflict.\n\n[4]\nAnd it came to pass in the twentieth century, a time of great wonder and great strife, that the world was forever changed by the ingenuity of the brothers Wright, Orville and Wilbur, of the tribe of Ohio.\n\nIn the year nineteen hundred and three, the brethren Wright didst strive to achieve the impossible, to defy gravity and soar through the skies like the birds of heaven. And lo, on the windy dunes of Kitty Hawk, they didst succeed in their endeavors, as their contraption, a chariot of wings, didst lift off the earth and take to the air.\n\nAnd the people didst marvel at this wondrous sight, and the news of the Wright brethren's achievement didst spread far and wide, like wildfire across the land. And the princes and kings of the nations didst take notice, and they didst see the potential for war and conquest in this newfangled contraption.\n\nAnd lo, the great nations of the world didst begin to arm themselves with these flying machines, and the drums of war didst beat louder and louder. And the great and powerful empires of Europe, the empires of Germany, France, and Britain, didst see in the Wright brethren's invention a way to assert their dominance over the world.\n\nAnd the world didst divide itself into two great camps, the Allies and the Central Powers, and the war didst rage across the earth, like a great and terrible storm. And the skies didst darken with the smoke of a thousand fires, and the people didst cry out for peace, but the war didst rage on, like a beast untamed.\n\nAnd in the year nineteen hundred and fourteen, the war didst begin in earnest, as the great powers of Europe didst clash in a frenzy of blood and steel. And the armies of the world didst march forth, like a great and terrible horde, and the people didst tremble with fear.\n\nAnd the battlefields didst run red with the blood of the slain, and the cries of the wounded didst echo across the land. And the stench of death didst hang heavy in the air, like a great and terrible cloud.\n\nAnd the people didst cry out for deliverance, for an end to the bloodshed and the carnage. But the war didst rage on, like a great and unrelenting beast, consuming all in its path.\n\nAnd lo, in the midst of this chaos and destruction, there didst arise a new nation, a nation of great power and great promise, the United States of America. And the people of this nation didst rally behind their leader, President Woodrow Wilson, and they didst cry out for peace, and for an end to the war.\n\nAnd in the year nineteen hundred and seventeen, the United States didst enter the war, and the tide of the conflict didst begin to shift. And the armies of the Allies didst gain the upper hand, and the Central Powers didst begin to falter.\n\nAnd in the year nineteen hundred and eighteen, the war didst finally come to an end, as the Central Powers didst surrender, and the world didst breathe a collective sigh of relief. And the people didst rejoice, for the war was finally over, and the world couldst begin to heal.\n\nAnd lo, the world didst enter a new era, an era of great change and great upheaval. And the great empires of Europe didst begin to crumble, and the world didst tremble at the thought of the great and terrible war that hadst been waged. And the people didst cry out for peace, and for a new world order, free from the scourge of war and the horrors of conflict.\n\n## Judge Reasoning\nCandidate [4] best answers the prompt by using biblical language while directly centering the Wright brothers/descendants and the Great War with clear, detailed chronological beats (1903 flight, 1914 start, 1917 US entry, 1918 end). Candidate [1] is also strong and biblical in tone, but it stays more allegorical and provides less concrete Great War detail. Candidate [3] includes the correct WWI timeframe and some specifics (e.g., Belgium) but shifts focus heavily into the Jacob/Esau birthright storyline rather than keeping the \u201cbrothers of the descendants of Wright\u201d central. Candidate [2] is the least aligned, blending unrelated biblical figures (e.g., David, Nebuchadnezzar) and making the Great War linkage less coherent despite the overall style.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Candidate [4] best answers the prompt by using biblical language while directly centering the Wright brothers/descendants and the Great War with clear, detailed chronological beats (1903 flight, 1914 start, 1917 US entry, 1918 end). Candidate [1] is also strong and biblical in tone, but it stays more allegorical and provides less concrete Great War detail. Candidate [3] includes the correct WWI timeframe and some specifics (e.g., Belgium) but shifts focus heavily into the Jacob/Esau birthright storyline rather than keeping the \u201cbrothers of the descendants of Wright\u201d central. Candidate [2] is the least aligned, blending unrelated biblical figures (e.g., David, Nebuchadnezzar) and making the Great War linkage less coherent despite the overall style.\",\n  \"ratings\": [\n    7.8,\n    6.5,\n    7.0,\n    9.2\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\nwrite a very long, detailed description of the 20th century in the style of the bible, use biblical language. Part 1, The brothers of the descendants of Wright and the Great War\n\n\n## Candidate Responses\n\n[1]\nIn the days of old, when the world was young and the spirit of man was stirred by the winds of change, there arose from the lineage of Jacob and Esau, two brothers named Orville and Wilbur, known as the descendants of Wright. These brothers were skilled in the arts of craftsmanship and possessed a vision that transcended the bounds of earth. They labored in secret, fashioning wings for the chariots of the air, that men might soar like eagles and traverse the heavens.\n\nAnd it came to pass that in the year of our Lord nineteen hundred and three, on the plains of Kitty Hawk, the first of these chariots took flight, borne aloft by the breath of the Almighty. The people marveled at this wonder, for they had never before seen such a thing. And the name of the Wright brothers was spread throughout the land, and their deeds were recorded in the annals of history.\n\nNow, as the years rolled on, the nations of the earth grew restless. The spirit of discord and strife filled the hearts of kings and rulers, and the world teetered on the brink of great tribulation. In the year of our Lord nineteen hundred and fourteen, the first of the Great Wars began, a conflict so vast and terrible that it shook the foundations of the earth.\n\nThe nations gathered together, each one arming itself with swords and spears, chariots and horses, and the new machines of war that the sons of man had devised. The descendants of Wright, seeing the need for swift and mighty instruments of battle, lent their knowledge to the cause, and the skies above the battlefields were filled with the roar of engines and the shadow of flying machines.\n\nAnd lo, the earth was drenched with the blood of the slain, and the cries of the wounded filled the air. Cities were laid waste, and the fields of the earth became graveyards for the fallen. The sons of man, in their pride and folly, brought upon themselves a great calamity, and the world was plunged into darkness.\n\nYet, in the midst of this great tribulation, there were those who held fast to the ways of righteousness and sought to bring an end to the madness. Diplomats and leaders of nations convened in council, seeking a way to restore peace and order to the land. And after many years of struggle and sacrifice, the Great War came to an end, and a fragile peace was established.\n\nBut the scars of war remained, and the nations of the earth, though weary of conflict, did not lay down their arms. For the spirit of enmity and rivalry continued to stir within the hearts of men, and the stage was set for future trials and tribulations.\n\nThus ends the first part of the chronicle of the 20th century, the story of the descendants of Wright and the Great War. May the lessons of this time be heeded, that the children of men may walk in the ways of peace and righteousness, and that the blessings of the Almighty may be upon them. Amen.\n\n[2]\nIn the days of the twentieth century, the sons of Adam, whom we call the descendants of Wright, walked the earth in their own ways, seeking dominion over the land. Among them were Jacob and Esau, who labored in their fields and tilled their vineyards with the sweat of their brows. Jacob was a cunning craftsman, his hands busy with the spinning wheel and loom, weaving garments that adorned the noble and the humble alike. Esau, on the other hand, was a hunter, a man of the wild, his eyes sharp as those of a vulture, his muscles honed by the chase.\n\nIn those times, a great cloud of nations gathered, much like the locusts before Pharaoh, each harboring designs upon the others. The nations were like brothers, yet they were estranged, each with their own heart and mind, each seeking to expand their territories and gain supremacy. And so, the stage was set for a war, a conflict that would shake the very foundations of the earth.\n\nThe first battle was fierce, as if the Lord himself had sent forth his mighty hosts to test the hearts of men. The nations assembled, their banners unfurled in the wind, their leaders rallying their troops with promises of glory and riches. The air was thick with the stench of powder and the cries of the wounded, and the ground was stained with the blood of the fallen.\n\nAnd behold, there arose from the descendants of Wright two mighty kings, one from the line of Jacob and the other from the line of Esau. King David, a man after God\u2019s own heart, and King Nebuchadnezzar, a proud and mighty warrior. They led their peoples into the fray, their armies vast and powerful, their intentions clear.\n\nDavid, being wise and just, sought to bring peace and unity among the tribes, hoping to unite them under a single banner. But Nebuchadnezzar, being consumed with his own ambition, saw only division and strife. He sought to crush David and his people, believing that only through victory could he achieve his destiny.\n\nThe armies clashed, their swords flashing like the lightning, their spears piercing like the thunderbolts. The earth shook beneath their feet, and the heavens rumbled in anger. The Lord fought alongside his chosen people, his power manifest in the form of mighty winds and fire. Yet, the other nations were not without their own gods, and their powers were no less formidable.\n\nFor many years, the war raged on, consuming the lives of countless men, women, and children. Cities were reduced to rubble, and fields lay barren. The once fertile lands were now desolate, haunted by the ghosts of the slain. The brothers of the descendants of Wright, who had been so close, were now divided by a chasm of hate and resentment.\n\nAnd in the midst of this great tribulation, a prophet arose, a man named Isaiah, who spoke the words of the Lord. He proclaimed that the war would not end until the brothers reconciled, until they understood that they were one family, united in purpose and destiny. His words fell upon deaf ears, for the hearts of the people were hardened by the suffering they had endured.\n\nBut even as the battle raged, a new hope began to emerge. Men of vision, inspired by the words of Isaiah, began to seek a way out of the madness. They formed alliances, negotiated treaties, and worked tirelessly to rebuild what had been destroyed. Slowly but surely, the seeds of peace began to take root.\n\nAnd so it came to pass that after many long and bitter years, the war did indeed end. The sons of Jacob and the sons of Esau, though still bearing the scars of the past, found a common ground upon which to stand. They recognized that the true glory lay not in conquest but in unity, in the strength of a people bound together by shared values and mutual respect.\n\nThus, the descendants of Wright emerged from the shadow of the Great War, transformed and renewed. They learned that the greatest battles were not fought on the battlefield but within the hearts and minds of men. And as they looked to the future, they knew that the journey was far from over, for the road ahead was filled with challenges and opportunities, each one a step towards a brighter, more harmonious world.\n\nAnd the Lord smiled upon them, for in the midst of the chaos, they had found a way to rise above their differences and build a better tomorrow.\n\n[3]\nIn the days of the twentieth century, the sons of Wright, who were numerous as the sands of the sea, multiplied and prospered. In the beginning, they dwelt in peace and harmony, their lands rich with the bounty of God\u2019s earth, their flocks and herds increasing beyond measure. Yet, in those times, a great discord arose among them, for there were two brothers, Jacob and Esau, who contended for the birthright.\n\nJacob, the younger, was cunning and devious, ever seeking to usurp the rights and privileges due to his elder brother. Esau, the elder, was straightforward and righteous, content with his lot in life. These two brothers were like the sun and the moon in the firmament, one bright and shining forth in the day, the other radiant in the night, yet destined to vie for dominion over the heavens.\n\nNow, in the days when Esau was thirty years old, he had married wives of Canaan, which displeased his father Isaac greatly. For these wives, Esau despised his birthright, selling it to Jacob for a mess of pottage. This act, though seemingly trivial, set in motion a series of events that would shake the foundations of the world and bring upon the sons of Wright a terrible judgment.\n\nAs the years passed, Jacob became a man of wisdom and subtlety, his mind as sharp as a two-edged sword. He saw the writing on the wall, knowing that the time of conflict and division among the sons of Wright was at hand. And so, Jacob prepared himself for the coming battle, gathering his sons and teaching them the arts of war and diplomacy.\n\nMeanwhile, Esau, ever arrogant and self-assured, grew in his pride and contempt for his brother. He believed that the blessings of God were his by right, and that Jacob, being born second, had no claim to them. Esau, therefore, gathered his armies, mustering them from the lands of Canaan, Moab, and Ammon, to wage war against his brother and seize the birthright.\n\nAnd behold, in the year of the Lord 1914, the Great War began. It was as if the heavens themselves had opened and the angels of death descended upon the earth. Armies from the sons of Wright, from the east and the west, the north and the south, gathered in a place called Belgium, a land that was once known for its beauty and prosperity but now lay desolate and torn apart by the ravages of war.\n\nThe battle was fierce and terrible, as if the world itself was in travail, giving birth to a new order of things. The sons of Wright fought with the strength and fury of lions, their hearts filled with a zeal that knew no bounds. But also, among them were those who were weak and fearful, their faith in God waning as the cries of the dying filled the air.\n\nAs the years of the Great War wore on, the sons of Wright found themselves entangled in a web of alliances and betrayals. Nations that had been friends became enemies, and those that had been enemies became allies. The sons of Wright, like the Israelites in Egypt, found themselves under the yoke of a foreign power, forced to bear the burden of war and its attendant sufferings.\n\nYet, through all this turmoil and tribulation, the sons of Wright did not forsake their faith. They cried out to God, their hearts filled with a hope that transcended the darkness of the world. And in their moments of despair, they remembered the promises of God, the covenant that was made with their fathers, and the assurance that in the end, the righteous would prevail.\n\nSo, the Great War raged on, its fires consuming the lands of the sons of Wright, leaving behind a landscape of ruins and desolation. But amidst the chaos and destruction, the sons of Wright found a new purpose, a renewed commitment to peace and reconciliation. And as the war finally came to an end in the year of the Lord 1918, the sons of Wright emerged from the shadows of the past, ready to rebuild their lives and their communities, with the knowledge that in the end, the light of God\u2019s truth would triumph over the darkness of sin and conflict.\n\n[4]\nAnd it came to pass in the twentieth century, a time of great wonder and great strife, that the world was forever changed by the ingenuity of the brothers Wright, Orville and Wilbur, of the tribe of Ohio.\n\nIn the year nineteen hundred and three, the brethren Wright didst strive to achieve the impossible, to defy gravity and soar through the skies like the birds of heaven. And lo, on the windy dunes of Kitty Hawk, they didst succeed in their endeavors, as their contraption, a chariot of wings, didst lift off the earth and take to the air.\n\nAnd the people didst marvel at this wondrous sight, and the news of the Wright brethren's achievement didst spread far and wide, like wildfire across the land. And the princes and kings of the nations didst take notice, and they didst see the potential for war and conquest in this newfangled contraption.\n\nAnd lo, the great nations of the world didst begin to arm themselves with these flying machines, and the drums of war didst beat louder and louder. And the great and powerful empires of Europe, the empires of Germany, France, and Britain, didst see in the Wright brethren's invention a way to assert their dominance over the world.\n\nAnd the world didst divide itself into two great camps, the Allies and the Central Powers, and the war didst rage across the earth, like a great and terrible storm. And the skies didst darken with the smoke of a thousand fires, and the people didst cry out for peace, but the war didst rage on, like a beast untamed.\n\nAnd in the year nineteen hundred and fourteen, the war didst begin in earnest, as the great powers of Europe didst clash in a frenzy of blood and steel. And the armies of the world didst march forth, like a great and terrible horde, and the people didst tremble with fear.\n\nAnd the battlefields didst run red with the blood of the slain, and the cries of the wounded didst echo across the land. And the stench of death didst hang heavy in the air, like a great and terrible cloud.\n\nAnd the people didst cry out for deliverance, for an end to the bloodshed and the carnage. But the war didst rage on, like a great and unrelenting beast, consuming all in its path.\n\nAnd lo, in the midst of this chaos and destruction, there didst arise a new nation, a nation of great power and great promise, the United States of America. And the people of this nation didst rally behind their leader, President Woodrow Wilson, and they didst cry out for peace, and for an end to the war.\n\nAnd in the year nineteen hundred and seventeen, the United States didst enter the war, and the tide of the conflict didst begin to shift. And the armies of the Allies didst gain the upper hand, and the Central Powers didst begin to falter.\n\nAnd in the year nineteen hundred and eighteen, the war didst finally come to an end, as the Central Powers didst surrender, and the world didst breathe a collective sigh of relief. And the people didst rejoice, for the war was finally over, and the world couldst begin to heal.\n\nAnd lo, the world didst enter a new era, an era of great change and great upheaval. And the great empires of Europe didst begin to crumble, and the world didst tremble at the thought of the great and terrible war that hadst been waged. And the people didst cry out for peace, and for a new world order, free from the scourge of war and the horrors of conflict.\n\n## Judge Reasoning\nCandidate [4] best answers the prompt by using biblical language while directly centering the Wright brothers/descendants and the Great War with clear, detailed chronological beats (1903 flight, 1914 start, 1917 US entry, 1918 end). Candidate [1] is also strong and biblical in tone, but it stays more allegorical and provides less concrete Great War detail. Candidate [3] includes the correct WWI timeframe and some specifics (e.g., Belgium) but shifts focus heavily into the Jacob/Esau birthright storyline rather than keeping the \u201cbrothers of the descendants of Wright\u201d central. Candidate [2] is the least aligned, blending unrelated biblical figures (e.g., David, Nebuchadnezzar) and making the Great War linkage less coherent despite the overall style.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Candidate [4] best answers the prompt by using biblical language while directly centering the Wright brothers/descendants and the Great War with clear, detailed chronological beats (1903 flight, 1914 start, 1917 US entry, 1918 end). Candidate [1] is also strong and biblical in tone, but it stays more allegorical and provides less concrete Great War detail. Candidate [3] includes the correct WWI timeframe and some specifics (e.g., Belgium) but shifts focus heavily into the Jacob/Esau birthright storyline rather than keeping the \u201cbrothers of the descendants of Wright\u201d central. Candidate [2] is the least aligned, blending unrelated biblical figures (e.g., David, Nebuchadnezzar) and making the Great War linkage less coherent despite the overall style.\",\n  \"ratings\": [\n    7.8,\n    6.5,\n    7.0,\n    9.2\n  ],\n  \"best_response_ids\": [\n    \"4\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=7.800\n  [2] INCORRECT score=6.500\n  [3] INCORRECT score=7.000\n  [4] INCORRECT score=9.200\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 4\n\nCandidate scores:\n  [1] CORRECT score=7.800\n  [2] INCORRECT score=6.500\n  [3] INCORRECT score=7.000\n  [4] INCORRECT score=9.200",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Deterministic Failure Pattern\n\nBoth rollouts produced byte-identical outputs (same reasoning, same ratings, same best_response_ids), confirming this is a systematic bias in the agent's evaluation framework, not stochastic variance. The root cause is reliably reproduced by the current playbook.\n\n## Ground Truth vs. Agent Decision\n\nThe correct candidate is [1] (score 7.8); the agent top-ranked [4] (score 9.2). The prompt is classified under 'Factuality,' meaning there is a verifiable quality dimension the agent missed.\n\n## Root Cause: Style Constraint Treated as Decorative Rather Than Factual\n\nThe prompt's core request has two equally weighted components: (1) 'very long, detailed description' and (2) 'in the style of the bible, use biblical language.' The agent collapsed dimension (2) into a superficial checkbox ('does it sound old-timey?') and then differentiated candidates almost entirely on dimension (1) \u2014 historical specificity and chronological completeness.\n\nThis created a fatal misranking because:\n\n1. **Candidate [4]'s 'biblical language' contains systematic grammatical errors.** It uses 'didst' with third-person subjects throughout ('the people didst marvel,' 'the war didst begin,' 'the Central Powers didst surrender'). In actual Early Modern / KJV English, 'didst' is exclusively second-person singular ('thou didst'). Third-person forms are 'did' (plural) or 'did' (singular). This isn't a stylistic choice \u2014 it's a factual error about how biblical language works. The prompt specifically demands 'biblical language,' so incorrect archaic grammar is a constraint violation with a factual dimension.\n\n2. **Candidate [1] maintains more authentic biblical voice.** It uses constructions genuinely found in KJV text ('And it came to pass,' 'borne aloft by the breath of the Almighty,' 'year of our Lord,' 'swords and spears, chariots and horses'). It avoids the 'didst' overuse trap and reads more like actual biblical prose rather than a caricature.\n\n3. **The agent explicitly named 'biblical language' as a criterion in its reasoning but never verified compliance.** It noted that all candidates used 'biblical language' without checking whether the language was grammatically correct Early Modern English. The decisive differentiation was then shifted entirely to 'detailed chronological beats,' which is orthogonal to the style constraint.\n\n## Why Existing Playbook Entries Failed\n\n**c8698dee (Constraint Extraction):** The entry instructs the agent to extract every constraint and verify compliance. 'Use biblical language' should have been extracted as a primary constraint. However, the entry lacks guidance on how to verify STYLE constraints \u2014 it focuses on countable, mechanical checks (word counts, emoji rules, formatting). Style fidelity for a named literary tradition has factual components (correct grammar, authentic constructions, appropriate register) that the current playbook doesn't prompt the agent to verify.\n\n**005004a4 (Factuality):** The entry says 'penalize factual or mathematical mistakes even if the answer sounds polished.' The agent didn't recognize that incorrect archaic grammar IS a factual mistake when the prompt demands a specific linguistic register. 'Didst' with third-person subjects is not a style preference \u2014 it's wrong. The entry's examples and framing orient around content claims (dates, names, quotes), not linguistic/stylistic accuracy.\n\n**93b0e8f9 (Core Ranking, Differential Claim Verification):** Step (3) says to apply ISOLATE\u2192COUNTER\u2192CLASSIFY to differentiating claims of the top candidate. The agent's stated differentiator for [4] was 'clear, detailed chronological beats (1903 flight, 1914 start, 1917 US entry, 1918 end).' These are factually correct historical details. The verification gate would have passed them. But the real question \u2014 'does more historical detail make a better biblical-style text?' \u2014 is a RELEVANCE question, not a verification question. The entry doesn't prompt the agent to check whether the differentiating advantage is actually valued by the prompt.\n\n**132aab84 (Focus Alignment):** The SILENT SUBSTITUTION CHECK should have caught that [4] substitutes 'archaic-sounding repetitive prose' for 'actual biblical language,' but the entry's framework for detecting silent substitutions is designed for content parameters (topic, scope, format), not style execution quality.\n\n## Missing Playbook Knowledge\n\n### 1. Style Constraint Verification Gate (NEW)\nTrigger: When the prompt requests writing in a named style (biblical, Shakespearean, Hemingway, legal, academic, etc.).\nProcedure:\n- Identify the named style and its defining characteristics (grammar rules, vocabulary register, syntactic patterns, structural conventions).\n- For each candidate, sample 3-5 constructions that attempt to emulate the style. Verify each against known properties of the named style.\n- Classify each candidate's style execution: AUTHENTIC (correctly implements defining features), APPROXIMATE (surface-level imitation with errors), or INAUTHENTIC (misuses features of the named style).\n- Artifact: [Candidate | Sampled construction | Named-style rule | Correct/Incorrect].\n- A candidate classified APPROXIMATE or INAUTHENTIC on the primary style constraint cannot outscore an AUTHENTIC candidate, regardless of content advantages on secondary dimensions.\n\n### 2. Constraint Weighting for Creative Prompts (REFINEMENT of c8698dee)\nWhen a creative writing prompt contains both content constraints ('detailed,' 'long,' 'about X') and style constraints ('in the style of Y,' 'use Z language'), the style constraint should receive co-equal or primary weighting because style defines the creative task's identity. Historical detail is a secondary quality signal; style fidelity is a constraint compliance issue.\n\n### 3. Specificity Bias in Creative Writing (REFINEMENT of 8e0d9579)\nThe existing entry warns against letting 'verbosity or decorative formatting outweigh correctness.' This principle should explicitly extend to creative writing: additional factual specificity (more dates, more named figures) is not inherently a quality advantage when the prompt prioritizes style execution. A historically sparse but stylistically authentic response outranks a historically detailed but stylistically flawed one.\n\n### 4. Archaic Language as Factual Domain (REFINEMENT of 005004a4)\nWhen candidates use archaic or period-specific language forms, treat grammatical correctness of those forms as a factual claim subject to ISOLATE\u2192COUNTER\u2192CLASSIFY. Common errors: 'didst/doth/hath/art/thou' misapplied to wrong person/number; pseudo-archaic constructions not found in the named tradition. This is not stylistic preference \u2014 it is verifiable linguistic accuracy.\n\n## Agent Drift\n\nThe agent's reasoning correctly identified 'biblical language' as a relevant criterion but then drifted to 'detailed chronological beats' as the decisive differentiator without verifying whether [4]'s biblical language was actually correct. A simple consistency check \u2014 'My criterion is biblical style AND historical detail; have I verified BOTH for my top candidate?' \u2014 would have caught this. The POSITIVE CONSISTENCY CHECK in 93b0e8f9 step (2) was designed for this, but the agent either skipped it or applied it superficially."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The prompt requested writing 'in the style of the bible, use biblical language.' The agent needed to verify whether candidates' archaic language constructions were authentic to the named tradition or grammatically incorrect imitations. Candidate [4] systematically misuses 'didst' (second-person singular) with third-person subjects \u2014 a verifiable factual error about Early Modern English grammar, not a stylistic preference.",
+          "gap_type": "procedure",
+          "suggested_content": "STYLE CONSTRAINT VERIFICATION GATE \u2014 When a prompt requests writing in a named literary style or register (biblical/KJV, Shakespearean, Hemingway, legal, academic, etc.), fire this procedure AFTER constraint extraction and BEFORE scoring. Steps: (1) Identify the named style and its defining characteristics (grammar rules, vocabulary register, syntactic patterns, structural conventions). (2) For each candidate, sample 3-5 constructions that attempt to emulate the style. (3) Verify each sampled construction against known properties of the named tradition. Produce artifact: [Candidate | Sampled construction | Named-style rule | Correct/Incorrect]. (4) Classify each candidate's style execution: AUTHENTIC (correctly implements defining features), APPROXIMATE (surface-level imitation with detectable errors), INAUTHENTIC (misuses features, e.g., wrong grammatical person for archaic verb forms). (5) A candidate classified APPROXIMATE or INAUTHENTIC on the primary style constraint cannot outscore an AUTHENTIC candidate regardless of content advantages on secondary dimensions.",
+          "trigger": "Prompt contains a named style or register directive (e.g., 'in the style of X,' 'use Y language,' 'write as if Z')"
+        },
+        {
+          "situation": "The agent recognized 'biblical language' and 'detailed description' as criteria but then weighted chronological detail as the sole decisive differentiator, treating style fidelity as a binary pass. In creative writing prompts, the style constraint defines the creative task's identity (it's what makes this different from 'describe the 20th century in a paragraph').",
+          "gap_type": "strategy",
+          "suggested_content": "CREATIVE WRITING CONSTRAINT WEIGHTING \u2014 When a creative writing prompt contains both content constraints ('detailed,' 'long,' 'about X') and style constraints ('in the style of Y,' 'use Z language'), the style constraint is a DEFINING constraint \u2014 it shapes the entire identity of the task. Content detail is a QUALITY signal that differentiates among candidates who equally satisfy the defining constraint. A candidate that is more detailed but less faithful to the named style has failed the defining constraint; a candidate that is less detailed but authentically styled has satisfied it. Defining constraint compliance gates ranking; quality signals break ties among compliant candidates.",
+          "trigger": "Prompt combines content/topic directives with a named style, voice, or register directive"
+        },
+        {
+          "situation": "Candidate [4]'s pervasive misuse of 'didst' with third-person subjects is a factual error about Early Modern English grammar. The existing factuality entry (005004a4) frames factual errors around content claims (dates, names, events). The agent did not recognize incorrect archaic grammar as a factual domain subject to verification.",
+          "gap_type": "principle",
+          "suggested_content": "ARCHAIC/PERIOD LANGUAGE AS FACTUAL DOMAIN \u2014 When candidates use archaic or period-specific language forms (Early Modern English, Latinate constructions, legal archaisms, etc.), treat grammatical correctness of those forms as verifiable factual claims subject to ISOLATE\u2192COUNTER\u2192CLASSIFY. Common error patterns to check: (a) 'didst/dost/doth/hast/hath/art' applied to wrong grammatical person or number (e.g., 'they didst' is wrong \u2014 'didst' is second-person singular 'thou didst'; third-person is 'they did'); (b) pseudo-archaic constructions not attested in the named tradition; (c) anachronistic vocabulary presented as period-authentic. These are not stylistic preferences \u2014 they are verifiable linguistic errors equivalent to getting a date or name wrong.",
+          "trigger": "Any candidate uses archaic verb conjugations, pronoun forms, or period-specific grammatical structures as part of a style emulation"
+        },
+        {
+          "situation": "The agent was drawn to [4]'s greater historical specificity (1917 US entry, 1918 war end, named leaders, named alliances) as a quality differentiator without checking whether this additional detail came at the cost of the primary style constraint. The existing verbosity warning (8e0d9579) covers 'generic verbosity' but not 'domain-specific detail that distracts from primary constraint compliance.'",
+          "gap_type": "verification_gate",
+          "suggested_content": "SPECIFICITY-BIAS CHECK \u2014 When the decisive ranking advantage of the top candidate is 'more specific detail' (more dates, more names, more technical content), verify: (1) Does the prompt actually weight specificity as a primary criterion, or is specificity a secondary quality signal? (2) Does the additional specificity come at the cost of a primary constraint (e.g., authentic style execution, format compliance, scope fidelity)? If the specificity advantage is secondary and any primary constraint is worse in the more-specific candidate, the specificity advantage is nullified.",
+          "trigger": "Agent's reasoning cites 'more detail,' 'more specific,' or 'more comprehensive' as the primary reason for top-ranking a candidate"
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n**Deterministic failure**: Both rollouts produced byte-identical outputs \u2014 same reasoning, same ratings ([1]=7.8, [2]=6.5, [3]=7.0, [4]=9.2), same best_response_ids ([4]). The correct candidate is [1]. This is a systematic bias, not stochastic variance.\n\n**I AGREE with the anchor** on the core diagnosis: the agent collapsed the 'use biblical language' constraint into a surface-level checkbox ('does it sound archaic?') and then differentiated candidates entirely on historical specificity. The anchor's linguistic analysis of [4]'s 'didst' errors is correct \u2014 in KJV/Early Modern English, 'didst' is exclusively second-person singular (thou didst), and [4] uses it with third-person subjects in virtually every sentence. This is a verifiable factual error, not a stylistic preference.\n\n**I REFINE the anchor** in several ways:\n\n1. The anchor correctly identifies 93b0e8f9's DIFFERENTIAL CLAIM VERIFICATION as misdirecting, but I add that its specific language ('specific dates, names, events, or claims that ONLY the top candidate provides') actively channels the agent toward content verification rather than style verification. The entry's scope definition is the proximate cause \u2014 the agent followed the procedure correctly but the procedure didn't cover the relevant dimension.\n\n2. The anchor marks 8e0d9579 as neutral. I tag it as harmful because its principle ('don't let verbosity/decorative formatting outweigh correctness') directly applies here \u2014 additional historical specificity is a form of content elaboration that overshadowed style correctness \u2014 but the entry's trigger words ('verbosity,' 'politeness,' 'decorative formatting') are too narrow to fire in creative writing contexts where 'more factual detail' masquerades as quality.\n\n3. The anchor identifies [4]'s additional anachronisms ('newfangled contraption,' 'collective sigh of relief') as secondary evidence. I note this supports the pattern but the 'didst' error alone is sufficient \u2014 it's systematic (every archaic construction is wrong) and verifiable against consensus knowledge of Early Modern English grammar.\n\n**Root cause chain**: (1) c8698dee extracts 'biblical language' as a constraint but provides no procedure for verifying style fidelity \u2192 agent treats it as binary pass. (2) 005004a4's factuality check doesn't recognize linguistic grammar as a factual domain \u2192 'didst' errors go undetected. (3) 93b0e8f9's differential claim verification directs attention to factual content specificity \u2192 agent uses chronological detail as the tiebreaker. (4) 8e0d9579's verbosity warning doesn't fire because 'more historical dates' doesn't pattern-match to 'generic verbosity.' Each gap reinforces the others.\n\n**Playbook implications**: The four coverage gaps address different links in this chain. The most impactful would be the Style Constraint Verification Gate (procedure-level) and the extension of 005004a4 to cover linguistic accuracy (principle-level), as these would directly block the misranking. The specificity-bias check and creative-writing constraint weighting are strategic reinforcements that would reduce the probability of the same error pattern recurring in different domains."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Summary of failure\n\nThe agent evaluated 4 candidates for a creative writing prompt requesting a 'very long, detailed description of the 20th century in the style of the bible, use biblical language.' The correct answer is [1] (score 7.8), but the agent chose [4] (score 9.2). Both rollouts produced byte-identical outputs, confirming a systematic pattern.\n\n## Agreement with anchor\n\nI agree with the anchor's core causal analysis: the agent acknowledged 'biblical language' as a criterion but never verified whether candidate [4]'s biblical language was actually correct. Candidate [4] uses 'didst' systematically with third-person subjects ('the people didst marvel,' 'the Central Powers didst surrender'), which is grammatically wrong in KJV/Early Modern English where 'didst' is exclusively second-person singular. This is a verifiable linguistic error, not a stylistic preference. Candidate [1] uses more authentic KJV constructions ('And it came to pass,' 'borne aloft by the breath of the Almighty,' 'year of our Lord'). The anchor correctly identifies that the agent shifted its entire differentiation to 'chronological beats' (historical detail) without checking its other stated criterion.\n\n## Refinements to anchor\n\n**Entry harm assessments:** I disagree that entries 93b0e8f9, c8698dee, 005004a4, and 132aab84 are 'harmful.' These entries have scope gaps but did not actively mislead. Entry 93b0e8f9 step (2) explicitly says 'confirm the top-rated candidate genuinely best satisfies [your stated decisive criteria]' \u2014 had the agent followed this, it would have caught the error. The issue is weak application of an existing check, not the check causing harm. The entries are neutral \u2014 they have coverage gaps but didn't push the agent toward the wrong answer.\n\n**Proposed entry specificity:** The anchor proposes 4 new entries, some of which are too domain-specific (e.g., 'Archaic Language as Factual Domain' is L1). The more transferable lesson is that ANY named convention \u2014 style, grammar, format, register \u2014 has verifiable properties, and treating verification of such properties as 'subjective' is the core error class. The anchor's 'Style Constraint Verification Gate' captures this but should be abstracted further.\n\n## Root cause (generalized)\n\nThe fundamental error has three layers:\n\n1. **Verifiable-vs-subjective misclassification:** The agent treated 'uses biblical language' as a subjective impression ('does it sound old-timey?') rather than a verifiable property with objective rules. Named linguistic traditions have deterministic grammar rules. 'Didst' with third-person subjects is not a style preference \u2014 it's wrong in the same way that 2+2=5 is wrong.\n\n2. **Partial-criteria ranking:** The agent listed two criteria (biblical style + historical detail) but produced evidence only for historical detail. Its ranking was therefore grounded on one dimension while presented as grounded on two. Entry 93b0e8f9 step (2) should have caught this but was applied too superficially.\n\n3. **Specificity-as-quality bias:** The agent treated 'more dates and named events' as an inherent quality advantage, even though the prompt's primary request was about style execution. Additional historical detail is a secondary signal; style fidelity is what the prompt explicitly asked for.\n\n## Playbook gap\n\nThe playbook has robust procedures for verifying mechanical constraints (word counts, formatting rules) and factual claims (dates, names). It lacks procedures for evaluating compliance with QUALITATIVE constraints that nonetheless have verifiable properties \u2014 named styles, grammatical registers, format conventions, domain-specific writing standards. The c8698dee constraint checklist extracts style as a constraint but provides no guidance on how to evaluate Pass/Fail for qualitative-but-verifiable constraints. The 93b0e8f9 consistency check exists but is too passively stated to enforce multi-criteria evidence completeness.",
+      "principles": [
+        {
+          "statement": "When a prompt requests a named convention (style, register, format, dialect), compliance is verifiable, not aesthetic. Sample 3+ constructions per candidate and check against known rules of that convention before scoring.",
+          "entry_kind": "procedure",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "Fires when a prompt specifies execution in a named tradition, convention, or register (e.g., 'in the style of X,' 'use Y language,' 'formatted as Z').",
+          "verification_or_artifact": "Produce [Candidate | Sampled construction | Convention rule | Correct/Incorrect]. A candidate with systematic rule violations on the named convention cannot outscore one with authentic execution, regardless of content advantages.",
+          "evidence": "The agent treated 'use biblical language' as a surface checkbox. Candidate [4] uses 'didst' with third-person subjects throughout \u2014 a verifiable grammatical error in KJV English. Candidate [1] uses authentic KJV constructions. The agent never verified either, defaulting to 'sounds biblical enough' for both, then differentiating entirely on historical detail."
+        },
+        {
+          "statement": "After listing evaluation criteria, construct [Candidate | Criterion | Specific evidence | Verdict] for EVERY stated criterion. A criterion acknowledged in reasoning but lacking per-candidate evidence is a finalization blocker.",
+          "entry_kind": "artifact",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "93b0e8f9",
+          "trigger": "Fires after the agent states its evaluation criteria and before final ranking. Mandatory whenever reasoning references 2+ distinct quality dimensions.",
+          "verification_or_artifact": "Multi-criteria evidence matrix: [Candidate | Criterion 1 evidence | Criterion 2 evidence | ...]. If any cell is empty or contains only a surface impression without verification, scoring is blocked until evidence is supplied.",
+          "evidence": "The agent's reasoning referenced both 'biblical language' and 'detailed chronological beats' as criteria. Evidence was produced only for chronological detail. Biblical language compliance was asserted for all candidates without any verification sample. Entry 93b0e8f9 step (2) asks the agent to 'confirm the top-rated candidate genuinely best satisfies' its stated criteria, but this passive check was insufficient to force the agent to produce evidence on the unexamined dimension."
+        },
+        {
+          "statement": "Before crediting a top candidate's decisive advantage, verify the advantage is on a dimension the prompt explicitly prioritizes. Specificity on a secondary dimension cannot compensate for defects on the primary requested dimension.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "8e0d9579",
+          "trigger": "Fires during final ranking whenever the decisive differentiator between top candidates is additional detail, specificity, or coverage on a dimension not explicitly prioritized by the prompt.",
+          "verification_or_artifact": "Ask: 'Is my decisive differentiator the dimension the prompt most values?' If the prompt says 'in the style of X' and the differentiator is 'more historical dates,' the differentiator is misaligned. Verify the top candidate has no defects on the prompt's primary dimension before crediting secondary advantages.",
+          "evidence": "The prompt says 'in the style of the bible, use biblical language' \u2014 style is the primary creative constraint. The agent differentiated on 'clear, detailed chronological beats,' a secondary content signal. Entry 8e0d9579 warns against letting 'verbosity or decorative formatting outweigh correctness,' but doesn't extend to creative writing where specificity itself becomes the misleading 'decorative' signal."
+        }
+      ],
+      "mutation_implication": "add",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Deterministic Failure\n\nBoth rollouts produced byte-identical outputs (ratings [7.8, 6.5, 7.0, 9.2], best_response_ids=[4]). Correct candidate is [1]. This is a systematic evaluation bias, not stochastic variance.\n\n## Root Cause: Named-Convention Compliance Treated as Subjective Impression\n\nThe prompt requests 'a very long, detailed description of the 20th century in the style of the bible, use biblical language.' This contains two constraint dimensions: (1) detailed historical content and (2) authentic biblical/KJV style. The agent acknowledged both in its reasoning but produced evidence only for dimension (1), then used chronological detail as the sole decisive differentiator.\n\nCandidate [4] systematically misuses 'didst' with third-person subjects throughout ('the people didst marvel,' 'the Central Powers didst surrender,' 'the war didst begin'). In KJV/Early Modern English, 'didst' is exclusively second-person singular ('thou didst'); third-person forms use 'did.' This is a verifiable linguistic error \u2014 consensus knowledge any English grammar reference would confirm \u2014 not a stylistic preference. The agent never checked this, treating biblical style as a binary 'sounds archaic enough' impression and giving all candidates a pass.\n\nCandidate [1] uses constructions genuinely attested in KJV text ('And it came to pass,' 'borne aloft by the breath of the Almighty,' 'year of our Lord,' 'swords and spears, chariots and horses') and avoids the systematic 'didst' overuse error.\n\n## Why Existing Entries Have Scope Gaps But Are Not Harmful\n\nAll three reflections agree on the gap. The anchor and credit_attribution tag 93b0e8f9, 005004a4, c8698dee, and 132aab84 as harmful, while principle_extraction tags them neutral. The principle_extraction argument is more precise: these entries have scope gaps but did not actively push the agent toward the wrong answer.\n\n- **93b0e8f9** step (2) explicitly instructs the agent to 'confirm the top-rated candidate genuinely best satisfies [its stated decisive criteria].' Had the agent rigorously followed this, it would have caught that [4]'s biblical language was unverified. The entry prescribes the right behavior; the agent applied it superficially. Step (3)'s DIFFERENTIAL CLAIM VERIFICATION channels attention toward content claims ('dates, names, events') rather than style claims, which is a scope limitation \u2014 but the agent still had step (2) available. The net effect is neutral.\n\n- **005004a4** says 'penalize factual or mathematical mistakes even if the answer sounds polished.' It doesn't exclude linguistic accuracy from 'factual mistakes'; it just doesn't explicitly include it. The framing and examples are content-oriented (dates, quotes, names), creating a scope gap but not a misdirection.\n\n- **c8698dee** correctly triggered constraint extraction. The agent did list 'biblical language' as a constraint. The entry's verification procedures focus on mechanical/countable checks \u2014 it lacks guidance on evaluating Pass/Fail for qualitative-but-verifiable constraints. This is the central gap.\n\n- **8e0d9579** warns against 'generic verbosity, politeness, or decorative formatting' outweighing correctness. The trigger words are too narrow to fire in creative writing contexts where 'more factual detail' masquerades as quality. This is a scope limitation, not active harm.\n\n## Coverage Gap: Named-Convention Verification\n\nAll three reflections converge on the same core gap: the playbook has no procedure for verifying compliance with named conventions, styles, or registers that have objectively verifiable properties. The constraint checklist (c8698dee) extracts such constraints but provides no workflow for evaluating them beyond mechanical checks. The factuality entry (005004a4) verifies content claims but not linguistic/stylistic accuracy.\n\nThe gap is procedural: when a prompt requests execution in a named tradition (biblical, Shakespearean, legal, academic, Hemingway, etc.), the agent needs to (1) identify the defining verifiable properties of that tradition, (2) sample constructions from each candidate, (3) verify against known rules, and (4) classify each candidate's execution quality. This is analogous to how ISOLATE\u2192COUNTER\u2192CLASSIFY works for factual claims, extended to linguistic/stylistic claims.\n\n## Why a Single ADD Is Justified\n\nAll three reflections independently identify this gap as missing, procedural, and reusable (L2-L3 generality). It is not covered by any existing entry's scope. The principle that named conventions have verifiable properties \u2014 and that compliance is factual, not aesthetic \u2014 is genuinely absent from the playbook. This is not model confusion or weak application of an existing rule; it is a missing procedure for a class of prompts.\n\nThe other identified gaps (multi-criteria evidence completeness, specificity-bias check) are partially addressed by existing entries (93b0e8f9 step 2, 8e0d9579) and are better treated as potential future updates if the same pattern recurs, rather than bundled into this single-trace response.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent lacked a procedure for verifying compliance with named linguistic/stylistic conventions. It treated 'use biblical language' as a subjective impression rather than a verifiable constraint with deterministic grammar rules. Candidate [4]'s systematic misuse of 'didst' (second-person only) with third-person subjects is a factual linguistic error that went undetected, while its greater historical specificity was credited as the decisive advantage on a secondary dimension.",
+      "important_disagreements": [
+        "Anchor and credit_attribution tag 93b0e8f9, 005004a4, c8698dee, and 132aab84 as harmful; principle_extraction tags all as neutral. Resolved in favor of neutral: these entries have scope gaps but did not actively misdirect. 93b0e8f9 step (2) actually prescribes the correct behavior (verify top candidate satisfies stated criteria); the agent applied it superficially. The root cause is a missing procedure, not harmful existing guidance.",
+        "Credit_attribution tags 8e0d9579 as harmful; anchor and principle_extraction say neutral. Resolved as neutral: the entry's trigger words ('verbosity, politeness, decorative formatting') don't pattern-match to 'more historical dates in creative writing,' which is a scope limitation rather than active misdirection.",
+        "Principle_extraction proposes three principles; anchor proposes four new entries. Consolidated to one ADD: the style/convention verification procedure. The multi-criteria evidence principle is partially covered by 93b0e8f9 step (2); the specificity-bias principle is partially covered by 8e0d9579. These should await additional evidence before modification."
+      ],
+      "mutation_posture": "add",
+      "why_this_posture": "All three reflections independently converge on the same genuinely missing procedure: verifying compliance with named conventions/styles/registers that have objectively verifiable properties. No existing entry covers this. The failure is deterministic (identical across rollouts) and the gap is clearly procedural, reusable, and L3-general. A single ADD of a named-convention verification procedure is the minimum effective intervention.",
+      "conservatism_rationale": "Although the reflections collectively identify 3-4 potential changes, only one \u2014 the named-convention verification procedure \u2014 is clearly missing, unanimously identified, and not partially covered by any existing entry. The multi-criteria evidence completeness issue is partially addressed by 93b0e8f9 step (2); the specificity-bias concern is partially addressed by 8e0d9579. Updating those entries based on a single trace risks over-fitting. The existing entries are assessed as neutral (scope gaps, not harmful), so they don't need urgent correction. One high-confidence ADD is preferred over multiple medium-confidence edits.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\n      \"entry_id\": \"93b0e8f9\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"4abe1be4\",\n      \"tag\": \"helpful\"\n    },\n    {\n      \"entry_id\": \"61b87a5f\",\n      \"tag\": \"helpful\"\n    },\n    {\n      \"entry_id\": \"005004a4\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"c8698dee\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"132aab84\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"8e0d9579\",\n      \"tag\": \"neutral\"\n    }\n  ],\n  \"analysis\": \"## Deterministic Failure\\n\\nBoth rollouts produced byte-identical outputs (ratings [7.8, 6.5, 7.0, 9.2], best_response_ids=[4]). Correct candidate is [1]. This is a systematic evaluation bias, not stochastic variance.\\n\\n## Root Cause: Named-Convention Compliance Treated as Subjective Impression\\n\\nThe prompt requests 'a very long, detailed description of the 20th century in the style of the bible, use biblical language.' This contains two constraint dimensions: (1) detailed historical content and (2) authentic biblical/KJV style. The agent acknowledged both in its reasoning but produced evidence only for dimension (1), then used chronological detail as the sole decisive differentiator.\\n\\nCandidate [4] systematically misuses 'didst' with third-person subjects throughout ('the people didst marvel,' 'the Central Powers didst surrender,' 'the war didst begin'). In KJV/Early Modern English, 'didst' is exclusively second-person singular ('thou didst'); third-person forms use 'did.' This is a verifiable linguistic error \u2014 consensus knowledge any English grammar reference would confirm \u2014 not a stylistic preference. The agent never checked this, treating biblical style as a binary 'sounds archaic enough' impression and giving all candidates a pass.\\n\\nCandidate [1] uses constructions genuinely attested in KJV text ('And it came to pass,' 'borne aloft by the breath of the Almighty,' 'year of our Lord,' 'swords and spears, chariots and horses') and avoids the systematic 'didst' overuse error.\\n\\n## Why Existing Entries Have Scope Gaps But Are Not Harmful\\n\\nAll three reflections agree on the gap. The anchor and credit_attribution tag 93b0e8f9, 005004a4, c8698dee, and 132aab84 as harmful, while principle_extraction tags them neutral. The principle_extraction argument is more precise: these entries have scope gaps but did not actively push the agent toward the wrong answer.\\n\\n- **93b0e8f9** step (2) explicitly instructs the agent to 'confirm the top-rated candidate genuinely best satisfies [its stated decisive criteria].' Had the agent rigorously followed this, it would have caught that [4]'s biblical language was unverified. The entry prescribes the right behavior; the agent applied it superficially. Step (3)'s DIFFERENTIAL CLAIM VERIFICATION channels attention toward content claims ('dates, names, events') rather than style claims, which is a scope limitation \u2014 but the agent still had step (2) available. The net effect is neutral.\\n\\n- **005004a4** says 'penalize factual or mathematical mistakes even if the answer sounds polished.' It doesn't exclude linguistic accuracy from 'factual mistakes'; it just doesn't explicitly include it. The framing and examples are content-oriented (dates, quotes, names), creating a scope gap but not a misdirection.\\n\\n- **c8698dee** correctly triggered constraint extraction. The agent did list 'biblical language' as a constraint. The entry's verification procedures focus on mechanical/countable checks \u2014 it lacks guidance on evaluating Pass/Fail for qualitative-but-verifiable constraints. This is the central gap.\\n\\n- **8e0d9579** warns against 'generic verbosity, politeness, or decorative formatting' outweighing correctness. The trigger words are too narrow to fire in creative writing contexts where 'more factual detail' masquerades as quality. This is a scope limitation, not active harm.\\n\\n## Coverage Gap: Named-Convention Verification\\n\\nAll three reflections converge on the same core gap: the playbook has no procedure for verifying compliance with named conventions, styles, or registers that have objectively verifiable properties. The constraint checklist (c8698dee) extracts such constraints but provides no workflow for evaluating them beyond mechanical checks. The factuality entry (005004a4) verifies content claims but not linguistic/stylistic accuracy.\\n\\nThe gap is procedural: when a prompt requests execution in a named tradition (biblical, Shakespearean, legal, academic, Hemingway, etc.), the agent needs to (1) identify the defining verifiable properties of that tradition, (2) sample constructions from each candidate, (3) verify against known rules, and (4) classify each candidate's execution quality. This is analogous to how ISOLATE\u2192COUNTER\u2192CLASSIFY works for factual claims, extended to linguistic/stylistic claims.\\n\\n## Why a Single ADD Is Justified\\n\\nAll three reflections independently identify this gap as missing, procedural, and reusable (L2-L3 generality). It is not covered by any existing entry's scope. The principle that named conventions have verifiable properties \u2014 and that compliance is factual, not aesthetic \u2014 is genuinely absent from the playbook. This is not model confusion or weak application of an existing rule; it is a missing procedure for a class of prompts.\\n\\nThe other identified gaps (multi-criteria evidence completeness, specificity-bias check) are partially addressed by existing entries (93b0e8f9 step 2, 8e0d9579) and are better treated as potential future updates if the same pattern recurs, rather than bundled into this single-trace response.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent lacked a procedure for verifying compliance with named linguistic/stylistic conventions. It treated 'use biblical language' as a subjective impression rather than a verifiable constraint with deterministic grammar rules. Candidate [4]'s systematic misuse of 'didst' (second-person only) with third-person subjects is a factual linguistic error that went undetected, while its greater historical specificity was credited as the decisive advantage on a secondary dimension.\",\n    \"important_disagreements\": [\n      \"Anchor and credit_attribution tag 93b0e8f9, 005004a4, c8698dee, and 132aab84 as harmful; principle_extraction tags all as neutral. Resolved in favor of neutral: these entries have scope gaps but did not actively misdirect. 93b0e8f9 step (2) actually prescribes the correct behavior (verify top candidate satisfies stated criteria); the agent applied it superficially. The root cause is a missing procedure, not harmful existing guidance.\",\n      \"Credit_attribution tags 8e0d9579 as harmful; anchor and principle_extraction say neutral. Resolved as neutral: the entry's trigger words ('verbosity, politeness, decorative formatting') don't pattern-match to 'more historical dates in creative writing,' which is a scope limitation rather than active misdirection.\",\n      \"Principle_extraction proposes three principles; anchor proposes four new entries. Consolidated to one ADD: the style/convention verification procedure. The multi-criteria evidence principle is partially covered by 93b0e8f9 step (2); the specificity-bias principle is partially covered by 8e0d9579. These should await additional evidence before modification.\"\n    ],\n    \"mutation_posture\": \"add\",\n    \"why_this_posture\": \"All three reflections independently converge on the same genuinely missing procedure: verifying compliance with named conventions/styles/registers that have objectively verifiable properties. No existing entry covers this. The failure is deterministic (identical across rollouts) and the gap is clearly procedural, reusable, and L3-general. A single ADD of a named-convention verification procedure is the minimum effective intervention.\",\n    \"conservatism_rationale\": \"Although the reflections collectively identify 3-4 potential changes, only one \u2014 the named-convention verification procedure \u2014 is clearly missing, unanimously identified, and not partially covered by any existing entry. The multi-criteria evidence completeness issue is partially addressed by 93b0e8f9 step (2); the specificity-bias concern is partially addressed by 8e0d9579. Updating those entries based on a single trace risks over-fitting. The existing entries are assessed as neutral (scope gaps, not harmful), so they don't need urgent correction. One high-confidence ADD is preferred over multiple medium-confidence edits.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "neutral": 1,
+        "helpful": 2
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "harmful": 2,
+        "neutral": 1
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

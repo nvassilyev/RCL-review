@@ -1,0 +1,349 @@
+{
+  "playbook_assessment": {
+    "health": "fragile",
+    "playbook_size_trend": "growing",
+    "coverage_inventory": {
+      "total_entries": 7,
+      "sections_present": [
+        "answer_extraction",
+        "common_mistakes",
+        "query_formulation",
+        "search_strategies"
+      ],
+      "section_entry_counts": {
+        "search_strategies": 1,
+        "query_formulation": 1,
+        "answer_extraction": 2,
+        "common_mistakes": 3
+      },
+      "underrepresented_sections": [
+        "query_formulation",
+        "search_strategies"
+      ],
+      "observed_gap_areas": [
+        "multi-hop reasoning across documents",
+        "pre-search hypothesis generation before first query",
+        "entry compliance/salience \u2014 correct content exists but agent ignores it during extended search",
+        "tasks beyond entity-ID: only ~18 tasks seen of 100, task diversity still poorly sampled"
+      ]
+    },
+    "entry_maturity": {
+      "battle_tested": [],
+      "developing": [],
+      "untested_or_new": [
+        "7ca56b8b [search_strategies] +2/-0, tested=2",
+        "f9a44264 [query_formulation] +1/-0, tested=1",
+        "009bd398 [common_mistakes] +0/-0, tested=0",
+        "66f87cbc [common_mistakes] +0/-0, tested=0",
+        "a674b64e [answer_extraction] +0/-0, tested=0",
+        "c67e6085 [common_mistakes] +0/-0, tested=0",
+        "056f0a9e [answer_extraction] +0/-1, tested=1"
+      ],
+      "recent_additions_needing_time": [],
+      "at_risk": []
+    },
+    "coherence_issues": [
+      "009bd398 (switch at 5+ failed verification), 66f87cbc (commit when verification-loop + no rival), and c67e6085 (full reset at 10+ zero-candidate searches) now form a 3-entry cluster with adjacent triggers. 009bd398 fires when candidate present but bio fails + new doc appears. 66f87cbc fires when candidate present but same docs looping. c67e6085 fires when zero candidates. Agent must distinguish these.",
+      "f9a44264 (rut at 3+), c67e6085 (reset at 10+), and 7ca56b8b (decomposition/clue rules) all contain overlapping 'change approach' directives at different thresholds. Still not sequenced."
+    ]
+  },
+  "change_ledger": [
+    {
+      "iteration": 1,
+      "summary": "Bootstrapped playbook with 3 foundational entries: multi-clue decomposition (7ca56b8b), search rut detection (f9a44264), answer precision checklist (056f0a9e).",
+      "source_tasks": [
+        "1042",
+        "1139",
+        "353"
+      ],
+      "reflection_summary": "All 3 tasks failed. Agent searches all constraints simultaneously, repeats minor keyword variations 20-50 times, returns wrong-granularity or empty answers.",
+      "operations": [
+        {
+          "op": "ADD",
+          "entry_id": "7ca56b8b",
+          "section": "search_strategies",
+          "rationale": "Tasks 1042/353 required identifying unnamed entity from multiple clues; agent searched all constraints at once.",
+          "expected_effect": "Agent decomposes multi-clue puzzles into staged searches.",
+          "source_tasks": [
+            "1042",
+            "353"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "f9a44264",
+          "section": "query_formulation",
+          "rationale": "All 3 tasks showed repetitive search loops.",
+          "expected_effect": "Agent detects search ruts and pivots strategy.",
+          "source_tasks": [
+            "1042",
+            "1139",
+            "353"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "056f0a9e",
+          "section": "answer_extraction",
+          "rationale": "Multiple failure modes: semantic precision, empty answers, unverified submissions.",
+          "expected_effect": "Agent runs pre-submission checklist catching common answer errors.",
+          "source_tasks": [
+            "1042",
+            "1139",
+            "353"
+          ]
+        }
+      ],
+      "observed_effect": "7ca56b8b HELPFUL on tasks 1042 (iter 2) and 221 (iter 3). Iter-4 update added cultural pivot. On iter-5 task 126, agent VIOLATED 'NEVER combine more than 2 clues' rule \u2014 combined 4-6 terms per query for 30+ searches. Content correct but compliance poor. f9a44264 FIRST HELPFUL...",
+      "status": "mixed",
+      "evidence_strength": "multi_trace",
+      "reversal_risk": "low",
+      "notes": "7ca56b8b and f9a44264 both have validated-correct content. The problem is now compliance, not content. f9a44264's +1 at iter 5 is its first positive signal after 4 iterations of non-engagement."
+    },
+    {
+      "iteration": 2,
+      "summary": "Fixed harmful contradiction in 056f0a9e and added 66f87cbc (verification loop trap).",
+      "source_tasks": [
+        "1042"
+      ],
+      "reflection_summary": "Both rollouts found correct answer, entered 30+ search verification loop.",
+      "operations": [
+        {
+          "op": "UPDATE",
+          "entry_id": "056f0a9e",
+          "section": "answer_extraction",
+          "rationale": "Internal contradiction caused answer paralysis.",
+          "expected_effect": "Agent uses constraint status to rank candidates, not block submission.",
+          "source_tasks": [
+            "1042"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "66f87cbc",
+          "section": "common_mistakes",
+          "rationale": "Both rollouts spent 30+ searches in identical verification loops.",
+          "expected_effect": "Agent detects verification loops and commits to best candidate.",
+          "source_tasks": [
+            "1042"
+          ]
+        }
+      ],
+      "observed_effect": "056f0a9e partially effective on task 221 (iter 3). Neutral on iters 4-5. 66f87cbc 0 engagement across iters 3-5. Iter-5 tasks had no verification-loop scenarios (failures were upstream retrieval or wrong-candidate).",
+      "status": "mixed",
+      "evidence_strength": "multi_trace",
+      "reversal_risk": "medium",
+      "notes": "66f87cbc needs a task where agent finds correct answer and then loops on verification. Iters 4-5 had upstream failures. Its coverage is unique."
+    },
+    {
+      "iteration": 3,
+      "summary": "Updated 056f0a9e with nested referent resolution and biographical-beats-topical rule.",
+      "source_tasks": [
+        "221"
+      ],
+      "reflection_summary": "Rollout 1 chose wrong book via surface topic match. Rollout 2 correctly committed using biographical reasoning.",
+      "operations": [
+        {
+          "op": "UPDATE",
+          "entry_id": "056f0a9e",
+          "section": "answer_extraction",
+          "rationale": "Rollout 1 chose surface topic match over biographical match.",
+          "expected_effect": "Agent resolves referent chain and prefers biographical matches.",
+          "source_tasks": [
+            "221"
+          ]
+        }
+      ],
+      "observed_effect": "Iters 4-5 did not involve nested referent patterns. Update remains untested on target scenario.",
+      "status": "untested",
+      "evidence_strength": "single_trace",
+      "reversal_risk": "medium",
+      "notes": "Low harm risk \u2014 reinforces behavior already succeeded in rollout 2."
+    },
+    {
+      "iteration": 4,
+      "summary": "Major update to 7ca56b8b adding foreignness markers, author-first, ambiguous term expansion, event-first. Added c67e6085 (assumption lock-in reset).",
+      "source_tasks": [
+        "1243",
+        "930",
+        "126"
+      ],
+      "reflection_summary": "0/3 pass. All showed assumption lock-in into wrong cultural/institutional context.",
+      "operations": [
+        {
+          "op": "UPDATE",
+          "entry_id": "7ca56b8b",
+          "section": "search_strategies",
+          "rationale": "All 3 tasks required strategies beyond basic clue ranking: foreignness markers, author-first, ambiguous terms.",
+          "expected_effect": "Agent recognizes foreignness markers, pivots cultural context, exploits unusual identifiers.",
+          "source_tasks": [
+            "1243",
+            "930",
+            "126"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "c67e6085",
+          "section": "common_mistakes",
+          "rationale": "All 3 tasks exhausted 30-50+ searches locked into wrong assumptions.",
+          "expected_effect": "Agent executes mandatory assumption reset after 10+ failed searches.",
+          "source_tasks": [
+            "1243",
+            "930",
+            "126"
+          ]
+        }
+      ],
+      "observed_effect": "Iter-5 task 126 (replay): agent still combined 4-6 clue terms per query, violating 7ca56b8b 'NEVER combine more than 2' rule. Tried country names per unusual-identifier-FIRST rule but embedded them in failing combined queries. c67e6085 should have triggered on task 126 (30+ fa...",
+      "status": "watch",
+      "evidence_strength": "multi_trace",
+      "reversal_risk": "high",
+      "notes": "The content of both entries is well-reasoned but agent compliance remains the bottleneck. Task 126 may be at/near capability limits (even PP trace failed). c67e6085 now has 2 iterations of non-engagement despite clear triggers."
+    },
+    {
+      "iteration": 5,
+      "summary": "Added 009bd398 (candidate lock-in switching when new evidence appears during failed verification) and a674b64e (part-vs-whole referent verification). f9a44264 earned first +1 helpful.",
+      "source_tasks": [
+        "353",
+        "126",
+        "1139"
+      ],
+      "reflection_summary": "0/3 analyzed tasks passed. Task 353: synonym blindness (f9a44264 content correct but not applied until late) + candidate lock-in (rollout 2 found gold doc at step 21 but stayed on wrong candidate). Task 126: combined-query lock-in violated 7ca56b8b rules, even PP trace failed. Task 1139: part-vs-whole confusion (ans...",
+      "operations": [
+        {
+          "op": "ADD",
+          "entry_id": "009bd398",
+          "section": "common_mistakes",
+          "rationale": "Task 353 rollout 2 found gold doc but remained locked on unverified candidate for 5+ more searches. No entry covered switching candidates when new topical match appears during f...",
+          "expected_effect": "Agent stops verifying wrong candidate when a new topical match appears and evaluates the alternative.",
+          "source_tasks": [
+            "353"
+          ]
+        },
+        {
+          "op": "ADD",
+          "entry_id": "a674b64e",
+          "section": "answer_extraction",
+          "rationale": "Task 1139 (2nd occurrence): both rollouts answered 'ulwaluko' (ritual name) when question asked for specific surgical process within the ritual. Part-vs-whole conflation now con...",
+          "expected_effect": "Agent checks whether question asks for sub-component and ensures answer is distinct from the broader concept name.",
+          "source_tasks": [
+            "1139"
+          ]
+        }
+      ],
+      "observed_effect": "too early to judge",
+      "status": "untested",
+      "evidence_strength": "single_trace",
+      "reversal_risk": "high",
+      "notes": "009bd398 targets a well-evidenced gap (task 353 rollout 2 clearly showed the pattern). a674b64e addresses part-vs-whole conflation confirmed on task 1139 across 2 iterations (iter 1 and iter 5). Both need exposure on relevant tasks."
+    }
+  ],
+  "open_hypotheses": [
+    "Non-compliance with existing rules may be the dominant problem: 7ca56b8b's 'NEVER combine more than 2 clues' was violated on task 126; c67e6085's 'MUST reset after 10 failed searches' was ignored on task 126; f9a44264's synonym expansion was not applied until step 21 (task 353). The content is correct but the agent doesn't follow it during extended search. Is this a format problem, a salience problem, or a fundamental attention/compliance limitation?",
+    "f9a44264 content is now VALIDATED: synonym expansion worked on task 353 when the PP trace applied it at step 9. The challenge is getting the agent to apply it earlier and more reliably. Consider strengthening its trigger or promoting its rules higher in the entry.",
+    "Task 126 may be at/near capability limits \u2014 even the PP trace failed (0% across all rollouts). Not every task is solvable with better instructions.",
+    "Would consolidating f9a44264 + 66f87cbc + c67e6085 + 009bd398 into one 'search health monitor' entry be more effective than four separate entries with adjacent triggers?",
+    "c67e6085 has 2 iterations of non-engagement (iters 4-5) despite explicit MUST thresholds. HARD RULES format may not be more salient than softer triggers \u2014 undermines the hypothesis that threshold-based rules would be more effective.",
+    "Part-vs-whole conflation on task 1139 is now a 2-occurrence pattern (iters 1 and 5, same task via replay). a674b64e directly addresses this but is untested.",
+    "The 4-entry common_mistakes cluster (66f87cbc, c67e6085, 009bd398, plus elements of f9a44264) may create decision paralysis \u2014 too many similar-but-different triggers the agent must distinguish."
+  ],
+  "preserve_until_more_evidence": [
+    "7ca56b8b [search_strategies] \u2014 core decomposition validated +2/-0. Iter-4 KEY RULES update has correct content but agent compliance poor on task 126. Content not the problem.",
+    "f9a44264 [query_formulation] \u2014 FIRST +1 helpful on task 353 (iter 5). Content validated. Needs more exposure to test compliance rate.",
+    "009bd398 [common_mistakes] \u2014 new iter 5. Addresses well-evidenced candidate lock-in gap (task 353 rollout 2). Untested.",
+    "a674b64e [answer_extraction] \u2014 new iter 5. Addresses part-vs-whole conflation confirmed on 2 occurrences of task 1139. Untested.",
+    "c67e6085 [common_mistakes] \u2014 2 iterations of non-engagement but addresses the most validated failure pattern (assumption lock-in on 5+ tasks). Content correct, compliance problem.",
+    "66f87cbc [common_mistakes] \u2014 unique verification-loop coverage. 0 engagement but hasn't been exposed to verification-loop tasks since iter 2.",
+    "056f0a9e [answer_extraction] \u2014 nested referent + biographical-beats-topical update untested on target scenarios. Unique answer precision coverage."
+  ],
+  "interference_patterns": [
+    "009bd398 (switch candidate at 5+ failed bio verification + new doc), 66f87cbc (commit at 5+ same docs looping), and c67e6085 (full reset at 10+ zero candidates) form a 3-entry cluster with overlapping search-count triggers but different situational conditions. Agent must correctly diagnose which scenario it's in.",
+    "f9a44264 (rut at 3+ same docs), 009bd398 (switch at 5+ failed verification), c67e6085 (reset at 10+ failures) form an implicit escalation sequence but are in different sections and not explicitly linked."
+  ],
+  "strategy_memory": {
+    "questions": [
+      "Why does the agent ignore explicit HARD RULES (NEVER, MUST) during extended search sequences? Is this an instruction-following limitation during long contexts, or do the rules need to be formatted differently?",
+      "Would consolidating the 4 search-monitoring entries (f9a44264, 66f87cbc, c67e6085, 009bd398) into a single sequenced entry improve compliance?",
+      "Is task 126 solvable at all given the retrieval corpus? Even PP trace failed.",
+      "What task families exist beyond entity-ID? ~18 tasks seen of 100 but only entity-ID deeply analyzed.",
+      "Would placing critical rules at the TOP of the playbook (before section headers) increase salience?"
+    ],
+    "notes": [
+      "Tasks studied in depth: 1042 (Conrad Anker), 221 (Barbara Hodgson), 1243 (Shaan Shahid), 930 (Antioch U), 126 (Gaucher disease paper), 353 (Shhh! No Gossip!), 1139 (ulwaluko/surgical process). ~18 tasks seen total.",
+      "Dominant insight from iter 5: the playbook's content is increasingly correct but the agent doesn't follow it. f9a44264 had the exact right guidance for task 353 and it worked when applied (PP trace). 7ca56b8b had the right decomposition rule for task 126 but agent violated it.",
+      "f9a44264 is the first entry to have its content directly validated by a successful trace. The synonym expansion example was literally the right answer.",
+      "Part-vs-whole conflation on task 1139 now confirmed across 2 iterations \u2014 promoted from single-occurrence to recurring pattern.",
+      "Metric trend: 0.33\u21920.28\u21920.61\u21920.50\u21920.39. High batch variance. No clear directional trend. Iter-5 batch included 2 known-hard tasks (126, 1139 replay)."
+    ]
+  },
+  "model_observations": {
+    "capability_gaps_observed": [
+      "Non-compliance with explicit playbook rules during extended search: violates 'NEVER combine more than 2 clues' (task 126), ignores 'MUST reset after 10 failed searches' (task 126), applies synonym expansion late or not at all (task 353)",
+      "Assumption lock-in: 30-150 searches on wrong frame \u2014 confirmed on tasks 1042, 221, 1243, 930, 126 across 5 iterations",
+      "Candidate anchoring: finds correct evidence but stays locked on wrong candidate (task 353 rollout 2)",
+      "Part-vs-whole conflation: answers with broader concept name instead of specific sub-term (task 1139, 2 occurrences)",
+      "Combined-query lock-in: embeds 4-6 quoted constraints per query despite decomposition instructions (task 126)",
+      "Western/familiar-context default (tasks 1243, 930)"
+    ],
+    "strategies_that_work": [
+      "Multi-clue decomposition (7ca56b8b original): validated helpful on tasks 1042 and 221",
+      "Synonym expansion (f9a44264): validated on task 353 PP trace \u2014 'quitting slander \u2192 gossip' led directly to gold doc",
+      "Constraint scoring when applied (056f0a9e): rollout 2 on task 221 correctly scored and committed"
+    ],
+    "entries_the_model_struggles_with": [
+      "c67e6085 [common_mistakes]: 2 iterations of MUST-threshold non-engagement despite clear trigger conditions",
+      "66f87cbc [common_mistakes]: 0 engagement across 4 iterations (partly explained by no relevant scenarios)",
+      "7ca56b8b KEY RULES block: agent violated explicit 'NEVER combine more than 2 clues' on task 126"
+    ],
+    "interference_observed": [
+      "No direct interference between entries observed. The problem is non-compliance, not conflicting instructions."
+    ]
+  },
+  "agent_reasoning_patterns": {
+    "reliable_behaviors": [
+      "Multi-clue decomposition when instructed (7ca56b8b): followed correctly on tasks 1042 and 221",
+      "Constraint scoring at answer-selection phase when candidates exist (rollout 2, task 221)",
+      "Synonym expansion when applied (task 353 PP trace): works when the agent actually does it"
+    ],
+    "common_mistakes": [
+      "Ignores explicit HARD RULES during extended search sequences (5+ iterations of evidence)",
+      "Locks into first plausible assumption without testing alternatives (5+ tasks, 5 iterations)",
+      "Repeats near-identical searches 15-150 times without strategic pivot (all studied tasks)",
+      "Combines too many constraint terms per query despite explicit 'max 2' rule (task 126)",
+      "Anchors on first candidate and ignores new evidence during failed verification (task 353)",
+      "Conflates container concept with sub-component (task 1139, 2 occurrences)",
+      "Defaults to Western/familiar cultural contexts (tasks 1243, 930)"
+    ],
+    "entry_styles_that_work": {
+      "TRIGGER_WHY_PROCEDURE_numbered_steps": "7ca56b8b used this format and was followed on 2 tasks. Best compliance format so far.",
+      "explicit_comparison_rules": "'biographical beats topical \u2014 ALWAYS' applied successfully by rollout 2 on task 221.",
+      "specific_examples_in_text": "f9a44264's 'quitting slander \u2192 gossip, backbiting' example directly matched task 353. Concrete examples may be more salient than abstract rules."
+    },
+    "scaffolding_effectiveness": {
+      "ordered_procedure_steps": "Agent follows when reaching relevant phase. Effective for search strategy.",
+      "HARD_RULES_with_thresholds": "c67e6085 MUST/NEVER format NOT effective after 2 iterations. Agent ignores thresholds during extended search.",
+      "KEY_RULES_blocks": "7ca56b8b KEY RULES violated on task 126. Format not reliably followed.",
+      "concrete_examples": "f9a44264 synonym examples validated on task 353 \u2014 agent (PP trace) used the exact suggested synonyms. Examples may be more effective than abstract rules.",
+      "loop_interruption_triggers": "Neither count-based thresholds nor 'same results' triggers reliably engage during extended search. Fundamental compliance gap."
+    }
+  },
+  "optimization_velocity": {
+    "stage": "exploration",
+    "stage_rationale": "5 iterations, 7 entries, all in untested/new maturity bucket. ~18 tasks seen of 100. No entry has graduated to developing or battle-tested. Key shift in iter 5: the bottleneck is increasingly non-compliance with existing rules rather than missing coverage. f9a44264 content validated but agent doesn't follow it reliably. Failures remain a mix of easy mistakes (not applying synonym expansion, not decomposing queries) and hard ones (task 126 may be at capability limits). Metric trend 0.33\u21920.28\u21920.61\u21920.50\u21920.39 shows high batch variance with no clear direction. The playbook needs both more task exposure and better compliance, not just more content.",
+    "iterations_at_current_stage": 5,
+    "recent_mutation_success_rate": "2/7 entries have any positive signal (7ca56b8b +2, f9a44264 +1). 5/7 entries have 0 engagement/0 positive signal. Iter-5 additions (009bd398, a674b64e) untested.",
+    "recommendation": "The emerging insight is that content correctness is ahead of agent compliance. Future mutations should consider: (1) testing whether consolidating search-monitoring entries improves compliance, (2) adding more concrete examples to entries (validated effective on f9a44264), (3) exploring structural changes (entry ordering, placement) rather than only content changes. Continue broadening task sampling to discover non-entity-ID gaps.",
+    "recurring_failure_patterns": [
+      "Assumption lock-in without pivot: confirmed across 5+ tasks, 5 iterations. Addressed by 7ca56b8b + c67e6085 in content, but compliance is poor.",
+      "Non-compliance with explicit rules during extended search: confirmed across tasks 126, 353 \u2014 agent ignores NEVER/MUST thresholds.",
+      "Part-vs-whole conflation: now confirmed on 2 occurrences of task 1139 (iters 1, 5). Addressed by a674b64e.",
+      "Synonym blindness / late synonym application: confirmed on task 353 (content existed in f9a44264 but not applied until step 21)."
+    ],
+    "single_occurrence_failures": [
+      "Author-first search needed (task 930)",
+      "Unusual identifier exploitation embedded in combined queries instead of standalone (task 126)",
+      "Candidate anchoring despite finding correct doc (task 353 rollout 2 \u2014 now addressed by 009bd398)"
+    ]
+  }
+}

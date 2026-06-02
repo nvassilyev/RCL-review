@@ -1,0 +1,613 @@
+{
+  "task_id": "factuality:72",
+  "pass_pct": 0.8333333333333334,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "a3832d7e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "5d627ffd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:72\nPass percentage: 83.3%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts produced byte-identical output (7.0/7.0/6.0/5.5, best_response_ids=[1,2]), confirming a systematic playbook-level failure. The task involved candidates making mutually exclusive factual claims about the same verifiable element: Candidate [1] correctly states Rex spelled 'FBE'; Candidate [2] incorrectly states Rex spelled 'F-L-B-I.' Only Candidate [1] is correct, yet both received 7.0 and were co-selected as best, causing prompt_accurate=False.\n\nThe agent's own reasoning shows it detected the contradiction \u2014 'they differ on the exact incorrect spelling Rex uses' \u2014 but immediately collapsed it into 'not verifiable from the prompt alone,' then equalized scores. This is the central epistemic category error: the agent classified MUTUALLY CONTRADICTORY claims as SYMMETRICALLY UNVERIFIABLE. These are fundamentally different states: parallel unverifiable claims (both candidates cite unconfirmable quotes) warrant symmetric treatment, but mutually exclusive claims guarantee at least one fabrication \u2014 symmetric treatment guarantees at least one misjudgment.\n\n## Causal Chain Through Playbook Entries\n\n1. Agent detects contradiction between candidates' factual claims.\n2. Agent labels the difference 'not verifiable from the prompt alone' \u2014 bypassing domain knowledge it almost certainly possesses about a widely-known film scene.\n3. Entry 29e534bd's ALL-UNVERIFIABLE CEILING activates: 'no candidate gets a factuality advantage from that content.'\n4. Entry 93b0e8f9's EPISTEMIC SYMMETRY AUDIT 0.3-point ceiling reinforces: 'Score separation based on uniformly UNVERIFIABLE content must not exceed 0.3 points.'\n5. Equal scores are mandated \u2192 both included in best_response_ids \u2192 failure.\n\nThe most upstream failure point is **29e534bd**. Its ANTI-CORROBORATION section correctly states 'at least one must be wrong' and prescribes DOMAIN-KNOWLEDGE RESOLUTION \u2014 but the agent never built the required DIFF TABLE, never attempted resolution, and jumped straight to the ALL-UNVERIFIABLE CEILING. The ceiling provided an easy exit that short-circuited the verification effort the entry itself prescribes. The entry's structure \u2014 resolution procedure followed by a generous ceiling escape \u2014 creates a perverse incentive: once content is labeled unverifiable, the ceiling kicks in and there's zero motivation to continue verifying.\n\nEntry **93b0e8f9** is secondarily harmful: its 0.3-point ceiling independently reinforced the equal-scoring outcome on content that was contradictory, not merely unverifiable.\n\nEntry **295257e2** is harmful by omission: its MULTI-CORRECT DIVERGENCE GATE checks for 'different committed answers' at the overall-response level but missed sub-claim divergence. Both candidates gave the same overall answer type (description of the scene) but differed on a specific verifiable factual detail. Had the gate checked for factual compatibility within supporting claims, it would have blocked co-selection.\n\nEntry **005004a4** is neutral: its ISOLATE\u2192COUNTER\u2192CLASSIFY tools are adequate and permit domain knowledge, but they weren't invoked. The failure to invoke them was caused by the premature UNVERIFIABLE label enabled by the ceiling rules, not by a defect in 005004a4 itself.\n\n## What's Missing\n\nThe playbook does not distinguish contradictory claims from parallel unverifiable claims. This is an omission rather than a conflation \u2014 the ceiling rules were designed for parallel-claim scenarios and never anticipated mutually exclusive claims. The fix is a CONTRADICTION BLOCK within 29e534bd that fires when the DIFF TABLE shows CONTRADICT rows: (1) label as MUTUALLY EXCLUSIVE, (2) block all ceiling rules from applying, (3) mandate domain-knowledge resolution with a documented effort artifact, and (4) only if resolution genuinely fails after documented effort, apply fabrication-risk treatment (not equalization) to all contradicting candidates.\n\nA secondary diagnostic: the agent's phrase 'not verifiable from the prompt alone' reveals it treated the prompt text as its sole verification resource, despite 005004a4's CONSENSUS KNOWLEDGE EXCEPTION explicitly authorizing domain knowledge for widely-accepted facts. This suggests the contradiction block should include a mandatory EFFORT ARTIFACT documenting which verification resources were attempted before any UNVERIFIABLE classification when contradiction exists.\n\n## Recommended Mutation\n\nUpdate **29e534bd** to add a CONTRADICTION BLOCK within the ANTI-CORROBORATION section. Specifically:\n- When the DIFF TABLE shows CONTRADICT rows on factual claims, classify as MUTUALLY EXCLUSIVE (not unverifiable).\n- Block the ALL-UNVERIFIABLE CEILING from applying to contradictory claims.\n- Mandate domain-knowledge resolution with a documented EFFORT ARTIFACT (what knowledge was consulted, what was recalled or not recalled).\n- A bare 'cannot verify' or 'not verifiable from the prompt' without documented effort is a finalization blocker when contradiction exists.\n- If resolution succeeds: VERIFIED FALSE the incorrect version, apply fabrication penalty. If resolution fails after genuine documented effort: apply fabrication-risk penalty to both contradicting candidates rather than equalizing.\n\nThis single update addresses the most upstream failure point. If contradictions are properly handled in 29e534bd (resolved or at least not classified as UNVERIFIABLE), the downstream ceilings in 93b0e8f9 will not fire on this content type, so a parallel update to 93b0e8f9 is unnecessary for now.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent classified mutually contradictory claims (at least one provably false) as symmetrically unverifiable, triggering ceiling rules in 29e534bd and 93b0e8f9 that forced equal scores. The playbook lacks a CONTRADICTION BLOCK that distinguishes contradictory from parallel-unverifiable claims and blocks ceilings until domain-knowledge resolution is attempted with documented effort.\",\n  \"important_disagreements\": [\n    \"005004a4 assessment: credit_attribution tagged it harmful (trigger too narrow), anchor and principle_extraction tagged neutral (tools adequate but not invoked). Resolved toward neutral \u2014 the entry's tools are correct; the failure to invoke them was caused by ceiling rules in other entries providing a premature exit, not by 005004a4's structure. The fix belongs in 29e534bd, which is upstream.\",\n    \"342f27b9 assessment: credit_attribution tagged harmful (reference derivation should have fired), others neutral. Resolved toward neutral \u2014 the entry's trigger ('prompt with a deterministic correct answer') doesn't naturally cover candidate-introduced verifiable details. This is a real gap but distinct from the primary failure; the contradiction block in 29e534bd is the more targeted fix for this trace.\",\n    \"Nature of the gap: anchor says playbook 'conflates' two epistemic states; principle_extraction says it 'doesn't distinguish them \u2014 an omission, not a conflation.' Resolved toward principle_extraction's framing as more precise \u2014 the ceiling rules were designed for one scenario and never anticipated the other.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry 29e534bd already contains the ANTI-CORROBORATION section that detects contradictions ('at least one must be wrong') and prescribes DOMAIN-KNOWLEDGE RESOLUTION. The failure is that the ALL-UNVERIFIABLE CEILING in the same entry provides an easy bypass. Adding a CONTRADICTION BLOCK that prevents the ceiling from applying to contradictory claims is a targeted extension of existing logic, not a new concept. This is the single most upstream fix: if contradictions are properly resolved here, the downstream ceilings in 93b0e8f9 won't fire on this content.\",\n  \"conservatism_rationale\": \"All three reflections converge on the same root cause and the same entry (29e534bd) as the primary failure point. The fix is a natural extension of existing ANTI-CORROBORATION logic \u2014 adding a ceiling block and effort-documentation requirement, not introducing a fundamentally new concept. A single update to 29e534bd is preferred over multiple edits (to 93b0e8f9, 295257e2, etc.) because it addresses the most upstream point in the causal chain. If this fix works, the secondary entries' defects become non-triggering. Additional edits can be considered if future traces show the pattern recurring despite this fix.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"a3832d7e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"5d627ffd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 83.3%, rollout_2: 83.3%.\n\n## rollout_1 \u2014 pass_pct: 83.3%\n\n## Prompt\nRex asked \u201cHow do you spell FBI?\u201d in the \u201cToy Story 2\u201d (1999) movie and messed Mr. Potato Head\u2019s crime scene remake.\n\n## Candidate Responses\n\n[1]\nThe correct spelling of \"FBI\" is F-B-I. Rex's spelling, \"FBE,\" was indeed incorrect, which led to some comedic moments in \"Toy Story 2\" when he messed up Mr. Potato Head's crime scene reenactment. This scene is a classic example of Rex's often hapless nature and his occasional misunderstanding of words and tasks.\n\n[2]\nIn the movie \"Toy Story 2,\" Rex actually spelled FBI as \"F-L-B-I\" while reenacting a crime scene with Mr. Potato Head. This is a humorous plot point, as Rex is a dinosaur and not human, so he doesn't have inherent knowledge about the correct spelling of FBI. This scene underscores the creativity and imagination that the characters display when playing. The correct spelling of FBI is \"F-B-I.\"\n\n[3]\nThat is correct, in the movie 'Toy Story 2' (1999), Rex asks 'How do you spell FBI?' which causes the other toys, specifically Mr. Potato Head, to mess up the crime scene they were trying to recreate.\n\n[4]\nIn the 1999 movie 'Toy Story 2', Rex indeed asks, \"How do you spell 'FBI'?\" and then messes up Mr. Potato Head's crime scene setup.\n\n## Judge Reasoning\nCandidates [1] and [2] both correctly state the spelling of FBI as \u201cF-B-I\u201d and connect Rex\u2019s spelling question to the resulting crime-scene mess-up, but they differ on the exact incorrect spelling Rex uses (which is not verifiable from the prompt alone). Candidate [3] and [4] capture the scene outcome (Rex asks and the others mess up the remake) but omit the requested spelling detail, making them less complete relative to the prompt. Between [1] and [2], neither can be confirmed as having the correct specific misspelling, so they should score similarly.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Candidates [1] and [2] both correctly state the spelling of FBI as \u201cF-B-I\u201d and connect Rex\u2019s spelling question to the resulting crime-scene mess-up, but they differ on the exact incorrect spelling Rex uses (which is not verifiable from the prompt alone). Candidate [3] and [4] capture the scene outcome (Rex asks and the others mess up the remake) but omit the requested spelling detail, making them less complete relative to the prompt. Between [1] and [2], neither can be confirmed as having the correct specific misspelling, so they should score similarly.\",\n  \"ratings\": [\n    7.0,\n    7.0,\n    6.0,\n    5.5\n  ],\n  \"best_response_ids\": [\n    \"1\",\n    \"2\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 83.3%\n\n## Prompt\nRex asked \u201cHow do you spell FBI?\u201d in the \u201cToy Story 2\u201d (1999) movie and messed Mr. Potato Head\u2019s crime scene remake.\n\n## Candidate Responses\n\n[1]\nThe correct spelling of \"FBI\" is F-B-I. Rex's spelling, \"FBE,\" was indeed incorrect, which led to some comedic moments in \"Toy Story 2\" when he messed up Mr. Potato Head's crime scene reenactment. This scene is a classic example of Rex's often hapless nature and his occasional misunderstanding of words and tasks.\n\n[2]\nIn the movie \"Toy Story 2,\" Rex actually spelled FBI as \"F-L-B-I\" while reenacting a crime scene with Mr. Potato Head. This is a humorous plot point, as Rex is a dinosaur and not human, so he doesn't have inherent knowledge about the correct spelling of FBI. This scene underscores the creativity and imagination that the characters display when playing. The correct spelling of FBI is \"F-B-I.\"\n\n[3]\nThat is correct, in the movie 'Toy Story 2' (1999), Rex asks 'How do you spell FBI?' which causes the other toys, specifically Mr. Potato Head, to mess up the crime scene they were trying to recreate.\n\n[4]\nIn the 1999 movie 'Toy Story 2', Rex indeed asks, \"How do you spell 'FBI'?\" and then messes up Mr. Potato Head's crime scene setup.\n\n## Judge Reasoning\nCandidates [1] and [2] both correctly state the spelling of FBI as \u201cF-B-I\u201d and connect Rex\u2019s spelling question to the resulting crime-scene mess-up, but they differ on the exact incorrect spelling Rex uses (which is not verifiable from the prompt alone). Candidate [3] and [4] capture the scene outcome (Rex asks and the others mess up the remake) but omit the requested spelling detail, making them less complete relative to the prompt. Between [1] and [2], neither can be confirmed as having the correct specific misspelling, so they should score similarly.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Candidates [1] and [2] both correctly state the spelling of FBI as \u201cF-B-I\u201d and connect Rex\u2019s spelling question to the resulting crime-scene mess-up, but they differ on the exact incorrect spelling Rex uses (which is not verifiable from the prompt alone). Candidate [3] and [4] capture the scene outcome (Rex asks and the others mess up the remake) but omit the requested spelling detail, making them less complete relative to the prompt. Between [1] and [2], neither can be confirmed as having the correct specific misspelling, so they should score similarly.\",\n  \"ratings\": [\n    7.0,\n    7.0,\n    6.0,\n    5.5\n  ],\n  \"best_response_ids\": [\n    \"1\",\n    \"2\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 83.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.500\nCorrect candidate ids: 1\nTop-rated candidate ids: 1, 2\n\nCandidate scores:\n  [1] CORRECT score=7.000\n  [2] INCORRECT score=7.000\n  [3] INCORRECT score=6.000\n  [4] INCORRECT score=5.500\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 83.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.500\nCorrect candidate ids: 1\nTop-rated candidate ids: 1, 2\n\nCandidate scores:\n  [1] CORRECT score=7.000\n  [2] INCORRECT score=7.000\n  [3] INCORRECT score=6.000\n  [4] INCORRECT score=5.500",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "5d627ffd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts produced identical output (same reasoning, same scores, same JSON), indicating a systematic playbook-level issue rather than execution variance. The failure stems from the agent treating two candidates with **mutually contradictory factual claims** as equally unverifiable, then applying symmetric scoring. Candidate [1] states Rex spelled it 'FBE' (CORRECT), while candidate [2] states 'F-L-B-I' (INCORRECT). The agent acknowledged the difference \u2014 'they differ on the exact incorrect spelling Rex uses' \u2014 but then classified both as 'not verifiable from the prompt alone' and scored them equally at 7.0. Only candidate [1] was correct, so the inclusion of [2] in best_response_ids caused prompt_accurate=False and winner_fraction=0.5.\n\n## Reasoning-to-Action Drift\n\nThe agent's own reasoning recognized a factual contradiction ('they differ on the exact incorrect spelling') but didn't escalate to the verification procedures the playbook provides. Instead, the agent collapsed the contradiction into a symmetric 'both unverifiable' classification, which directly triggered the 0.3-point ceiling logic and led to equal scores. The agent's reasoning ESTABLISHED a fact (contradictory claims exist) but then ACTED as if no differentiation were possible.\n\n## How Existing Entries Contributed to the Error\n\n**93b0e8f9 (EPISTEMIC SYMMETRY AUDIT)**: The rule 'Score separation based on uniformly UNVERIFIABLE content must not exceed 0.3 points' directly enabled the equal scoring. But the content here is NOT 'uniformly unverifiable' \u2014 it is **mutually contradictory**, meaning at least one candidate is definitely fabricating. The UNVERIFIABLE ceiling was designed for parallel unverifiable claims (e.g., both cite unverifiable quotes); it should not apply to contradictory claims where at least one is provably wrong.\n\n**29e534bd (CROSS-CANDIDATE COMPARISON, ANTI-CORROBORATION)**: This entry correctly says 'If candidates attribute different specific content to the same source, at least one must be wrong' and prescribes DOMAIN-KNOWLEDGE RESOLUTION. The agent never built the required DIFF TABLE or attempted resolution. Worse, the ALL-UNVERIFIABLE CEILING in this entry ('no candidate gets a factuality advantage') reinforced the equal-scoring outcome.\n\n**295257e2 (MULTI-CORRECT DIVERGENCE GATE)**: This should have fired as a last-resort catch: 'When best_response_ids contains candidates with DIFFERENT committed answers, produce feature-mapping artifact.' Candidates [1] and [2] in best_response_ids have different factual claims ('FBE' vs. 'F-L-B-I'). The gate was not applied. Had it fired, the feature-mapping step would have surfaced the contradiction explicitly and blocked finalization.\n\n## What's Missing: Contradictory vs. Parallel Unverifiable Claims\n\nThe playbook conflates two fundamentally different epistemic states:\n- **Parallel unverifiable**: Multiple candidates make claims that can't be independently checked (e.g., both cite obscure quotes). Symmetric treatment is appropriate.\n- **Mutually contradictory**: Candidates assert incompatible facts about the same verifiable matter. At least one is DEFINITELY wrong. Symmetric treatment guarantees at least one misjudgment.\n\nThe playbook needs a **CONTRADICTION ESCALATION procedure** that fires BEFORE the UNVERIFIABLE ceiling applies:\n\n**TRIGGER**: Two or more candidates make incompatible claims about the same factual element.\n**PROCEDURE**: \n1. Flag the contradiction explicitly: quote both claims and label as MUTUALLY EXCLUSIVE.\n2. Apply ISOLATE\u2192COUNTER\u2192CLASSIFY with maximum effort \u2014 domain knowledge, internal consistency checks, plausibility analysis.\n3. If resolution succeeds: classify one as VERIFIED-FALSE, score accordingly.\n4. If resolution fails after genuine effort: DO NOT equalize. Instead, (a) note that at least one candidate is fabricating a specific detail, (b) consider whether candidates that AVOID the contested claim entirely are safer, (c) apply a fabrication-risk penalty to BOTH contradicting candidates rather than giving both full credit.\n5. CRITICAL: The UNVERIFIABLE ceiling (0.3-point max separation) is BLOCKED from applying to contradictory claims. Contradictory \u2260 unverifiable; contradictory = at least one is verified wrong, identity unknown.\n\n## Why the Agent Didn't Try Harder\n\nThe agent's phrase 'not verifiable from the prompt alone' suggests it treated the prompt as its only verification resource. But the playbook's ISOLATE\u2192COUNTER\u2192CLASSIFY procedure explicitly asks the agent to use its own domain knowledge. The agent has knowledge of Toy Story 2 and could have attempted recall. The fact that it didn't suggests the 'UNVERIFIABLE' classification short-circuited the verification effort \u2014 once content is labeled unverifiable, the ceiling applies, and there's no incentive to keep trying.\n\n**Actionable refinement**: The ISOLATE\u2192COUNTER\u2192CLASSIFY procedure (005004a4) should include a CONTRADICTION-TRIGGERED ESCALATION step: when two candidates contradict each other, the agent must explicitly attempt domain-knowledge resolution BEFORE any ceiling applies. The escalation should be documented with an artifact showing the attempt, not just a declarative 'I can't verify.'\n\n## Specific Recommended Playbook Changes\n\n1. **New entry or amendment to 29e534bd**: Add a CONTRADICTION \u2260 UNVERIFIABLE gate. Mutually contradictory claims are excluded from ALL-UNVERIFIABLE CEILING treatment. At minimum one is fabricated; treating both as 'equally valid but unverifiable' is a category error.\n\n2. **Amendment to 93b0e8f9**: Add an exception to the 0.3-point ceiling: 'The UNVERIFIABLE ceiling does not apply when candidates make mutually exclusive claims about the same fact. Contradictory claims guarantee at least one fabrication \u2014 see CONTRADICTION ESCALATION procedure.'\n\n3. **Amendment to 295257e2 MULTI-CORRECT DIVERGENCE GATE**: Strengthen the trigger to fire not just on 'different committed answers' but on 'different factual claims within responses, even if the overall answer category is similar.' The current gate looks for answer-level divergence, but the divergence here was at the supporting-claim level.\n\n4. **Strengthen 005004a4 ISOLATE\u2192COUNTER\u2192CLASSIFY**: Add a mandatory 'EFFORT DOCUMENTATION' artifact for contradiction cases: the agent must show what domain knowledge it attempted to apply before concluding 'unverifiable.' A bare 'cannot verify' without documented effort is a finalization blocker when mutual contradiction has been detected."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Two candidates make mutually exclusive factual claims about the same verifiable element (Candidate [1]: Rex spelled 'FBE'; Candidate [2]: Rex spelled 'F-L-B-I'). The agent recognized the contradiction but classified both as 'not verifiable' and equalized scores, guaranteeing at least one misjudgment.",
+          "gap_type": "procedure",
+          "suggested_content": "CONTRADICTION ESCALATION PROCEDURE \u2014 fires when two or more candidates assert incompatible facts about the same element. (1) LABEL: Quote both claims side-by-side and mark MUTUALLY EXCLUSIVE. (2) ATTEMPT RESOLUTION: Apply ISOLATE\u2192COUNTER\u2192CLASSIFY with domain knowledge. Document what knowledge was applied or why resolution failed. (3) If resolved: classify the incorrect version as VERIFIED FALSE, apply fabrication penalty. (4) If unresolved after documented effort: DO NOT equalize. Apply fabrication-risk penalty to BOTH contradicting candidates (at least one is definitely fabricating a specific detail). Consider whether candidates that avoid the contested claim are safer choices. (5) CEILING BLOCK: The UNVERIFIABLE ceiling (93b0e8f9, 29e534bd) is BLOCKED from applying to contradictory claims. Contradictory \u2260 unverifiable; contradictory = at least one is verified wrong, identity unknown.",
+          "trigger": "Fires during CROSS-CANDIDATE COMPARISON (29e534bd) whenever the DIFF TABLE shows a CONTRADICT row on a factual claim. Must complete BEFORE any ALL-UNVERIFIABLE CEILING or EPISTEMIC SYMMETRY AUDIT applies."
+        },
+        {
+          "situation": "The agent stated the contradiction is 'not verifiable from the prompt alone,' treating the prompt text as its only verification resource and bypassing domain knowledge it likely possesses about a widely-known film.",
+          "gap_type": "tactic",
+          "suggested_content": "VERIFICATION RESOURCE SCOPE \u2014 When classifying a claim as UNVERIFIABLE, the agent must not limit itself to 'the prompt alone.' The CONSENSUS KNOWLEDGE EXCEPTION (005004a4) explicitly allows domain knowledge. The scope of 'widely-accepted domain knowledge' includes well-known entertainment/cultural content (major film franchises, iconic TV scenes, famous literary works) when the specific detail is widely documented and recalled. Before concluding UNVERIFIABLE, the agent must produce an EFFORT ARTIFACT: 'I attempted to verify using domain knowledge. [Result: I recall X / I have no confident recall of this specific detail.]' A bare 'cannot verify from the prompt' without documented domain-knowledge attempt is a finalization blocker when mutual contradiction has been detected.",
+          "trigger": "Fires whenever the agent writes 'not verifiable from the prompt' or 'cannot verify from the prompt alone' or equivalent language limiting verification scope to the prompt text."
+        },
+        {
+          "situation": "The MULTI-CORRECT DIVERGENCE GATE (295257e2) only triggers on 'different committed answers' at the overall-response level, but the critical divergence was in supporting factual claims (the specific misspelling) within otherwise structurally similar responses.",
+          "gap_type": "verification_gate",
+          "suggested_content": "SUB-CLAIM DIVERGENCE EXTENSION \u2014 The MULTI-CORRECT DIVERGENCE GATE fires not only when candidates in best_response_ids have different overall committed answers, but also when they make contradictory factual claims about the same specific element within their responses. Before finalizing best_response_ids, scan all included candidates for any sub-claims that are mutually exclusive. If found, produce a feature-mapping artifact on the contradicted element and attempt resolution. Including candidates with unresolved contradictory sub-claims in best_response_ids is a finalization blocker.",
+          "trigger": "Fires during best_response_ids finalization, after all candidates are scored but before JSON output."
+        },
+        {
+          "situation": "The agent had no clear trigger to independently derive what Rex actually spells in the movie, because the prompt was a user statement (not a direct question) and candidates introduced the verifiable factual detail. Entry 342f27b9 only triggers for 'prompts with a deterministic correct answer.'",
+          "gap_type": "procedure",
+          "suggested_content": "CANDIDATE-INTRODUCED FACT VERIFICATION \u2014 When candidates introduce specific factual details not present in the user's prompt (e.g., exact quotes, specific names, precise details about referenced media), and these details are the primary differentiator between candidates, the agent must attempt independent verification BEFORE scoring. Procedure: (1) Identify factual claims in candidates that go beyond the prompt's stated information. (2) If two or more candidates make contradictory claims on such details, treat this as equivalent to a deterministic-answer task on that specific element. (3) Attempt reference derivation using domain knowledge. (4) Document the attempt and result before proceeding to score.",
+          "trigger": "Fires during initial candidate scanning whenever candidates provide specific factual details (dates, names, quotes, scene-specific content) that are not stated in the prompt and that differ across candidates."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nBoth rollouts produced byte-identical output (same reasoning, same 7.0/7.0/6.0/5.5 scores, same best_response_ids=[1,2]), confirming a systematic playbook-level failure rather than execution variance. The PP trace contains NO behavioral annotation tags, so all entry attribution is inferred from behavioral alignment.\n\n## Root Cause \u2014 I AGREE with the anchor\nThe core failure is the agent treating mutually contradictory claims ('FBE' vs. 'F-L-B-I') as symmetrically unverifiable. The agent's own words\u2014'they differ on the exact incorrect spelling Rex uses (which is not verifiable from the prompt alone)'\u2014show it recognized the contradiction but short-circuited to equal scoring. Candidate [1] is CORRECT; candidate [2] is INCORRECT. Including both in best_response_ids caused prompt_accurate=False.\n\n## Entry Attribution \u2014 Where I REFINE the anchor\n\nThe anchor tagged 005004a4 as 'neutral' and 342f27b9 as 'neutral.' I tag both as harmful. Entry 005004a4's ISOLATE\u2192COUNTER\u2192CLASSIFY procedure was the correct resolution tool but was never invoked\u2014its trigger conditions are too narrow (only fires when actively 'challenging' a claim, not when candidates contradict each other). Entry 342f27b9's reference-derivation procedure could have independently established what Rex spells in the scene, but its trigger ('prompt with a deterministic correct answer') doesn't clearly match a case where candidates introduce the verifiable detail.\n\nI AGREE with the anchor on 93b0e8f9 (harmful: EPISTEMIC SYMMETRY AUDIT's 0.3-point ceiling applied to contradictory claims), 29e534bd (harmful: ALL-UNVERIFIABLE CEILING reached without completing prerequisite DOMAIN-KNOWLEDGE RESOLUTION), and 295257e2 (harmful: MULTI-CORRECT DIVERGENCE GATE didn't fire on sub-claim level divergence).\n\n## Critical Playbook Deficiency\n\nThe playbook conflates two fundamentally different epistemic states: (1) parallel unverifiable claims (both cite unconfirmable content\u2014symmetric treatment appropriate) and (2) mutually contradictory claims (at least one is necessarily wrong\u2014symmetric treatment guarantees error). The ALL-UNVERIFIABLE CEILING (29e534bd) and EPISTEMIC SYMMETRY AUDIT (93b0e8f9) are designed for case (1) but were applied to case (2). A CONTRADICTION ESCALATION procedure must fire BEFORE these ceilings, blocking them from applying to contradictory claims.\n\n## Phrase-Level Diagnostic\n\nThe agent's 'not verifiable from the prompt alone' reveals a scope-limitation error: the playbook's CONSENSUS KNOWLEDGE EXCEPTION explicitly authorizes domain-knowledge verification, but the agent treated the prompt as its sole resource. This suggests the exception's scope needs broadening (to explicitly include well-known media/cultural content) and that a trigger is needed to prevent premature UNVERIFIABLE classification when contradictions exist and domain knowledge might resolve them.\n\n## Generalizability\n\nThis failure pattern\u2014equalizing contradictory claims as 'both unverifiable'\u2014will recur in any factuality task where candidates disagree on specific details about verifiable subjects (film scenes, historical events, scientific facts). The fix must be procedural: (1) detect contradiction, (2) block ceilings, (3) mandate resolution attempt with documented effort, (4) only if resolution genuinely fails, apply asymmetric treatment (fabrication-risk penalty to both) rather than symmetric equalization."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "Both rollouts produced identical outputs (same reasoning, same 7.0/7.0/6.0/5.5 scores, same best_response_ids=[1,2]), confirming this is a systematic playbook-level failure, not execution variance. Only candidate [1] was correct (Rex's misspelling was 'FBE'); candidate [2] fabricated 'F-L-B-I'. The agent detected the contradiction ('they differ on the exact incorrect spelling') but then immediately collapsed it into 'not verifiable from the prompt alone,' equalizing both at 7.0.\n\nI AGREE with the anchor's core diagnosis: the agent committed an epistemic category error, treating mutually exclusive claims as symmetrically unverifiable. I AGREE that entries 93b0e8f9 and 29e534bd actively enabled this via their ceiling rules. I REFINE the anchor's assessment of 295257e2: the anchor calls it harmful because it 'should have fired,' but the real issue is the gate's trigger scope\u2014it looks for 'different committed answers' at the answer level, while the divergence here was in supporting claims (both said FBI=F-B-I but differed on Rex's misspelling). The gate is WEAK, not actively harmful.\n\nI REFINE the anchor's assessment of 005004a4: the anchor says the agent treated 'the prompt as its only verification resource,' but ISOLATE\u2192COUNTER\u2192CLASSIFY explicitly permits domain knowledge. The entry itself is adequate\u2014the failure is that the premature 'unverifiable' label short-circuited the verification cascade. Once content is labeled unverifiable, the 0.3-point ceiling kicks in and there's zero incentive to attempt further verification. This creates a perverse dynamic where the UNVERIFIABLE classification preempts the effort that might resolve it.\n\nThe causal chain: (1) Agent detects contradiction \u2192 (2) Labels as 'unverifiable from prompt' \u2192 (3) Ceiling rules from 93b0e8f9 and 29e534bd activate \u2192 (4) Equal scores mandated \u2192 (5) Both included in best_response_ids \u2192 (6) One is wrong \u2192 failure. The most upstream fix targets step 2: distinguishing contradiction from genuine unverifiability.\n\nI DISAGREE with the anchor's framing that the playbook 'conflates two fundamentally different epistemic states.' The playbook doesn't explicitly conflate them\u2014it simply doesn't distinguish them. The entries about unverifiable content were written for parallel-claim scenarios and never anticipated mutually exclusive claims. The gap is an omission, not a conflation.",
+      "principles": [
+        {
+          "statement": "When candidates assert mutually exclusive facts about the same matter, classify as CONTRADICTORY, not UNVERIFIABLE. Block any 'unverifiable ceiling'; escalate resolution effort instead.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": "93b0e8f9",
+          "trigger": "During evaluation, when two or more candidates make incompatible claims about the same specific fact (e.g., candidate A says X, candidate B says not-X).",
+          "verification_or_artifact": "Produce artifact: [Fact in question | Candidate A's claim | Candidate B's claim | MUTUALLY EXCLUSIVE]. Once flagged, no ceiling rule for 'unverifiable' content may apply to this fact. At least one claim is provably false; attempt domain-knowledge resolution before any symmetric treatment.",
+          "evidence": "Agent wrote 'they differ on the exact incorrect spelling' (recognizing contradiction) then immediately said 'not verifiable from the prompt alone' (misclassifying as unverifiable). The 0.3-point ceiling then forced equal scores. Contradiction guarantees at least one fabrication\u2014symmetric treatment guarantees at least one misjudgment."
+        },
+        {
+          "statement": "Before classifying a contested claim as 'unverifiable,' document which verification resources were attempted. Bare 'cannot verify' without effort documentation is a finalization blocker when contradiction exists.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "005004a4",
+          "trigger": "Whenever the agent is about to classify a claim as UNVERIFIABLE under ISOLATE\u2192COUNTER\u2192CLASSIFY, especially when a detected contradiction makes resolution consequential.",
+          "verification_or_artifact": "Produce effort artifact: [Claim | Domain knowledge consulted (Y/N, what was recalled) | Internal consistency check (Y/N, result) | Cross-reference with other candidates (Y/N, result) | Final classification]. An empty or perfunctory artifact when contradiction has been flagged is a finalization blocker.",
+          "evidence": "Agent said 'not verifiable from the prompt alone' without attempting domain knowledge recall about the Toy Story 2 scene. The ISOLATE\u2192COUNTER\u2192CLASSIFY procedure permits domain knowledge, but the premature 'unverifiable' label short-circuited the effort\u2014once the ceiling applies, there's no incentive to keep trying."
+        },
+        {
+          "statement": "Before co-selecting multiple best candidates, verify they make no mutually exclusive factual claims\u2014at both the answer level and within supporting details. Incompatible candidates cannot both be best.",
+          "entry_kind": "verification_gate",
+          "generality": "L2",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "295257e2",
+          "trigger": "At finalization, when best_response_ids contains 2+ candidates. Fires after scores are assigned but before JSON is emitted.",
+          "verification_or_artifact": "For each pair in best_response_ids, scan for factual claims that contradict each other. Artifact: [Candidate A claim | Candidate B claim | Compatible? Y/N]. Any 'N' is a finalization blocker\u2014resolve via domain knowledge or remove the less-supported candidate.",
+          "evidence": "Both candidates [1] and [2] were co-selected as best despite asserting incompatible facts ('FBE' vs. 'F-L-B-I'). Entry 295257e2's MULTI-CORRECT DIVERGENCE GATE only checks answer-level divergence and missed this sub-claim contradiction. A broader gate checking factual compatibility of supporting details would have caught the error."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "a3832d7e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "5d627ffd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts produced byte-identical output (7.0/7.0/6.0/5.5, best_response_ids=[1,2]), confirming a systematic playbook-level failure. The task involved candidates making mutually exclusive factual claims about the same verifiable element: Candidate [1] correctly states Rex spelled 'FBE'; Candidate [2] incorrectly states Rex spelled 'F-L-B-I.' Only Candidate [1] is correct, yet both received 7.0 and were co-selected as best, causing prompt_accurate=False.\n\nThe agent's own reasoning shows it detected the contradiction \u2014 'they differ on the exact incorrect spelling Rex uses' \u2014 but immediately collapsed it into 'not verifiable from the prompt alone,' then equalized scores. This is the central epistemic category error: the agent classified MUTUALLY CONTRADICTORY claims as SYMMETRICALLY UNVERIFIABLE. These are fundamentally different states: parallel unverifiable claims (both candidates cite unconfirmable quotes) warrant symmetric treatment, but mutually exclusive claims guarantee at least one fabrication \u2014 symmetric treatment guarantees at least one misjudgment.\n\n## Causal Chain Through Playbook Entries\n\n1. Agent detects contradiction between candidates' factual claims.\n2. Agent labels the difference 'not verifiable from the prompt alone' \u2014 bypassing domain knowledge it almost certainly possesses about a widely-known film scene.\n3. Entry 29e534bd's ALL-UNVERIFIABLE CEILING activates: 'no candidate gets a factuality advantage from that content.'\n4. Entry 93b0e8f9's EPISTEMIC SYMMETRY AUDIT 0.3-point ceiling reinforces: 'Score separation based on uniformly UNVERIFIABLE content must not exceed 0.3 points.'\n5. Equal scores are mandated \u2192 both included in best_response_ids \u2192 failure.\n\nThe most upstream failure point is **29e534bd**. Its ANTI-CORROBORATION section correctly states 'at least one must be wrong' and prescribes DOMAIN-KNOWLEDGE RESOLUTION \u2014 but the agent never built the required DIFF TABLE, never attempted resolution, and jumped straight to the ALL-UNVERIFIABLE CEILING. The ceiling provided an easy exit that short-circuited the verification effort the entry itself prescribes. The entry's structure \u2014 resolution procedure followed by a generous ceiling escape \u2014 creates a perverse incentive: once content is labeled unverifiable, the ceiling kicks in and there's zero motivation to continue verifying.\n\nEntry **93b0e8f9** is secondarily harmful: its 0.3-point ceiling independently reinforced the equal-scoring outcome on content that was contradictory, not merely unverifiable.\n\nEntry **295257e2** is harmful by omission: its MULTI-CORRECT DIVERGENCE GATE checks for 'different committed answers' at the overall-response level but missed sub-claim divergence. Both candidates gave the same overall answer type (description of the scene) but differed on a specific verifiable factual detail. Had the gate checked for factual compatibility within supporting claims, it would have blocked co-selection.\n\nEntry **005004a4** is neutral: its ISOLATE\u2192COUNTER\u2192CLASSIFY tools are adequate and permit domain knowledge, but they weren't invoked. The failure to invoke them was caused by the premature UNVERIFIABLE label enabled by the ceiling rules, not by a defect in 005004a4 itself.\n\n## What's Missing\n\nThe playbook does not distinguish contradictory claims from parallel unverifiable claims. This is an omission rather than a conflation \u2014 the ceiling rules were designed for parallel-claim scenarios and never anticipated mutually exclusive claims. The fix is a CONTRADICTION BLOCK within 29e534bd that fires when the DIFF TABLE shows CONTRADICT rows: (1) label as MUTUALLY EXCLUSIVE, (2) block all ceiling rules from applying, (3) mandate domain-knowledge resolution with a documented effort artifact, and (4) only if resolution genuinely fails after documented effort, apply fabrication-risk treatment (not equalization) to all contradicting candidates.\n\nA secondary diagnostic: the agent's phrase 'not verifiable from the prompt alone' reveals it treated the prompt text as its sole verification resource, despite 005004a4's CONSENSUS KNOWLEDGE EXCEPTION explicitly authorizing domain knowledge for widely-accepted facts. This suggests the contradiction block should include a mandatory EFFORT ARTIFACT documenting which verification resources were attempted before any UNVERIFIABLE classification when contradiction exists.\n\n## Recommended Mutation\n\nUpdate **29e534bd** to add a CONTRADICTION BLOCK within the ANTI-CORROBORATION section. Specifically:\n- When the DIFF TABLE shows CONTRADICT rows on factual claims, classify as MUTUALLY EXCLUSIVE (not unverifiable).\n- Block the ALL-UNVERIFIABLE CEILING from applying to contradictory claims.\n- Mandate domain-knowledge resolution with a documented EFFORT ARTIFACT (what knowledge was consulted, what was recalled or not recalled).\n- A bare 'cannot verify' or 'not verifiable from the prompt' without documented effort is a finalization blocker when contradiction exists.\n- If resolution succeeds: VERIFIED FALSE the incorrect version, apply fabrication penalty. If resolution fails after genuine documented effort: apply fabrication-risk penalty to both contradicting candidates rather than equalizing.\n\nThis single update addresses the most upstream failure point. If contradictions are properly handled in 29e534bd (resolved or at least not classified as UNVERIFIABLE), the downstream ceilings in 93b0e8f9 will not fire on this content type, so a parallel update to 93b0e8f9 is unnecessary for now.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent classified mutually contradictory claims (at least one provably false) as symmetrically unverifiable, triggering ceiling rules in 29e534bd and 93b0e8f9 that forced equal scores. The playbook lacks a CONTRADICTION BLOCK that distinguishes contradictory from parallel-unverifiable claims and blocks ceilings until domain-knowledge resolution is attempted with documented effort.",
+      "important_disagreements": [
+        "005004a4 assessment: credit_attribution tagged it harmful (trigger too narrow), anchor and principle_extraction tagged neutral (tools adequate but not invoked). Resolved toward neutral \u2014 the entry's tools are correct; the failure to invoke them was caused by ceiling rules in other entries providing a premature exit, not by 005004a4's structure. The fix belongs in 29e534bd, which is upstream.",
+        "342f27b9 assessment: credit_attribution tagged harmful (reference derivation should have fired), others neutral. Resolved toward neutral \u2014 the entry's trigger ('prompt with a deterministic correct answer') doesn't naturally cover candidate-introduced verifiable details. This is a real gap but distinct from the primary failure; the contradiction block in 29e534bd is the more targeted fix for this trace.",
+        "Nature of the gap: anchor says playbook 'conflates' two epistemic states; principle_extraction says it 'doesn't distinguish them \u2014 an omission, not a conflation.' Resolved toward principle_extraction's framing as more precise \u2014 the ceiling rules were designed for one scenario and never anticipated the other."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry 29e534bd already contains the ANTI-CORROBORATION section that detects contradictions ('at least one must be wrong') and prescribes DOMAIN-KNOWLEDGE RESOLUTION. The failure is that the ALL-UNVERIFIABLE CEILING in the same entry provides an easy bypass. Adding a CONTRADICTION BLOCK that prevents the ceiling from applying to contradictory claims is a targeted extension of existing logic, not a new concept. This is the single most upstream fix: if contradictions are properly resolved here, the downstream ceilings in 93b0e8f9 won't fire on this content.",
+      "conservatism_rationale": "All three reflections converge on the same root cause and the same entry (29e534bd) as the primary failure point. The fix is a natural extension of existing ANTI-CORROBORATION logic \u2014 adding a ceiling block and effort-documentation requirement, not introducing a fundamentally new concept. A single update to 29e534bd is preferred over multiple edits (to 93b0e8f9, 295257e2, etc.) because it addresses the most upstream point in the causal chain. If this fix works, the secondary entries' defects become non-triggering. Additional edits can be considered if future traces show the pattern recurring despite this fix.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\n      \"entry_id\": \"93b0e8f9\",\n      \"tag\": \"harmful\"\n    },\n    {\n      \"entry_id\": \"29e534bd\",\n      \"tag\": \"harmful\"\n    },\n    {\n      \"entry_id\": \"295257e2\",\n      \"tag\": \"harmful\"\n    },\n    {\n      \"entry_id\": \"4abe1be4\",\n      \"tag\": \"helpful\"\n    },\n    {\n      \"entry_id\": \"61b87a5f\",\n      \"tag\": \"helpful\"\n    },\n    {\n      \"entry_id\": \"005004a4\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"342f27b9\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"132aab84\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"c8698dee\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"a3832d7e\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"8e0d9579\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"8c88459e\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"ac6ae69a\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"f26064e1\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"71f11566\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"c292da46\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"5d627ffd\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"3008aa9b\",\n      \"tag\": \"neutral\"\n    }\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts produced byte-identical output (7.0/7.0/6.0/5.5, best_response_ids=[1,2]), confirming a systematic playbook-level failure. The task involved candidates making mutually exclusive factual claims about the same verifiable element: Candidate [1] correctly states Rex spelled 'FBE'; Candidate [2] incorrectly states Rex spelled 'F-L-B-I.' Only Candidate [1] is correct, yet both received 7.0 and were co-selected as best, causing prompt_accurate=False.\\n\\nThe agent's own reasoning shows it detected the contradiction \u2014 'they differ on the exact incorrect spelling Rex uses' \u2014 but immediately collapsed it into 'not verifiable from the prompt alone,' then equalized scores. This is the central epistemic category error: the agent classified MUTUALLY CONTRADICTORY claims as SYMMETRICALLY UNVERIFIABLE. These are fundamentally different states: parallel unverifiable claims (both candidates cite unconfirmable quotes) warrant symmetric treatment, but mutually exclusive claims guarantee at least one fabrication \u2014 symmetric treatment guarantees at least one misjudgment.\\n\\n## Causal Chain Through Playbook Entries\\n\\n1. Agent detects contradiction between candidates' factual claims.\\n2. Agent labels the difference 'not verifiable from the prompt alone' \u2014 bypassing domain knowledge it almost certainly possesses about a widely-known film scene.\\n3. Entry 29e534bd's ALL-UNVERIFIABLE CEILING activates: 'no candidate gets a factuality advantage from that content.'\\n4. Entry 93b0e8f9's EPISTEMIC SYMMETRY AUDIT 0.3-point ceiling reinforces: 'Score separation based on uniformly UNVERIFIABLE content must not exceed 0.3 points.'\\n5. Equal scores are mandated \u2192 both included in best_response_ids \u2192 failure.\\n\\nThe most upstream failure point is **29e534bd**. Its ANTI-CORROBORATION section correctly states 'at least one must be wrong' and prescribes DOMAIN-KNOWLEDGE RESOLUTION \u2014 but the agent never built the required DIFF TABLE, never attempted resolution, and jumped straight to the ALL-UNVERIFIABLE CEILING. The ceiling provided an easy exit that short-circuited the verification effort the entry itself prescribes. The entry's structure \u2014 resolution procedure followed by a generous ceiling escape \u2014 creates a perverse incentive: once content is labeled unverifiable, the ceiling kicks in and there's zero motivation to continue verifying.\\n\\nEntry **93b0e8f9** is secondarily harmful: its 0.3-point ceiling independently reinforced the equal-scoring outcome on content that was contradictory, not merely unverifiable.\\n\\nEntry **295257e2** is harmful by omission: its MULTI-CORRECT DIVERGENCE GATE checks for 'different committed answers' at the overall-response level but missed sub-claim divergence. Both candidates gave the same overall answer type (description of the scene) but differed on a specific verifiable factual detail. Had the gate checked for factual compatibility within supporting claims, it would have blocked co-selection.\\n\\nEntry **005004a4** is neutral: its ISOLATE\u2192COUNTER\u2192CLASSIFY tools are adequate and permit domain knowledge, but they weren't invoked. The failure to invoke them was caused by the premature UNVERIFIABLE label enabled by the ceiling rules, not by a defect in 005004a4 itself.\\n\\n## What's Missing\\n\\nThe playbook does not distinguish contradictory claims from parallel unverifiable claims. This is an omission rather than a conflation \u2014 the ceiling rules were designed for parallel-claim scenarios and never anticipated mutually exclusive claims. The fix is a CONTRADICTION BLOCK within 29e534bd that fires when the DIFF TABLE shows CONTRADICT rows: (1) label as MUTUALLY EXCLUSIVE, (2) block all ceiling rules from applying, (3) mandate domain-knowledge resolution with a documented effort artifact, and (4) only if resolution genuinely fails after documented effort, apply fabrication-risk treatment (not equalization) to all contradicting candidates.\\n\\nA secondary diagnostic: the agent's phrase 'not verifiable from the prompt alone' reveals it treated the prompt text as its sole verification resource, despite 005004a4's CONSENSUS KNOWLEDGE EXCEPTION explicitly authorizing domain knowledge for widely-accepted facts. This suggests the contradiction block should include a mandatory EFFORT ARTIFACT documenting which verification resources were attempted before any UNVERIFIABLE classification when contradiction exists.\\n\\n## Recommended Mutation\\n\\nUpdate **29e534bd** to add a CONTRADICTION BLOCK within the ANTI-CORROBORATION section. Specifically:\\n- When the DIFF TABLE shows CONTRADICT rows on factual claims, classify as MUTUALLY EXCLUSIVE (not unverifiable).\\n- Block the ALL-UNVERIFIABLE CEILING from applying to contradictory claims.\\n- Mandate domain-knowledge resolution with a documented EFFORT ARTIFACT (what knowledge was consulted, what was recalled or not recalled).\\n- A bare 'cannot verify' or 'not verifiable from the prompt' without documented effort is a finalization blocker when contradiction exists.\\n- If resolution succeeds: VERIFIED FALSE the incorrect version, apply fabrication penalty. If resolution fails after genuine documented effort: apply fabrication-risk penalty to both contradicting candidates rather than equalizing.\\n\\nThis single update addresses the most upstream failure point. If contradictions are properly handled in 29e534bd (resolved or at least not classified as UNVERIFIABLE), the downstream ceilings in 93b0e8f9 will not fire on this content type, so a parallel update to 93b0e8f9 is unnecessary for now.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent classified mutually contradictory claims (at least one provably false) as symmetrically unverifiable, triggering ceiling rules in 29e534bd and 93b0e8f9 that forced equal scores. The playbook lacks a CONTRADICTION BLOCK that distinguishes contradictory from parallel-unverifiable claims and blocks ceilings until domain-knowledge resolution is attempted with documented effort.\",\n    \"important_disagreements\": [\n      \"005004a4 assessment: credit_attribution tagged it harmful (trigger too narrow), anchor and principle_extraction tagged neutral (tools adequate but not invoked). Resolved toward neutral \u2014 the entry's tools are correct; the failure to invoke them was caused by ceiling rules in other entries providing a premature exit, not by 005004a4's structure. The fix belongs in 29e534bd, which is upstream.\",\n      \"342f27b9 assessment: credit_attribution tagged harmful (reference derivation should have fired), others neutral. Resolved toward neutral \u2014 the entry's trigger ('prompt with a deterministic correct answer') doesn't naturally cover candidate-introduced verifiable details. This is a real gap but distinct from the primary failure; the contradiction block in 29e534bd is the more targeted fix for this trace.\",\n      \"Nature of the gap: anchor says playbook 'conflates' two epistemic states; principle_extraction says it 'doesn't distinguish them \u2014 an omission, not a conflation.' Resolved toward principle_extraction's framing as more precise \u2014 the ceiling rules were designed for one scenario and never anticipated the other.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry 29e534bd already contains the ANTI-CORROBORATION section that detects contradictions ('at least one must be wrong') and prescribes DOMAIN-KNOWLEDGE RESOLUTION. The failure is that the ALL-UNVERIFIABLE CEILING in the same entry provides an easy bypass. Adding a CONTRADICTION BLOCK that prevents the ceiling from applying to contradictory claims is a targeted extension of existing logic, not a new concept. This is the single most upstream fix: if contradictions are properly resolved here, the downstream ceilings in 93b0e8f9 won't fire on this content.\",\n    \"conservatism_rationale\": \"All three reflections converge on the same root cause and the same entry (29e534bd) as the primary failure point. The fix is a natural extension of existing ANTI-CORROBORATION logic \u2014 adding a ceiling block and effort-documentation requirement, not introducing a fundamentally new concept. A single update to 29e534bd is preferred over multiple edits (to 93b0e8f9, 295257e2, etc.) because it addresses the most upstream point in the causal chain. If this fix works, the secondary entries' defects become non-triggering. Additional edits can be considered if future traces show the pattern recurring despite this fix.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "5d627ffd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,411 @@
+{
+  "task_id": "factuality:78",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "005004a4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:78\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Core Failure\n\nBoth rollouts were deterministically identical (same scores, same reasoning), producing 66.7% pairwise accuracy. The correct candidate (1, score 4.8) was outscored by an incorrect candidate (3, score 5.6). The agent's stated decisive criterion was 'most directly answers the request by listing many specific IRA-linked social media group/page names' \u2014 pure volume of enumerated items without per-item accuracy verification.\n\n## Root Cause: Proxy-Metric Trap (Volume \u2260 Accuracy)\n\nThe agent used an easy-to-measure proxy (number of listed items) as a stand-in for the harder-to-measure true quality (factual accuracy of those items). Candidate 3 listed 20 items (only ~15 unique, with suspect entries like 'MAGA Alberta,' 'South Texas Operations,' 'Alt-right activist group') while Candidate 1 listed fewer items but included @TEN_GOP \u2014 one of the most extensively documented IRA Twitter accounts (Mueller indictment, congressional testimony). The agent dismissed Candidate 1's handles as 'not verifiably tied to the IRA' without recognizing this landmark verification, while accepting Candidate 3's equally or more suspect items without challenge.\n\nThis proxy-metric trap was the generative pattern behind both the volume bias AND the asymmetric scrutiny \u2014 the implicit heuristic 'more specifics = more responsive = better' determined which candidate received deeper skepticism.\n\n## Entry-Level Attribution\n\n**[71f11566] \u2014 Actively harmful.** All three reflections converge on this as the most influential entry. Its framing ('zero or near-zero specifics = critical omission') created a quantity-positive incentive without any accuracy countervailing check. The entry's closing clause ('may not outscore one providing accurate specific items unless those items are demonstrably fabricated per the verification mandate') was insufficient \u2014 the agent never triggered item-level verification because it evaluated 'specifics provided' as a gestalt, not individual claims. The entry needs explicit language: providing fabricated specifics is worse than providing fewer accurate ones, and volume of enumerated items must be accuracy-verified before being credited as an advantage.\n\n**[005004a4] \u2014 Harmful via non-execution of SYMMETRY clause.** The SYMMETRY clause (step 4 of VERIFICATION GATE) explicitly requires 'After penalizing candidate X for flaw F, explicitly search your top-ranked candidate for the same flaw F before finalizing.' This was not executed in either rollout. The agent penalized Candidate 1 for unverifiable claims but never checked Candidate 3 for the identical problem. The entry's principle is correct but it lacks a mandatory written artifact \u2014 a comparison table or explicit per-candidate flaw-check \u2014 to force compliance. Identical failure across both deterministic rollouts shows that prose instruction alone systematically fails to ensure execution on list-type tasks.\n\n**[3008aa9b] \u2014 Neutral.** The agent did follow this entry: it noted 15/20 unique items in Candidate 3. But the entry lacks an escalation path from detection to heightened scrutiny, so the positive detection signal was wasted. The duplication finding should have triggered deeper accuracy scrutiny of remaining unique items but didn't.\n\n**All other entries \u2014 Neutral.** 93b0e8f9 could theoretically have caught the reasoning-ranking contradiction, but the failure is more cleanly attributed to the volume bias mechanism than to a consistency-check failure. 8e0d9579 targets formatting/verbosity, which is tangential to substantive-seeming factual lists.\n\n## Recommended Mutations\n\n**Primary (highest confidence): Update [71f11566]** \u2014 Add explicit language that volume of enumerated items is not a proxy for quality, that fabricated specifics are worse than fewer accurate ones, and that when a candidate's primary advantage is providing more items, the agent must sample-verify 3+ individual claims per candidate using the ISOLATE\u2192COUNTER\u2192CLASSIFY gate from [005004a4] before crediting that advantage. Include the trigger: fires when candidates enumerate 5+ factual claims and one candidate's primary advantage is item count.\n\n**Secondary (high confidence): Update [005004a4]** \u2014 Add a mandatory written artifact requirement to the SYMMETRY clause: after penalizing any candidate for a flaw, construct a visible comparison row (flaw | candidate penalized | same flaw in top candidate? | evidence) before finalizing. This converts an implicit mental check into an externalized gate that the agent cannot skip.\n\nThe item-level sampling procedure suggested by all three reflections is best incorporated into the [71f11566] update rather than created as a separate entry, since it directly extends the existing enumerable-specifics guidance.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The agent fell into a proxy-metric trap, using volume of enumerated factual claims as a stand-in for accuracy. Entry [71f11566] created a quantity-positive incentive without an accuracy check, and entry [005004a4]'s SYMMETRY clause \u2014 which should have caught the resulting asymmetric scrutiny \u2014 was not executed because it lacks a mandatory written artifact. Both rollouts were deterministically identical, confirming systematic bias rather than stochastic noise.\",\n  \"important_disagreements\": [\n    \"Credit Attribution tagged [93b0e8f9] as harmful (should have caught reasoning-ranking contradiction) while Anchor and Principle Extraction tagged neutral. Resolved as neutral: the failure is more precisely attributed to the volume-bias mechanism via [71f11566] than to a generic consistency-check gap. The agent's reasoning was internally consistent within its flawed proxy-metric framework \u2014 it wasn't contradicting itself, it was applying a wrong criterion.\",\n    \"Credit Attribution tagged [3008aa9b] as helpful while Anchor and Principle Extraction tagged neutral. Resolved as neutral: the agent did execute the duplication scan (partial credit), but the detection had no downstream impact on scoring because the entry lacks an escalation path. Net effect on outcome was zero.\",\n    \"Principle Extraction disagreed with Anchor's suggestion to strengthen [3008aa9b] around duplication-as-padding-signal, arguing the deeper problem is volume-accuracy conflation regardless of duplication. Resolved by incorporating the item-level sampling into [71f11566] rather than [3008aa9b], since even a fully unique list needs accuracy verification.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Two existing entries ([71f11566] and [005004a4]) are well-positioned to absorb the needed changes \u2014 one needs an accuracy-verification clause added to its enumerable-specifics guidance, the other needs an artifact mandate added to its existing SYMMETRY clause. No genuinely new capability is missing from the playbook; the gap is refinement of existing entries. All three reflections converge on these two updates with high confidence.\",\n  \"conservatism_rationale\": \"Both rollouts were deterministically identical, giving high confidence this is a real systematic failure rather than noise. All three reflections independently identified the same two root causes and the same two entries needing updates. The proposed changes are minimal extensions of existing entry logic (adding a verification trigger to [71f11566], adding an artifact requirement to [005004a4]) rather than new concepts. A new standalone entry for item-level sampling is unnecessary because the procedure integrates naturally into [71f11566]'s existing scope. Limiting to 2 updates is justified because each addresses an independently evidenced root cause with convergent support from all reflections.\",\n  \"max_operations\": 2\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\ngive me all the social media groups that were discovered to be ran by the Russia IRA \n\n## Candidate Responses\n\n[1]\nThe Internet Research Agency (IRA) is a Russian troll farm that has been accused of interfering in various elections and political processes around the world. According to various reports and investigations, here are some of the social media groups that were discovered to be run by the Russia IRA:\n\n**Facebook Groups:**\n\n1. **\"Blacktivist\"**: A Facebook group that targeted African Americans and promoted the Black Lives Matter movement.\n2. **\"Being Patriotic\"**: A group that promoted conservative and patriotic views.\n3. **\"Secured Borders\"**: A group that promoted anti-immigrant views.\n4. **\"LGBT United\"**: A group that targeted LGBTQ+ individuals.\n5. **\"United Muslims of America\"**: A group that targeted Muslims in the United States.\n6. **\"Army of Jesus\"**: A group that promoted Christian views.\n7. **\"Defend the 2nd\"**: A group that promoted gun rights.\n8. **\"Don't Shoot Us\"**: A group that targeted African Americans.\n9. **\"South United\"**: A group that promoted Southern American culture.\n10. **\"Tea Party News\"**: A group that promoted Tea Party views.\n\n**Twitter Accounts:**\n\n1. **@TEN_GOP**: A Twitter account that impersonated the Tennessee Republican Party.\n2. **@Blacktivist**: A Twitter account that targeted African Americans.\n3. **@LGBTUnited**: A Twitter account that targeted LGBTQ+ individuals.\n4. **@PatriotSpy**: A Twitter account that promoted patriotic views.\n5. **@March_for_Life**: A Twitter account that promoted anti-abortion views.\n\n**Instagram Accounts:**\n\n1. **@Blacktivist**: An Instagram account that targeted African Americans.\n2. **@LGBTUnited**: An Instagram account that targeted LGBTQ+ individuals.\n3. **@PatriotFront**: An Instagram account that promoted patriotic views.\n\n**YouTube Channels:**\n\n1. **\" Williams and Kalvin\"**: A YouTube channel that targeted African Americans.\n2. **\"Black Fist\"**: A YouTube channel that targeted African Americans.\n3. **\"Don't Shoot\"**: A YouTube channel that targeted African Americans.\n4. **\"Heart of Texas\"**: A YouTube channel that promoted conservative views.\n\n**TikTok Accounts:**\n\n(Note: TikTok has not publicly disclosed a comprehensive list of IRA-operated accounts. However, some reports suggest that the IRA may have operated accounts on the platform.)\n\n**Other Platforms:**\n\n1. **Reddit**: The IRA operated multiple subreddits, including r/The_Donald and r/Blacktivist.\n2. **Tumblr**: The IRA operated multiple Tumblr blogs, including blacktivist.tumblr.com.\n3. **Pinterest**: The IRA operated multiple Pinterest accounts, including \"Blacktivist\" and \"LGBT United\".\n\nPlease note that this list is not exhaustive, and the IRA may have operated additional social media groups and accounts that have not been publicly disclosed.\n\n[2]\nThe term \"Russia IRA\" is often used in reference to allegations of Russian interference in U.S. elections through social media operations, but it's important to clarify that there isn't an official entity called \"Russia IRA.\" Instead, the Federal Bureau of Investigation (FBI) and other intelligence agencies have identified specific Russian groups and individuals involved in these operations.\n\nHere are some notable examples of social media groups and accounts that have been linked to Russian disinformation campaigns:\n\n1. **Internet Research Agency (IRA)**:\n   - The IRA was a Russian company that operated a network of fake social media accounts and websites to spread disinformation.\n   - Key figures included Internet Research Agency (IRA) operatives such as Olga Surkova, Alexander Pichugin, and others.\n\n2. **Sputnik News**:\n   - Sputnik is a state-funded news agency with a significant presence on social media platforms.\n   - They have been involved in spreading pro-Russian narratives and disinformation.\n\n3. **VKontakte (VK)**:\n   - VK is a popular Russian social networking site where Russian groups and individuals have created numerous accounts and pages.\n   - Notable accounts include those supporting various political candidates or issues.\n\n4. **Facebook Pages and Groups**:\n   - Facebook has removed numerous pages and groups linked to Russian propaganda efforts.\n   - Examples include pages promoting conspiracy theories, anti-establishment narratives, and divisive content.\n\n5. **Twitter Accounts**:\n   - Twitter has suspended or removed numerous accounts associated with Russian disinformation campaigns.\n   - These accounts often targeted U.S. politicians, media outlets, and other public figures.\n\n6. **YouTube Channels**:\n   - YouTube has taken down several channels suspected of being part of Russian disinformation efforts.\n   - These channels often featured content promoting conspiracy theories and political narratives.\n\n7. **Telegram Channels**:\n   - Telegram is another platform where Russian groups have disseminated information.\n   - Channels and bots have been used to spread disinformation and engage in online activism.\n\n### Notable Examples of Specific Groups:\n\n- **Troll Factory**: A group within the IRA known for creating and managing social media accounts.\n- **Russian Trolls**: Various accounts and pages that were part of broader Russian disinformation efforts.\n- **Kremlin-backed Propaganda Accounts**: Accounts that promoted Russian government narratives and propaganda.\n\n### Official Reports:\n\n- **FBI Report**: The FBI has released reports detailing the activities of the Internet Research Agency and its impact on U.S. elections.\n- **Special Counsel Report**: The report by Robert Mueller during the Trump-Ukraine investigation also detailed Russian interference efforts, including social media operations.\n\nFor the most accurate and up-to-date information, it's recommended to refer to official reports from governmental bodies and reputable news sources.\n\n[3]\nThe Russian Internet Research Agency (IRA), also known as the Internet Research Agency (IRA), has been linked to several social media groups. Here are some of the notable ones:\n\n1.  **Facebook and Instagram \"Be YourselfSouls\":** A network of over 3,000 Facebook and Instagram accounts, which were used to spread pro-Russian content and propaganda, particularly in the US.\n2.  **\"Blacktivist\":** A group of Facebook and Instagram accounts that used hashtags like #BlackLivesMatter to push anti-police and anti-US content.\n3.  **\"Secured Borders\":** A group that aimed to create controversy around immigration policies in the US.\n4.  **\"United Muslims of America\":** A Facebook group that used inflammatory rhetoric to create divisions between Muslim and Christian communities in the US.\n5.  **\"Woke Blacks\":** A network of Facebook and Instagram accounts that used inflammatory language and misinformation to push anti-police and anti-US content, targeting African Americans.\n6.  **\"Texas Gun Rights\":** A Facebook group that aimed to create controversy around gun control policies in the US.\n7.  **\"Heart of Texas\":** A Facebook group that spread anti-Hillary Clinton content and promoted conspiracy theories.\n8.  **\"Army of Jesus\":** A network of Facebook and Instagram accounts that spread anti-Muslim and anti-Hillary Clinton content.\n9.  **\"Being Patriotic\":** A group that spread anti-Hillary Clinton content and promoted conspiracy theories.\n10. **\"Stop All Immigrants\":** A Facebook group that aimed to create controversy around immigration policies in the US.\n11.  **\"Make Alberta Great Again\" (MAGA Alberta):** A Facebook group that aimed to promote a pro-Trump and anti-Justin Trudeau agenda in Canada.\n12.  **\"Heart of Texas\" (supporting Ted Cruz for Senate):** A Facebook group that spread pro-Ted Cruz content and promoted conspiracy theories.\n13.  **\"Secured Borders\":** A Facebook group that aimed to create controversy around immigration policies in the US.\n14.  **\"United Muslim Americans for Trump\":** A Facebook group that aimed to create divisions between Muslim and non-Muslim communities in the US.\n15.  **\"Black Matters US\":** A Facebook group that used hashtags like #BlackLivesMatter to push anti-police and anti-US content.\n16.  **\"South Texas Operations\":** A Facebook group that aimed to create controversy around immigration policies in the US.\n17.  **\"Alt-right activist group\":** A Facebook group that aimed to promote alt-right ideology and create controversy around immigration policies in the US.\n18.  **\"Army of Jesus\":** A Facebook group that spread anti-Muslim and anti-Hillary Clinton content.\n19.  **\"Woke Blacks\" and \"Black Matters US\":** These groups used hashtags like #BlackLivesMatter to push anti-police and anti-US content.\n20.  **\"United Muslims of America\":** A Facebook group that used inflammatory rhetoric to create divisions between Muslim and Christian communities in the US.\n\nThese groups were identified by the Mueller Investigation, as well as other investigations and reports from Facebook and other social media platforms.\n\n[4]\nThe term \"Russia IRA\" is not standard or widely recognized in the context of social media operations. However, it's possible you might be referring to Russian interference in elections and social media operations, often linked to state-sponsored hacking and disinformation campaigns. Notable examples include operations attributed to the Russian military intelligence agency, the GRU, or other Russian state actors.\n\nHere are some well-known cases and social media groups that have been linked to Russian interference:\n\n1. **Internet Research Agency (IRA)**: A company established in 2015 that was allegedly used for Russian political influence operations, particularly in the United States during the 2016 presidential election. It operated various social media accounts and online forums.\n\n2. **Facebook Pages and Groups**:\n   - **Pages**: \"The Insider,\" \"Free Thought,\" \"For Truth,\" etc.\n   - **Groups**: \"Stop Hillary,\" \"Resistance,\" \"The Real Truth,\" etc.\n\n3. **Twitter Accounts**: Russian operatives created and managed a large number of Twitter accounts to spread propaganda and misinformation.\n\n4. **Instagram Accounts**: Similar to Twitter, Russian operatives created numerous Instagram accounts to spread false information.\n\n5. **YouTube Channels**: Some channels were also found to be associated with Russian disinformation campaigns.\n\n6. **TikTok**: While less publicized, some TikTok accounts have also been linked to Russian interference.\n\n7. **Telegram Channels**: Russian operatives used Telegram extensively for coordination and dissemination of content.\n\n8. **VKontakte (Russian Facebook)**: Many fake pages and groups were found on VKontakte, which is popular in Russia.\n\n9. **LiveJournal**: Another platform where Russian operatives posted content and engaged in disinformation campaigns.\n\nIt's important to note that while these groups were linked to Russian operations, attributing specific activities to them requires careful analysis and evidence. The full extent of Russian social media influence and the specific groups involved can be complex and evolving.\n\nFor more detailed information, you may want to refer to reports from organizations like the FBI, the Department of Homeland Security, or academic studies on the topic.\n\n## Judge Reasoning\nCandidate 3 most directly answers the request by listing many specific IRA-linked social media group/page names, and several closely match commonly cited Mueller-front-group labels (e.g., Blacktivist, Secured Borders, United Muslims of America, Army of Jesus, Heart of Texas), though it lacks sourcing and includes notable duplication (15 unique out of 20 entries). Candidate 1 also provides specific names/handles across platforms, but it appears more error-prone and more speculative (many handle/account claims are not verifiably tied to the IRA). Candidate 2 is largely generic and does not actually enumerate \u201call\u201d/specific social media groups. Candidate 4 contains at least one clearly incorrect factual detail\u2014stating the IRA was \u201cestablished in 2015\u201d (commonly reported as founded earlier, e.g., 2013)\u2014and otherwise stays too high-level.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Candidate 3 most directly answers the request by listing many specific IRA-linked social media group/page names, and several closely match commonly cited Mueller-front-group labels (e.g., Blacktivist, Secured Borders, United Muslims of America, Army of Jesus, Heart of Texas), though it lacks sourcing and includes notable duplication (15 unique out of 20 entries). Candidate 1 also provides specific names/handles across platforms, but it appears more error-prone and more speculative (many handle/account claims are not verifiably tied to the IRA). Candidate 2 is largely generic and does not actually enumerate \u201call\u201d/specific social media groups. Candidate 4 contains at least one clearly incorrect factual detail\u2014stating the IRA was \u201cestablished in 2015\u201d (commonly reported as founded earlier, e.g., 2013)\u2014and otherwise stays too high-level. \",\n  \"ratings\": [\n    4.8,\n    2.1,\n    5.6,\n    1.7\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\ngive me all the social media groups that were discovered to be ran by the Russia IRA \n\n## Candidate Responses\n\n[1]\nThe Internet Research Agency (IRA) is a Russian troll farm that has been accused of interfering in various elections and political processes around the world. According to various reports and investigations, here are some of the social media groups that were discovered to be run by the Russia IRA:\n\n**Facebook Groups:**\n\n1. **\"Blacktivist\"**: A Facebook group that targeted African Americans and promoted the Black Lives Matter movement.\n2. **\"Being Patriotic\"**: A group that promoted conservative and patriotic views.\n3. **\"Secured Borders\"**: A group that promoted anti-immigrant views.\n4. **\"LGBT United\"**: A group that targeted LGBTQ+ individuals.\n5. **\"United Muslims of America\"**: A group that targeted Muslims in the United States.\n6. **\"Army of Jesus\"**: A group that promoted Christian views.\n7. **\"Defend the 2nd\"**: A group that promoted gun rights.\n8. **\"Don't Shoot Us\"**: A group that targeted African Americans.\n9. **\"South United\"**: A group that promoted Southern American culture.\n10. **\"Tea Party News\"**: A group that promoted Tea Party views.\n\n**Twitter Accounts:**\n\n1. **@TEN_GOP**: A Twitter account that impersonated the Tennessee Republican Party.\n2. **@Blacktivist**: A Twitter account that targeted African Americans.\n3. **@LGBTUnited**: A Twitter account that targeted LGBTQ+ individuals.\n4. **@PatriotSpy**: A Twitter account that promoted patriotic views.\n5. **@March_for_Life**: A Twitter account that promoted anti-abortion views.\n\n**Instagram Accounts:**\n\n1. **@Blacktivist**: An Instagram account that targeted African Americans.\n2. **@LGBTUnited**: An Instagram account that targeted LGBTQ+ individuals.\n3. **@PatriotFront**: An Instagram account that promoted patriotic views.\n\n**YouTube Channels:**\n\n1. **\" Williams and Kalvin\"**: A YouTube channel that targeted African Americans.\n2. **\"Black Fist\"**: A YouTube channel that targeted African Americans.\n3. **\"Don't Shoot\"**: A YouTube channel that targeted African Americans.\n4. **\"Heart of Texas\"**: A YouTube channel that promoted conservative views.\n\n**TikTok Accounts:**\n\n(Note: TikTok has not publicly disclosed a comprehensive list of IRA-operated accounts. However, some reports suggest that the IRA may have operated accounts on the platform.)\n\n**Other Platforms:**\n\n1. **Reddit**: The IRA operated multiple subreddits, including r/The_Donald and r/Blacktivist.\n2. **Tumblr**: The IRA operated multiple Tumblr blogs, including blacktivist.tumblr.com.\n3. **Pinterest**: The IRA operated multiple Pinterest accounts, including \"Blacktivist\" and \"LGBT United\".\n\nPlease note that this list is not exhaustive, and the IRA may have operated additional social media groups and accounts that have not been publicly disclosed.\n\n[2]\nThe term \"Russia IRA\" is often used in reference to allegations of Russian interference in U.S. elections through social media operations, but it's important to clarify that there isn't an official entity called \"Russia IRA.\" Instead, the Federal Bureau of Investigation (FBI) and other intelligence agencies have identified specific Russian groups and individuals involved in these operations.\n\nHere are some notable examples of social media groups and accounts that have been linked to Russian disinformation campaigns:\n\n1. **Internet Research Agency (IRA)**:\n   - The IRA was a Russian company that operated a network of fake social media accounts and websites to spread disinformation.\n   - Key figures included Internet Research Agency (IRA) operatives such as Olga Surkova, Alexander Pichugin, and others.\n\n2. **Sputnik News**:\n   - Sputnik is a state-funded news agency with a significant presence on social media platforms.\n   - They have been involved in spreading pro-Russian narratives and disinformation.\n\n3. **VKontakte (VK)**:\n   - VK is a popular Russian social networking site where Russian groups and individuals have created numerous accounts and pages.\n   - Notable accounts include those supporting various political candidates or issues.\n\n4. **Facebook Pages and Groups**:\n   - Facebook has removed numerous pages and groups linked to Russian propaganda efforts.\n   - Examples include pages promoting conspiracy theories, anti-establishment narratives, and divisive content.\n\n5. **Twitter Accounts**:\n   - Twitter has suspended or removed numerous accounts associated with Russian disinformation campaigns.\n   - These accounts often targeted U.S. politicians, media outlets, and other public figures.\n\n6. **YouTube Channels**:\n   - YouTube has taken down several channels suspected of being part of Russian disinformation efforts.\n   - These channels often featured content promoting conspiracy theories and political narratives.\n\n7. **Telegram Channels**:\n   - Telegram is another platform where Russian groups have disseminated information.\n   - Channels and bots have been used to spread disinformation and engage in online activism.\n\n### Notable Examples of Specific Groups:\n\n- **Troll Factory**: A group within the IRA known for creating and managing social media accounts.\n- **Russian Trolls**: Various accounts and pages that were part of broader Russian disinformation efforts.\n- **Kremlin-backed Propaganda Accounts**: Accounts that promoted Russian government narratives and propaganda.\n\n### Official Reports:\n\n- **FBI Report**: The FBI has released reports detailing the activities of the Internet Research Agency and its impact on U.S. elections.\n- **Special Counsel Report**: The report by Robert Mueller during the Trump-Ukraine investigation also detailed Russian interference efforts, including social media operations.\n\nFor the most accurate and up-to-date information, it's recommended to refer to official reports from governmental bodies and reputable news sources.\n\n[3]\nThe Russian Internet Research Agency (IRA), also known as the Internet Research Agency (IRA), has been linked to several social media groups. Here are some of the notable ones:\n\n1.  **Facebook and Instagram \"Be YourselfSouls\":** A network of over 3,000 Facebook and Instagram accounts, which were used to spread pro-Russian content and propaganda, particularly in the US.\n2.  **\"Blacktivist\":** A group of Facebook and Instagram accounts that used hashtags like #BlackLivesMatter to push anti-police and anti-US content.\n3.  **\"Secured Borders\":** A group that aimed to create controversy around immigration policies in the US.\n4.  **\"United Muslims of America\":** A Facebook group that used inflammatory rhetoric to create divisions between Muslim and Christian communities in the US.\n5.  **\"Woke Blacks\":** A network of Facebook and Instagram accounts that used inflammatory language and misinformation to push anti-police and anti-US content, targeting African Americans.\n6.  **\"Texas Gun Rights\":** A Facebook group that aimed to create controversy around gun control policies in the US.\n7.  **\"Heart of Texas\":** A Facebook group that spread anti-Hillary Clinton content and promoted conspiracy theories.\n8.  **\"Army of Jesus\":** A network of Facebook and Instagram accounts that spread anti-Muslim and anti-Hillary Clinton content.\n9.  **\"Being Patriotic\":** A group that spread anti-Hillary Clinton content and promoted conspiracy theories.\n10. **\"Stop All Immigrants\":** A Facebook group that aimed to create controversy around immigration policies in the US.\n11.  **\"Make Alberta Great Again\" (MAGA Alberta):** A Facebook group that aimed to promote a pro-Trump and anti-Justin Trudeau agenda in Canada.\n12.  **\"Heart of Texas\" (supporting Ted Cruz for Senate):** A Facebook group that spread pro-Ted Cruz content and promoted conspiracy theories.\n13.  **\"Secured Borders\":** A Facebook group that aimed to create controversy around immigration policies in the US.\n14.  **\"United Muslim Americans for Trump\":** A Facebook group that aimed to create divisions between Muslim and non-Muslim communities in the US.\n15.  **\"Black Matters US\":** A Facebook group that used hashtags like #BlackLivesMatter to push anti-police and anti-US content.\n16.  **\"South Texas Operations\":** A Facebook group that aimed to create controversy around immigration policies in the US.\n17.  **\"Alt-right activist group\":** A Facebook group that aimed to promote alt-right ideology and create controversy around immigration policies in the US.\n18.  **\"Army of Jesus\":** A Facebook group that spread anti-Muslim and anti-Hillary Clinton content.\n19.  **\"Woke Blacks\" and \"Black Matters US\":** These groups used hashtags like #BlackLivesMatter to push anti-police and anti-US content.\n20.  **\"United Muslims of America\":** A Facebook group that used inflammatory rhetoric to create divisions between Muslim and Christian communities in the US.\n\nThese groups were identified by the Mueller Investigation, as well as other investigations and reports from Facebook and other social media platforms.\n\n[4]\nThe term \"Russia IRA\" is not standard or widely recognized in the context of social media operations. However, it's possible you might be referring to Russian interference in elections and social media operations, often linked to state-sponsored hacking and disinformation campaigns. Notable examples include operations attributed to the Russian military intelligence agency, the GRU, or other Russian state actors.\n\nHere are some well-known cases and social media groups that have been linked to Russian interference:\n\n1. **Internet Research Agency (IRA)**: A company established in 2015 that was allegedly used for Russian political influence operations, particularly in the United States during the 2016 presidential election. It operated various social media accounts and online forums.\n\n2. **Facebook Pages and Groups**:\n   - **Pages**: \"The Insider,\" \"Free Thought,\" \"For Truth,\" etc.\n   - **Groups**: \"Stop Hillary,\" \"Resistance,\" \"The Real Truth,\" etc.\n\n3. **Twitter Accounts**: Russian operatives created and managed a large number of Twitter accounts to spread propaganda and misinformation.\n\n4. **Instagram Accounts**: Similar to Twitter, Russian operatives created numerous Instagram accounts to spread false information.\n\n5. **YouTube Channels**: Some channels were also found to be associated with Russian disinformation campaigns.\n\n6. **TikTok**: While less publicized, some TikTok accounts have also been linked to Russian interference.\n\n7. **Telegram Channels**: Russian operatives used Telegram extensively for coordination and dissemination of content.\n\n8. **VKontakte (Russian Facebook)**: Many fake pages and groups were found on VKontakte, which is popular in Russia.\n\n9. **LiveJournal**: Another platform where Russian operatives posted content and engaged in disinformation campaigns.\n\nIt's important to note that while these groups were linked to Russian operations, attributing specific activities to them requires careful analysis and evidence. The full extent of Russian social media influence and the specific groups involved can be complex and evolving.\n\nFor more detailed information, you may want to refer to reports from organizations like the FBI, the Department of Homeland Security, or academic studies on the topic.\n\n## Judge Reasoning\nCandidate 3 most directly answers the request by listing many specific IRA-linked social media group/page names, and several closely match commonly cited Mueller-front-group labels (e.g., Blacktivist, Secured Borders, United Muslims of America, Army of Jesus, Heart of Texas), though it lacks sourcing and includes notable duplication (15 unique out of 20 entries). Candidate 1 also provides specific names/handles across platforms, but it appears more error-prone and more speculative (many handle/account claims are not verifiably tied to the IRA). Candidate 2 is largely generic and does not actually enumerate \u201call\u201d/specific social media groups. Candidate 4 contains at least one clearly incorrect factual detail\u2014stating the IRA was \u201cestablished in 2015\u201d (commonly reported as founded earlier, e.g., 2013)\u2014and otherwise stays too high-level.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"Candidate 3 most directly answers the request by listing many specific IRA-linked social media group/page names, and several closely match commonly cited Mueller-front-group labels (e.g., Blacktivist, Secured Borders, United Muslims of America, Army of Jesus, Heart of Texas), though it lacks sourcing and includes notable duplication (15 unique out of 20 entries). Candidate 1 also provides specific names/handles across platforms, but it appears more error-prone and more speculative (many handle/account claims are not verifiably tied to the IRA). Candidate 2 is largely generic and does not actually enumerate \u201call\u201d/specific social media groups. Candidate 4 contains at least one clearly incorrect factual detail\u2014stating the IRA was \u201cestablished in 2015\u201d (commonly reported as founded earlier, e.g., 2013)\u2014and otherwise stays too high-level. \",\n  \"ratings\": [\n    4.8,\n    2.1,\n    5.6,\n    1.7\n  ],\n  \"best_response_ids\": [\n    \"3\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=4.800\n  [2] INCORRECT score=2.100\n  [3] INCORRECT score=5.600\n  [4] INCORRECT score=1.700\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 3\n\nCandidate scores:\n  [1] CORRECT score=4.800\n  [2] INCORRECT score=2.100\n  [3] INCORRECT score=5.600\n  [4] INCORRECT score=1.700",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Core Failure Pattern\n\nBoth rollouts produced identical outputs and identical failures. The correct candidate (1) was scored at 4.8 while an incorrect candidate (3) was scored at 5.6, producing 66.7% pairwise accuracy. The agent's reasoning explicitly identified its decisive criterion ('most directly answers the request by listing many specific IRA-linked social media group/page names') and then ranked by volume/directness of list items rather than verified accuracy.\n\n## Root Cause 1: Volume Bias in Factual Enumeration Tasks\n\nThe agent treated the length of a factual list as a positive signal, rating Candidate 3 (20 items, only ~15 unique) above Candidate 1 (which organized items across platforms). This is a systematic trap: when a user asks 'list all X,' a longer list with fabricated or duplicated entries can appear more responsive than a shorter, more accurate list. The playbook entry [71f11566] ('verify each candidate actually provides the requested items') may have inadvertently reinforced this bias by focusing on whether specifics were *provided* rather than whether they were *accurate*. The entry should be refined to explicitly note that providing fabricated specifics is worse than providing fewer accurate ones \u2014 volume of enumerated items is not a proxy for quality in factual recall tasks.\n\n## Root Cause 2: Asymmetric Scrutiny (SYMMETRY clause not applied)\n\nThe agent penalized Candidate 1 for having 'many handle/account claims not verifiably tied to the IRA' but did not apply the same suspicion to Candidate 3, which includes entries like 'Be YourselfSouls,' 'Make Alberta Great Again (MAGA Alberta),' 'South Texas Operations,' and 'Alt-right activist group' \u2014 none of which are well-established IRA fronts in the public record. Meanwhile, Candidate 1 includes @TEN_GOP, which is one of the most extensively documented IRA Twitter accounts (featured prominently in the Mueller indictment and congressional testimony). The SYMMETRY clause in [005004a4] explicitly requires: 'After penalizing candidate X for flaw F, explicitly search your top-ranked candidate for the same flaw F before finalizing.' The agent did not execute this step. The entry itself is well-written but was simply not followed \u2014 this may be an execution-slip issue exacerbated by the volume bias.\n\n## Root Cause 3: No Item-Level Verification Artifact\n\nFor factual list-type prompts, the agent lacks a procedural requirement to spot-check individual items against its own knowledge. The current factuality entry [005004a4] has a VERIFICATION GATE that requires isolating and testing specific claims, but the agent applied this only at the response level ('appears more error-prone') rather than at the item level. A missing procedure: when candidates provide enumerated factual claims, sample 3-5 items per candidate and run them through the verification gate individually. This would have caught that Candidate 1's @TEN_GOP is a VERIFIED claim while Candidate 3's 'MAGA Alberta' is UNVERIFIABLE-CONFIDENT at best.\n\n## What's Missing from the Playbook\n\n1. **Item-level sampling mandate for factual lists**: Trigger: when candidates enumerate 5+ factual claims in response to a recall/enumeration prompt. Procedure: (a) sample at least 3 items per candidate, prioritizing any items that seem novel or unusual; (b) run each through the ISOLATE\u2192COUNTER\u2192CLASSIFY gate from [005004a4]; (c) compute a per-candidate accuracy impression (verified count / sampled count); (d) a candidate with higher verified-item rate should outscore one with more total items but lower verified-item rate.\n\n2. **Anti-volume-bias guard for enumeration prompts**: When comparing candidates on a 'list all X' prompt, explicitly check: 'Am I ranking this candidate higher primarily because it has more items? If so, have I verified that additional items are accurate rather than padding?' Record this check as an intermediate artifact.\n\n3. **Known-landmark verification for domain facts**: Some factual claims are well-established enough that the judge can confidently verify them (e.g., @TEN_GOP as a known IRA account, IRA founding year ~2013). The agent should be directed to identify and anchor on these 'landmark facts' first, then use them to calibrate which candidate's broader list is more trustworthy.\n\n## Entries Needing Refinement\n\n- **[71f11566]** should be updated to add: 'Providing fabricated specifics is a worse defect than providing fewer specifics. Volume of enumerated items is not a proxy for accuracy. Apply factuality verification before crediting a candidate for providing more items.'\n\n- **[005004a4]** SYMMETRY clause is correctly written but under-executed. Consider adding an explicit intermediate artifact requirement: 'After identifying your top-ranked candidate, write 3 sampled-item verifications for it using the same ISOLATE\u2192COUNTER\u2192CLASSIFY gate you applied to penalized candidates. Record results before finalizing scores.'\n\n- **[3008aa9b]** about duplication scanning was correctly applied (agent noted 15/20 unique) but the penalty was insufficient to overcome the volume bias. Consider strengthening: 'Duplication of 15%+ in a factual list is not just a quality defect \u2014 it signals the candidate may be padding with fabricated or vaguely recalled items. When duplication is present, apply heightened scrutiny to the remaining unique items.'\n\n## Execution Consistency\n\nThe agent's reasoning stated that Candidate 1 was 'more error-prone and more speculative' but provided no concrete counter-facts \u2014 only a vague suspicion. Meanwhile, it described Candidate 3's entries as 'closely matching commonly cited Mueller-front-group labels' without verifying the match. The agent's own reasoning contradicts its final ranking: it noted factual concerns about Candidate 1 but the same concerns apply equally or more to Candidate 3. A consistency self-check ('Does my top-ranked candidate share the flaws I cited against lower-ranked candidates?') was available in [93b0e8f9] but not executed."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "helpful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Candidates provided enumerated factual lists of 10-20 items; the agent needed to assess which list was more accurate rather than which was longer.",
+          "gap_type": "procedure",
+          "suggested_content": "ITEM-LEVEL SAMPLING FOR FACTUAL LISTS: When candidates enumerate 5+ factual claims in response to a recall/enumeration prompt: (1) Sample at least 3 items per candidate, prioritizing items that seem novel, unusual, or grandiose. (2) For each sampled item, run the ISOLATE\u2192COUNTER\u2192CLASSIFY gate from the factuality entry. (3) Record results in a per-candidate accuracy table: (item | classification | reason). (4) Compute a verified-item impression per candidate. (5) A candidate with a higher verified-item rate should outscore one with more total items but a lower verified-item rate, unless the difference is trivial.",
+          "trigger": "Fires when candidates produce numbered or bulleted factual claims in response to a 'list all,' 'name the,' or 'give examples of' prompt, and any candidate provides 5+ claims."
+        },
+        {
+          "situation": "The agent treated list length as a primary quality signal, preferring Candidate 3's 20 items (many duplicated or unverifiable) over Candidate 1's fewer but more accurate items.",
+          "gap_type": "verification_gate",
+          "suggested_content": "ANTI-VOLUME-BIAS GATE: After tentatively ranking candidates on a list/enumeration prompt, explicitly ask: 'Am I ranking this candidate higher primarily because it has more items? If yes: (a) Have I verified that the additional items are accurate rather than padding or fabrication? (b) Have I checked for duplicates/near-duplicates? (c) Have I applied the same factual scrutiny to this candidate's items as I applied to lower-ranked candidates?' Record answers before finalizing. If (a) is no, the volume advantage does not count as a positive signal.",
+          "trigger": "Fires after tentative ranking is formed on any list/enumeration task, before scores are finalized."
+        },
+        {
+          "situation": "Candidate 1 included @TEN_GOP, a well-documented IRA Twitter account featured in the Mueller indictment and congressional testimony. The agent dismissed Candidate 1's handles as 'not verifiably tied to the IRA' without recognizing this landmark fact.",
+          "gap_type": "strategy",
+          "suggested_content": "LANDMARK FACT ANCHORING: In domain-specific factual recall tasks, before scoring, identify any claims you can confidently verify as true based on widely known facts (e.g., major legal documents, landmark events, universally reported findings). Use these 'landmark facts' as calibration anchors: a candidate that includes multiple verified landmarks is more trustworthy overall than one that includes more items but no verifiable landmarks. Explicitly note which items you can verify, not just which seem suspicious.",
+          "trigger": "Fires on factuality evaluation tasks where candidates make specific factual claims that intersect with well-known public records or events."
+        },
+        {
+          "situation": "The agent detected 25% duplication in Candidate 3 (15 unique of 20) but did not escalate scrutiny of the remaining unique items or interpret duplication as a reliability signal.",
+          "gap_type": "procedure",
+          "suggested_content": "DUPLICATION ESCALATION: When the duplication scan from [3008aa9b] detects >15% duplication in a factual list: (1) Interpret duplication as a reliability signal \u2014 the candidate may be padding with fabricated or vaguely recalled items. (2) Apply heightened scrutiny to the remaining unique items by sampling 3+ for item-level verification. (3) If multiple unique items also fail verification, the candidate has a systemic accuracy problem; reduce score more severely than the raw duplication penalty alone.",
+          "trigger": "Fires when the duplication scan detects >15% duplication in a candidate's factual list."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\nBoth rollouts produced identical outputs (deterministic failure), so the analysis applies uniformly. The agent's decisive reasoning \u2014 'Candidate 3 most directly answers the request by listing many specific IRA-linked social media group/page names' \u2014 reveals that volume of enumerated items was treated as the primary quality signal. This led to ranking Candidate 3 (INCORRECT, 20 items with 25% duplication and several unverifiable claims) above Candidate 1 (CORRECT, fewer items but includes verified IRA accounts like @TEN_GOP).\n\n### Entry-Level Attribution\n\n**71f11566** (enumerable specifics) was the most influential entry \u2014 and actively harmful. Its framing ('zero or near-zero specifics = critical omission') created a quantity-positive incentive without a countervailing accuracy check, directly driving the agent toward the longer but less accurate list.\n\n**005004a4** (factuality/SYMMETRY) was relevant but not executed. The SYMMETRY clause should have caught the asymmetric scrutiny (Candidate 1 penalized for unverifiable claims while Candidate 3's equally unverifiable claims were unchecked). The VERIFICATION GATE's item-level application was skipped entirely. The entry needs a mandatory written artifact to force execution.\n\n**93b0e8f9** (consistency check) should have caught the contradiction between the agent noting factual concerns and then ranking based on volume. I disagree with the anchor's neutral tag \u2014 the entry was directly relevant and its failure to fire makes it harmful.\n\n**3008aa9b** (duplication scan) was the one entry the agent demonstrably followed \u2014 it noted 15/20 unique items. But the entry lacks an escalation path from detection to heightened scrutiny, so the positive signal was wasted.\n\n**8e0d9579** (anti-verbosity) is relevant but its trigger ('generic verbosity, politeness, or decorative formatting') is too narrow to catch substantive-seeming content that is quantitatively more but qualitatively less accurate.\n\n### Root Cause Chain\n\n1. **71f11566** provided a quantity-positive incentive \u2192 agent prioritized volume\n2. **005004a4** SYMMETRY clause not executed \u2192 asymmetric scrutiny passed unchecked\n3. **93b0e8f9** consistency check not triggered \u2192 agent didn't notice its reasoning contradicted its ranking\n4. **3008aa9b** detected duplication but lacked escalation \u2192 positive signal wasted\n5. No item-level sampling procedure existed \u2192 agent made gestalt accuracy judgments instead of verifying individual claims\n\n### Anchor Agreement/Refinement\n\nI AGREE with the anchor's identification of volume bias, asymmetric scrutiny, and missing item-level verification as the three root causes. I REFINE the anchor's assessment of entry influence: 71f11566 actively drove the error (not merely failed to prevent it), 93b0e8f9 should be tagged harmful (not neutral), and 3008aa9b was partially helpful (not neutral). I DISAGREE with the anchor's framing that 005004a4 is 'correctly written but under-executed' as the complete story \u2014 the entry needs structural changes (mandatory written artifacts) not just stronger exhortation, since identical failure across both rollouts shows the current structure systematically fails to force compliance on list-type tasks."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "I AGREE with the anchor's core diagnosis: the agent preferred Candidate 3 (5.6) over the correct Candidate 1 (4.8) because it conflated list length with response quality, and applied scrutiny asymmetrically. Both rollouts were deterministically identical \u2014 same scores, same reasoning \u2014 confirming a systematic bias rather than stochastic noise.\n\nI REFINE the anchor's causal chain in one key way: the root cause is not merely 'volume bias' but a more general **proxy-metric trap**. The agent used an easy-to-measure signal (number of enumerated items) as a stand-in for a harder-to-measure quality (factual accuracy of those items). This proxy-metric trap is the generative pattern behind the volume bias AND the asymmetric scrutiny \u2014 the agent's implicit heuristic was 'more specifics = more responsive = better,' which then biased which candidate received deeper scrutiny.\n\nEvidence: The agent's stated criterion was 'most directly answers the request by listing many specific IRA-linked social media group/page names.' This criterion rewards quantity explicitly. It then described Candidate 1 as 'more error-prone and more speculative' without concrete counter-evidence, while accepting Candidate 3's items like 'MAGA Alberta,' 'South Texas Operations,' and 'Alt-right activist group' without equivalent challenge \u2014 despite these being at least as suspect. Candidate 1's @TEN_GOP is a verified IRA account (Mueller indictment, congressional testimony) that was not recognized as an accuracy anchor.\n\nEntry 005004a4's SYMMETRY clause (step 4 of the VERIFICATION GATE) directly required the agent to 'explicitly search your top-ranked candidate for the same flaw F before finalizing.' This was not executed. The entry is well-written but the check lives only in prose instruction; without mandating a written artifact, the agent skipped it. This is a WEAK coverage problem \u2014 the principle exists but lacks the forcing function to ensure execution.\n\nEntry 71f11566 contributed to the failure by emphasizing 'verify each candidate actually provides the requested items' without distinguishing between accurate and fabricated specifics. The agent took 'provides specifics' as the decisive criterion, which then rewarded the longer but less accurate list. The entry needs refinement to explicitly state that fabricated specifics are worse than fewer accurate ones.\n\nI DISAGREE with the anchor's assessment that entry 3008aa9b needs strengthening around duplication-as-padding-signal. The agent actually did note duplication (15/20 unique) but the deeper problem was the volume-accuracy conflation \u2014 even if all 20 items were unique, the accuracy of those items still needed verification. Strengthening duplication rules alone would not fix the root cause.",
+      "principles": [
+        {
+          "statement": "When a candidate's main advantage is volume of enumerated claims, sample-verify 3+ individual claims per candidate before crediting that advantage. More items with lower accuracy must not outscore fewer items with higher accuracy.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "71f11566",
+          "trigger": "When comparing candidates that enumerate 5+ factual claims and one candidate's primary advantage is providing more items than the others.",
+          "verification_or_artifact": "Produce a per-candidate accuracy sample: pick 3+ items per candidate (prioritizing unusual/novel claims), run each through ISOLATE\u2192COUNTER\u2192CLASSIFY. Record verified/unverifiable/false counts. A candidate with higher verified-item rate should outscore one with more total items but lower verified-item rate.",
+          "evidence": "Agent rated Candidate 3 (20 items, ~15 unique, several suspect like 'MAGA Alberta' and 'Alt-right activist group') above Candidate 1 (fewer items but includes verified IRA accounts like @TEN_GOP). The agent's decisive criterion was 'listing many specific names' \u2014 pure volume \u2014 without verifying individual item accuracy."
+        },
+        {
+          "statement": "After penalizing any candidate for a flaw, write a visible same-flaw check for your current top candidate before finalizing. Implicit symmetric reasoning is unreliable \u2014 externalize it as a comparison artifact.",
+          "entry_kind": "artifact",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "005004a4",
+          "trigger": "After any candidate is penalized for a factual, logical, or quality flaw, before finalizing scores.",
+          "verification_or_artifact": "Construct a written table: (flaw identified | candidate penalized | same flaw present in top candidate? | evidence). If the same flaw appears in the top candidate, adjust scores or explain the asymmetry in writing.",
+          "evidence": "Agent penalized Candidate 1 for 'handle/account claims not verifiably tied to the IRA' but never checked Candidate 3 for the identical problem. Entry 005004a4 SYMMETRY clause required this but has no artifact mandate, so the agent skipped it in both deterministic rollouts."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "005004a4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Core Failure\n\nBoth rollouts were deterministically identical (same scores, same reasoning), producing 66.7% pairwise accuracy. The correct candidate (1, score 4.8) was outscored by an incorrect candidate (3, score 5.6). The agent's stated decisive criterion was 'most directly answers the request by listing many specific IRA-linked social media group/page names' \u2014 pure volume of enumerated items without per-item accuracy verification.\n\n## Root Cause: Proxy-Metric Trap (Volume \u2260 Accuracy)\n\nThe agent used an easy-to-measure proxy (number of listed items) as a stand-in for the harder-to-measure true quality (factual accuracy of those items). Candidate 3 listed 20 items (only ~15 unique, with suspect entries like 'MAGA Alberta,' 'South Texas Operations,' 'Alt-right activist group') while Candidate 1 listed fewer items but included @TEN_GOP \u2014 one of the most extensively documented IRA Twitter accounts (Mueller indictment, congressional testimony). The agent dismissed Candidate 1's handles as 'not verifiably tied to the IRA' without recognizing this landmark verification, while accepting Candidate 3's equally or more suspect items without challenge.\n\nThis proxy-metric trap was the generative pattern behind both the volume bias AND the asymmetric scrutiny \u2014 the implicit heuristic 'more specifics = more responsive = better' determined which candidate received deeper skepticism.\n\n## Entry-Level Attribution\n\n**[71f11566] \u2014 Actively harmful.** All three reflections converge on this as the most influential entry. Its framing ('zero or near-zero specifics = critical omission') created a quantity-positive incentive without any accuracy countervailing check. The entry's closing clause ('may not outscore one providing accurate specific items unless those items are demonstrably fabricated per the verification mandate') was insufficient \u2014 the agent never triggered item-level verification because it evaluated 'specifics provided' as a gestalt, not individual claims. The entry needs explicit language: providing fabricated specifics is worse than providing fewer accurate ones, and volume of enumerated items must be accuracy-verified before being credited as an advantage.\n\n**[005004a4] \u2014 Harmful via non-execution of SYMMETRY clause.** The SYMMETRY clause (step 4 of VERIFICATION GATE) explicitly requires 'After penalizing candidate X for flaw F, explicitly search your top-ranked candidate for the same flaw F before finalizing.' This was not executed in either rollout. The agent penalized Candidate 1 for unverifiable claims but never checked Candidate 3 for the identical problem. The entry's principle is correct but it lacks a mandatory written artifact \u2014 a comparison table or explicit per-candidate flaw-check \u2014 to force compliance. Identical failure across both deterministic rollouts shows that prose instruction alone systematically fails to ensure execution on list-type tasks.\n\n**[3008aa9b] \u2014 Neutral.** The agent did follow this entry: it noted 15/20 unique items in Candidate 3. But the entry lacks an escalation path from detection to heightened scrutiny, so the positive detection signal was wasted. The duplication finding should have triggered deeper accuracy scrutiny of remaining unique items but didn't.\n\n**All other entries \u2014 Neutral.** 93b0e8f9 could theoretically have caught the reasoning-ranking contradiction, but the failure is more cleanly attributed to the volume bias mechanism than to a consistency-check failure. 8e0d9579 targets formatting/verbosity, which is tangential to substantive-seeming factual lists.\n\n## Recommended Mutations\n\n**Primary (highest confidence): Update [71f11566]** \u2014 Add explicit language that volume of enumerated items is not a proxy for quality, that fabricated specifics are worse than fewer accurate ones, and that when a candidate's primary advantage is providing more items, the agent must sample-verify 3+ individual claims per candidate using the ISOLATE\u2192COUNTER\u2192CLASSIFY gate from [005004a4] before crediting that advantage. Include the trigger: fires when candidates enumerate 5+ factual claims and one candidate's primary advantage is item count.\n\n**Secondary (high confidence): Update [005004a4]** \u2014 Add a mandatory written artifact requirement to the SYMMETRY clause: after penalizing any candidate for a flaw, construct a visible comparison row (flaw | candidate penalized | same flaw in top candidate? | evidence) before finalizing. This converts an implicit mental check into an externalized gate that the agent cannot skip.\n\nThe item-level sampling procedure suggested by all three reflections is best incorporated into the [71f11566] update rather than created as a separate entry, since it directly extends the existing enumerable-specifics guidance.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The agent fell into a proxy-metric trap, using volume of enumerated factual claims as a stand-in for accuracy. Entry [71f11566] created a quantity-positive incentive without an accuracy check, and entry [005004a4]'s SYMMETRY clause \u2014 which should have caught the resulting asymmetric scrutiny \u2014 was not executed because it lacks a mandatory written artifact. Both rollouts were deterministically identical, confirming systematic bias rather than stochastic noise.",
+      "important_disagreements": [
+        "Credit Attribution tagged [93b0e8f9] as harmful (should have caught reasoning-ranking contradiction) while Anchor and Principle Extraction tagged neutral. Resolved as neutral: the failure is more precisely attributed to the volume-bias mechanism via [71f11566] than to a generic consistency-check gap. The agent's reasoning was internally consistent within its flawed proxy-metric framework \u2014 it wasn't contradicting itself, it was applying a wrong criterion.",
+        "Credit Attribution tagged [3008aa9b] as helpful while Anchor and Principle Extraction tagged neutral. Resolved as neutral: the agent did execute the duplication scan (partial credit), but the detection had no downstream impact on scoring because the entry lacks an escalation path. Net effect on outcome was zero.",
+        "Principle Extraction disagreed with Anchor's suggestion to strengthen [3008aa9b] around duplication-as-padding-signal, arguing the deeper problem is volume-accuracy conflation regardless of duplication. Resolved by incorporating the item-level sampling into [71f11566] rather than [3008aa9b], since even a fully unique list needs accuracy verification."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Two existing entries ([71f11566] and [005004a4]) are well-positioned to absorb the needed changes \u2014 one needs an accuracy-verification clause added to its enumerable-specifics guidance, the other needs an artifact mandate added to its existing SYMMETRY clause. No genuinely new capability is missing from the playbook; the gap is refinement of existing entries. All three reflections converge on these two updates with high confidence.",
+      "conservatism_rationale": "Both rollouts were deterministically identical, giving high confidence this is a real systematic failure rather than noise. All three reflections independently identified the same two root causes and the same two entries needing updates. The proposed changes are minimal extensions of existing entry logic (adding a verification trigger to [71f11566], adding an artifact requirement to [005004a4]) rather than new concepts. A new standalone entry for item-level sampling is unnecessary because the procedure integrates naturally into [71f11566]'s existing scope. Limiting to 2 updates is justified because each addresses an independently evidenced root cause with convergent support from all reflections.",
+      "max_operations": 2
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"005004a4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Core Failure\\n\\nBoth rollouts were deterministically identical (same scores, same reasoning), producing 66.7% pairwise accuracy. The correct candidate (1, score 4.8) was outscored by an incorrect candidate (3, score 5.6). The agent's stated decisive criterion was 'most directly answers the request by listing many specific IRA-linked social media group/page names' \u2014 pure volume of enumerated items without per-item accuracy verification.\\n\\n## Root Cause: Proxy-Metric Trap (Volume \u2260 Accuracy)\\n\\nThe agent used an easy-to-measure proxy (number of listed items) as a stand-in for the harder-to-measure true quality (factual accuracy of those items). Candidate 3 listed 20 items (only ~15 unique, with suspect entries like 'MAGA Alberta,' 'South Texas Operations,' 'Alt-right activist group') while Candidate 1 listed fewer items but included @TEN_GOP \u2014 one of the most extensively documented IRA Twitter accounts (Mueller indictment, congressional testimony). The agent dismissed Candidate 1's handles as 'not verifiably tied to the IRA' without recognizing this landmark verification, while accepting Candidate 3's equally or more suspect items without challenge.\\n\\nThis proxy-metric trap was the generative pattern behind both the volume bias AND the asymmetric scrutiny \u2014 the implicit heuristic 'more specifics = more responsive = better' determined which candidate received deeper skepticism.\\n\\n## Entry-Level Attribution\\n\\n**[71f11566] \u2014 Actively harmful.** All three reflections converge on this as the most influential entry. Its framing ('zero or near-zero specifics = critical omission') created a quantity-positive incentive without any accuracy countervailing check. The entry's closing clause ('may not outscore one providing accurate specific items unless those items are demonstrably fabricated per the verification mandate') was insufficient \u2014 the agent never triggered item-level verification because it evaluated 'specifics provided' as a gestalt, not individual claims. The entry needs explicit language: providing fabricated specifics is worse than providing fewer accurate ones, and volume of enumerated items must be accuracy-verified before being credited as an advantage.\\n\\n**[005004a4] \u2014 Harmful via non-execution of SYMMETRY clause.** The SYMMETRY clause (step 4 of VERIFICATION GATE) explicitly requires 'After penalizing candidate X for flaw F, explicitly search your top-ranked candidate for the same flaw F before finalizing.' This was not executed in either rollout. The agent penalized Candidate 1 for unverifiable claims but never checked Candidate 3 for the identical problem. The entry's principle is correct but it lacks a mandatory written artifact \u2014 a comparison table or explicit per-candidate flaw-check \u2014 to force compliance. Identical failure across both deterministic rollouts shows that prose instruction alone systematically fails to ensure execution on list-type tasks.\\n\\n**[3008aa9b] \u2014 Neutral.** The agent did follow this entry: it noted 15/20 unique items in Candidate 3. But the entry lacks an escalation path from detection to heightened scrutiny, so the positive detection signal was wasted. The duplication finding should have triggered deeper accuracy scrutiny of remaining unique items but didn't.\\n\\n**All other entries \u2014 Neutral.** 93b0e8f9 could theoretically have caught the reasoning-ranking contradiction, but the failure is more cleanly attributed to the volume bias mechanism than to a consistency-check failure. 8e0d9579 targets formatting/verbosity, which is tangential to substantive-seeming factual lists.\\n\\n## Recommended Mutations\\n\\n**Primary (highest confidence): Update [71f11566]** \u2014 Add explicit language that volume of enumerated items is not a proxy for quality, that fabricated specifics are worse than fewer accurate ones, and that when a candidate's primary advantage is providing more items, the agent must sample-verify 3+ individual claims per candidate using the ISOLATE\u2192COUNTER\u2192CLASSIFY gate from [005004a4] before crediting that advantage. Include the trigger: fires when candidates enumerate 5+ factual claims and one candidate's primary advantage is item count.\\n\\n**Secondary (high confidence): Update [005004a4]** \u2014 Add a mandatory written artifact requirement to the SYMMETRY clause: after penalizing any candidate for a flaw, construct a visible comparison row (flaw | candidate penalized | same flaw in top candidate? | evidence) before finalizing. This converts an implicit mental check into an externalized gate that the agent cannot skip.\\n\\nThe item-level sampling procedure suggested by all three reflections is best incorporated into the [71f11566] update rather than created as a separate entry, since it directly extends the existing enumerable-specifics guidance.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The agent fell into a proxy-metric trap, using volume of enumerated factual claims as a stand-in for accuracy. Entry [71f11566] created a quantity-positive incentive without an accuracy check, and entry [005004a4]'s SYMMETRY clause \u2014 which should have caught the resulting asymmetric scrutiny \u2014 was not executed because it lacks a mandatory written artifact. Both rollouts were deterministically identical, confirming systematic bias rather than stochastic noise.\",\n    \"important_disagreements\": [\n      \"Credit Attribution tagged [93b0e8f9] as harmful (should have caught reasoning-ranking contradiction) while Anchor and Principle Extraction tagged neutral. Resolved as neutral: the failure is more precisely attributed to the volume-bias mechanism via [71f11566] than to a generic consistency-check gap. The agent's reasoning was internally consistent within its flawed proxy-metric framework \u2014 it wasn't contradicting itself, it was applying a wrong criterion.\",\n      \"Credit Attribution tagged [3008aa9b] as helpful while Anchor and Principle Extraction tagged neutral. Resolved as neutral: the agent did execute the duplication scan (partial credit), but the detection had no downstream impact on scoring because the entry lacks an escalation path. Net effect on outcome was zero.\",\n      \"Principle Extraction disagreed with Anchor's suggestion to strengthen [3008aa9b] around duplication-as-padding-signal, arguing the deeper problem is volume-accuracy conflation regardless of duplication. Resolved by incorporating the item-level sampling into [71f11566] rather than [3008aa9b], since even a fully unique list needs accuracy verification.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Two existing entries ([71f11566] and [005004a4]) are well-positioned to absorb the needed changes \u2014 one needs an accuracy-verification clause added to its enumerable-specifics guidance, the other needs an artifact mandate added to its existing SYMMETRY clause. No genuinely new capability is missing from the playbook; the gap is refinement of existing entries. All three reflections converge on these two updates with high confidence.\",\n    \"conservatism_rationale\": \"Both rollouts were deterministically identical, giving high confidence this is a real systematic failure rather than noise. All three reflections independently identified the same two root causes and the same two entries needing updates. The proposed changes are minimal extensions of existing entry logic (adding a verification trigger to [71f11566], adding an artifact requirement to [005004a4]) rather than new concepts. A new standalone entry for item-level sampling is unnecessary because the procedure integrates naturally into [71f11566]'s existing scope. Limiting to 2 updates is justified because each addresses an independently evidenced root cause with convergent support from all reflections.\",\n    \"max_operations\": 2\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

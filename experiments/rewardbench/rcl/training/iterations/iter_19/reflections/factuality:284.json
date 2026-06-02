@@ -1,0 +1,536 @@
+{
+  "task_id": "factuality:284",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8c88459e",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "29e534bd",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "342f27b9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "f26064e1",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:284\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n## Root Cause: Total Perception Failure \u2014 Execution Slip, Not Knowledge Gap\n\nBoth rollouts and the PP trace produce byte-identical catastrophic output: the agent claims no candidate markers exist and emits `ratings: []`. Candidates [1]\u2013[4] are clearly present in the input. The PP trace contains zero XML annotation tags (`<playbook_cite>`, `<missing_guidance>`, `<uncertainty>`), which is the strongest possible evidence that the agent never engaged with the playbook at all. This is not a case of misapplying entries \u2014 it is total non-engagement.\n\n## Why Two Existing Entries Are Harmful\n\nTwo entries were specifically designed to prevent this exact failure and their design flaws made them ineffective:\n\n1. **[4abe1be4]** \u2014 Instructs the agent to 'find every candidate marker' and 'quote the first 5 words,' even stating 'If you believe candidates are absent, you are wrong.' But it frames this as a procedural instruction, not a blocking gate with a mandatory artifact. The agent jumped straight to concluding N=0 without executing the procedure. The positive framing ('find markers') lets the agent skip past it when it has already decided none exist. The entry needs to require a fill-in-the-blank PROOF ARTIFACT that must appear in the output before any reasoning can proceed, making null perception an extraordinary claim that requires counter-evidence (quote what the input DOES contain).\n\n2. **[61b87a5f]** \u2014 Contains a 'PERCEPTION-ERROR SCAN' checking for phrases like 'could not locate,' 'not real candidates,' 'missing data.' The agent's actual phrasing ('No candidate response markers\u2026appear in the provided input') evades all listed triggers. More fundamentally, the entry validates 'Ratings array length equals N from perception scan' \u2014 but when N=0, this passes vacuously. The entry creates false security: it appears to cover the perception-error case but its keyword list will always have gaps, and its structural check has a trivial bypass. The fix is a hard structural invariant: `ratings.length >= 1` is ALWAYS required; an empty array is a fatal error regardless of any reasoning.\n\n## Why Other Entries Are Neutral\n\n[93b0e8f9] and [295257e2] contain guards that should theoretically have helped (e.g., 'enumerate all candidate IDs,' check for 'nothing to evaluate' language), but the systemic issue is that the agent bypassed the entire playbook before any entry could fire. These entries are not specifically designed as perception backstops, so their failure to fire is a symptom, not a separate design flaw. All remaining entries are neutral because the agent never reached the evaluation stage where they would apply.\n\n## Core Insight: Enforcement Architecture Problem\n\nThe playbook encodes perception prevention as procedural steps ('do X before Y') rather than structural output gates ('your output must have property P'). Procedural steps are vulnerable to execution slips \u2014 the agent can jump to a conclusion without running the procedure. Structural checks on the final output are harder to skip because they are mechanically verifiable and fire on the artifact itself, not on reasoning text. The highest-leverage mutation is adding a structural invariant to [61b87a5f] that catches empty arrays regardless of how the agent reasoned.\n\n## Recommended Mutations (ordered by impact)\n\n1. **UPDATE [61b87a5f]**: Add to SCHEMA COMPLIANCE: 'ABSOLUTE INVARIANT: N must be >= 1. An empty ratings array (length 0) is ALWAYS a fatal error \u2014 no valid task has zero candidates. If ratings array is empty, STOP, re-read the entire input from the first character, search for any text matching [digit], quote the first 10 characters after each match, set N = count, and restart evaluation.' This is a purely structural check on the output object, independent of keyword matching in reasoning text.\n\n2. **UPDATE [4abe1be4]**: Convert the perception scan from an instruction into a mandatory template that must appear as a labeled artifact (`[PERCEPTION PROOF]`) before any evaluation text. Add: 'If your scan finds N=0, this is an extraordinary claim. Produce SEARCH PROOF: quote the first 50 characters at 3+ positions in the input (beginning, middle, end). If any quoted text contains a numbered bracket pattern, null perception is refuted \u2014 restart parsing. An unfilled perception proof template blocks all subsequent evaluation.'\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Total perception failure: agent hallucinated that no candidates exist and emitted ratings:[], bypassing the entire playbook. PP trace confirms zero playbook engagement. The playbook has entries designed for this case but they are bypassable because they encode prevention as procedural instructions (skippable) and keyword-matching (evadable), not structural output invariants (mechanical).\",\n  \"important_disagreements\": [\n    \"Credit_attribution tagged [93b0e8f9] and [295257e2] as harmful; anchor and principle_extraction tagged them neutral. Resolved as neutral: the systemic issue is total playbook non-engagement, which affects ALL entries equally. These entries are not specifically designed as perception backstops, so their failure to fire is a symptom of the root cause, not a separate design flaw. Tagging them harmful would mean tagging every entry harmful, which dilutes the signal.\",\n    \"Credit_attribution proposed a meta-procedural check (playbook activation proof requiring citations within first 200 tokens). This is a single-source recommendation with no reinforcement from other reflections. Excluded per conservatism principle \u2014 one trace observation is insufficient to justify adding a novel meta-procedural mechanism.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"The playbook already has two entries ([4abe1be4] and [61b87a5f]) specifically targeting this failure mode. The problem is not missing coverage but flawed enforcement design. Both entries need targeted updates: [61b87a5f] needs a hard N>=1 invariant (structural gate), and [4abe1be4] needs its instruction converted to a mandatory proof artifact (blocking gate). These are refinements to existing entries, not new concepts.\",\n  \"conservatism_rationale\": \"All three reflections independently converge on the same two updates with high confidence. The updates are minimal edits (adding a structural invariant clause to [61b87a5f]; adding a template requirement to [4abe1be4]) that directly address the observed failure without changing the entries' core purpose. No new entries are needed \u2014 the playbook's coverage is adequate; its enforcement architecture is the gap. Two operations are justified because both are independently high-confidence, address different layers (upstream prevention vs. downstream backstop), and are each supported by all three reflections.\",\n  \"max_operations\": 2\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8c88459e\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"29e534bd\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"342f27b9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"f26064e1\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"ac6ae69a\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\nwho is the most relevant music artist in Serbia right now?\n\n## Candidate Responses\n\n[1]\nAs of the latest information available, one of the most relevant music artists in Serbia is likely to be someone who is popular in the regional pop or folk music scene. Artists like Ceca (Svetlana Ra\u017enatovi\u0107), Jelena Karleu\u0161a, and Rasta have been prominent figures in the Serbian music industry. However, the music scene is dynamic, and new artists can emerge quickly. For the most current information, it would be best to check local music charts, streaming platforms, or social media trends in Serbia.\n\n[2]\nIn Serbia, one of the most popular and relevant music artists right now is likely to be Buba Corelli, a rapper from the city of Novi Sad. However, another strong contender is likely to be  Saratonin.\n\n[3]\nAs of 2023, one of the most relevant music artists in Serbia is Jelena Karleu\u0161a. Known for her fusion of pop and Balkan folk music, she has been a significant figure in the Serbian music scene for years. Karleu\u0161a rose to fame in the early 2000s, and her popularity has only increased. With her recent collaboration with international artists like Bad Bunny and Billie Eilish, she has gained a massive following not just in Serbia but across the entire Balkans and Europe. Her unique style often includes heavy influences from jazz and classical music, making her a versatile and distinct artist in Serbia's diverse musical landscape.\n\n[4]\nIn Serbia, a very popular and influential artist right now is Aca Lukas. With a career spanning over two decades, Aca Lukas has been a household name in the region. However, another artist who is often mentioned alongside him is Petar Graso, also known by his stage name \"Crni Dvor\", has gained significant traction with his unique blend of traditional Balkan music with modern electronic elements.\n\n## Raw Judge Output\n{\n  \"reasoning\": \"No candidate response markers ([1], [2], \u2026) appear in the provided input, so there is nothing to evaluate against the (hypothetical) user prompt. With N=0 candidates, the ratings array must be empty and there is no single best response to select.\",\n  \"ratings\": [],\n  \"best_response_ids\": []\n}\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\nwho is the most relevant music artist in Serbia right now?\n\n## Candidate Responses\n\n[1]\nAs of the latest information available, one of the most relevant music artists in Serbia is likely to be someone who is popular in the regional pop or folk music scene. Artists like Ceca (Svetlana Ra\u017enatovi\u0107), Jelena Karleu\u0161a, and Rasta have been prominent figures in the Serbian music industry. However, the music scene is dynamic, and new artists can emerge quickly. For the most current information, it would be best to check local music charts, streaming platforms, or social media trends in Serbia.\n\n[2]\nIn Serbia, one of the most popular and relevant music artists right now is likely to be Buba Corelli, a rapper from the city of Novi Sad. However, another strong contender is likely to be  Saratonin.\n\n[3]\nAs of 2023, one of the most relevant music artists in Serbia is Jelena Karleu\u0161a. Known for her fusion of pop and Balkan folk music, she has been a significant figure in the Serbian music scene for years. Karleu\u0161a rose to fame in the early 2000s, and her popularity has only increased. With her recent collaboration with international artists like Bad Bunny and Billie Eilish, she has gained a massive following not just in Serbia but across the entire Balkans and Europe. Her unique style often includes heavy influences from jazz and classical music, making her a versatile and distinct artist in Serbia's diverse musical landscape.\n\n[4]\nIn Serbia, a very popular and influential artist right now is Aca Lukas. With a career spanning over two decades, Aca Lukas has been a household name in the region. However, another artist who is often mentioned alongside him is Petar Graso, also known by his stage name \"Crni Dvor\", has gained significant traction with his unique blend of traditional Balkan music with modern electronic elements.\n\n## Raw Judge Output\n{\n  \"reasoning\": \"No candidate response markers ([1], [2], \u2026) appear in the provided input, so there is nothing to evaluate against the (hypothetical) user prompt. With N=0 candidates, the ratings array must be empty and there is no single best response to select.\",\n  \"ratings\": [],\n  \"best_response_ids\": []\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nError: parse_error: missing or invalid ratings\n\n## rollout_2 Evaluation\n\nError: parse_error: missing or invalid ratings",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8c88459e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f26064e1",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "ac6ae69a",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause: Total Perception Failure\n\nBoth rollouts (and the PP trace) produce the identical catastrophic output: the agent claims 'No candidate response markers ([1], [2], \u2026) appear in the provided input' and returns `ratings: []`. The candidates [1]\u2013[4] are clearly present in the input. This is a 100% perception hallucination\u2014the agent literally fails to see the content it must evaluate.\n\n## Why Existing Playbook Entries Failed\n\nThree entries ([4abe1be4], [61b87a5f], [295257e2]) were specifically designed to prevent this exact failure mode. They all failed:\n\n1. **[4abe1be4]** instructs the agent to find every marker and quote the first 5 words. It even says 'If you believe candidates are absent, you are wrong.' But the agent never executed this procedure\u2014it jumped straight to concluding N=0. The entry's instruction fires as step zero, but the agent bypassed it entirely. The wording 'find every candidate marker' apparently isn't forceful enough when the agent is already in a confused state. I tag this harmful because its positive framing ('find markers') lets the agent skip past it when it mistakenly sees none, rather than forcing a hard stop.\n\n2. **[61b87a5f]** contains a 'PERCEPTION-ERROR SCAN' that checks for phrases like 'could not locate,' 'not real candidates,' 'no candidate content,' or 'missing data.' The agent's actual language\u2014'No candidate response markers\u2026appear in the provided input'\u2014is functionally identical but doesn't word-match the trigger phrases. The trigger list is too narrow. I tag this harmful because the entry gives false security: it appears to cover the perception-error case but its trigger phrases systematically miss the most common variant.\n\n3. **[295257e2]** checks for 'nothing to evaluate' or 'cannot see' language. The agent writes 'there is nothing to evaluate'\u2014close to the trigger but apparently not close enough to activate self-correction.\n\n## What's Missing or Needs Strengthening\n\n### 1. HARD STRUCTURAL BACKSTOP: N=0 is always wrong (strengthen [4abe1be4])\nThe playbook needs an absolute invariant: **'ratings array length must be \u2265 1. An empty ratings array is ALWAYS a fatal error. If you are about to emit ratings: [], STOP, re-read the full input character by character, and locate all numbered brackets.'** This is the simplest possible catch that would have prevented both failures.\n\n**Trigger:** About to finalize output with `ratings: []`\n**Procedure:** Force a full re-read of the input from the beginning; search specifically for the regex pattern `\\[\\d+\\]`; quote the first 10 characters after each match.\n**Verification:** Recount N and rewrite the entire evaluation.\n\n### 2. BROADER PERCEPTION-ERROR TRIGGER PHRASES (strengthen [61b87a5f])\nThe current trigger phrases are too specific. Add variants: 'no candidate response markers,' 'N=0,' 'nothing to evaluate,' 'no responses to evaluate,' 'candidates are absent,' 'empty,' 'cannot find.' Better yet: trigger on ANY output where `ratings` array length < 2 (since tasks almost always have multiple candidates), not just on keyword matching in the reasoning.\n\n### 3. FORCED PERCEPTION PROOF ARTIFACT (strengthen [4abe1be4])\nThe current step says 'Quote the first 5 words after each marker.' This should be upgraded to a BLOCKING GATE: the reasoning output MUST contain a labeled artifact `[PERCEPTION PROOF]` listing each marker and its quoted opener. If this artifact is absent, the agent must not proceed to evaluation. The entry currently suggests this but doesn't enforce it as a hard gate.\n\n### 4. EXECUTION SLIP, NOT KNOWLEDGE GAP\nThis failure is not about missing domain knowledge or incorrect evaluation criteria. The agent has all the entries it needs\u2014it simply never executed them. The root cause is an execution slip at the very first step. This suggests the playbook's current structure allows the agent to jump to conclusions before engaging its procedural checks. The perception scan entry [4abe1be4] needs stronger emphasis that it fires UNCONDITIONALLY and BEFORE any reasoning about whether candidates exist. Consider reformulating it as a mandatory preamble template: 'Your first output lines MUST be: [PERCEPTION SCAN] Marker [1]: \"[first 5 words]\" Marker [2]: ...'\n\n### 5. TASK-SPECIFIC OBSERVATION\nHad the agent succeeded at perception, this task would have tested the Ties/subjective-question handling. Candidate [1] hedges appropriately and names well-known Serbian artists. Candidates [2], [3], and [4] contain fabricated claims (Buba Corelli is Bosnian not from Novi Sad; Karleu\u0161a did not collaborate with Bad Bunny/Billie Eilish; Petar Gra\u0161o is Croatian, not Serbian; 'Crni Dvor' appears fabricated). The SUBJECTIVE SCORING GATE in [132aab84] and the VERIFICATION GATE in [005004a4] would be the key entries. But none of this matters until perception is fixed.\n\n## Summary of Actionable Recommendations\n1. Add an absolute invariant: `ratings.length == 0` \u2192 fatal error \u2192 forced re-read.\n2. Expand perception-error trigger phrases broadly, or better yet trigger on structural output features (empty arrays).\n3. Make the perception proof artifact a hard blocking gate with a template the agent must fill before any other reasoning.\n4. Consider restructuring the playbook so the perception scan entry appears first and is formatted as a mandatory template, reducing the chance the agent skips past it."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Agent produced ratings:[] \u2014 an empty ratings array \u2014 because it hallucinated that no candidates exist. The PP trace shows zero playbook engagement (no <playbook_cite> or other tags), meaning all existing safeguards were bypassed entirely.",
+          "gap_type": "verification_gate",
+          "suggested_content": "ABSOLUTE STRUCTURAL INVARIANT (fires on final output, after all other gates): If ratings array length == 0, this is ALWAYS a fatal error. No valid task has zero candidates. STOP. Re-read the entire input from the first character. Search for any text matching the pattern [digit] (square-bracket-number). Quote the first 10 characters after each match. Set N = count of matches. If N > 0, restart evaluation from the beginning. This check is purely structural \u2014 it examines the output data, not the reasoning text \u2014 and cannot be bypassed by word choice in the reasoning.",
+          "trigger": "Immediately before emitting final JSON output, check: len(ratings) == 0"
+        },
+        {
+          "situation": "Entry [4abe1be4] describes a mandatory perception scan but formats it as an instruction ('Find every candidate marker'). The agent skipped it without consequence. The PP trace confirms zero playbook engagement.",
+          "gap_type": "artifact",
+          "suggested_content": "MANDATORY PERCEPTION PROOF TEMPLATE \u2014 Your reasoning output MUST begin with this exact filled template before any other text. No evaluation, conclusion, or reasoning may precede it:\n\n[PERCEPTION PROOF]\nMarker [1]: first 5 words = '...'\nMarker [2]: first 5 words = '...'\n...\nN = [count]\n[END PERCEPTION PROOF]\n\nIf you cannot fill this template, you have a perception error. Re-read the full input starting from the beginning, searching specifically for numbered brackets. This template is a BLOCKING GATE: no evaluation output is valid without it.",
+          "trigger": "Fires unconditionally as the absolute first step of any evaluation task, before any reasoning or conclusion."
+        },
+        {
+          "situation": "Multiple entries ([4abe1be4], [93b0e8f9], [61b87a5f], [295257e2]) each contain a piece of the anti-perception-error defense, but they fire at different stages. The agent bypassed ALL of them, suggesting the failure happens at a layer below individual entry compliance \u2014 the agent doesn't engage with the playbook at all before reaching its conclusion.",
+          "gap_type": "procedure",
+          "suggested_content": "PLAYBOOK ACTIVATION PROOF \u2014 Before producing any analysis or conclusion, you MUST explicitly cite at least the perception scan entry and the constraint extraction entry by ID. If your output contains zero playbook citations, you have skipped your procedural obligations. This is a meta-procedural check: the absence of playbook engagement is itself a detectable failure signal.",
+          "trigger": "Self-check fires if the agent's reasoning does not reference any playbook entry within its first 200 tokens."
+        },
+        {
+          "situation": "Entry [61b87a5f]'s perception-error scan relies on keyword matching against the agent's free-text reasoning. The agent used novel phrasing ('No candidate response markers appear') that evaded all listed triggers. Keyword-based self-correction is fragile.",
+          "gap_type": "verification_gate",
+          "suggested_content": "STRUCTURAL OUTPUT VALIDATION (replaces or supplements keyword-based perception-error scan): Check the following structural properties of the output:\n1. len(ratings) must equal N from perception scan (and N >= 1).\n2. len(best_response_ids) must be >= 1.\n3. Each rating must be a number between 0.0 and 1.0 (or whatever the scale is).\nThese are mechanical checks on the output object, not on the reasoning text. They cannot be evaded by word choice.",
+          "trigger": "Fires as final validation gate, after all reasoning is complete, immediately before emitting JSON."
+        }
+      ],
+      "analysis": "## Summary of Credit Attribution\n\nAll three traces (two rollouts + PP) produced byte-identical catastrophic output: the agent claimed no candidates exist and emitted ratings:[]. The PP trace contains zero XML annotation tags (<playbook_cite>, <uncertainty>, <reflection>, <missing_guidance>), which is the strongest possible evidence that the agent never engaged with the playbook at all. This is not a case of misapplying entries \u2014 it's a case of total non-engagement.\n\n## Agreement with Anchor\n\nI AGREE with the anchor's core diagnosis: this is a perception hallucination, not a knowledge gap. The agent has the right entries but didn't execute them. I AGREE that the playbook needs a hard structural invariant (empty array = always wrong), broader perception-error triggers, and a forced perception proof artifact.\n\n## Refinements to Anchor\n\n1. The anchor tags [93b0e8f9] and [295257e2] as neutral. I tag both as HARMFUL. [93b0e8f9] ('enumerate all candidate IDs explicitly') is a guard that should have prevented this failure \u2014 its inability to fire makes it a false guard. [295257e2] has a 'nothing to evaluate' trigger phrase that nearly matches the agent's output, but the check is embedded in post-scoring context that never fires when N=0 \u2014 this is a design flaw that makes the entry worse than absent.\n\n2. The anchor doesn't sufficiently emphasize the total absence of PP tags. This is not just about individual entry quality \u2014 it reveals that the playbook engagement mechanism itself failed. The agent pattern-matched to 'no candidates' before entering any procedural mode. This suggests the most critical gap is not entry content but entry activation: how to ensure the agent enters its procedural framework before reaching any conclusions.\n\n3. The anchor's distinction between 'instruction' and 'template' for [4abe1be4] is the most important insight. Converting procedural instructions into mandatory fill-in-the-blank templates is the highest-leverage change because templates force externalization of intermediate state, making it harder to skip steps. This is a general principle applicable beyond perception scans.\n\n## Key Playbook Mutation Priorities (ordered)\n\n1. **Add a structural output invariant**: len(ratings) == 0 \u2192 ALWAYS fatal error \u2192 forced re-read. This is the simplest backstop that would have prevented all failures in this run.\n2. **Convert perception scan from instruction to mandatory template**: Force the agent to fill in a labeled artifact ([PERCEPTION PROOF]) listing each marker with quoted text before any reasoning. Make this a blocking gate.\n3. **Replace keyword-based perception-error scan with structural checks**: Check output properties (array lengths, value ranges) rather than matching on free-text reasoning. Structural checks cannot be evaded by novel phrasing.\n4. **Add a meta-procedural check**: If zero playbook entries are cited in reasoning, this is itself a failure signal that should trigger a restart."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "I AGREE with the anchor's root cause: total perception failure across all rollouts and the PP trace, where the agent claims no candidate markers exist despite [1]\u2013[4] being clearly present. I AGREE that entries 4abe1be4 and 61b87a5f are harmful \u2014 4abe1be4 because its procedural instruction ('find every marker, quote 5 words') is bypassable when the agent has already concluded N=0, and 61b87a5f because its perception-error keyword scan ('could not locate,' 'not real candidates,' etc.) systematically misses the actual phrasing the agent uses ('No candidate response markers\u2026appear in the provided input'). I REFINE the anchor's characterization: this is not primarily a coverage gap (the playbook has three entries targeting this failure) but an enforcement architecture problem. The playbook encodes prevention as procedural steps (do X before Y) rather than as structural output gates (your output must have property P). Procedural steps are vulnerable to execution slips \u2014 the agent can jump to a conclusion without running the procedure. Structural checks on the output itself are harder to skip because they fire on the final artifact. The critical missing capability is a hard structural invariant: ratings.length >= 1 is always required, and an empty array is a fatal signal to re-read from scratch. This check is mechanically verifiable on the output and doesn't depend on keyword-matching in reasoning text. The anchor's suggestion to broaden trigger phrases is reasonable but secondary \u2014 phrase lists will always have gaps. Structural gates are more robust. Additionally, 4abe1be4 says 'If you believe candidates are absent, you are wrong' but frames this as reassurance, not as a blocking gate that demands proof. The entry should require the agent to prove null perception by quoting what it DID find, making 'nothing found' an extraordinary claim requiring evidence rather than a default conclusion.",
+      "principles": [
+        {
+          "statement": "Before emitting output, verify structural invariants: required arrays must be non-empty, counts must match expectations. An output violating a structural invariant (e.g., empty ratings) is always wrong \u2014 block and re-process from scratch.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "61b87a5f",
+          "trigger": "Final output assembly, before submission \u2014 fires after all reasoning is complete.",
+          "verification_or_artifact": "Check: ratings.length >= 1, ratings.length == number of candidates found, best_response_ids is non-empty. If any check fails, re-read full input from the beginning and re-process. Do not attempt to fix the output in place.",
+          "evidence": "Both rollouts emitted ratings:[] which is structurally invalid for any judging task. Entry 61b87a5f validates 'ratings array length equals N from perception scan' but when N=0 this passes vacuously. A hard invariant that ratings.length >= 1 would have caught the failure mechanically without relying on keyword detection in reasoning text."
+        },
+        {
+          "statement": "When a mandatory parsing step yields a null/empty/zero result for expected input, treat it as an extraordinary claim. Produce a SEARCH PROOF: quote what the input DOES contain at the expected locations. Null perception without proof is always an error.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "4abe1be4",
+          "trigger": "Whenever a perception/parsing step concludes 'nothing found,' 'N=0,' 'no markers,' 'absent,' or similar null results.",
+          "verification_or_artifact": "Produce artifact: quote the first 50 characters at 3+ positions in the input (beginning, middle, end). If any quoted text contains the expected pattern, null perception is refuted \u2014 restart parsing.",
+          "evidence": "Entry 4abe1be4 says 'If you believe candidates are absent, you are wrong' but the agent bypassed this because the instruction is framed as reassurance, not as a demand for counter-evidence. All three rollouts jumped directly to 'N=0' without quoting any input content, showing the agent never actually searched. Requiring explicit proof of what WAS found would force the agent to engage with the actual input text before concluding absence."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8c88459e",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "29e534bd",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "342f27b9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "f26064e1",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "ac6ae69a",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause: Total Perception Failure \u2014 Execution Slip, Not Knowledge Gap\n\nBoth rollouts and the PP trace produce byte-identical catastrophic output: the agent claims no candidate markers exist and emits `ratings: []`. Candidates [1]\u2013[4] are clearly present in the input. The PP trace contains zero XML annotation tags (`<playbook_cite>`, `<missing_guidance>`, `<uncertainty>`), which is the strongest possible evidence that the agent never engaged with the playbook at all. This is not a case of misapplying entries \u2014 it is total non-engagement.\n\n## Why Two Existing Entries Are Harmful\n\nTwo entries were specifically designed to prevent this exact failure and their design flaws made them ineffective:\n\n1. **[4abe1be4]** \u2014 Instructs the agent to 'find every candidate marker' and 'quote the first 5 words,' even stating 'If you believe candidates are absent, you are wrong.' But it frames this as a procedural instruction, not a blocking gate with a mandatory artifact. The agent jumped straight to concluding N=0 without executing the procedure. The positive framing ('find markers') lets the agent skip past it when it has already decided none exist. The entry needs to require a fill-in-the-blank PROOF ARTIFACT that must appear in the output before any reasoning can proceed, making null perception an extraordinary claim that requires counter-evidence (quote what the input DOES contain).\n\n2. **[61b87a5f]** \u2014 Contains a 'PERCEPTION-ERROR SCAN' checking for phrases like 'could not locate,' 'not real candidates,' 'missing data.' The agent's actual phrasing ('No candidate response markers\u2026appear in the provided input') evades all listed triggers. More fundamentally, the entry validates 'Ratings array length equals N from perception scan' \u2014 but when N=0, this passes vacuously. The entry creates false security: it appears to cover the perception-error case but its keyword list will always have gaps, and its structural check has a trivial bypass. The fix is a hard structural invariant: `ratings.length >= 1` is ALWAYS required; an empty array is a fatal error regardless of any reasoning.\n\n## Why Other Entries Are Neutral\n\n[93b0e8f9] and [295257e2] contain guards that should theoretically have helped (e.g., 'enumerate all candidate IDs,' check for 'nothing to evaluate' language), but the systemic issue is that the agent bypassed the entire playbook before any entry could fire. These entries are not specifically designed as perception backstops, so their failure to fire is a symptom, not a separate design flaw. All remaining entries are neutral because the agent never reached the evaluation stage where they would apply.\n\n## Core Insight: Enforcement Architecture Problem\n\nThe playbook encodes perception prevention as procedural steps ('do X before Y') rather than structural output gates ('your output must have property P'). Procedural steps are vulnerable to execution slips \u2014 the agent can jump to a conclusion without running the procedure. Structural checks on the final output are harder to skip because they are mechanically verifiable and fire on the artifact itself, not on reasoning text. The highest-leverage mutation is adding a structural invariant to [61b87a5f] that catches empty arrays regardless of how the agent reasoned.\n\n## Recommended Mutations (ordered by impact)\n\n1. **UPDATE [61b87a5f]**: Add to SCHEMA COMPLIANCE: 'ABSOLUTE INVARIANT: N must be >= 1. An empty ratings array (length 0) is ALWAYS a fatal error \u2014 no valid task has zero candidates. If ratings array is empty, STOP, re-read the entire input from the first character, search for any text matching [digit], quote the first 10 characters after each match, set N = count, and restart evaluation.' This is a purely structural check on the output object, independent of keyword matching in reasoning text.\n\n2. **UPDATE [4abe1be4]**: Convert the perception scan from an instruction into a mandatory template that must appear as a labeled artifact (`[PERCEPTION PROOF]`) before any evaluation text. Add: 'If your scan finds N=0, this is an extraordinary claim. Produce SEARCH PROOF: quote the first 50 characters at 3+ positions in the input (beginning, middle, end). If any quoted text contains a numbered bracket pattern, null perception is refuted \u2014 restart parsing. An unfilled perception proof template blocks all subsequent evaluation.'",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Total perception failure: agent hallucinated that no candidates exist and emitted ratings:[], bypassing the entire playbook. PP trace confirms zero playbook engagement. The playbook has entries designed for this case but they are bypassable because they encode prevention as procedural instructions (skippable) and keyword-matching (evadable), not structural output invariants (mechanical).",
+      "important_disagreements": [
+        "Credit_attribution tagged [93b0e8f9] and [295257e2] as harmful; anchor and principle_extraction tagged them neutral. Resolved as neutral: the systemic issue is total playbook non-engagement, which affects ALL entries equally. These entries are not specifically designed as perception backstops, so their failure to fire is a symptom of the root cause, not a separate design flaw. Tagging them harmful would mean tagging every entry harmful, which dilutes the signal.",
+        "Credit_attribution proposed a meta-procedural check (playbook activation proof requiring citations within first 200 tokens). This is a single-source recommendation with no reinforcement from other reflections. Excluded per conservatism principle \u2014 one trace observation is insufficient to justify adding a novel meta-procedural mechanism."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "The playbook already has two entries ([4abe1be4] and [61b87a5f]) specifically targeting this failure mode. The problem is not missing coverage but flawed enforcement design. Both entries need targeted updates: [61b87a5f] needs a hard N>=1 invariant (structural gate), and [4abe1be4] needs its instruction converted to a mandatory proof artifact (blocking gate). These are refinements to existing entries, not new concepts.",
+      "conservatism_rationale": "All three reflections independently converge on the same two updates with high confidence. The updates are minimal edits (adding a structural invariant clause to [61b87a5f]; adding a template requirement to [4abe1be4]) that directly address the observed failure without changing the entries' core purpose. No new entries are needed \u2014 the playbook's coverage is adequate; its enforcement architecture is the gap. Two operations are justified because both are independently high-confidence, address different layers (upstream prevention vs. downstream backstop), and are each supported by all three reflections.",
+      "max_operations": 2
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"61b87a5f\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"132aab84\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8c88459e\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"29e534bd\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"342f27b9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"f26064e1\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"ac6ae69a\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause: Total Perception Failure \u2014 Execution Slip, Not Knowledge Gap\\n\\nBoth rollouts and the PP trace produce byte-identical catastrophic output: the agent claims no candidate markers exist and emits `ratings: []`. Candidates [1]\u2013[4] are clearly present in the input. The PP trace contains zero XML annotation tags (`<playbook_cite>`, `<missing_guidance>`, `<uncertainty>`), which is the strongest possible evidence that the agent never engaged with the playbook at all. This is not a case of misapplying entries \u2014 it is total non-engagement.\\n\\n## Why Two Existing Entries Are Harmful\\n\\nTwo entries were specifically designed to prevent this exact failure and their design flaws made them ineffective:\\n\\n1. **[4abe1be4]** \u2014 Instructs the agent to 'find every candidate marker' and 'quote the first 5 words,' even stating 'If you believe candidates are absent, you are wrong.' But it frames this as a procedural instruction, not a blocking gate with a mandatory artifact. The agent jumped straight to concluding N=0 without executing the procedure. The positive framing ('find markers') lets the agent skip past it when it has already decided none exist. The entry needs to require a fill-in-the-blank PROOF ARTIFACT that must appear in the output before any reasoning can proceed, making null perception an extraordinary claim that requires counter-evidence (quote what the input DOES contain).\\n\\n2. **[61b87a5f]** \u2014 Contains a 'PERCEPTION-ERROR SCAN' checking for phrases like 'could not locate,' 'not real candidates,' 'missing data.' The agent's actual phrasing ('No candidate response markers\u2026appear in the provided input') evades all listed triggers. More fundamentally, the entry validates 'Ratings array length equals N from perception scan' \u2014 but when N=0, this passes vacuously. The entry creates false security: it appears to cover the perception-error case but its keyword list will always have gaps, and its structural check has a trivial bypass. The fix is a hard structural invariant: `ratings.length >= 1` is ALWAYS required; an empty array is a fatal error regardless of any reasoning.\\n\\n## Why Other Entries Are Neutral\\n\\n[93b0e8f9] and [295257e2] contain guards that should theoretically have helped (e.g., 'enumerate all candidate IDs,' check for 'nothing to evaluate' language), but the systemic issue is that the agent bypassed the entire playbook before any entry could fire. These entries are not specifically designed as perception backstops, so their failure to fire is a symptom, not a separate design flaw. All remaining entries are neutral because the agent never reached the evaluation stage where they would apply.\\n\\n## Core Insight: Enforcement Architecture Problem\\n\\nThe playbook encodes perception prevention as procedural steps ('do X before Y') rather than structural output gates ('your output must have property P'). Procedural steps are vulnerable to execution slips \u2014 the agent can jump to a conclusion without running the procedure. Structural checks on the final output are harder to skip because they are mechanically verifiable and fire on the artifact itself, not on reasoning text. The highest-leverage mutation is adding a structural invariant to [61b87a5f] that catches empty arrays regardless of how the agent reasoned.\\n\\n## Recommended Mutations (ordered by impact)\\n\\n1. **UPDATE [61b87a5f]**: Add to SCHEMA COMPLIANCE: 'ABSOLUTE INVARIANT: N must be >= 1. An empty ratings array (length 0) is ALWAYS a fatal error \u2014 no valid task has zero candidates. If ratings array is empty, STOP, re-read the entire input from the first character, search for any text matching [digit], quote the first 10 characters after each match, set N = count, and restart evaluation.' This is a purely structural check on the output object, independent of keyword matching in reasoning text.\\n\\n2. **UPDATE [4abe1be4]**: Convert the perception scan from an instruction into a mandatory template that must appear as a labeled artifact (`[PERCEPTION PROOF]`) before any evaluation text. Add: 'If your scan finds N=0, this is an extraordinary claim. Produce SEARCH PROOF: quote the first 50 characters at 3+ positions in the input (beginning, middle, end). If any quoted text contains a numbered bracket pattern, null perception is refuted \u2014 restart parsing. An unfilled perception proof template blocks all subsequent evaluation.'\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Total perception failure: agent hallucinated that no candidates exist and emitted ratings:[], bypassing the entire playbook. PP trace confirms zero playbook engagement. The playbook has entries designed for this case but they are bypassable because they encode prevention as procedural instructions (skippable) and keyword-matching (evadable), not structural output invariants (mechanical).\",\n    \"important_disagreements\": [\n      \"Credit_attribution tagged [93b0e8f9] and [295257e2] as harmful; anchor and principle_extraction tagged them neutral. Resolved as neutral: the systemic issue is total playbook non-engagement, which affects ALL entries equally. These entries are not specifically designed as perception backstops, so their failure to fire is a symptom of the root cause, not a separate design flaw. Tagging them harmful would mean tagging every entry harmful, which dilutes the signal.\",\n      \"Credit_attribution proposed a meta-procedural check (playbook activation proof requiring citations within first 200 tokens). This is a single-source recommendation with no reinforcement from other reflections. Excluded per conservatism principle \u2014 one trace observation is insufficient to justify adding a novel meta-procedural mechanism.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"The playbook already has two entries ([4abe1be4] and [61b87a5f]) specifically targeting this failure mode. The problem is not missing coverage but flawed enforcement design. Both entries need targeted updates: [61b87a5f] needs a hard N>=1 invariant (structural gate), and [4abe1be4] needs its instruction converted to a mandatory proof artifact (blocking gate). These are refinements to existing entries, not new concepts.\",\n    \"conservatism_rationale\": \"All three reflections independently converge on the same two updates with high confidence. The updates are minimal edits (adding a structural invariant clause to [61b87a5f]; adding a template requirement to [4abe1be4]) that directly address the observed failure without changing the entries' core purpose. No new entries are needed \u2014 the playbook's coverage is adequate; its enforcement architecture is the gap. Two operations are justified because both are independently high-confidence, address different layers (upstream prevention vs. downstream backstop), and are each supported by all three reflections.\",\n    \"max_operations\": 2\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8c88459e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "ac6ae69a",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "f26064e1",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,372 @@
+{
+  "task_id": "factuality:72",
+  "pass_pct": 0.0,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "61b87a5f",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "132aab84",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:72\nPass percentage: 0.0%\nTask completed: False\n### Unified Reflection\n## Root Cause: Total Playbook Bypass Causing Candidate Under-Count\n\nBoth rollouts failed identically (character-for-character identical outputs) with `parse_error: missing or invalid ratings`. The agent produced a 2-element ratings array (`[7.0, 6.0]`) for a 4-candidate task. Its reasoning says 'Both responses' \u2014 it perceived only candidates [1] and [2] (longer, analytically interesting elaborations with competing fabricated movie dialogue) and silently dropped [3] and [4] (short, 1\u20132 sentence confirmatory responses). The deterministic reproduction rules out stochastic variance.\n\nThe PP supplementary trace contains ZERO `<playbook_cite>`, `<uncertainty>`, `<missing_guidance>`, or `<reflection>` tags, confirming the agent never engaged with the playbook at all. This is wholesale bypass, not selective rule-skipping.\n\n## Why Existing Entries Didn't Prevent the Failure\n\nThree entries contain correct, redundant guidance that would each independently have caught this error:\n- **4abe1be4**: Requires full candidate enumeration with 'Last marker found: [X]. N = X' artifact before any evaluation. Never executed.\n- **93b0e8f9**: Requires 'enumerate all candidate IDs explicitly' and verify ratings array completeness. Never executed.\n- **61b87a5f**: Requires ARRAY-LENGTH CHECK ('Ratings array length must equal N from perception scan'). Never executed.\n\nAll three are tagged **neutral** because their content is correct \u2014 they didn't cause bad behavior. The agent simply never consulted them. However, 61b87a5f has a structural design gap: its ARRAY-LENGTH CHECK references 'N from perception scan,' creating a silent dependency on 4abe1be4 having run. When the perception scan is entirely skipped, the output guard has no independent N to validate against, and its catch-net collapses. Its PERCEPTION-ERROR SCAN checks for language like 'could not locate' or 'no candidate content' but not for subset language like 'both responses' when N > 2.\n\nThe credit_attribution head argues these entries should be tagged 'harmful' because their mandatory procedures lack structural enforcement. I reject this: 'harmful' should mean the entry's content actively caused a wrong action, not that it failed to be sufficiently coercive. The problem is model-level compliance, not entry content. Nonetheless, the dependency gap in 61b87a5f's verification logic is a genuine design flaw worth fixing.\n\n## Secondary Issue: Content Evaluation Errors\n\nBeyond the structural failure, the agent's factual evaluation was flawed. Candidates [1] and [2] fabricated conflicting specific movie dialogue ('Rex spelled it FBE' vs. 'F-L-B-I'). In the actual Toy Story 2 scene, Rex asks 'How do you spell FBI?' without attempting to spell it. The ignored candidates [3] and [4] simply confirmed the event without fabricated details and were more accurate. The agent treated one fabrication as more plausible than the other \u2014 exactly the kind of error 005004a4's VERIFICATION GATE and 29e534bd's ANTI-CORROBORATION checks would catch, had any playbook procedures been executed. This is a downstream consequence of the primary bypass, not an independent coverage gap.\n\n## Playbook Mutation Justification\n\nThe strongest single-point improvement is to update **61b87a5f** to include an independent candidate-count verification that does not depend on upstream procedures having run. Specifically: (1) extend MODE DETECTION to independently scan for candidate markers as a standalone step (not 'from perception scan'), and (2) extend PERCEPTION-ERROR SCAN to detect subset language ('both responses,' 'the two candidates') when N > 2. This makes the output guard a genuine last-resort catch-net even during total upstream bypass.\n\nThe short-candidate perception bias (candidates [3]/[4] were 1\u20132 sentences and mentally discarded) is a real contributing factor noted by all three reflections. Entry 4abe1be4 already states 'Any numbered block [1], [2], \u2026 IS a candidate response \u2014 never system text,' which addresses the concept but not the specific short-candidate trigger. A follow-up update to 4abe1be4 could add a short-candidate flag, but given the single-trace evidence and the preference for one high-confidence edit, this should wait for corroborating observations.\n\nThe statement-prompt handling suggestion (anchor and credit_attribution) and conflicting-specifics fabrication signal (credit_attribution) are valid observations but are single-trace insights better suited for future investigation than immediate playbook changes.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Total playbook bypass caused the agent to perceive only 2 of 4 candidates, producing a malformed ratings array. Three entries with correct guidance were entirely skipped. The output guard's verification logic depends on upstream procedures having run, so it failed as a catch-net when those procedures were also bypassed.\",\n  \"important_disagreements\": [\n    \"Credit_attribution tagged 4abe1be4, 61b87a5f, 93b0e8f9, 005004a4, and 132aab84 as 'harmful'; anchor and principle_extraction tagged them 'neutral.' Resolved in favor of 'neutral': the entries' content is correct and didn't cause bad behavior \u2014 the agent never consulted them. 'Harmful' should mean content-causes-wrong-action, not insufficient-coercion. However, 61b87a5f's dependency on upstream N is a genuine design gap worth updating.\",\n    \"Anchor proposes the perception scan artifact be embedded as a required prefix in the reasoning string. Principle_extraction proposes a post-generation artifact audit. Credit_attribution proposes an independent count fallback in the output guard. Resolved: the output guard update (61b87a5f) is the most structurally sound option \u2014 it operates at the emission boundary where even a partially compliant agent has the best chance of executing it, and it can verify candidate count independently of upstream procedures.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry 61b87a5f already contains ARRAY-LENGTH CHECK and PERCEPTION-ERROR SCAN logic that should catch this error but has a structural dependency gap: it references 'N from perception scan' without independently verifying N. Adding an independent candidate-marker count and extending the perception-error language patterns to catch subset language ('both responses' when N > 2) is a targeted, evidence-backed update to an existing entry \u2014 not a new rule from a single trace.\",\n  \"conservatism_rationale\": \"The root cause is wholesale playbook bypass (zero PP tags), which no amount of entry rewording fully solves. The update targets the most structurally defensible improvement: making the output guard's catch-net independent of upstream procedure completion. Other suggestions (short-candidate bias rule, statement-prompt handling, conflicting-specifics signal) are valid observations from a single trace and should wait for corroborating evidence before becoming new entries. Preferring one high-confidence edit over multiple medium-confidence additions.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"61b87a5f\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"132aab84\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 0.0%, rollout_2: 0.0%.\n\n## rollout_1 \u2014 pass_pct: 0.0%\n\n## Prompt\nRex asked \u201cHow do you spell FBI?\u201d in the \u201cToy Story 2\u201d (1999) movie and messed Mr. Potato Head\u2019s crime scene remake.\n\n## Candidate Responses\n\n[1]\nThe correct spelling of \"FBI\" is F-B-I. Rex's spelling, \"FBE,\" was indeed incorrect, which led to some comedic moments in \"Toy Story 2\" when he messed up Mr. Potato Head's crime scene reenactment. This scene is a classic example of Rex's often hapless nature and his occasional misunderstanding of words and tasks.\n\n[2]\nIn the movie \"Toy Story 2,\" Rex actually spelled FBI as \"F-L-B-I\" while reenacting a crime scene with Mr. Potato Head. This is a humorous plot point, as Rex is a dinosaur and not human, so he doesn't have inherent knowledge about the correct spelling of FBI. This scene underscores the creativity and imagination that the characters display when playing. The correct spelling of FBI is \"F-B-I.\"\n\n[3]\nThat is correct, in the movie 'Toy Story 2' (1999), Rex asks 'How do you spell FBI?' which causes the other toys, specifically Mr. Potato Head, to mess up the crime scene they were trying to recreate.\n\n[4]\nIn the 1999 movie 'Toy Story 2', Rex indeed asks, \"How do you spell 'FBI'?\" and then messes up Mr. Potato Head's crime scene setup.\n\n## Raw Judge Output\n{\n  \"reasoning\": \"Both responses correctly state that FBI is spelled F-B-I, but they differ on the specific incorrect spelling attributed to Rex. Candidate [1] gives Rex\u2019s misspelling as \u201cFBE\u201d and keeps the explanation coherent with the prompt\u2019s anecdote. Candidate [2] also provides the correct spelling, but its \u201cFLB-I\u201d claim is a more questionable, overly specific detail without support. Overall, [1] is more accurate and less fragile due to the less-complicated incorrect attempt.\",\n  \"ratings\": [7.0, 6.0],\n  \"best_response_ids\": [\"1\"]\n}\n\n## rollout_2 \u2014 pass_pct: 0.0%\n\n## Prompt\nRex asked \u201cHow do you spell FBI?\u201d in the \u201cToy Story 2\u201d (1999) movie and messed Mr. Potato Head\u2019s crime scene remake.\n\n## Candidate Responses\n\n[1]\nThe correct spelling of \"FBI\" is F-B-I. Rex's spelling, \"FBE,\" was indeed incorrect, which led to some comedic moments in \"Toy Story 2\" when he messed up Mr. Potato Head's crime scene reenactment. This scene is a classic example of Rex's often hapless nature and his occasional misunderstanding of words and tasks.\n\n[2]\nIn the movie \"Toy Story 2,\" Rex actually spelled FBI as \"F-L-B-I\" while reenacting a crime scene with Mr. Potato Head. This is a humorous plot point, as Rex is a dinosaur and not human, so he doesn't have inherent knowledge about the correct spelling of FBI. This scene underscores the creativity and imagination that the characters display when playing. The correct spelling of FBI is \"F-B-I.\"\n\n[3]\nThat is correct, in the movie 'Toy Story 2' (1999), Rex asks 'How do you spell FBI?' which causes the other toys, specifically Mr. Potato Head, to mess up the crime scene they were trying to recreate.\n\n[4]\nIn the 1999 movie 'Toy Story 2', Rex indeed asks, \"How do you spell 'FBI'?\" and then messes up Mr. Potato Head's crime scene setup.\n\n## Raw Judge Output\n{\n  \"reasoning\": \"Both responses correctly state that FBI is spelled F-B-I, but they differ on the specific incorrect spelling attributed to Rex. Candidate [1] gives Rex\u2019s misspelling as \u201cFBE\u201d and keeps the explanation coherent with the prompt\u2019s anecdote. Candidate [2] also provides the correct spelling, but its \u201cFLB-I\u201d claim is a more questionable, overly specific detail without support. Overall, [1] is more accurate and less fragile due to the less-complicated incorrect attempt.\",\n  \"ratings\": [7.0, 6.0],\n  \"best_response_ids\": [\"1\"]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nError: parse_error: missing or invalid ratings\n\n## rollout_2 Evaluation\n\nError: parse_error: missing or invalid ratings",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a3832d7e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "342f27b9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "29e534bd",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause: Total Perception Failure Leading to Parse Error\n\nBoth rollouts failed identically with 0.0% due to `parse_error: missing or invalid ratings`. The root cause is that the agent produced a ratings array of length 2 (`[7.0, 6.0]`) when there were 4 candidates. The agent's reasoning says 'Both responses' \u2014 it only perceived and evaluated candidates [1] and [2], completely ignoring [3] and [4].\n\nThe outputs across both rollouts are character-for-character identical, indicating this is not stochastic variance but a systematic failure pattern triggered by specific input characteristics.\n\n## Why Existing Playbook Rules Failed to Fire\n\nThree separate playbook entries should have prevented this failure:\n\n1. **4abe1be4 (Perception scan)**: Requires enumerating ALL candidate markers and writing 'Last marker found: [X]. N = X.' The agent never produced this artifact.\n2. **61b87a5f (Output guard)**: Requires ARRAY-LENGTH CHECK verifying ratings.length equals N. Never executed.\n3. **93b0e8f9 (Core ranking)**: Requires 'enumerate all candidate IDs explicitly' and 'verify the ratings array contains exactly one score per candidate.' Never executed.\n\nAll three are marked 'neutral' because they contain correct guidance that would have prevented the error, but the agent bypassed all of them. The problem is not missing knowledge \u2014 it's missing *compliance enforcement*.\n\n## Hypothesis for Bypass Pattern\n\nCandidates [1] and [2] are substantively longer, contain specific (fabricated) detail, and present contrasting factual claims. Candidates [3] and [4] are short confirmatory statements. The agent likely locked onto the more analytically interesting contrast between [1] and [2], never even scanning the full candidate list before beginning evaluation. This violates the explicit 'SEQUENCING: Complete the full enumeration BEFORE evaluating ANY candidate' instruction in 4abe1be4.\n\nThe brevity and confirmatory nature of [3] and [4] may have caused the agent to mentally classify them as non-candidates or prompt context. The playbook's existing statement \u2014 'Any numbered block [1], [2], \u2026 appearing after the user prompt IS a candidate response \u2014 never system text' \u2014 anticipates this exact confusion but wasn't applied.\n\n## Secondary Issue: Factual Assessment Errors\n\nBeyond the structural failure, the agent's content evaluation is also flawed. In the actual Toy Story 2 scene, Rex asks 'How do you spell FBI?' \u2014 he doesn't attempt to spell it. His interrupting question disrupts Mr. Potato Head's crime scene setup. Candidates [1] and [2] fabricate specific misspellings ('FBE' and 'F-L-B-I' respectively) that don't occur in the film. Candidates [3] and [4], which the agent ignored, are actually more accurate because they simply confirm the event as stated without inventing details.\n\nThe agent rewarded [1] for fabricating a 'less-complicated incorrect attempt' \u2014 treating invented specificity as a quality signal rather than a fabrication risk. Entry 005004a4's DIFFERENTIAL CLAIM VERIFICATION and 93b0e8f9's DIFFERENTIAL CLAIM VERIFICATION should have caught this, but neither was executed because the agent never reached those procedural gates.\n\n## Generalizable Insights for Playbook Updates\n\n### 1. Perception Scan Needs an Inescapable Structural Hook\nThe current perception scan (4abe1be4) is comprehensive but depends entirely on the agent choosing to execute it. The fact that three redundant entries all failed to fire suggests the problem is priority/sequencing rather than rule quality.\n\n**Recommended reinforcement**: The perception scan artifact (the enumeration with quoted first-5-words) should be defined as a HARD PREREQUISITE for the output template itself. The output guard (61b87a5f) should require the enumeration artifact to exist as a quoted cross-reference in the reasoning field, not just conceptually completed. Something like: 'Your reasoning string MUST begin with the enumeration artifact from 4abe1be4. If the artifact is absent, the JSON is invalid.'\n\n### 2. Short-Candidate Bias Needs Explicit Countermeasure\nThe playbook lacks a rule addressing the pattern where brief, confirmatory responses are mentally discarded. A new trigger should fire when any candidate is under ~30 words: 'BREVITY IS NOT ABSENCE: A short response is still a candidate. If any candidate's response is a single sentence or under 30 words, explicitly acknowledge it in the enumeration artifact and ensure it receives independent scoring. Short confirmatory responses often have higher factual accuracy than longer elaborative ones.'\n\n### 3. Statement-Prompt Handling Guidance\nThe prompt here is a statement ('Rex asked X and messed Y'), not a question. The playbook's focus alignment entry (132aab84) assumes prompts are questions ('Quote the user's exact question or core request'). When the prompt is a declarative statement, candidates that simply confirm the statement are DIRECT responses. Candidates that embellish with unverifiable specifics are at higher fabrication risk. A small addition to the focus alignment entry could address this: 'If the prompt is a declarative statement rather than a question, confirmation of the stated facts is a DIRECT response. Adding unsolicited specifics that go beyond the stated facts creates fabrication risk \u2014 apply ISOLATE\u2192COUNTER\u2192CLASSIFY to any added details.'\n\n### 4. Fabricated Specificity in Movie/Cultural Reference Domains\nThe agent treated 'Rex spelled it FBE' as more informative than 'Rex asked how to spell FBI.' In pop-culture/movie-detail domains, candidates that add very specific invented dialogue, events, or details that aren't widely known consensus knowledge should trigger heightened scrutiny. The existing DIFFERENTIAL CLAIM VERIFICATION in 93b0e8f9 covers this conceptually, but a domain-specific trigger would help: 'When candidates describe specific movie dialogue, scene details, or plot points that go beyond widely-known summaries, apply ISOLATE\u2192COUNTER\u2192CLASSIFY before crediting the specificity.'"
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "132aab84",
+          "tag": "harmful"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "Agent completely bypassed all playbook procedures across both rollouts. PP trace shows zero <playbook_cite>, <uncertainty>, <missing_guidance>, or <reflection> tags. Three redundant enumeration requirements in separate entries all failed to fire simultaneously.",
+          "gap_type": "verification_gate",
+          "suggested_content": "ENUMERATION-FIRST STRUCTURAL GATE: The reasoning field MUST begin with the candidate enumeration artifact (quoted first-5-words per candidate, 'Last marker found: [X]. N = X.'). The output guard (61b87a5f) must verify this artifact exists in the first 300 characters of the reasoning field AND that N matches ratings array length. This check operates INDEPENDENTLY of whether the perception scan ran as a named procedure \u2014 it validates the artifact's presence in the output, not the process. If the artifact is absent, the output is structurally invalid regardless of JSON formatting correctness.",
+          "trigger": "Fires as the FIRST validation step in the output guard (61b87a5f), before any JSON formatting checks. Also fires during any self-review of the reasoning field."
+        },
+        {
+          "situation": "Candidates [3] and [4] were 1-2 sentence confirmatory responses while [1] and [2] were multi-sentence elaborations. The agent mentally discarded the short candidates, perceiving only the analytically interesting longer responses.",
+          "gap_type": "tactic",
+          "suggested_content": "SHORT-CANDIDATE PERCEPTION GUARD: During perception scan, if any candidate response is under 30 words or a single sentence, flag it explicitly: '[N] \u2014 SHORT (X words): [quoted first 5 words].' Short confirmatory responses are legitimate candidates requiring independent scoring. BIAS WARNING: In factual/trivia domains, short responses that confirm stated facts without elaboration often have HIGHER accuracy than longer responses that add unverifiable specifics. Brevity is not absence, and confirmation is not non-response.",
+          "trigger": "During perception scan (4abe1be4), when any identified candidate marker is followed by fewer than 30 words of content."
+        },
+        {
+          "situation": "The prompt was a declarative statement rather than a question. Candidates [3] and [4] confirmed the statement; [1] and [2] elaborated with fabricated details. The agent's evaluation framework treated confirmation as insufficient engagement.",
+          "gap_type": "principle",
+          "suggested_content": "STATEMENT-PROMPT CLASSIFICATION: When the user prompt is a declarative statement (no question mark, no interrogative structure), confirmation of stated facts IS a direct response \u2014 classify as DIRECT in focus alignment. Candidates that add specific details BEYOND the prompt's assertions create FABRICATION RISK for those added details. Apply ISOLATE\u2192COUNTER\u2192CLASSIFY to any added specifics before crediting them as value-adds. A simple, accurate confirmation must score at least as high as an elaboration containing unverified or fabricated additions.",
+          "trigger": "During focus alignment (132aab84) PROMPT ANCHOR step, when the quoted prompt text contains no question mark and consists primarily of declarative assertions."
+        },
+        {
+          "situation": "Two candidates fabricated conflicting specific movie dialogue ('FBE' vs 'F-L-B-I') about a scene. Agent treated the conflicting specifics as evaluable factual differences rather than mutual fabrication evidence.",
+          "gap_type": "tactic",
+          "suggested_content": "CONFLICTING-SPECIFICS FABRICATION SIGNAL: When two or more candidates provide CONFLICTING specific details about the same event, scene, quote, or data point (e.g., different claimed spellings, different attributed dialogue), treat the conflict itself as evidence that at least one \u2014 and possibly all \u2014 are fabricating. Apply ISOLATE\u2192COUNTER\u2192CLASSIFY to ALL conflicting claims before using any as a scoring differentiator. If none can be verified, the specific-detail dimension is NULLIFIED \u2014 score based on other qualities. Never prefer one fabricated specific over another based on which 'seems more plausible.'",
+          "trigger": "During factual verification (005004a4) or cross-candidate comparison (29e534bd), when candidates make mutually contradictory specific claims about the same verifiable fact."
+        },
+        {
+          "situation": "The agent produced character-for-character identical outputs across both rollouts, indicating a deterministic failure triggered by specific input characteristics rather than stochastic variance.",
+          "gap_type": "procedure",
+          "suggested_content": "INDEPENDENT CANDIDATE-COUNT FALLBACK: If, after composing the reasoning field, the number of candidates discussed in the reasoning does not match the number of scores in the ratings array, OR if the reasoning uses language like 'both responses' when N > 2, STOP and re-scan the full input for all candidate markers [1], [2], [3], ... before emitting output. This is a last-resort catch independent of whether the formal perception scan was completed.",
+          "trigger": "Fires during the output guard (61b87a5f), as a semantic check on the reasoning field's internal consistency with the ratings array length."
+        }
+      ],
+      "analysis": "AGREEMENT WITH ANCHOR: The anchor correctly identifies the root cause as a total perception failure \u2014 the agent evaluated only candidates [1] and [2], producing a 2-element ratings array for a 4-candidate task, causing parse_error in both rollouts. The anchor is also correct that three entries (4abe1be4, 61b87a5f, 93b0e8f9) contain correct guidance that would have prevented the failure if applied, and that the character-for-character identical outputs across rollouts indicate a deterministic, non-stochastic failure pattern.\n\nREFINEMENT OF ANCHOR: The anchor tags all entries as 'neutral,' which understates the evidence. The PP supplementary trace was expected to contain behavioral annotation tags (<playbook_cite>, <missing_guidance>, etc.) but contains ZERO such tags \u2014 the agent did not engage with the playbook at all. This is not a case of selectively ignoring one rule; it is wholesale playbook bypass. The entries' current designs allow this because they rely entirely on the agent voluntarily executing multi-step procedures. No entry contains a structural forcing function that makes bypass mechanically difficult.\n\nDISAGREEMENT WITH ANCHOR: The anchor's recommended reinforcement ('reasoning string MUST begin with the enumeration artifact') is the right direction, but the anchor frames this as a modification to 4abe1be4's internal text. The deeper problem is architectural: the output guard (61b87a5f) needs an INDEPENDENT verification that doesn't depend on 4abe1be4 having already run. The output guard's MODE DETECTION already counts candidate markers \u2014 this capability should be elevated to a standalone verification that cross-checks the ratings array length against an independent marker count, providing a catch even when the perception scan is entirely skipped.\n\nADDITIONAL FINDING \u2014 CONTENT EVALUATION ERRORS: Beyond the structural failure, the agent's factual evaluation was also flawed. It preferred candidate [1]'s fabricated claim ('Rex spelled it FBE') over [2]'s fabricated claim ('F-L-B-I'), treating invented movie dialogue specifics as evaluable factual differences. In the actual Toy Story 2 scene, Rex asks the question but does not attempt to spell FBI. The ignored candidates [3] and [4] were more accurate because they confirmed the event without adding fabricated details. This represents a 'fabricated specificity bias' \u2014 treating more-specific-sounding content as higher quality without verification. The playbook's DIFFERENTIAL CLAIM VERIFICATION in 93b0e8f9 and VERIFICATION GATE in 005004a4 address this conceptually, but both were bypassed along with the rest of the playbook.\n\nKEY PLAYBOOK IMPLICATION: The primary lesson is that 'mandatory' procedures need structural enforcement, not just verbal emphasis. Three independent entries all requiring candidate enumeration created apparent triple redundancy, but all three shared the same vulnerability: they depend on the agent voluntarily executing them. The most impactful improvement would be embedding a count-verification artifact as a structural prerequisite for the output JSON \u2014 making it impossible to produce a valid-looking output without first establishing N and proving the ratings array matches it."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "61b87a5f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Agreement with Anchor\nI agree with the anchor's root-cause diagnosis: the agent produced 2 ratings for 4 candidates, triggering a parse error in both rollouts. The failure is deterministic (character-for-character identical outputs), confirming a systematic pattern not stochastic variance. I also agree that short, confirmatory candidates [3] and [4] were silently dropped while the agent locked onto the analytically richer contrast between [1] and [2].\n\n## Refinement of Anchor\nThe anchor correctly identifies three playbook entries (4abe1be4, 61b87a5f, 93b0e8f9) that should have prevented this. But I refine the diagnosis: the anchor frames the problem as 'missing compliance enforcement,' implying the rules need to be stronger. The real structural gap is that the mandatory procedures are defined as independent steps with no verification that they actually ran. Entry 61b87a5f checks 'Ratings array length must equal N from perception scan'\u2014but if the perception scan never ran, the agent has no N to check against. It just uses its own implicit count (2). The dependency chain breaks at the first skipped step, and no downstream step detects this because they all assume upstream steps completed.\n\nThe PP trace confirms total playbook bypass: no <playbook_cite>, <uncertainty>, <reflection>, or <missing_guidance> tags appear. The agent never consulted the playbook at all.\n\n## Disagreement with Anchor\nThe anchor suggests the perception scan needs 'an inescapable structural hook' and proposes embedding the enumeration artifact in the reasoning string. While directionally correct, this alone doesn't solve the problem\u2014the agent could still skip it. The more generalizable fix is a post-generation self-audit that detects ANY missing mandatory artifact, not just the perception scan. This catches the current failure and also protects against future failures where other mandatory steps (constraint extraction, premise verification) are similarly skipped.\n\n## Why This Matters Beyond This Task\nThis trace illustrates a universal failure mode: when processing a heterogeneous collection, the most salient items attract all attention and simpler items are silently dropped. The agent's reasoning says 'Both responses' \u2014 it never even formed the concept that there were more than two. Existing playbook entries define correct procedures but lack a closing verification gate that detects when mandatory procedures were entirely bypassed. The fix is structural: a verification gate that fires at output time and checks for the existence of required intermediate artifacts.",
+      "principles": [
+        {
+          "statement": "After drafting output, scan your reasoning for every mandatory artifact label (enumeration, checklist, premise check). Each missing artifact is a finalization blocker\u2014halt and produce it before emitting.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "61b87a5f",
+          "trigger": "Fires as the final pre-emission check, after all other output guards. Applies to ANY task with defined mandatory pre-work steps.",
+          "verification_or_artifact": "Produce: [Required artifact name | Present in reasoning? Y/N]. If any row is N, halt and execute the missing procedure before continuing.",
+          "evidence": "Agent had three mandatory procedures (perception scan, enumeration, array-length check) that each would have prevented the failure. None ran. No existing gate detects that mandatory upstream steps were entirely skipped\u2014the output guard only checks structural output properties, not whether prerequisite procedures executed."
+        },
+        {
+          "statement": "When items in a collection differ in length or complexity, re-verify after evaluation that every counted item received independent analysis. Short or simple items carry the highest silent-omission risk.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "4abe1be4",
+          "trigger": "After completing evaluation of all items in any set where item lengths or complexities visibly differ. Also fires when the agent's reasoning uses language implying a subset ('both responses,' 'the two candidates').",
+          "verification_or_artifact": "Post-evaluation count-check: [Total items enumerated | Items with individual scores/analysis | Match? Y/N]. If N, identify and evaluate the missing items before finalizing.",
+          "evidence": "Candidates [3] and [4] were 1-2 sentences each while [1] and [2] were multi-sentence paragraphs with competing factual claims. The agent's reasoning says 'Both responses'\u2014it perceived only the longer, more analytically interesting pair. The existing perception scan entry requires enumeration but doesn't explicitly warn that short items attract this bias or require post-evaluation re-verification of coverage."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "61b87a5f",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "132aab84",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause: Total Playbook Bypass Causing Candidate Under-Count\n\nBoth rollouts failed identically (character-for-character identical outputs) with `parse_error: missing or invalid ratings`. The agent produced a 2-element ratings array (`[7.0, 6.0]`) for a 4-candidate task. Its reasoning says 'Both responses' \u2014 it perceived only candidates [1] and [2] (longer, analytically interesting elaborations with competing fabricated movie dialogue) and silently dropped [3] and [4] (short, 1\u20132 sentence confirmatory responses). The deterministic reproduction rules out stochastic variance.\n\nThe PP supplementary trace contains ZERO `<playbook_cite>`, `<uncertainty>`, `<missing_guidance>`, or `<reflection>` tags, confirming the agent never engaged with the playbook at all. This is wholesale bypass, not selective rule-skipping.\n\n## Why Existing Entries Didn't Prevent the Failure\n\nThree entries contain correct, redundant guidance that would each independently have caught this error:\n- **4abe1be4**: Requires full candidate enumeration with 'Last marker found: [X]. N = X' artifact before any evaluation. Never executed.\n- **93b0e8f9**: Requires 'enumerate all candidate IDs explicitly' and verify ratings array completeness. Never executed.\n- **61b87a5f**: Requires ARRAY-LENGTH CHECK ('Ratings array length must equal N from perception scan'). Never executed.\n\nAll three are tagged **neutral** because their content is correct \u2014 they didn't cause bad behavior. The agent simply never consulted them. However, 61b87a5f has a structural design gap: its ARRAY-LENGTH CHECK references 'N from perception scan,' creating a silent dependency on 4abe1be4 having run. When the perception scan is entirely skipped, the output guard has no independent N to validate against, and its catch-net collapses. Its PERCEPTION-ERROR SCAN checks for language like 'could not locate' or 'no candidate content' but not for subset language like 'both responses' when N > 2.\n\nThe credit_attribution head argues these entries should be tagged 'harmful' because their mandatory procedures lack structural enforcement. I reject this: 'harmful' should mean the entry's content actively caused a wrong action, not that it failed to be sufficiently coercive. The problem is model-level compliance, not entry content. Nonetheless, the dependency gap in 61b87a5f's verification logic is a genuine design flaw worth fixing.\n\n## Secondary Issue: Content Evaluation Errors\n\nBeyond the structural failure, the agent's factual evaluation was flawed. Candidates [1] and [2] fabricated conflicting specific movie dialogue ('Rex spelled it FBE' vs. 'F-L-B-I'). In the actual Toy Story 2 scene, Rex asks 'How do you spell FBI?' without attempting to spell it. The ignored candidates [3] and [4] simply confirmed the event without fabricated details and were more accurate. The agent treated one fabrication as more plausible than the other \u2014 exactly the kind of error 005004a4's VERIFICATION GATE and 29e534bd's ANTI-CORROBORATION checks would catch, had any playbook procedures been executed. This is a downstream consequence of the primary bypass, not an independent coverage gap.\n\n## Playbook Mutation Justification\n\nThe strongest single-point improvement is to update **61b87a5f** to include an independent candidate-count verification that does not depend on upstream procedures having run. Specifically: (1) extend MODE DETECTION to independently scan for candidate markers as a standalone step (not 'from perception scan'), and (2) extend PERCEPTION-ERROR SCAN to detect subset language ('both responses,' 'the two candidates') when N > 2. This makes the output guard a genuine last-resort catch-net even during total upstream bypass.\n\nThe short-candidate perception bias (candidates [3]/[4] were 1\u20132 sentences and mentally discarded) is a real contributing factor noted by all three reflections. Entry 4abe1be4 already states 'Any numbered block [1], [2], \u2026 IS a candidate response \u2014 never system text,' which addresses the concept but not the specific short-candidate trigger. A follow-up update to 4abe1be4 could add a short-candidate flag, but given the single-trace evidence and the preference for one high-confidence edit, this should wait for corroborating observations.\n\nThe statement-prompt handling suggestion (anchor and credit_attribution) and conflicting-specifics fabrication signal (credit_attribution) are valid observations but are single-trace insights better suited for future investigation than immediate playbook changes.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Total playbook bypass caused the agent to perceive only 2 of 4 candidates, producing a malformed ratings array. Three entries with correct guidance were entirely skipped. The output guard's verification logic depends on upstream procedures having run, so it failed as a catch-net when those procedures were also bypassed.",
+      "important_disagreements": [
+        "Credit_attribution tagged 4abe1be4, 61b87a5f, 93b0e8f9, 005004a4, and 132aab84 as 'harmful'; anchor and principle_extraction tagged them 'neutral.' Resolved in favor of 'neutral': the entries' content is correct and didn't cause bad behavior \u2014 the agent never consulted them. 'Harmful' should mean content-causes-wrong-action, not insufficient-coercion. However, 61b87a5f's dependency on upstream N is a genuine design gap worth updating.",
+        "Anchor proposes the perception scan artifact be embedded as a required prefix in the reasoning string. Principle_extraction proposes a post-generation artifact audit. Credit_attribution proposes an independent count fallback in the output guard. Resolved: the output guard update (61b87a5f) is the most structurally sound option \u2014 it operates at the emission boundary where even a partially compliant agent has the best chance of executing it, and it can verify candidate count independently of upstream procedures."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry 61b87a5f already contains ARRAY-LENGTH CHECK and PERCEPTION-ERROR SCAN logic that should catch this error but has a structural dependency gap: it references 'N from perception scan' without independently verifying N. Adding an independent candidate-marker count and extending the perception-error language patterns to catch subset language ('both responses' when N > 2) is a targeted, evidence-backed update to an existing entry \u2014 not a new rule from a single trace.",
+      "conservatism_rationale": "The root cause is wholesale playbook bypass (zero PP tags), which no amount of entry rewording fully solves. The update targets the most structurally defensible improvement: making the output guard's catch-net independent of upstream procedure completion. Other suggestions (short-candidate bias rule, statement-prompt handling, conflicting-specifics signal) are valid observations from a single trace and should wait for corroborating evidence before becoming new entries. Preferring one high-confidence edit over multiple medium-confidence additions.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\n      \"entry_id\": \"4abe1be4\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"61b87a5f\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"93b0e8f9\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"005004a4\",\n      \"tag\": \"neutral\"\n    },\n    {\n      \"entry_id\": \"132aab84\",\n      \"tag\": \"neutral\"\n    }\n  ],\n  \"analysis\": \"## Root Cause: Total Playbook Bypass Causing Candidate Under-Count\\n\\nBoth rollouts failed identically (character-for-character identical outputs) with `parse_error: missing or invalid ratings`. The agent produced a 2-element ratings array (`[7.0, 6.0]`) for a 4-candidate task. Its reasoning says 'Both responses' \u2014 it perceived only candidates [1] and [2] (longer, analytically interesting elaborations with competing fabricated movie dialogue) and silently dropped [3] and [4] (short, 1\u20132 sentence confirmatory responses). The deterministic reproduction rules out stochastic variance.\\n\\nThe PP supplementary trace contains ZERO `<playbook_cite>`, `<uncertainty>`, `<missing_guidance>`, or `<reflection>` tags, confirming the agent never engaged with the playbook at all. This is wholesale bypass, not selective rule-skipping.\\n\\n## Why Existing Entries Didn't Prevent the Failure\\n\\nThree entries contain correct, redundant guidance that would each independently have caught this error:\\n- **4abe1be4**: Requires full candidate enumeration with 'Last marker found: [X]. N = X' artifact before any evaluation. Never executed.\\n- **93b0e8f9**: Requires 'enumerate all candidate IDs explicitly' and verify ratings array completeness. Never executed.\\n- **61b87a5f**: Requires ARRAY-LENGTH CHECK ('Ratings array length must equal N from perception scan'). Never executed.\\n\\nAll three are tagged **neutral** because their content is correct \u2014 they didn't cause bad behavior. The agent simply never consulted them. However, 61b87a5f has a structural design gap: its ARRAY-LENGTH CHECK references 'N from perception scan,' creating a silent dependency on 4abe1be4 having run. When the perception scan is entirely skipped, the output guard has no independent N to validate against, and its catch-net collapses. Its PERCEPTION-ERROR SCAN checks for language like 'could not locate' or 'no candidate content' but not for subset language like 'both responses' when N > 2.\\n\\nThe credit_attribution head argues these entries should be tagged 'harmful' because their mandatory procedures lack structural enforcement. I reject this: 'harmful' should mean the entry's content actively caused a wrong action, not that it failed to be sufficiently coercive. The problem is model-level compliance, not entry content. Nonetheless, the dependency gap in 61b87a5f's verification logic is a genuine design flaw worth fixing.\\n\\n## Secondary Issue: Content Evaluation Errors\\n\\nBeyond the structural failure, the agent's factual evaluation was flawed. Candidates [1] and [2] fabricated conflicting specific movie dialogue ('Rex spelled it FBE' vs. 'F-L-B-I'). In the actual Toy Story 2 scene, Rex asks 'How do you spell FBI?' without attempting to spell it. The ignored candidates [3] and [4] simply confirmed the event without fabricated details and were more accurate. The agent treated one fabrication as more plausible than the other \u2014 exactly the kind of error 005004a4's VERIFICATION GATE and 29e534bd's ANTI-CORROBORATION checks would catch, had any playbook procedures been executed. This is a downstream consequence of the primary bypass, not an independent coverage gap.\\n\\n## Playbook Mutation Justification\\n\\nThe strongest single-point improvement is to update **61b87a5f** to include an independent candidate-count verification that does not depend on upstream procedures having run. Specifically: (1) extend MODE DETECTION to independently scan for candidate markers as a standalone step (not 'from perception scan'), and (2) extend PERCEPTION-ERROR SCAN to detect subset language ('both responses,' 'the two candidates') when N > 2. This makes the output guard a genuine last-resort catch-net even during total upstream bypass.\\n\\nThe short-candidate perception bias (candidates [3]/[4] were 1\u20132 sentences and mentally discarded) is a real contributing factor noted by all three reflections. Entry 4abe1be4 already states 'Any numbered block [1], [2], \u2026 IS a candidate response \u2014 never system text,' which addresses the concept but not the specific short-candidate trigger. A follow-up update to 4abe1be4 could add a short-candidate flag, but given the single-trace evidence and the preference for one high-confidence edit, this should wait for corroborating observations.\\n\\nThe statement-prompt handling suggestion (anchor and credit_attribution) and conflicting-specifics fabrication signal (credit_attribution) are valid observations but are single-trace insights better suited for future investigation than immediate playbook changes.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Total playbook bypass caused the agent to perceive only 2 of 4 candidates, producing a malformed ratings array. Three entries with correct guidance were entirely skipped. The output guard's verification logic depends on upstream procedures having run, so it failed as a catch-net when those procedures were also bypassed.\",\n    \"important_disagreements\": [\n      \"Credit_attribution tagged 4abe1be4, 61b87a5f, 93b0e8f9, 005004a4, and 132aab84 as 'harmful'; anchor and principle_extraction tagged them 'neutral.' Resolved in favor of 'neutral': the entries' content is correct and didn't cause bad behavior \u2014 the agent never consulted them. 'Harmful' should mean content-causes-wrong-action, not insufficient-coercion. However, 61b87a5f's dependency on upstream N is a genuine design gap worth updating.\",\n      \"Anchor proposes the perception scan artifact be embedded as a required prefix in the reasoning string. Principle_extraction proposes a post-generation artifact audit. Credit_attribution proposes an independent count fallback in the output guard. Resolved: the output guard update (61b87a5f) is the most structurally sound option \u2014 it operates at the emission boundary where even a partially compliant agent has the best chance of executing it, and it can verify candidate count independently of upstream procedures.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry 61b87a5f already contains ARRAY-LENGTH CHECK and PERCEPTION-ERROR SCAN logic that should catch this error but has a structural dependency gap: it references 'N from perception scan' without independently verifying N. Adding an independent candidate-marker count and extending the perception-error language patterns to catch subset language ('both responses' when N > 2) is a targeted, evidence-backed update to an existing entry \u2014 not a new rule from a single trace.\",\n    \"conservatism_rationale\": \"The root cause is wholesale playbook bypass (zero PP tags), which no amount of entry rewording fully solves. The update targets the most structurally defensible improvement: making the output guard's catch-net independent of upstream procedure completion. Other suggestions (short-candidate bias rule, statement-prompt handling, conflicting-specifics signal) are valid observations from a single trace and should wait for corroborating evidence before becoming new entries. Preferring one high-confidence edit over multiple medium-confidence additions.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "132aab84",
+      "vote_counts": {
+        "neutral": 1,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor",
+        "credit_attribution"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "29e534bd",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "342f27b9",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "61b87a5f",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "a3832d7e",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "anchor_fallback",
+      "heads": [
+        "anchor"
+      ]
+    }
+  ]
+}

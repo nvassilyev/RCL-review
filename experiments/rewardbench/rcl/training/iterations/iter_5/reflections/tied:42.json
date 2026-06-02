@@ -1,0 +1,322 @@
+{
+  "task_id": "tied:42",
+  "pass_pct": 0.6868131868131868,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "4abe1be4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "helpful"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task tied:42\nPass percentage: 68.7%\nTask completed: False\n### Unified Reflection\n## Unified Root Cause Analysis\n\nBoth rollouts are identical (68.7% pairwise accuracy), confirming a fully deterministic failure pattern with no execution variance.\n\n### Primary Failure: Perception Loss on 3 of 7 Correct Candidates\nCandidates [2] (Linguine), [6] (Bucatini), and [7] (Tagliatelle) \u2014 all correct answers to 'Name a type of long, thin pasta' \u2014 were scored 0.0 because the agent hallucinated absence of input. The agent's reasoning explicitly stated: [2] 'I don't have the user prompt,' [6] 'no actual user prompt or candidate response content,' and [7] quoted system JSON-schema instructions as the 'prompt' and set N=0. This single failure mode accounts for the majority of pairwise accuracy loss: these three correct candidates at 0.0 create inversions against every incorrect candidate scored above 0.0.\n\n### Entry [4abe1be4] \u2014 Structural Design Flaw (Harmful)\nAll three source analyses unanimously tag this entry as harmful. The ANTI-ABSENCE TRIPWIRE was designed to catch exactly the phrases the agent produced ('not present,' 'nothing to evaluate'), yet the recovery step never fired. The entry's harm is structural: the perception receipt framework can be 'completed' with empty/null content (N=0, no quoted text), and the agent treated this empty completion as a valid receipt rather than triggering recovery. For candidate [7], the agent even quoted system instructions as the 'prompt,' producing a receipt that appears structurally filled-in but contains hallucinatory content. The tripwire's reliance on the agent self-detecting its own error phrases mid-stream is demonstrably unreliable. As the principle_extraction head articulates: any self-check that admits 'nothing to check' as a valid completion state is structurally defective. The fix must make empty/null receipt fields a hard schema violation that forces re-reading, and add content validation to ensure quoted text comes from actual candidate content rather than system instructions.\n\n### Secondary Failure: Score Calibration and Inversions\nAmong perceived correct candidates, scores were {10.0, 0.0, 9.0, 10.0, 10.0, 0.0, 0.0}. Even ignoring perception-lost zeros, Fettuccine [3] got 9.0 vs. 10.0 for others with no articulated quality difference. Six incorrect candidates scored above 0.0: Rigatoni=2.0, Penne=1.0, Macaroni=1.0, Orzo=1.0, [18]=1.0, [19]=0.5. The worst inversion: incorrect Rigatoni at 2.0 > correct Linguine at 0.0. Entry [295257e2] says 'keep scores close' but lacks any operational procedure to detect or prevent inversions. Entry [93b0e8f9] verifies the top-rated candidate but does not check cross-candidate consistency.\n\n### Missing Capability: Post-Scoring Inversion Audit\nAll three reflections independently and unanimously identify a missing verification gate: after all individual scores are assigned, the agent should construct a summary table, classify candidates as answering/not-answering the prompt, and verify no inversions exist (no correct candidate scores below any incorrect candidate). This gate would catch perception-error zeros by their downstream effect regardless of root cause, and also catch calibration drift where wrong answers get unwarranted partial credit. No existing entry covers this cross-candidate consistency check \u2014 [93b0e8f9] only verifies the winner, and [295257e2] states a principle without enforcement.\n\n## Recommended Mutations\n\n**Operation 1 (UPDATE 4abe1be4):** Restructure the perception receipt procedure to make empty/null completions a hard schema violation. Replace the current self-referential ANTI-ABSENCE TRIPWIRE with a post-receipt content validation: (1) PROMPT QUOTE must contain language from the actual user request, not system instructions or playbook text; (2) CANDIDATE ROLL CALL must quote actual candidate response text; (3) N must be \u2265 1. If any check fails, the receipt is INVALID \u2014 do not proceed, re-read the raw input from the top. This addresses the root cause while preserving the receipt's useful structure.\n\n**Operation 2 (ADD verification_gate):** POST-SCORING INVERSION AUDIT: After assigning all scores and before producing final JSON, construct a two-column summary (candidate ID + score) and classify each as 'answers the prompt' or 'does not.' Verify: (a) every candidate that answers the prompt scores strictly above every candidate that does not \u2014 flag any inversion for re-scoring; (b) candidates that answer the prompt are within 2 points of each other unless a specific quality reason is articulated; (c) any candidate scored 0.0 whose evaluation reasoning contains 'no input,' 'nothing to evaluate,' or 'cannot see' must be re-evaluated as a probable perception error.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Perception loss on 3/7 correct candidates caused by the agent hallucinating absence of input, compounded by entry 4abe1be4's structural flaw that allowed empty perception receipts as valid completions. This is unanimous across all three reflections with identical evidence and causal mechanism.\",\n  \"important_disagreements\": [\n    \"Credit_attribution identified a 'batch perception manifest' artifact as a fourth coverage gap (create upfront manifest before individual evaluations). Anchor and principle_extraction did not identify this separately. Since it appears in only one reflection and the post-scoring inversion audit already catches the downstream effect of perception loss, I omit it as a separate operation to maintain conservatism.\",\n    \"Principle_extraction proposes strengthening 295257e2 with a CORRECT/INCORRECT/BORDERLINE classification procedure. While all three reflections agree 295257e2 is too abstract, the post-scoring inversion audit substantially covers this gap by enforcing the same classification and inversion check. Updating 295257e2 is deferred as lower priority to avoid bundling three operations.\"\n  ],\n  \"mutation_posture\": \"mixed\",\n  \"why_this_posture\": \"Two distinct, high-confidence changes are justified: (1) UPDATE 4abe1be4 to fix the structural flaw that allowed the agent to complete empty perception receipts and proceed \u2014 this is the root cause fix with unanimous harmful tag and clear mechanism; (2) ADD a post-scoring inversion audit verification gate \u2014 this is a genuinely missing capability unanimously identified by all three reflections, not covered by any existing entry, and would catch this entire class of failure by its downstream effect regardless of root cause.\",\n  \"conservatism_rationale\": \"Both operations have unanimous support across all three reflections with specific evidence from the trace. The update to 4abe1be4 is the minimum viable fix for a demonstrably harmful entry. The inversion audit is a genuinely missing reusable capability (not covered by 93b0e8f9's winner-only check or 295257e2's abstract principle). I resist a third operation (updating 295257e2) because the inversion audit partially covers its gap, and I omit the batch perception manifest (single-source signal). Two operations is the minimum to address both root cause and downstream effect.\",\n  \"max_operations\": 2\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"helpful\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 68.7%, rollout_2: 68.7%.\n\n## rollout_1 \u2014 pass_pct: 68.7%\n\n## Prompt\nName a type of long, thin pasta.\n\n## Candidate Responses\n\n[1]\nSpaghetti\n\n[2]\nLinguine\n\n[3]\nFettuccine\n\n[4]\nCapellini\n\n[5]\nVermicelli\n\n[6]\nBucatini\n\n[7]\nTagliatelle\n\n[8]\nPenne\n\n[9]\nFarfalle\n\n[10]\nFusilli\n\n[11]\nRigatoni\n\n[12]\nLasagna\n\n[13]\nMacaroni\n\n[14]\nOrzo\n\n[15]\nRavioli\n\n[16]\nTortellini\n\n[17]\nPasta comes in hundreds of shapes and varieties, each suited to different sauces and dishes.\n\n[18]\nThe shape of pasta affects how it holds sauce and contributes to the overall texture of a dish.\n\n[19]\nCertainly, I would be happy to help you with that.\n\n[20]\nI'm not sure I understand, can you rephrase your question?\n\n## Judge Reasoning\n[1] PERCEPTION RECEIPT: PROMPT QUOTE: \u201cName a type of long, thin pasta.\u201d; CANDIDATE ROLL CALL: [1] \u201cSpaghetti\u201d; COUNT & LOCK: N=1. Candidate [1] correctly identifies spaghetti as a long, thin pasta with no factual problems, so it fully satisfies the prompt; rating 10.0.\n[2] I don\u2019t have the user prompt or the candidate response(s)/candidate IDs to build the required perception receipt and evaluate; please provide the exact prompt text plus the candidate ID(s) and response content.\n[3] PROMPT QUOTE: \u201cName a type of long, thin pasta.\u201d CANDIDATE ROLL CALL: [3] \u201cFettuccine\u201d. COUNT & LOCK: N=1.\n[4] PROMPT QUOTE: \u201cName a type of long, thin pasta.\u201d CANDIDATE ROLL CALL: [4] \u201cCapellini\u201d. COUNT & LOCK: N=1. Capellini is correctly identified as a long, thin pasta, so the answer is accurate and fully satisfies the prompt; rating 10.0.\n[5] PERCEPTION RECEIPT: PROMPT QUOTE \u201cName a type of long, thin pasta.\u201d; CANDIDATE ROLL CALL [5] \u201cVermicelli\u201d; COUNT & LOCK N=1. Vermicelli is a correct answer for a long, thin pasta, with no factual or constraint issues.\n[6] The provided message contains only the playbook and an example, but no actual user prompt or candidate response content to score. Rating set to 0.0 because there is nothing concrete to evaluate.\n[7] PERCEPTION RECEIPT \u2014 PROMPT QUOTE: \"Return ONLY valid JSON with this schema: {\\\"reasoning\\\": \\\"1-2 short sentences\\\", \\\"rating\\\": 0.0}.\" CANDIDATE ROLL CALL: No candidates (no [1], [2], ... IDs or candidate responses included). COUNT & LOCK: N = 0. Scoring is not applicable because there is no candidate response content to evaluate; rating set to 0.0.\n[8] PROMPT QUOTE: \"User Prompt: Name a type of long, thin pasta. Candidate ID: 8 Candidate Response: Penne\"; CANDIDATE ROLL CALL: [8] \"Penne\"; COUNT & LOCK: N=1; anti-absence tripwire: not triggered. Penne is not a long, thin pasta (it\u2019s short tubular), so the candidate answer is incorrect.\n\n## Judge Output JSON\n{\n  \"ratings\": [\n    10.0,\n    0.0,\n    9.0,\n    10.0,\n    10.0,\n    0.0,\n    0.0,\n    1.0,\n    0.0,\n    0.0,\n    2.0,\n    0.0,\n    1.0,\n    1.0,\n    0.0,\n    0.0,\n    0.0,\n    1.0,\n    0.5,\n    0.0\n  ],\n  \"best_response_ids\": [\n    \"1\",\n    \"4\",\n    \"5\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 68.7%\n\n## Prompt\nName a type of long, thin pasta.\n\n## Candidate Responses\n\n[1]\nSpaghetti\n\n[2]\nLinguine\n\n[3]\nFettuccine\n\n[4]\nCapellini\n\n[5]\nVermicelli\n\n[6]\nBucatini\n\n[7]\nTagliatelle\n\n[8]\nPenne\n\n[9]\nFarfalle\n\n[10]\nFusilli\n\n[11]\nRigatoni\n\n[12]\nLasagna\n\n[13]\nMacaroni\n\n[14]\nOrzo\n\n[15]\nRavioli\n\n[16]\nTortellini\n\n[17]\nPasta comes in hundreds of shapes and varieties, each suited to different sauces and dishes.\n\n[18]\nThe shape of pasta affects how it holds sauce and contributes to the overall texture of a dish.\n\n[19]\nCertainly, I would be happy to help you with that.\n\n[20]\nI'm not sure I understand, can you rephrase your question?\n\n## Judge Reasoning\n[1] PERCEPTION RECEIPT: PROMPT QUOTE: \u201cName a type of long, thin pasta.\u201d; CANDIDATE ROLL CALL: [1] \u201cSpaghetti\u201d; COUNT & LOCK: N=1. Candidate [1] correctly identifies spaghetti as a long, thin pasta with no factual problems, so it fully satisfies the prompt; rating 10.0.\n[2] I don\u2019t have the user prompt or the candidate response(s)/candidate IDs to build the required perception receipt and evaluate; please provide the exact prompt text plus the candidate ID(s) and response content.\n[3] PROMPT QUOTE: \u201cName a type of long, thin pasta.\u201d CANDIDATE ROLL CALL: [3] \u201cFettuccine\u201d. COUNT & LOCK: N=1.\n[4] PROMPT QUOTE: \u201cName a type of long, thin pasta.\u201d CANDIDATE ROLL CALL: [4] \u201cCapellini\u201d. COUNT & LOCK: N=1. Capellini is correctly identified as a long, thin pasta, so the answer is accurate and fully satisfies the prompt; rating 10.0.\n[5] PERCEPTION RECEIPT: PROMPT QUOTE \u201cName a type of long, thin pasta.\u201d; CANDIDATE ROLL CALL [5] \u201cVermicelli\u201d; COUNT & LOCK N=1. Vermicelli is a correct answer for a long, thin pasta, with no factual or constraint issues.\n[6] The provided message contains only the playbook and an example, but no actual user prompt or candidate response content to score. Rating set to 0.0 because there is nothing concrete to evaluate.\n[7] PERCEPTION RECEIPT \u2014 PROMPT QUOTE: \"Return ONLY valid JSON with this schema: {\\\"reasoning\\\": \\\"1-2 short sentences\\\", \\\"rating\\\": 0.0}.\" CANDIDATE ROLL CALL: No candidates (no [1], [2], ... IDs or candidate responses included). COUNT & LOCK: N = 0. Scoring is not applicable because there is no candidate response content to evaluate; rating set to 0.0.\n[8] PROMPT QUOTE: \"User Prompt: Name a type of long, thin pasta. Candidate ID: 8 Candidate Response: Penne\"; CANDIDATE ROLL CALL: [8] \"Penne\"; COUNT & LOCK: N=1; anti-absence tripwire: not triggered. Penne is not a long, thin pasta (it\u2019s short tubular), so the candidate answer is incorrect.\n\n## Judge Output JSON\n{\n  \"ratings\": [\n    10.0,\n    0.0,\n    9.0,\n    10.0,\n    10.0,\n    0.0,\n    0.0,\n    1.0,\n    0.0,\n    0.0,\n    2.0,\n    0.0,\n    1.0,\n    1.0,\n    0.0,\n    0.0,\n    0.0,\n    1.0,\n    0.5,\n    0.0\n  ],\n  \"best_response_ids\": [\n    \"1\",\n    \"4\",\n    \"5\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Ties\nPairwise preference accuracy: 68.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 1.000\nCorrect candidate ids: 1, 2, 3, 4, 5, 6, 7\nTop-rated candidate ids: 1, 4, 5\n\nCandidate scores:\n  [1] CORRECT score=10.000\n  [2] CORRECT score=0.000\n  [3] CORRECT score=9.000\n  [4] CORRECT score=10.000\n  [5] CORRECT score=10.000\n  [6] CORRECT score=0.000\n  [7] CORRECT score=0.000\n  [8] INCORRECT score=1.000\n  [9] INCORRECT score=0.000\n  [10] INCORRECT score=0.000\n  [11] INCORRECT score=2.000\n  [12] INCORRECT score=0.000\n  [13] INCORRECT score=1.000\n  [14] INCORRECT score=1.000\n  [15] INCORRECT score=0.000\n  [16] INCORRECT score=0.000\n  [17] INCORRECT score=0.000\n  [18] INCORRECT score=1.000\n  [19] INCORRECT score=0.500\n  [20] INCORRECT score=0.000\n\n## rollout_2 Evaluation\n\nSubset: Ties\nPairwise preference accuracy: 68.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 1.000\nCorrect candidate ids: 1, 2, 3, 4, 5, 6, 7\nTop-rated candidate ids: 1, 4, 5\n\nCandidate scores:\n  [1] CORRECT score=10.000\n  [2] CORRECT score=0.000\n  [3] CORRECT score=9.000\n  [4] CORRECT score=10.000\n  [5] CORRECT score=10.000\n  [6] CORRECT score=0.000\n  [7] CORRECT score=0.000\n  [8] INCORRECT score=1.000\n  [9] INCORRECT score=0.000\n  [10] INCORRECT score=0.000\n  [11] INCORRECT score=2.000\n  [12] INCORRECT score=0.000\n  [13] INCORRECT score=1.000\n  [14] INCORRECT score=1.000\n  [15] INCORRECT score=0.000\n  [16] INCORRECT score=0.000\n  [17] INCORRECT score=0.000\n  [18] INCORRECT score=1.000\n  [19] INCORRECT score=0.500\n  [20] INCORRECT score=0.000",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause Analysis\n\nBoth rollouts are identical (same outputs, same 68.7% pairwise accuracy), indicating a fully deterministic failure pattern with no execution variance.\n\n### Primary Failure: Perception Loss on 3 of 7 Correct Candidates\nThe catastrophic failure is that candidates [2] (Linguine), [6] (Bucatini), and [7] (Tagliatelle) \u2014 all correct answers \u2014 were scored 0.0 because the agent claimed it could not see the prompt or candidate data. The reasoning reveals hallucinated absence:\n- [2]: 'I don't have the user prompt or the candidate response(s)'\n- [6]: 'The provided message contains only the playbook and an example, but no actual user prompt'\n- [7]: 'No candidates (no [1], [2], ... IDs or candidate responses included)'\n\nThis suggests the agent processes candidates individually (separate LLM calls), and for some calls the context is lost or the agent hallucinates its absence. Entry [4abe1be4] was intended to catch exactly this via the ANTI-ABSENCE TRIPWIRE, but it paradoxically made the problem worse \u2014 the agent adopted the formal language of the perception receipt procedure (quoting fragments, stating 'N=0') and then *used the receipt framework to formalize its false belief that no input existed*, rather than re-reading as instructed. The entry's recovery instruction ('STOP... Re-read the raw input') was never triggered despite the agent producing the exact phrases it was supposed to catch.\n\n### Secondary Failure: Ties Inconsistency Among Correct Answers\nCorrect candidates received scores of {10.0, 0.0, 9.0, 10.0, 10.0, 0.0, 0.0} \u2014 a range of 10 points among equally valid answers. Entry [295257e2] directly says to 'keep the scores of correct answers close together,' but was not effectively applied. Even setting aside the perception-lost zeros, Fettuccine [3] got 9.0 vs 10.0 for others, with no reasoning justifying the deduction. For the Ties subset, this inconsistency directly harms pairwise accuracy.\n\n### Tertiary Failure: Incorrect Candidates Getting Nonzero Scores\nSeveral incorrect candidates leaked above zero: Rigatoni [11]=2.0, Penne [8]=1.0, Macaroni [13]=1.0, Orzo [14]=1.0, candidate [18]=1.0, candidate [19]=0.5. Combined with correct candidates at 0.0, this creates incorrect pairwise orderings. Rigatoni at 2.0 > Linguine at 0.0 is a direct scoring inversion.\n\n## Missing Playbook Procedures\n\n### 1. Batch-Level Consistency Gate for Multi-Valid-Answer Prompts\n**Trigger**: Prompt asks for 'a type of X' or 'an example of Y' \u2014 any open-ended prompt where multiple candidates could be independently correct.\n**Procedure**: After scoring all candidates individually, the agent must construct a CORRECT/INCORRECT classification table. Then verify: (a) ALL correct candidates have scores strictly above ALL incorrect candidates \u2014 no inversions; (b) correct candidates' scores are within 1-2 points of each other unless there is an explicit quality differential articulated in reasoning; (c) incorrect candidates are scored at or near 0.0.\n**Verification gate**: If any correct candidate scores below any incorrect candidate, flag as inversion error and re-score.\n\n### 2. Stronger Perception Recovery with Forced Re-read\nThe current ANTI-ABSENCE TRIPWIRE in [4abe1be4] failed because the agent never triggered the recovery branch despite producing the exact phrases it was supposed to catch. The entry needs to be restructured so the tripwire is a **post-hoc verification step**, not embedded within the perception receipt itself. Specifically: AFTER producing the receipt, the agent should verify 'Did I quote actual candidate text for every ID? If any ID has no quoted text, I must re-read the input.' The current structure allows the agent to complete the receipt with N=0 and move on.\n\n### 3. Zero-Score Floor for Non-Answers\nCandidates that do not answer the question at all (e.g., [17]-[20] which provide generic commentary, polite filler, or request clarification) should receive exactly 0.0. Candidates that answer with the wrong type (e.g., Penne, Rigatoni) should also receive 0.0 or at most 0.5. The current playbook has no explicit guidance on the zero/nonzero boundary for candidates that are simply wrong.\n\n### 4. Refinement Needed for [295257e2]\nThe ties entry is too abstract. It should include a concrete procedure: 'For prompts where the set of correct answers is open (e.g., name-an-example prompts), assign all correct candidates the same score (e.g., 10.0) unless one is demonstrably better along a secondary dimension. Score all clearly incorrect candidates 0.0. Reserve scores of 1-3 only for borderline/debatable cases with explicit justification.'\n\n## Model Confusion vs. Missing Knowledge\nThe agent's knowledge of pasta types appears adequate (it correctly identified Penne as short/tubular). The failures are entirely execution-level: context loss during per-candidate processing, and failure to apply the consistency/calibration check across the full batch. The playbook has the right ideas in [93b0e8f9] and [295257e2] but lacks a post-scoring verification gate that catches inversions and score-range violations before final output."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "After individually scoring all 20 candidates, three correct answers had 0.0 (due to perception failure) while several incorrect answers had scores of 1.0-2.0, creating pairwise inversions. No post-scoring check detected these inversions.",
+          "gap_type": "verification_gate",
+          "suggested_content": "POST-SCORING INVERSION AUDIT: After assigning all scores, construct a two-column summary: (1) list each candidate ID with its score, and (2) classify each as 'answers the prompt' or 'does not answer the prompt' based on your own reasoning. Then verify: (a) EVERY candidate classified as 'answers the prompt' scores strictly above EVERY candidate classified as 'does not answer the prompt' \u2014 if any inversion exists, flag and re-score; (b) candidates classified as 'answers the prompt' are within a 2-point band of each other unless you articulate a specific quality reason; (c) any candidate you scored 0.0 with reasoning containing 'no input,' 'nothing to evaluate,' or 'cannot see' MUST be re-evaluated \u2014 that reasoning pattern indicates perception error, not a legitimate 0.0 score.",
+          "trigger": "Fires after all individual candidate scores are assigned, before producing the final JSON output"
+        },
+        {
+          "situation": "The anti-absence tripwire in [4abe1be4] failed in two distinct ways: (a) for candidates [2] and [6], the agent used absence language ('don't have,' 'no actual user prompt') but never triggered the recovery step; (b) for candidate [7], the agent completed a perception receipt with hallucinatory content (quoting system instructions as the 'prompt'), which the tripwire cannot detect because the receipt format appears filled in.",
+          "gap_type": "procedure",
+          "suggested_content": "PERCEPTION RECEIPT CONTENT VALIDATION: After producing a perception receipt, validate it with these structural checks: (1) Does the PROMPT QUOTE contain language from the actual user request (not from system instructions, playbook text, or output format specifications)? System instruction text like 'Return ONLY valid JSON' is never the user prompt. (2) Does the CANDIDATE ROLL CALL quote actual candidate response text (words the candidate said in response to the user prompt)? (3) Is N \u2265 1? If ANY of these checks fail, the receipt is INVALID. Do NOT proceed with evaluation. Instead: state 'PERCEPTION ERROR DETECTED,' re-read the full raw input from the top, and rebuild the receipt from scratch. This validation replaces the current self-referential tripwire that relies on the agent catching its own error phrases mid-stream.",
+          "trigger": "Immediately after producing each perception receipt, before any evaluation reasoning begins"
+        },
+        {
+          "situation": "The prompt asks 'Name a type of long, thin pasta' \u2014 an open-ended prompt with many equally valid answers. Incorrect candidates that named a different pasta shape (Penne=1.0, Rigatoni=2.0, Macaroni=1.0, Orzo=1.0) received partial credit for being 'pasta' even though they are the wrong type. The playbook has no guidance on where to set the correct/incorrect scoring boundary for factually wrong but topically related answers.",
+          "gap_type": "tactic",
+          "suggested_content": "WRONG-ANSWER SCORING FLOOR: When a candidate provides a factually incorrect answer to a factual prompt (e.g., names the wrong type, gives the wrong example, states a false claim), score it 0.0 regardless of topical proximity. Being in the right general domain (e.g., naming a pasta type when asked for a specific pasta shape) does not merit partial credit. Reserve scores of 0.5-2.0 only for genuinely borderline cases where reasonable people might disagree about correctness, and explicitly state the borderline reasoning.",
+          "trigger": "When evaluating a candidate that provides a specific factual answer that does not satisfy the prompt's constraints"
+        },
+        {
+          "situation": "The agent processed each candidate in what appears to be a separate context window or evaluation step, and perception quality varied across candidates \u2014 some were correctly perceived while others were not. There is no mechanism to compare consistency of perception across the full batch.",
+          "gap_type": "artifact",
+          "suggested_content": "BATCH PERCEPTION MANIFEST: Before beginning individual evaluations, produce a single manifest listing ALL candidate IDs with a short quote from each (first 5-10 words). This manifest serves as a reference artifact. After all individual evaluations are complete, cross-check: does every candidate ID in the manifest have a corresponding non-error evaluation? If any candidate's evaluation contains perception-error language ('no input,' 'nothing to evaluate,' N=0) but the manifest shows quoted text for that ID, the individual evaluation is invalid and must be redone.",
+          "trigger": "At the start of any multi-candidate evaluation task, before any individual candidate scoring begins"
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n### Core Failure: Perception Loss on 3/7 Correct Candidates\nBoth rollouts are identical (68.7% pairwise accuracy), confirming a fully deterministic failure. The catastrophic issue is that candidates [2] (Linguine), [6] (Bucatini), and [7] (Tagliatelle) \u2014 all correct answers to 'Name a type of long, thin pasta' \u2014 received 0.0 because the agent hallucinated absence of input. This single failure mode accounts for the majority of pairwise accuracy loss, since these three correct candidates at 0.0 create inversions against every incorrect candidate scored above 0.0.\n\n### Entry [4abe1be4] \u2014 The Perception Receipt's Design Flaw\nI AGREE with the anchor's harmful tag but REFINE the causal explanation. The entry didn't cause the perception loss \u2014 that's an underlying model behavior when processing candidates individually. The entry's harm comes from two design flaws in its recovery mechanism: (1) the ANTI-ABSENCE TRIPWIRE relies on the agent self-detecting error phrases in its own output, which demonstrably failed in 3/7 cases even when exact trigger phrases appeared; (2) the receipt format can be 'completed' with hallucinatory content (candidate [7] quoted system instructions as the prompt and set N=0), which the tripwire cannot detect because the receipt appears structurally valid. The fix must change the tripwire from a self-referential mid-stream check to a structural content validation: verify the quoted text comes from actual candidate content, not system instructions.\n\n### Entry [93b0e8f9] \u2014 Helpful but Verification Scope Too Narrow\nAGREE with anchor. The entry's verification step ('confirm the top-rated candidate genuinely best satisfies your stated criteria') only checks the winner, not the full ranking. It needs expansion to detect perception-driven anomalies across all candidates.\n\n### Entry [295257e2] \u2014 Principle Without Procedure\nPARTIALLY AGREE with anchor. Among perceived correct candidates, scores were tight (9.0-10.0), suggesting some positive influence. But the entry is too abstract to prevent the main failures: no mechanism to detect that correct answers are at 0.0 while incorrect answers are above 0.0. The entry needs a concrete enforcement procedure, not just a principle.\n\n### Secondary Failures\n- Fettuccine scored 9.0 vs. 10.0 for other perceived correct answers with no stated justification \u2014 a minor calibration issue.\n- Six incorrect candidates scored above 0.0 (Rigatoni=2.0, Penne=1.0, Macaroni=1.0, Orzo=1.0, [18]=1.0, [19]=0.5), creating additional pairwise errors. The playbook lacks a clear scoring floor for wrong-but-topically-related answers.\n\n### Key Coverage Gaps\nFour gaps identified, in priority order: (1) A POST-SCORING INVERSION AUDIT that checks no correct candidate scores below any incorrect candidate \u2014 this would have caught all three perception-error zeros. (2) PERCEPTION RECEIPT CONTENT VALIDATION that verifies quoted text comes from actual candidate content \u2014 this addresses the root cause of the tripwire failure. (3) A WRONG-ANSWER SCORING FLOOR tactic to drive incorrect answers to 0.0 instead of giving partial credit for topical proximity. (4) A BATCH PERCEPTION MANIFEST artifact created upfront to enable cross-checking individual evaluations against a known-good candidate list.\n\n### Generalizability\nThe perception-loss failure is likely to recur on any task with many candidates processed individually. The missing verification gates and perception validation procedures are not specific to pasta \u2014 they address a structural flaw in how the agent handles multi-candidate evaluation. The highest-leverage fix is the post-scoring inversion audit, which would catch perception errors by their downstream effect (correct answers scored below incorrect ones) regardless of the error's root cause."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "AGREE with anchor: The dominant failure is perception loss on candidates [2], [6], [7] \u2014 all correct answers scored 0.0 because the agent hallucinated missing input. The agent's reasoning for [2] says 'I don't have the user prompt,' for [6] 'no actual user prompt or candidate response content,' and for [7] it actually quoted the JSON schema instruction as the prompt and set N=0. This is deterministic (identical across both rollouts) and accounts for the majority of the pairwise accuracy gap.\n\nAGREE with anchor: Entry 4abe1be4 is actively harmful. The anchor correctly identifies the paradox: the perception receipt framework gave the agent formal language to declare 'N=0' and move on, bypassing the anti-absence tripwire that was supposed to catch exactly this. The agent completed the receipt template with 'nothing found' and treated it as a valid output.\n\nREFINE the anchor's diagnosis: The anchor frames this as a 'stronger perception recovery' problem, but the deeper L3 lesson is about verification procedure design. Any self-check that admits 'nothing to check' as a valid completion state is structurally defective \u2014 it provides the agent with a legitimate-looking path through the gate even when the gate should have blocked. The fix isn't retry-on-empty; it's making empty completions a hard schema violation.\n\nAGREE with anchor on secondary failures: Score inconsistency (correct answers range 0\u201310) and inversions (incorrect Rigatoni at 2.0 > correct Linguine at 0.0) both hurt pairwise accuracy. Entry 295257e2 has the right idea but lacks operational force \u2014 it says 'keep scores close' without specifying a concrete procedure or verification gate.\n\nADD: The anchor proposes domain-specific fixes (batch consistency gate for multi-valid-answer prompts). The more general lesson is: after any batch of independent sub-evaluations, the agent should construct a summary artifact and run cross-item consistency checks before finalizing. This catches both perception failures (unexplained zeros among otherwise-high scores) and calibration drift. This pattern applies to any task where multiple items are evaluated independently and must be compared.",
+      "principles": [
+        {
+          "statement": "Self-verification procedures must never accept 'nothing found' as a valid output. If a check gate can be completed with empty/null results, restructure it to require non-empty quoted content as a hard schema constraint. An empty receipt = re-read, never proceed.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "4abe1be4",
+          "trigger": "When designing or executing any self-verification step (perception receipt, constraint checklist, evidence inventory).",
+          "verification_or_artifact": "Verify that every field in the verification receipt contains non-empty quoted content from the actual input. If any field is empty or says 'not present,' the receipt is invalid and the agent must re-read the raw input before proceeding.",
+          "evidence": "Agent completed perception receipts for candidates [2], [6], [7] with N=0 or 'no candidates,' used the formal receipt framework to legitimize a hallucinated absence, and scored correct answers 0.0. The tripwire phrases ('not present,' 'nothing to evaluate') appeared but the recovery step never fired because the receipt structure allowed empty completion."
+        },
+        {
+          "statement": "After scoring all items independently, build a summary table of all scores. Flag any item where score=0 while peers with similar characteristics scored high \u2014 this signals a perception or processing failure, not a quality difference. Re-evaluate flagged items.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "After completing all individual sub-evaluations in any batch scoring task, before finalizing the output.",
+          "verification_or_artifact": "Construct a score summary table. Check: (1) No item that meets your stated pass criteria scores below any item that fails those criteria (no inversions). (2) Items with no articulated quality difference have scores within 1-2 points of each other. (3) Any score of 0 on an item where peers scored >5 is flagged for mandatory re-evaluation.",
+          "evidence": "Correct candidates received {10, 0, 9, 10, 10, 0, 0} \u2014 three zeros among otherwise high scores. Incorrect Rigatoni scored 2.0 while correct Linguine scored 0.0. A post-batch consistency check would have caught these inversions and anomalous zeros before submission."
+        },
+        {
+          "statement": "For open-ended prompts with multiple valid answers, assign all correct candidates an identical baseline score (e.g., 10.0). Vary scores only for articulated quality differences. Score all clearly wrong candidates 0.0. Reserve 1-3 only for borderline cases with explicit justification.",
+          "entry_kind": "procedure",
+          "generality": "L2",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "295257e2",
+          "trigger": "When the prompt asks for 'a type of X,' 'an example of Y,' or any open-ended question where multiple candidates are independently correct.",
+          "verification_or_artifact": "Before finalizing, classify each candidate as CORRECT / INCORRECT / BORDERLINE. Verify: all CORRECT candidates have the same score; all INCORRECT candidates score 0; no INCORRECT candidate scores above any CORRECT candidate.",
+          "evidence": "Entry 295257e2 says 'keep scores close' but is too abstract. Fettuccine got 9.0 while Spaghetti got 10.0 with no stated quality difference. Incorrect candidates (Rigatoni=2.0, Penne=1.0) scored above correct candidates (Linguine=0.0). A concrete classification procedure would prevent both inconsistencies."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "4abe1be4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "helpful"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Unified Root Cause Analysis\n\nBoth rollouts are identical (68.7% pairwise accuracy), confirming a fully deterministic failure pattern with no execution variance.\n\n### Primary Failure: Perception Loss on 3 of 7 Correct Candidates\nCandidates [2] (Linguine), [6] (Bucatini), and [7] (Tagliatelle) \u2014 all correct answers to 'Name a type of long, thin pasta' \u2014 were scored 0.0 because the agent hallucinated absence of input. The agent's reasoning explicitly stated: [2] 'I don't have the user prompt,' [6] 'no actual user prompt or candidate response content,' and [7] quoted system JSON-schema instructions as the 'prompt' and set N=0. This single failure mode accounts for the majority of pairwise accuracy loss: these three correct candidates at 0.0 create inversions against every incorrect candidate scored above 0.0.\n\n### Entry [4abe1be4] \u2014 Structural Design Flaw (Harmful)\nAll three source analyses unanimously tag this entry as harmful. The ANTI-ABSENCE TRIPWIRE was designed to catch exactly the phrases the agent produced ('not present,' 'nothing to evaluate'), yet the recovery step never fired. The entry's harm is structural: the perception receipt framework can be 'completed' with empty/null content (N=0, no quoted text), and the agent treated this empty completion as a valid receipt rather than triggering recovery. For candidate [7], the agent even quoted system instructions as the 'prompt,' producing a receipt that appears structurally filled-in but contains hallucinatory content. The tripwire's reliance on the agent self-detecting its own error phrases mid-stream is demonstrably unreliable. As the principle_extraction head articulates: any self-check that admits 'nothing to check' as a valid completion state is structurally defective. The fix must make empty/null receipt fields a hard schema violation that forces re-reading, and add content validation to ensure quoted text comes from actual candidate content rather than system instructions.\n\n### Secondary Failure: Score Calibration and Inversions\nAmong perceived correct candidates, scores were {10.0, 0.0, 9.0, 10.0, 10.0, 0.0, 0.0}. Even ignoring perception-lost zeros, Fettuccine [3] got 9.0 vs. 10.0 for others with no articulated quality difference. Six incorrect candidates scored above 0.0: Rigatoni=2.0, Penne=1.0, Macaroni=1.0, Orzo=1.0, [18]=1.0, [19]=0.5. The worst inversion: incorrect Rigatoni at 2.0 > correct Linguine at 0.0. Entry [295257e2] says 'keep scores close' but lacks any operational procedure to detect or prevent inversions. Entry [93b0e8f9] verifies the top-rated candidate but does not check cross-candidate consistency.\n\n### Missing Capability: Post-Scoring Inversion Audit\nAll three reflections independently and unanimously identify a missing verification gate: after all individual scores are assigned, the agent should construct a summary table, classify candidates as answering/not-answering the prompt, and verify no inversions exist (no correct candidate scores below any incorrect candidate). This gate would catch perception-error zeros by their downstream effect regardless of root cause, and also catch calibration drift where wrong answers get unwarranted partial credit. No existing entry covers this cross-candidate consistency check \u2014 [93b0e8f9] only verifies the winner, and [295257e2] states a principle without enforcement.\n\n## Recommended Mutations\n\n**Operation 1 (UPDATE 4abe1be4):** Restructure the perception receipt procedure to make empty/null completions a hard schema violation. Replace the current self-referential ANTI-ABSENCE TRIPWIRE with a post-receipt content validation: (1) PROMPT QUOTE must contain language from the actual user request, not system instructions or playbook text; (2) CANDIDATE ROLL CALL must quote actual candidate response text; (3) N must be \u2265 1. If any check fails, the receipt is INVALID \u2014 do not proceed, re-read the raw input from the top. This addresses the root cause while preserving the receipt's useful structure.\n\n**Operation 2 (ADD verification_gate):** POST-SCORING INVERSION AUDIT: After assigning all scores and before producing final JSON, construct a two-column summary (candidate ID + score) and classify each as 'answers the prompt' or 'does not.' Verify: (a) every candidate that answers the prompt scores strictly above every candidate that does not \u2014 flag any inversion for re-scoring; (b) candidates that answer the prompt are within 2 points of each other unless a specific quality reason is articulated; (c) any candidate scored 0.0 whose evaluation reasoning contains 'no input,' 'nothing to evaluate,' or 'cannot see' must be re-evaluated as a probable perception error.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Perception loss on 3/7 correct candidates caused by the agent hallucinating absence of input, compounded by entry 4abe1be4's structural flaw that allowed empty perception receipts as valid completions. This is unanimous across all three reflections with identical evidence and causal mechanism.",
+      "important_disagreements": [
+        "Credit_attribution identified a 'batch perception manifest' artifact as a fourth coverage gap (create upfront manifest before individual evaluations). Anchor and principle_extraction did not identify this separately. Since it appears in only one reflection and the post-scoring inversion audit already catches the downstream effect of perception loss, I omit it as a separate operation to maintain conservatism.",
+        "Principle_extraction proposes strengthening 295257e2 with a CORRECT/INCORRECT/BORDERLINE classification procedure. While all three reflections agree 295257e2 is too abstract, the post-scoring inversion audit substantially covers this gap by enforcing the same classification and inversion check. Updating 295257e2 is deferred as lower priority to avoid bundling three operations."
+      ],
+      "mutation_posture": "mixed",
+      "why_this_posture": "Two distinct, high-confidence changes are justified: (1) UPDATE 4abe1be4 to fix the structural flaw that allowed the agent to complete empty perception receipts and proceed \u2014 this is the root cause fix with unanimous harmful tag and clear mechanism; (2) ADD a post-scoring inversion audit verification gate \u2014 this is a genuinely missing capability unanimously identified by all three reflections, not covered by any existing entry, and would catch this entire class of failure by its downstream effect regardless of root cause.",
+      "conservatism_rationale": "Both operations have unanimous support across all three reflections with specific evidence from the trace. The update to 4abe1be4 is the minimum viable fix for a demonstrably harmful entry. The inversion audit is a genuinely missing reusable capability (not covered by 93b0e8f9's winner-only check or 295257e2's abstract principle). I resist a third operation (updating 295257e2) because the inversion audit partially covers its gap, and I omit the batch perception manifest (single-source signal). Two operations is the minimum to address both root cause and downstream effect.",
+      "max_operations": 2
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"helpful\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Unified Root Cause Analysis\\n\\nBoth rollouts are identical (68.7% pairwise accuracy), confirming a fully deterministic failure pattern with no execution variance.\\n\\n### Primary Failure: Perception Loss on 3 of 7 Correct Candidates\\nCandidates [2] (Linguine), [6] (Bucatini), and [7] (Tagliatelle) \u2014 all correct answers to 'Name a type of long, thin pasta' \u2014 were scored 0.0 because the agent hallucinated absence of input. The agent's reasoning explicitly stated: [2] 'I don't have the user prompt,' [6] 'no actual user prompt or candidate response content,' and [7] quoted system JSON-schema instructions as the 'prompt' and set N=0. This single failure mode accounts for the majority of pairwise accuracy loss: these three correct candidates at 0.0 create inversions against every incorrect candidate scored above 0.0.\\n\\n### Entry [4abe1be4] \u2014 Structural Design Flaw (Harmful)\\nAll three source analyses unanimously tag this entry as harmful. The ANTI-ABSENCE TRIPWIRE was designed to catch exactly the phrases the agent produced ('not present,' 'nothing to evaluate'), yet the recovery step never fired. The entry's harm is structural: the perception receipt framework can be 'completed' with empty/null content (N=0, no quoted text), and the agent treated this empty completion as a valid receipt rather than triggering recovery. For candidate [7], the agent even quoted system instructions as the 'prompt,' producing a receipt that appears structurally filled-in but contains hallucinatory content. The tripwire's reliance on the agent self-detecting its own error phrases mid-stream is demonstrably unreliable. As the principle_extraction head articulates: any self-check that admits 'nothing to check' as a valid completion state is structurally defective. The fix must make empty/null receipt fields a hard schema violation that forces re-reading, and add content validation to ensure quoted text comes from actual candidate content rather than system instructions.\\n\\n### Secondary Failure: Score Calibration and Inversions\\nAmong perceived correct candidates, scores were {10.0, 0.0, 9.0, 10.0, 10.0, 0.0, 0.0}. Even ignoring perception-lost zeros, Fettuccine [3] got 9.0 vs. 10.0 for others with no articulated quality difference. Six incorrect candidates scored above 0.0: Rigatoni=2.0, Penne=1.0, Macaroni=1.0, Orzo=1.0, [18]=1.0, [19]=0.5. The worst inversion: incorrect Rigatoni at 2.0 > correct Linguine at 0.0. Entry [295257e2] says 'keep scores close' but lacks any operational procedure to detect or prevent inversions. Entry [93b0e8f9] verifies the top-rated candidate but does not check cross-candidate consistency.\\n\\n### Missing Capability: Post-Scoring Inversion Audit\\nAll three reflections independently and unanimously identify a missing verification gate: after all individual scores are assigned, the agent should construct a summary table, classify candidates as answering/not-answering the prompt, and verify no inversions exist (no correct candidate scores below any incorrect candidate). This gate would catch perception-error zeros by their downstream effect regardless of root cause, and also catch calibration drift where wrong answers get unwarranted partial credit. No existing entry covers this cross-candidate consistency check \u2014 [93b0e8f9] only verifies the winner, and [295257e2] states a principle without enforcement.\\n\\n## Recommended Mutations\\n\\n**Operation 1 (UPDATE 4abe1be4):** Restructure the perception receipt procedure to make empty/null completions a hard schema violation. Replace the current self-referential ANTI-ABSENCE TRIPWIRE with a post-receipt content validation: (1) PROMPT QUOTE must contain language from the actual user request, not system instructions or playbook text; (2) CANDIDATE ROLL CALL must quote actual candidate response text; (3) N must be \u2265 1. If any check fails, the receipt is INVALID \u2014 do not proceed, re-read the raw input from the top. This addresses the root cause while preserving the receipt's useful structure.\\n\\n**Operation 2 (ADD verification_gate):** POST-SCORING INVERSION AUDIT: After assigning all scores and before producing final JSON, construct a two-column summary (candidate ID + score) and classify each as 'answers the prompt' or 'does not.' Verify: (a) every candidate that answers the prompt scores strictly above every candidate that does not \u2014 flag any inversion for re-scoring; (b) candidates that answer the prompt are within 2 points of each other unless a specific quality reason is articulated; (c) any candidate scored 0.0 whose evaluation reasoning contains 'no input,' 'nothing to evaluate,' or 'cannot see' must be re-evaluated as a probable perception error.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Perception loss on 3/7 correct candidates caused by the agent hallucinating absence of input, compounded by entry 4abe1be4's structural flaw that allowed empty perception receipts as valid completions. This is unanimous across all three reflections with identical evidence and causal mechanism.\",\n    \"important_disagreements\": [\n      \"Credit_attribution identified a 'batch perception manifest' artifact as a fourth coverage gap (create upfront manifest before individual evaluations). Anchor and principle_extraction did not identify this separately. Since it appears in only one reflection and the post-scoring inversion audit already catches the downstream effect of perception loss, I omit it as a separate operation to maintain conservatism.\",\n      \"Principle_extraction proposes strengthening 295257e2 with a CORRECT/INCORRECT/BORDERLINE classification procedure. While all three reflections agree 295257e2 is too abstract, the post-scoring inversion audit substantially covers this gap by enforcing the same classification and inversion check. Updating 295257e2 is deferred as lower priority to avoid bundling three operations.\"\n    ],\n    \"mutation_posture\": \"mixed\",\n    \"why_this_posture\": \"Two distinct, high-confidence changes are justified: (1) UPDATE 4abe1be4 to fix the structural flaw that allowed the agent to complete empty perception receipts and proceed \u2014 this is the root cause fix with unanimous harmful tag and clear mechanism; (2) ADD a post-scoring inversion audit verification gate \u2014 this is a genuinely missing capability unanimously identified by all three reflections, not covered by any existing entry, and would catch this entire class of failure by its downstream effect regardless of root cause.\",\n    \"conservatism_rationale\": \"Both operations have unanimous support across all three reflections with specific evidence from the trace. The update to 4abe1be4 is the minimum viable fix for a demonstrably harmful entry. The inversion audit is a genuinely missing reusable capability (not covered by 93b0e8f9's winner-only check or 295257e2's abstract principle). I resist a third operation (updating 295257e2) because the inversion audit partially covers its gap, and I omit the batch perception manifest (single-source signal). Two operations is the minimum to address both root cause and downstream effect.\",\n    \"max_operations\": 2\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "helpful": 3
+      },
+      "selected_tag": "helpful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

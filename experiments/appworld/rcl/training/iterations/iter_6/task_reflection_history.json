@@ -1,0 +1,704 @@
+{
+  "6104387_3": [
+    {
+      "iteration": 1,
+      "analysis": "**Root cause of rollout_1's failure (70%)**: The 3 failing tests all relate to parsing the CSV file content into a song_title_to_artist_names dictionary and matching it against expected data. The critical difference between rollout_1 (70%) and rollout_2 (100%) is the CSV quoting strategy in the manually-constructed CSV.\n\nRollout_1 used an always-quoting csv_escape function: `return '\"' + val.replace('\"','\"\"') + '\"'` \u2014 wrapping every field in double quotes regardless of content. This produced lines like:\n```\n\"Memories Stitched in Time\",\"Jasper Skye|Isabella Cruz|Seraphina Dawn\"\n```\n\nRollout_2 used selective quoting: only quoting when the field actually contains commas, newlines, or quote characters. This produced lines like:\n```\nA Symphony Written in Tears,Aria Sterling\n```\n\nThe size difference (2901 vs 2621 bytes = 280 bytes = 4 extra quote chars \u00d7 70 rows) confirms this is the sole structural difference. The test's CSV parser evidently does a simple line-based parse (split on comma) and does not strip surrounding quotes from parsed values. So rollout_1's titles had embedded `\"` characters that caused key/value mismatches against expected data, even with normalize_text comparison.\n\n**Why this is a generalizable pattern**: When the `csv` module (csv.writer, csv.DictWriter) is disallowed (a common AppWorld restriction), the agent must implement manual CSV generation. The quoting strategy is not cosmetic \u2014 it directly affects how downstream consumers parse the output. Over-quoting fields introduces literal quote characters into parsed values.\n\n**Missing playbook knowledge**:\n1. **Restricted module fallback strategy for CSV**: The playbook has no guidance on what to do when `csv.writer`/`csv.DictWriter` are blocked. Both rollouts stumbled into this restriction, and their different manual implementations led to different outcomes.\n2. **Minimal-quoting CSV rule**: When manually constructing CSV, only quote fields that contain delimiters (comma), newlines, or double-quote characters. Never always-quote, as simple parsers (and test harnesses) may not strip surrounding quotes.\n\n**Verification gap**: Rollout_1 did verify the file existed and checked its first few lines, but did not verify that individual field values parsed correctly. A spot-check of one data row by splitting on comma and confirming no extraneous quote characters would have caught this.\n\n**Not a weak application of existing rules**: No existing playbook entry covers CSV format restrictions or manual CSV construction patterns. This is a true coverage gap.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "df468d8b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "0be186ff",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "When `csv.writer`/`csv.DictWriter` are blocked at runtime, build CSV manually with SELECTIVE quoting: only quote a field if it contains a comma, newline, or double-quote character. Never always-quote every field \u2014 simple parsers and test harnesses may not strip surrounding quotes, causing key/value mismatches.\n\n```python\ndef csv_escape(val):\n    s = str(val) if val is not None else ''\n    s = s.replace('\"', '\"\"')\n    if any(c in s for c in [',', '\\n', '\\r', '\"']):\n        return '\"' + s + '\"'\n    return s\n```",
+          "rationale": "Rollout_1 of task 1 failed 3/10 tests because always-quoting CSV fields introduced literal quote characters into parsed values. Rollout_2 used selective quoting and passed 10/10. The csv module is commonly blocked in AppWorld.",
+          "scope_hint": "Applies whenever generating CSV content and csv.writer/csv.DictWriter raise a disallowed-function error.",
+          "entry_id": "8f26163d"
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When a task involves responding to or fulfilling a contact's request (send info, answer a question, etc.): (1) Read the conversation/message history with that person FIRST to discover the SPECIFIC criteria of their request. (2) Extract filter/selection parameters from their message. (3) Gather data from the relevant source. (4) Apply criteria to filter \u2014 build an explicit filtered list as an intermediate artifact. (5) Verify: response includes ALL items matching criteria and NONE that don't. (6) Send. Never skip step 1 \u2014 the conversation often contains critical constraints not stated in the task description.",
+          "rationale": "Rollout_1 of task 2 sent all 21 movie titles instead of only Tarantino's 2, because it never checked Laura's message asking specifically for Tarantino recommendations. Rollout_2 checked messages first, filtered correctly, and passed 8/8.",
+          "scope_hint": "Applies whenever the task references a person's request/question and involves sending them information gathered from another source.",
+          "entry_id": "9f8d858f"
+        }
+      ]
+    }
+  ],
+  "29caf6f_2": [
+    {
+      "iteration": 1,
+      "analysis": "**Root cause of rollout_1 failure (87.5%):** Rollout 1 failed the test `assert that none of private_data.non_director_movie_titles occur as a substring in added global_text_message` because it sent ALL 21 movie titles from the 'Movie Recommendations' note to Laura, rather than only the Quentin Tarantino movies (Django Unchained, Pulp Fiction). The critical omission was that rollout 1 never read the text message conversation with Laura to discover that she specifically asked: 'Do you have any recommendations for a movie from Quentin Tarantino?' It assumed the task was to dump all recommendations.\n\n**Success factor for rollout_2 (100%):** Rollout 2 checked the text message history with Laura, found her specific Tarantino request, parsed the note to extract only movies with 'director: Quentin Tarantino', and sent the correctly filtered list 'Django Unchained, Pulp Fiction'.\n\n**The PP trace confirms this pattern:** The PP agent explicitly fetched Laura's messages (finding the Tarantino request at sent_at 2023-05-18T10:59:26), then parsed the note to match director == 'Quentin Tarantino', and sent only the matching titles.\n\n**Generalizable missing knowledge:** The playbook lacks guidance on a critical step in multi-source tasks: **inspecting all relevant context before acting**. Specifically:\n\n1. **Trigger:** When a task involves responding to or fulfilling someone's request (a message, email, etc.), the agent must first read the conversation/message history with that person to understand the SPECIFIC parameters of their request.\n2. **Procedure:** Read the conversation \u2192 extract filter/selection criteria from the request \u2192 gather data from the source \u2192 apply the criteria to filter \u2192 compose the response.\n3. **Intermediate artifact:** A filtered list (e.g., 'movies by director X') should be constructed as an explicit intermediate step before composing the final message.\n4. **Verification gate:** Before sending, verify: (a) the response includes only items matching the stated criteria, and (b) it includes ALL items matching those criteria.\n\nRollout 1 skipped the first step entirely and jumped from 'find note with movie recommendations' straight to 'send everything to Laura,' never constructing a filtered intermediate representation. This is not a case of weak application of an existing rule \u2014 no playbook entry addresses the need to inspect conversation context to discover task-specific filter criteria.\n\n**The agent's action drifted from the task requirements** because it never gathered sufficient information about what the task actually required. A consistency check of 'does my response match the specific request?' would have caught this, but the agent never surfaced the specific request in the first place.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "df468d8b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "0be186ff",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "common_mistakes_and_correct_strategies",
+          "content": "When `csv.writer`/`csv.DictWriter` are blocked at runtime, build CSV manually with SELECTIVE quoting: only quote a field if it contains a comma, newline, or double-quote character. Never always-quote every field \u2014 simple parsers and test harnesses may not strip surrounding quotes, causing key/value mismatches.\n\n```python\ndef csv_escape(val):\n    s = str(val) if val is not None else ''\n    s = s.replace('\"', '\"\"')\n    if any(c in s for c in [',', '\\n', '\\r', '\"']):\n        return '\"' + s + '\"'\n    return s\n```",
+          "rationale": "Rollout_1 of task 1 failed 3/10 tests because always-quoting CSV fields introduced literal quote characters into parsed values. Rollout_2 used selective quoting and passed 10/10. The csv module is commonly blocked in AppWorld.",
+          "scope_hint": "Applies whenever generating CSV content and csv.writer/csv.DictWriter raise a disallowed-function error.",
+          "entry_id": "8f26163d"
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When a task involves responding to or fulfilling a contact's request (send info, answer a question, etc.): (1) Read the conversation/message history with that person FIRST to discover the SPECIFIC criteria of their request. (2) Extract filter/selection parameters from their message. (3) Gather data from the relevant source. (4) Apply criteria to filter \u2014 build an explicit filtered list as an intermediate artifact. (5) Verify: response includes ALL items matching criteria and NONE that don't. (6) Send. Never skip step 1 \u2014 the conversation often contains critical constraints not stated in the task description.",
+          "rationale": "Rollout_1 of task 2 sent all 21 movie titles instead of only Tarantino's 2, because it never checked Laura's message asking specifically for Tarantino recommendations. Rollout_2 checked messages first, filtered correctly, and passed 8/8.",
+          "scope_hint": "Applies whenever the task references a person's request/question and involves sending them information gathered from another source.",
+          "entry_id": "9f8d858f"
+        }
+      ]
+    }
+  ],
+  "6ea6792_1": [
+    {
+      "iteration": 2,
+      "analysis": "**Root cause of rollout_1 failure (83.3%):** The agent attempted to approve ALL 26 pending Venmo payment requests before establishing which ones came from roommates/coworkers. This 'act first, filter later' approach caused irreversible state changes \u2014 15 of the 26 pending requests disappeared between the first fetch and the second fetch (likely approved or state-corrupted by the initial bulk approval attempt). When the agent finally implemented proper filtering, only 4 of the expected 10 matching requests remained pending. It approved those 4 correctly, but the total approved set did not match the expected 10 IDs (the failed test: 'assert set of updated payment request ids match exactly').\n\n**Success factor in rollout_2 (100%):** The agent followed a correct sequence: (1) gathered roommate/coworker emails from phone contacts, (2) fetched all 26 pending payment requests, (3) filtered to 10 matching requests, (4) approved only those 10. Since filtering happened BEFORE any approval actions, the state was clean and exactly the right set was approved.\n\n**The critical ordering pattern:** For bulk actions with eligibility criteria, the agent must ALWAYS resolve eligibility criteria and filter BEFORE taking any actions. Actions are often irreversible (approving a payment request cannot be undone). If the agent acts on all items first and filters afterward, it risks (a) modifying ineligible items, (b) corrupting state so eligible items become unfindable, and (c) producing a modified set that doesn't match expectations.\n\n**Missing playbook guidance:** There is no entry covering the 'filter before act' principle for bulk operations. Entry [9f8d858f] addresses criteria extraction from conversation context, but its trigger ('responding to a contact's request') is too narrow. The needed rule applies whenever a task requires performing the same action on a SUBSET of items matching specific criteria \u2014 the agent must build the filtered list as an intermediate artifact BEFORE executing any actions.\n\n**PP trace corroboration:** The supplementary trace shows the same anti-pattern \u2014 the agent approved all 26 requests without filtering (17 succeeded before balance ran out), then tried to top up and approve the rest. It happened to approve the right ones among others, but would likely fail the exact-match test. This confirms the failure mode is systematic, not a fluke.\n\n**Additional observation:** Rollout_1 also suffered from a token copy-paste error (step 12 had a corrupted token string), wasting steps. Using stored variables rather than manual copy-paste (per entry [c3efc092]) would have avoided this, but it didn't contribute to the core failure.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "9f8d858f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "df468d8b",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "0be186ff",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8f26163d",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "strategies_and_hard_rules",
+          "content": "When a task requires performing an action (approve, delete, update, send) on a SUBSET of items matching criteria: (1) Resolve ALL filter criteria first (e.g., fetch contact lists, relationship categories, tags). (2) Fetch the COMPLETE set of candidate items. (3) Apply filters and build an explicit filtered list \u2014 print it as a verification artifact before proceeding. (4) Execute actions ONLY on items in the filtered list. NEVER act on all items first and filter afterward \u2014 many actions (approvals, deletions, payments) are irreversible and premature bulk actions can corrupt state so eligible items become unfindable on re-fetch.",
+          "rationale": "Rollout_1 of the Venmo task approved all 26 pending requests before filtering to roommates/coworkers, causing irreversible state corruption; only 4 of 10 expected requests remained when filtering was finally applied. Rollout_2 filtered first and approved exactly the right 10. Entry [9f8d858f] covers criteria extraction from conversation context but is too narrowly scoped to cover this general bulk-action ordering invariant.",
+          "scope_hint": "Applies whenever a task involves performing the same action on multiple items that must first be filtered by eligibility criteria (relationship, status, category, etc.).",
+          "entry_id": "12cfb18e"
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "analysis": "**Root cause**: Rollout 1 failed because it approved ALL 26 pending Venmo payment requests instead of the correct subset of 10 from roommates and coworkers. It never consulted the phone app to resolve contact relationships and never built a filtered candidate list. Rollout 2 succeeded by first fetching roommate and coworker contacts from the phone app, then filtering pending requests by sender email match, and only then approving the resulting 10 requests.\n\n**Cascading damage from premature action**: In rollout 1, approving all 26 requests burned through the ~$1280 Venmo balance (15 went through before hitting 'Insufficient money'), leaving only $36. The agent then scrambled to find a valid payment card (first card was expired), and eventually approved the remaining 11 with a MasterCard. The final approved set (all 26) didn't match the expected 10, causing the test 'assert set of updated payment request ids match exactly to private_data.to_accept_payment_request_ids' to fail. This is exactly the irreversible-action corruption scenario that entry [12cfb18e] warns against.\n\n**Existing coverage is sufficient**: Entry [12cfb18e] explicitly says: 'Resolve ALL filter criteria first (e.g., fetch contact lists, relationship categories, tags)... Apply filters and build an explicit filtered list... NEVER act on all items first and filter afterward.' Entry [f43ad77c] says: 'Use phone app for contact/person lookup.' The PP trace confirms both entries were consulted and led to the correct approach. The failure in rollout 1 is not a playbook gap \u2014 it's a failure to recognize that the task requires filtering at all.\n\n**Why weak application, not weak coverage**: The PP trace shows explicit `<playbook_cite>` references to these entries and successful filtering. Rollout 2 (no PP annotations) also independently arrived at the correct approach. The variance between rollout 1 and rollout 2 is in task comprehension and rule triggering, not in what rules are available. Adding more rules won't help if the agent doesn't recognize the trigger condition ('approve requests from roommates/coworkers' implies a subset, not all).\n\n**No missing procedure or verification gate**: Rollout 2's procedure (identify criteria \u2192 resolve contacts \u2192 filter \u2192 approve filtered set \u2192 verify) is exactly what [12cfb18e] prescribes. The verification artifact (printing the filtered list before acting) was used correctly in rollout 2 and the PP trace.",
+      "entry_assessments": [
+        {
+          "entry_id": "12cfb18e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "9f8d858f",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "78832af2",
+          "content": "Before calling `apis.supervisor.complete_task()`: (1) Re-read the task instruction (call `apis.supervisor.show_active_task()` if unclear) to identify exactly what is being asked. (2) If the task is action-only (e.g., 'send a message', 'approve requests', 'play a song'), call `complete_task()` with NO `answer=` argument. (3) If the task asks you to find/calculate/return a value, determine the EXACT answer type from the question wording: 'how much total' \u2192 single number, 'how many' \u2192 integer, 'what is the name' \u2192 short string. Submit the simplest value that matches \u2014 never a compound breakdown (e.g., 'sent:759.0, received:454.0') when a single aggregate was requested (e.g., 1213.0). Common error: computing correct component values but submitting them in the wrong shape because the agent didn't re-check what the task actually asked for.",
+          "rationale": "Two of three task rollout_1 failures traced to answer-submission errors: Task 1 submitted a formatted breakdown string instead of a single total number; Task 3 passed an answer argument on an action-only task. Both violations occurred despite the existing entry covering the action-only case. Adding a verification gate (re-read the task) and explicit format-matching guidance addresses the answer-format drift pattern the reflector identified."
+        }
+      ]
+    }
+  ],
+  "29caf6f_3": [
+    {
+      "iteration": 2,
+      "analysis": "Both rollouts followed the same correct high-level strategy: (1) find Leslie Ball in phone contacts, (2) read text messages to discover she asked for Peter Jackson movie recommendations, (3) search SimpleNote for the 'Movie Recommendations' note, (4) parse note content to extract Peter Jackson-directed movies, (5) send comma-separated titles to Leslie, (6) call complete_task(). Both extracted the same 3 movies and sent the same message to the same phone number (text_message_id 16803 in both cases).\n\nThe 12.5% gap (7/8 vs 8/8) came from a single test: `assert model changes match phone.GlobalTextMessage, phone.UserTextMessage`. All content and structural tests passed in both rollouts \u2014 the correct movies were sent to the correct person. The failing test validates that the COMPLETE SET of model record changes matches expectations, not just the content.\n\nRoot cause analysis: Despite exhaustive comparison, both rollouts made the same meaningful state-changing API calls (3 phone logins, 3 simple_note logins, 1 send_text_message, 1 complete_task). The only structural difference is that rollout 1 performed an additional paginated contact search (2 pages) in the same code block where it sent the message, while rollout 2 hardcoded the already-known phone number. However, search_contacts is a GET request that should not modify model state. The failure likely reflects either environmental non-determinism or a very subtle ordering/timing effect invisible from the traces.\n\nPlaybook effectiveness: The existing entries were well-applied. The problem-solving workflow [9f8d858f] correctly guided the agent to read messages first. Pagination [6c139a99] was correctly used. Credentials were fetched from supervisor [867f30db]. The complete_task entry [78832af2] was correctly applied (no answer argument for an action-only task).\n\nThe PP trace annotations confirm the agent followed the playbook ('Following entry [Problem Solving Heuristics And Workflows]: gather data then apply criteria') and was uncertain only about message formatting ('Need to confirm phone send_text_message expects access_token and message fields'), which was resolved correctly by reading API docs.\n\nNo clear generalizable rule is missing. Both rollouts demonstrated correct application of existing guidance. The single test failure does not indicate a systematic gap \u2014 it appears environmental rather than strategic.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "9f8d858f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "strategies_and_hard_rules",
+          "content": "When a task requires performing an action (approve, delete, update, send) on a SUBSET of items matching criteria: (1) Resolve ALL filter criteria first (e.g., fetch contact lists, relationship categories, tags). (2) Fetch the COMPLETE set of candidate items. (3) Apply filters and build an explicit filtered list \u2014 print it as a verification artifact before proceeding. (4) Execute actions ONLY on items in the filtered list. NEVER act on all items first and filter afterward \u2014 many actions (approvals, deletions, payments) are irreversible and premature bulk actions can corrupt state so eligible items become unfindable on re-fetch.",
+          "rationale": "Rollout_1 of the Venmo task approved all 26 pending requests before filtering to roommates/coworkers, causing irreversible state corruption; only 4 of 10 expected requests remained when filtering was finally applied. Rollout_2 filtered first and approved exactly the right 10. Entry [9f8d858f] covers criteria extraction from conversation context but is too narrowly scoped to cover this general bulk-action ordering invariant.",
+          "scope_hint": "Applies whenever a task involves performing the same action on multiple items that must first be filtered by eligibility criteria (relationship, status, category, etc.).",
+          "entry_id": "12cfb18e"
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "analysis": "**Root Cause of Rollout 1 Failure (87.5%)**\n\nThe sole failed test was `assert answers match.` Rollout 1 called `apis.supervisor.complete_task(answer='The Lord of the Rings: ...')` \u2014 passing the movie titles as an answer string. Rollout 2 called `apis.supervisor.complete_task()` with no answer argument and passed all 8 tests. The task is an action-only task (send a text message to Leslie), so no answer should be returned. The expected answer is implicitly `None`/empty, and passing a string caused a mismatch.\n\nAll 7 other tests passed in both rollouts, confirming the core data-gathering, filtering, and message-sending logic was correct in both. The difference is entirely in the `complete_task()` invocation.\n\n**Existing Rule Coverage**\n\nPlaybook entry [78832af2] explicitly states: 'Only pass an `answer=` argument if the task explicitly asks you to find, calculate, or return a specific value. For action-only tasks (e.g., send a message, play a song), call `complete_task()` with NO answer argument.' This rule directly addresses the failure. Rollout 1 violated it; rollout 2 obeyed it. The PP trace shows the agent explicitly cited this entry before calling `complete_task()` without an answer.\n\n**Why the Rule Wasn't Applied**\n\nRollout 1's agent appears to have conflated the message content it just sent with the task answer. After sending the SMS, it looked up the `complete_task` API doc, saw the answer parameter, and decided to pass the movie titles as an answer \u2014 likely reasoning that the movies were the 'result' of the task. This is a cognitive pattern where the agent sees data it just computed and assumes it should be returned. The existing rule is clear enough; this is weak application, not a coverage gap.\n\n**Minor Observation: Variable Shadowing**\n\nIn rollout 2, the agent overwrote the `access_token` variable (originally holding the phone token) with the simple_note token, causing a 401 error when trying to send the message. This was recovered by re-logging in, so it didn't affect the score. Entry [c3efc092] ('variables persist \u2014 reuse them') can be slightly misleading when multiple services share generic variable names. However, this is a minor coding hygiene issue, not a playbook gap \u2014 the agent recovered gracefully.\n\n**Generalized Pattern**\n\nThe failure pattern is: after completing a multi-step action task, the agent incorrectly passes intermediate computed data as an answer to `complete_task()`. The existing rule [78832af2] already captures this. The signal is clear \u2014 the distinction between 'action tasks' and 'query tasks' is the key discriminator, and the rule states it correctly.",
+      "entry_assessments": [
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "9f8d858f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When a search query returns multiple items (notes, records, entries) that match but represent DISTINCT events or instances (e.g., two 'Work Dinner' notes from different dates): (1) NEVER aggregate or merge data across them \u2014 each represents an independent event. (2) Examine timestamps (created_at, updated_at) of ALL matches and print them. (3) Determine which item the task implicitly refers to using temporal context (e.g., most recent note for 'yesterday's dinner', task-date proximity). (4) Print the selected item's ID, title, and timestamp with explicit reasoning before parsing its content. (5) Use ONLY data from the selected item. Common error: combining amounts or entries across independent events produces wrong totals, wrong recipients, and extra spurious actions.",
+          "rationale": "Rollout_1 of the Venmo task found two Work Dinner notes (note 3085 from May 16, note 3084 from May 20) and merged their shares into one dict, producing 6 wrong payment requests instead of the correct 3. Rollout_2 compared timestamps, selected only the latest note, and passed 4/4 tests. No existing entry covers source-level disambiguation.",
+          "scope_hint": "Applies whenever a search returns multiple items that could represent separate events/instances and the task refers to a specific one.",
+          "entry_id": "3c755ed7"
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "analysis": "**Root cause of rollout_1 failure:** The sole failed test (`assert answers match`) is caused by rollout_1 calling `apis.supervisor.complete_task(answer='The Lord of the Rings: ...')` \u2014 passing an `answer=` argument \u2014 while rollout_2 and the PP trace both correctly call `apis.supervisor.complete_task()` with no answer argument. The task is an action-only task (send a text message to Leslie with movie recommendations). It does not ask the agent to find, calculate, or return a value.\n\n**Existing playbook coverage:** Entry [78832af2] already explicitly addresses this exact scenario: 'Only pass an `answer=` argument if the task explicitly asks you to find, calculate, or return a specific value. For action-only tasks (e.g., 'send a message', 'play a song'), call `complete_task()` with NO answer argument.' The entry even uses 'send a message' as the canonical example of an action-only task. Rollout_1's failure is therefore a direct violation of an existing, well-worded, and sufficiently specific rule.\n\n**No missing knowledge:** Both rollouts correctly identified the contact (Leslie Ball), read the conversation to find the Peter Jackson movie recommendation request, located the Movie Recommendations note in SimpleNote, extracted the three correct titles, and sent the text message. All 7 action-related tests pass in both rollouts. The only divergence is the `complete_task()` call.\n\n**Pattern:** This is a clear case of weak application of an existing rule, not a coverage gap. The agent in rollout_1 seemed to treat the action it performed (constructing the movie list) as a 'finding' that needed to be reported as an answer, when in fact the action (sending the text) was the deliverable itself. The rule's triggering condition ('does the task explicitly ask you to find, calculate, or return a specific value?') was not correctly evaluated by the agent.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "9f8d858f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "78832af2",
+          "content": "Before calling `apis.supervisor.complete_task()`: (1) Re-read the task instruction (call `apis.supervisor.show_active_task()` if unclear) to identify exactly what is being asked. (2) If the task is action-only (e.g., 'send a message', 'approve requests', 'play a song'), call `complete_task()` with NO `answer=` argument. (3) If the task asks you to find/calculate/return a value, determine the EXACT answer type from the question wording: 'how much total' \u2192 single number, 'how many' \u2192 integer, 'what is the name' \u2192 short string. Submit the simplest value that matches \u2014 never a compound breakdown (e.g., 'sent:759.0, received:454.0') when a single aggregate was requested (e.g., 1213.0). Common error: computing correct component values but submitting them in the wrong shape because the agent didn't re-check what the task actually asked for.",
+          "rationale": "Two of three task rollout_1 failures traced to answer-submission errors: Task 1 submitted a formatted breakdown string instead of a single total number; Task 3 passed an answer argument on an action-only task. Both violations occurred despite the existing entry covering the action-only case. Adding a verification gate (re-read the task) and explicit format-matching guidance addresses the answer-format drift pattern the reflector identified."
+        }
+      ]
+    },
+    {
+      "iteration": 6,
+      "analysis": "Both rollouts followed nearly identical high-level procedures: find Leslie's contact, read conversation history to discover Leslie's specific request (Peter Jackson movies), locate the 'Movie Recommendations' note in SimpleNote, parse only Peter Jackson-directed titles, send a comma-separated list, and complete the task. The correct 3 movies were identified in both cases, sent to the correct recipient, and the task was marked complete without an answer (correct for action-only tasks). 7 of 8 tests pass in both rollouts.\n\nThe sole difference is rollout_1 failing 'assert model changes match phone.GlobalTextMessage, phone.UserTextMessage.' This is a holistic model-change validation test that checks the TOTAL set of database modifications against expectations. Both rollouts sent the exact same message (same text_message_id=16803, same phone_number, same message content, same access_token value). The surface-level actions are indistinguishable, making the failure difficult to attribute to a specific playbook gap.\n\nPossible subtle causes include: (1) the send_text_message API may have additional optional parameters (like reply_to_text_message_id) that affect which UserTextMessage records are created, and the API doc was truncated in both rollouts so neither agent verified the full parameter list; (2) there could be minor environmental/ordering differences that affect model state. However, since rollout_2 also didn't use any reply-to parameter and passed, this remains inconclusive.\n\nKey playbook issue identified: Entry [f43ad77c] references `apis.phone.show_contacts()` which does NOT exist \u2014 the correct API is `search_contacts`. Both the PP trace and rollout_2 demonstrate the agent hitting a 422 error by trying `show_contacts` before discovering `search_contacts`. This wastes a step and could cause confusion. The entry should be corrected.\n\nPlaybook entry [9f8d858f] was crucial and well-applied: both agents correctly read the conversation history FIRST to discover that Leslie specifically asked for Peter Jackson movies, then filtered the note content accordingly. Without this, the agent might have sent ALL movie recommendations instead of just Peter Jackson's.\n\nNo major new rule is needed. The existing playbook provided strong guidance for the core workflow. The failure is likely due to a subtle API interaction detail rather than a missing strategy.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "9f8d858f",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "12cfb18e",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "8a052e45",
+          "content": "When a task says 'my [items]' (e.g., 'my playlists', 'my notes') combined with a filter clause ('which I have liked', 'that are rated', 'I have shared'), parse the instruction into TWO distinct components:\n\n(1) BASE COLLECTION \u2014 'my X' means items you OWN or have in your LIBRARY (e.g., `show_playlist_library`), NOT items you have liked/favorited (e.g., `show_liked_playlists`). Ownership \u2260 engagement.\n\n(2) FILTER CRITERION \u2014 a separate condition applied ON TOP of the base collection. Relative clauses like 'which I have liked' almost always filter the ITEMS within the collection (songs), not the collection containers (playlists) themselves.\n\nDISAMBIGUATION PROCEDURE when a relative clause could modify either the collection or its items:\n- Explicitly state both possible parses before fetching data.\n- Fetch data for both interpretations from their respective APIs.\n- Compute both candidate sets with counts; print as verification artifacts.\n- Default to the parse where the filter applies to the leaf-level items (e.g., liked songs in owned playlists, not songs in liked playlists).\n\nCompute the intersection of base collection items and filter set as an explicit printed artifact with item count. Act ONLY on that intersection. Never discard the filtered set in a later code block and revert to the unfiltered base set.",
+          "rationale": "Rollout 1 (71.4%) used show_liked_playlists instead of show_playlist_library AND applied no song-level filtering, rating all 27 songs instead of the correct 11. The entry's trigger ('alongside a SEPARATE filter') didn't fire for relative-clause syntax like 'songs in my playlists which I have liked'. Adding disambiguation procedure and stronger trigger for 'which I have [verbed]' patterns."
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When operating on ordered or stateful collections (queues, playlists, message threads), inspect each item's metadata fields BEFORE acting to identify implicit scope boundaries:\n\n(1) Look for state fields: `is_current`, `is_playing`, `is_read`, `status`, `position`, `is_completed`.\n(2) Map the task's language to a state-based filter: 'songs played so far' \u2192 position \u2264 current_position; 'unread messages' \u2192 is_read=false; 'current song' \u2192 is_current=true.\n(3) If the task does NOT explicitly say 'all items in the queue/list', assume a contextually-bounded subset \u2014 do NOT default to acting on every item.\n(4) Build the filtered subset as an explicit printed artifact (IDs and count) before executing actions.\n\nCommon error: fetching a queue and acting on ALL items when the task implicitly refers to only those up to the current playback position or state boundary.",
+          "rationale": "Rollout 1 (80%) liked all 10 queue songs instead of only the 6 at positions \u2264 current. Entry [12cfb18e] covers filtering by explicit external criteria (relationships, tags) but not recognizing implicit boundaries encoded in collection state metadata (is_current, position). This is a distinct recognition gap.",
+          "scope_hint": "Applies when acting on items in an ordered/stateful collection where metadata fields like position, is_current, is_playing encode an implicit boundary the task references.",
+          "entry_id": "f036c063"
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "f43ad77c",
+          "content": "Use `phone` app for contact/person lookup: `apis.phone.search_contacts()` (NOT `show_contacts` \u2014 that API does not exist). Use it to find friends/family by name, relationship, etc.",
+          "rationale": "The previous entry referenced `apis.phone.show_contacts()` which does not exist and causes a 422 error; the correct API is `search_contacts`. Both rollout traces hit this error, and the entry was assessed as 'harmful' in iter 6."
+        }
+      ]
+    }
+  ],
+  "22cc237_1": [
+    {
+      "iteration": 3,
+      "analysis": "**Root Cause of Failure (Rollout 1, 75%):** The agent found two SimpleNote entries matching 'Work Dinner' (note 3085: 'Velvet Vittles', updated 2023-05-16; note 3084: 'Silver Lining Cafe', updated 2023-05-20). It then **aggregated shares across both notes**, combining amounts from two separate dinner events into a single dictionary (e.g., Sandra: $18 + $19 = $37, Sabrina: $21 + $39 = $60). This produced incorrect amounts and extra recipients (Grant, Allison only appeared in the older dinner). The task implicitly referred to the most recent dinner (note 3084, created today to record yesterday's expenses). \n\n**Success Factor (Rollout 2, 100%):** The agent explicitly compared `updated_at` timestamps of both Work Dinner notes, selected the latest one (note 3084), and used only its shares. This yielded the correct unpaid list: Sandra=$19, Stephen=$20, Travis=$39.\n\n**Failed Test Explanation:** The test `user_id_to_share obtained from added_payment_requests matches the private_data.pending_user_id_to_share` failed because Rollout 1 created 6 payment requests with wrong amounts (combined across two dinners) instead of 3 requests with amounts from the single relevant dinner.\n\n**Missing Generalizable Knowledge:** The playbook has no guidance on **temporal disambiguation when multiple data sources match a query**. This is a common pattern: a search returns multiple items representing distinct events/instances, and the task implicitly refers to one specific instance. The agent needs to:\n1. Recognize that multiple matches represent *different events*, not parts of one event\n2. Use temporal metadata (timestamps, dates in task context) to select the correct item\n3. Never aggregate data across items that represent independent events unless explicitly asked\n\n**Procedural Gap:** The needed procedure is: (Trigger) When a search query returns multiple items and the task refers to 'the' or 'a specific' event \u2192 (Procedure) Examine timestamps of all matches, compare to the task's implied timeframe (e.g., 'yesterday's dinner'), select only the item whose timestamp aligns \u2192 (Intermediate Artifact) Print the selected item's ID, title, and timestamp with explicit reasoning for why it was chosen \u2192 (Verification) Confirm the selected item's date is consistent with the task context before parsing its content.\n\n**No Existing Entry Covers This:** Entry `12cfb18e` addresses filtering items within a candidate set before acting, but doesn't cover selecting the right data source when multiple sources match. Entry `9f8d858f` addresses reading conversation history for criteria, which is tangentially related but doesn't address multi-source disambiguation.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "9f8d858f",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "12cfb18e",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When a search query returns multiple items (notes, records, entries) that match but represent DISTINCT events or instances (e.g., two 'Work Dinner' notes from different dates): (1) NEVER aggregate or merge data across them \u2014 each represents an independent event. (2) Examine timestamps (created_at, updated_at) of ALL matches and print them. (3) Determine which item the task implicitly refers to using temporal context (e.g., most recent note for 'yesterday's dinner', task-date proximity). (4) Print the selected item's ID, title, and timestamp with explicit reasoning before parsing its content. (5) Use ONLY data from the selected item. Common error: combining amounts or entries across independent events produces wrong totals, wrong recipients, and extra spurious actions.",
+          "rationale": "Rollout_1 of the Venmo task found two Work Dinner notes (note 3085 from May 16, note 3084 from May 20) and merged their shares into one dict, producing 6 wrong payment requests instead of the correct 3. Rollout_2 compared timestamps, selected only the latest note, and passed 4/4 tests. No existing entry covers source-level disambiguation.",
+          "scope_hint": "Applies whenever a search returns multiple items that could represent separate events/instances and the task refers to a specific one.",
+          "entry_id": "3c755ed7"
+        }
+      ]
+    }
+  ],
+  "d0b1f43_3": [
+    {
+      "iteration": 4,
+      "analysis": "## Root Cause\n\nBoth rollouts successfully computed identical intermediate values: sent_total=759.0, received_total=454.0. The divergence occurs exclusively at the answer submission step.\n\n- **Rollout 1 (50%)**: Submitted `\"sent:759.0, received:454.0\"` \u2014 a compound formatted string with a sent/received breakdown.\n- **Rollout 2 (100%)**: Submitted `1213.0` \u2014 the combined total as a single number.\n\nThe task evidently asked for a total monetary amount (a single number), not a breakdown. The PP trace confirms ambiguity in the agent's reasoning: it first tried submitting a dict (which failed validation), then submitted a formatted string. Neither rollout 1 nor the PP trace performed a critical step: **re-reading the task instruction** to verify what exact value/format was expected before calling `complete_task`.\n\n## Pattern: Answer-Format Drift\n\nThe agent correctly gathered all data and performed all computations, then **drifted from the task question** when constructing its answer. This is not a data-gathering or computation error \u2014 it is a final-mile formatting/interpretation error. The agent had the right numbers but submitted them in the wrong shape.\n\nThis pattern is dangerous because it wastes all prior correct work. The fix is procedural:\n1. **Before calling `complete_task`, re-read the task instruction** (via `apis.supervisor.show_active_task()` or equivalent).\n2. **Map the computed results to the exact question asked.** If the task says 'how much total,' submit a single number. If it says 'how much sent and received,' submit accordingly.\n3. **Prefer the simplest answer type** that matches the question: a single number over a formatted string, unless compound data is explicitly requested.\n\n## Missing Playbook Guidance\n\nEntry [78832af2] tells the agent to call `complete_task()` and notes \"The answer must be concise, such as a number,\" but it doesn't prescribe a **verification gate**: re-read the task \u2192 verify the answer format matches the question \u2192 only then submit. The PP trace shows the agent trying multiple answer formats without this check. This is an update opportunity on the existing entry rather than a net-new rule.\n\n## Generalization\n\nThis failure class \u2014 correct computation but wrong answer shape \u2014 is common in tasks that ask for aggregate values. The agent computes component values (sent, received) then must decide: does the task want the components or the aggregate? Without re-consulting the task instruction, the agent guesses, and guessing is error-prone.",
+      "entry_assessments": [
+        {
+          "entry_id": "78832af2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "f43ad77c",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "78832af2",
+          "content": "Before calling `apis.supervisor.complete_task()`: (1) Re-read the task instruction (call `apis.supervisor.show_active_task()` if unclear) to identify exactly what is being asked. (2) If the task is action-only (e.g., 'send a message', 'approve requests', 'play a song'), call `complete_task()` with NO `answer=` argument. (3) If the task asks you to find/calculate/return a value, determine the EXACT answer type from the question wording: 'how much total' \u2192 single number, 'how many' \u2192 integer, 'what is the name' \u2192 short string. Submit the simplest value that matches \u2014 never a compound breakdown (e.g., 'sent:759.0, received:454.0') when a single aggregate was requested (e.g., 1213.0). Common error: computing correct component values but submitting them in the wrong shape because the agent didn't re-check what the task actually asked for.",
+          "rationale": "Two of three task rollout_1 failures traced to answer-submission errors: Task 1 submitted a formatted breakdown string instead of a single total number; Task 3 passed an answer argument on an action-only task. Both violations occurred despite the existing entry covering the action-only case. Adding a verification gate (re-read the task) and explicit format-matching guidance addresses the answer-format drift pattern the reflector identified."
+        }
+      ]
+    }
+  ],
+  "692c77d_1": [
+    {
+      "iteration": 5,
+      "analysis": "## Root Cause Analysis\n\nThe failing rollout (71.4%) made two compounding errors:\n\n**Error 1: Wrong data source API.** The task says 'all songs in my Spotify playlists which I have liked.' Rollout_1 interpreted 'my playlists' as 'playlists I have liked' and used `show_liked_playlists` (yielding playlist IDs [486, 325, 384, 327] with 27 songs). Rollout_2 eventually discovered that 'my playlists' means the user's own playlist library via `show_playlist_library` (yielding playlist IDs [324, 326, 325, 327] with 22 songs). These are overlapping but distinct sets. The correct API produced a different song universe, and when intersected with liked songs, gave 11 songs instead of 7.\n\n**Error 2: Drift from own intermediate reasoning.** Rollout_1 actually computed the intersection of liked songs \u2229 playlist songs at one point (finding 7 candidate songs), but then ABANDONED this result in a subsequent code block and reverted to rating ALL 27 songs in the liked playlists. This means even if it had used the right playlist source, it still would have over-applied ratings by ignoring the 'which I have liked' filter on songs.\n\n## Why Rollout_2 Succeeded\n\nRollout_2 explored multiple API options. After initially using `show_liked_playlists`, it also tried `show_playlist_library` and realized the distinction. It then correctly intersected library playlist songs with liked songs (11 songs) and acted only on that set. Crucially, it stuck with its computed intersection throughout execution.\n\n## Missing Playbook Guidance\n\n1. **API disambiguation for possessive/ownership language:** When a task says 'my X' (e.g., 'my playlists'), the agent must distinguish between items the user OWNS/has in their library (e.g., `show_playlist_library`) vs items the user has LIKED/favorited (e.g., `show_liked_playlists`). These are different APIs with different semantics. The agent should check both if uncertain, compare the returned sets, and select the one that matches the possessive intent. 'Liked' is a specific engagement action, while 'my' implies ownership/library membership.\n\n2. **Consistency between intermediate analysis and execution:** Entry [12cfb18e] covers building a filtered list before acting, but doesn't address the scenario where the agent correctly builds the filtered list and then discards it in a later code block. The agent should carry forward its computed subset and verify the action set matches it before executing.\n\n## Generalized Pattern\n\nTrigger: Task instruction uses possessive language ('my X') alongside a separate filter criterion ('which I have [verb]ed').\nProcedure: (1) Parse the instruction to identify the base collection ('my playlists' \u2192 owned/library items) separately from the filter ('which I have liked' \u2192 liked items). (2) Identify candidate APIs for the base collection \u2014 prefer library/ownership APIs over liked/favorited APIs unless the task explicitly says 'liked/favorited playlists'. (3) Compute the intersection as an explicit intermediate artifact. (4) Verify the intermediate artifact size and contents make sense. (5) Execute actions ONLY on the intersection, and confirm the action list matches the artifact before proceeding.",
+      "entry_assessments": [
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "12cfb18e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When a task says 'my [items]' (e.g., 'my playlists', 'my notes') alongside a SEPARATE filter ('which I have liked', 'that are rated'), parse the instruction into two distinct components and resolve each with the correct API: (1) BASE COLLECTION \u2014 'my X' means items you OWN or have in your LIBRARY (e.g., `show_playlist_library`), NOT items you have liked/favorited (e.g., `show_liked_playlists`). Ownership \u2260 engagement. (2) FILTER CRITERION \u2014 a separate condition (liked, rated, shared, tagged) applied ON TOP of the base collection. Fetch each from its correct API, compute the intersection as an explicit printed artifact with item count, and act ONLY on that intersection. If uncertain which API represents ownership vs. engagement, call both, compare returned IDs, and select based on the semantic intent. Critical: once you compute the filtered set, carry it forward into execution \u2014 never discard it and revert to the unfiltered base set in a later code block.",
+          "rationale": "Rollout_1 failed because it used show_liked_playlists (engagement API) instead of show_playlist_library (ownership API) for 'my playlists', producing the wrong song universe (27 vs 22 songs, 7 vs 11 after intersection). It also computed the correct intersection at one point but abandoned it. No existing entry covers API-selection disambiguation based on possessive vs. engagement language.",
+          "scope_hint": "Applies whenever a task uses possessive language ('my X') that could map to either a library/ownership API or a liked/favorited API, especially when combined with a separate filter condition.",
+          "entry_id": "8a052e45"
+        }
+      ]
+    },
+    {
+      "iteration": 6,
+      "analysis": "## Root Cause\n\nThe task instruction 'Give a 5-star rating to all songs in my Spotify playlists which I have liked' requires parsing into two components:\n1. **BASE COLLECTION**: 'my Spotify playlists' \u2192 playlists in the user's playlist_library (owned playlists), NOT liked_playlists\n2. **FILTER**: 'which I have liked' \u2192 songs the user has liked (from show_liked_songs)\n\nThe correct target set is the intersection: songs appearing in playlist_library AND in liked_songs = 11 songs.\n\n**Rollout 1 (71.4%)** made TWO compounding errors:\n- Used `show_liked_playlists` instead of `show_playlist_library` as the base collection (conflating 'playlists I own' with 'playlists I have liked')\n- Applied NO filtering by liked songs \u2014 rated ALL 27 songs across the liked playlists instead of just the 11 that were both in owned playlists and liked\n\n**Rollout 2 (100%)** iterated through multiple interpretations before arriving at the correct one: fetched playlist_library songs (22 unique), intersected with liked_songs (16), yielded 11 candidate songs. This matched the expected to_update and to_add sets.\n\n## Relationship to Existing Entry [8a052e45]\n\nEntry [8a052e45] directly addresses this scenario: it warns that 'my X' means ownership/library, not engagement/likes, and that a separate filter like 'which I have liked' must be resolved via a different API and intersected. However, rollout 1 never triggered this entry's logic. The likely cause is that the trigger condition \u2014 'alongside a SEPARATE filter' \u2014 doesn't obviously match the grammatical structure of this instruction, where 'which I have liked' is a relative clause that can syntactically modify either 'playlists' (\u2192 playlists I liked) or 'songs' (\u2192 songs I liked).\n\nRollout 2 also struggled with this ambiguity, trying three interpretations before landing on the correct one. The PP trace shows the agent similarly defaulting to the all-songs-in-liked-playlists interpretation.\n\n## What's Missing\n\nThe entry [8a052e45] is correct in content but lacks:\n1. **Disambiguation procedure for relative clauses**: When 'which I have [verbed]' appears after 'my [collection]', the agent should explicitly consider BOTH parses (verb modifying the collection vs. verb modifying the items within), compute both candidate sets, print them as verification artifacts, and select the correct one.\n2. **Stronger trigger language**: The current 'alongside a SEPARATE filter' phrasing may not fire when the filter is syntactically embedded as a relative clause. The trigger should match patterns like 'my X which/that I have [liked/rated/shared]'.\n3. **Mandatory intersection artifact**: The entry says to 'compute the intersection as an explicit printed artifact' but doesn't emphasize enough that skipping this step (as rollout 1 did entirely) is the most common failure mode.\n\n## Consistency Check Failure\n\nRollout 1 never verified whether its interpretation was correct. It went straight from 'liked playlists \u2192 27 songs' to rating all 27. A simple sanity check \u2014 'Does the task mention filtering songs? If so, have I applied a filter?' \u2014 would have caught the error. The task says 'songs which I have liked', yet rollout 1 applied no song-level filtering at all.",
+      "entry_assessments": [
+        {
+          "entry_id": "8a052e45",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "6c139a99",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "12cfb18e",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "helpful"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "8a052e45",
+          "content": "When a task says 'my [items]' (e.g., 'my playlists', 'my notes') combined with a filter clause ('which I have liked', 'that are rated', 'I have shared'), parse the instruction into TWO distinct components:\n\n(1) BASE COLLECTION \u2014 'my X' means items you OWN or have in your LIBRARY (e.g., `show_playlist_library`), NOT items you have liked/favorited (e.g., `show_liked_playlists`). Ownership \u2260 engagement.\n\n(2) FILTER CRITERION \u2014 a separate condition applied ON TOP of the base collection. Relative clauses like 'which I have liked' almost always filter the ITEMS within the collection (songs), not the collection containers (playlists) themselves.\n\nDISAMBIGUATION PROCEDURE when a relative clause could modify either the collection or its items:\n- Explicitly state both possible parses before fetching data.\n- Fetch data for both interpretations from their respective APIs.\n- Compute both candidate sets with counts; print as verification artifacts.\n- Default to the parse where the filter applies to the leaf-level items (e.g., liked songs in owned playlists, not songs in liked playlists).\n\nCompute the intersection of base collection items and filter set as an explicit printed artifact with item count. Act ONLY on that intersection. Never discard the filtered set in a later code block and revert to the unfiltered base set.",
+          "rationale": "Rollout 1 (71.4%) used show_liked_playlists instead of show_playlist_library AND applied no song-level filtering, rating all 27 songs instead of the correct 11. The entry's trigger ('alongside a SEPARATE filter') didn't fire for relative-clause syntax like 'songs in my playlists which I have liked'. Adding disambiguation procedure and stronger trigger for 'which I have [verbed]' patterns."
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When operating on ordered or stateful collections (queues, playlists, message threads), inspect each item's metadata fields BEFORE acting to identify implicit scope boundaries:\n\n(1) Look for state fields: `is_current`, `is_playing`, `is_read`, `status`, `position`, `is_completed`.\n(2) Map the task's language to a state-based filter: 'songs played so far' \u2192 position \u2264 current_position; 'unread messages' \u2192 is_read=false; 'current song' \u2192 is_current=true.\n(3) If the task does NOT explicitly say 'all items in the queue/list', assume a contextually-bounded subset \u2014 do NOT default to acting on every item.\n(4) Build the filtered subset as an explicit printed artifact (IDs and count) before executing actions.\n\nCommon error: fetching a queue and acting on ALL items when the task implicitly refers to only those up to the current playback position or state boundary.",
+          "rationale": "Rollout 1 (80%) liked all 10 queue songs instead of only the 6 at positions \u2264 current. Entry [12cfb18e] covers filtering by explicit external criteria (relationships, tags) but not recognizing implicit boundaries encoded in collection state metadata (is_current, position). This is a distinct recognition gap.",
+          "scope_hint": "Applies when acting on items in an ordered/stateful collection where metadata fields like position, is_current, is_playing encode an implicit boundary the task references.",
+          "entry_id": "f036c063"
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "f43ad77c",
+          "content": "Use `phone` app for contact/person lookup: `apis.phone.search_contacts()` (NOT `show_contacts` \u2014 that API does not exist). Use it to find friends/family by name, relationship, etc.",
+          "rationale": "The previous entry referenced `apis.phone.show_contacts()` which does not exist and causes a 422 error; the correct API is `search_contacts`. Both rollout traces hit this error, and the entry was assessed as 'harmful' in iter 6."
+        }
+      ]
+    }
+  ],
+  "ccb4494_1": [
+    {
+      "iteration": 6,
+      "analysis": "## Root Cause\n\nRollout 1 (80%) liked ALL 10 songs in the queue, while rollout 2 (100%) correctly liked only the 6 songs at positions 0\u20135 (up to and including the currently-playing song at position 5). The failing test asserts that the set of liked song_ids exactly matches `private_data.song_ids_to_like`, confirming rollout 1 over-acted by liking 4 extra songs.\n\nThe queue data contains explicit state metadata: each song has a `position`, `is_current`, and `is_playing` field. The currently-playing song has `is_current: True` at position 5. The task asked the agent to like songs that have been played (up to the current position), NOT all songs in the queue. Rollout 2's key step was:\n```python\nplayed_so_far = [s for s in queue_resp if s['position'] <= cur_pos]\n```\nRollout 1 skipped this entirely and iterated over the raw queue with no filtering.\n\n## Why the Existing Playbook Didn't Prevent This\n\nEntry [12cfb18e] covers the general pattern: 'When a task requires performing an action on a SUBSET of items matching criteria, resolve ALL filter criteria first...' However, it didn't trigger because:\n1. The entry's trigger assumes the agent already recognizes it's dealing with a subset. In rollout 1, the agent never identified the need for filtering.\n2. The entry's examples of criteria ('contact lists, relationship categories, tags') are all EXPLICIT, externally-defined filters. Here the filtering criterion was IMPLICIT in the collection's own state metadata (`is_current`, `position`), which is a different recognition pattern.\n\n## Generalizable Lesson\n\nWhen operating on ordered or stateful collections (queues, playlists, message threads, request lists), the collection's own metadata often encodes an implicit boundary for the action scope. Fields like `is_current`, `is_playing`, `is_read`, `status: pending`, `position` define which items are 'before' vs 'after' a state boundary. The agent must:\n1. BEFORE acting, inspect the collection's metadata fields to identify any state boundary.\n2. Check whether the task's language ('played so far', 'unread messages', 'pending requests') maps to a state-based filter.\n3. Construct the filtered subset as an explicit artifact and print it before executing bulk actions.\n4. Default to acting on ONLY the filtered subset, never on all items, unless the task explicitly says 'all'.\n\n## Drift Check\n\nRollout 1 never established an intended subset in its reasoning \u2014 it jumped straight from fetching the queue to liking everything. There was no self-check comparing intended scope to actual scope. A consistency gate ('print the list of songs I intend to like and verify it matches the task constraint') would have caught this.\n\n## The Failure Mode Is Partially Missing Guidance\n\nWhile [12cfb18e] covers filtering procedurally, it lacks a recognition heuristic for when filtering is needed but the criteria are implicit in state metadata rather than explicitly stated as external filters. This is a distinct gap, not just weak application.",
+      "entry_assessments": [
+        {
+          "entry_id": "12cfb18e",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "a2727558",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "867f30db",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "89ea61af",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "78832af2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c3efc092",
+          "tag": "neutral"
+        }
+      ],
+      "applied_ops": [
+        {
+          "op": "UPDATE",
+          "entry_id": "8a052e45",
+          "content": "When a task says 'my [items]' (e.g., 'my playlists', 'my notes') combined with a filter clause ('which I have liked', 'that are rated', 'I have shared'), parse the instruction into TWO distinct components:\n\n(1) BASE COLLECTION \u2014 'my X' means items you OWN or have in your LIBRARY (e.g., `show_playlist_library`), NOT items you have liked/favorited (e.g., `show_liked_playlists`). Ownership \u2260 engagement.\n\n(2) FILTER CRITERION \u2014 a separate condition applied ON TOP of the base collection. Relative clauses like 'which I have liked' almost always filter the ITEMS within the collection (songs), not the collection containers (playlists) themselves.\n\nDISAMBIGUATION PROCEDURE when a relative clause could modify either the collection or its items:\n- Explicitly state both possible parses before fetching data.\n- Fetch data for both interpretations from their respective APIs.\n- Compute both candidate sets with counts; print as verification artifacts.\n- Default to the parse where the filter applies to the leaf-level items (e.g., liked songs in owned playlists, not songs in liked playlists).\n\nCompute the intersection of base collection items and filter set as an explicit printed artifact with item count. Act ONLY on that intersection. Never discard the filtered set in a later code block and revert to the unfiltered base set.",
+          "rationale": "Rollout 1 (71.4%) used show_liked_playlists instead of show_playlist_library AND applied no song-level filtering, rating all 27 songs instead of the correct 11. The entry's trigger ('alongside a SEPARATE filter') didn't fire for relative-clause syntax like 'songs in my playlists which I have liked'. Adding disambiguation procedure and stronger trigger for 'which I have [verbed]' patterns."
+        },
+        {
+          "op": "ADD",
+          "section": "problem_solving_heuristics_and_workflows",
+          "content": "When operating on ordered or stateful collections (queues, playlists, message threads), inspect each item's metadata fields BEFORE acting to identify implicit scope boundaries:\n\n(1) Look for state fields: `is_current`, `is_playing`, `is_read`, `status`, `position`, `is_completed`.\n(2) Map the task's language to a state-based filter: 'songs played so far' \u2192 position \u2264 current_position; 'unread messages' \u2192 is_read=false; 'current song' \u2192 is_current=true.\n(3) If the task does NOT explicitly say 'all items in the queue/list', assume a contextually-bounded subset \u2014 do NOT default to acting on every item.\n(4) Build the filtered subset as an explicit printed artifact (IDs and count) before executing actions.\n\nCommon error: fetching a queue and acting on ALL items when the task implicitly refers to only those up to the current playback position or state boundary.",
+          "rationale": "Rollout 1 (80%) liked all 10 queue songs instead of only the 6 at positions \u2264 current. Entry [12cfb18e] covers filtering by explicit external criteria (relationships, tags) but not recognizing implicit boundaries encoded in collection state metadata (is_current, position). This is a distinct recognition gap.",
+          "scope_hint": "Applies when acting on items in an ordered/stateful collection where metadata fields like position, is_current, is_playing encode an implicit boundary the task references.",
+          "entry_id": "f036c063"
+        },
+        {
+          "op": "UPDATE",
+          "entry_id": "f43ad77c",
+          "content": "Use `phone` app for contact/person lookup: `apis.phone.search_contacts()` (NOT `show_contacts` \u2014 that API does not exist). Use it to find friends/family by name, relationship, etc.",
+          "rationale": "The previous entry referenced `apis.phone.show_contacts()` which does not exist and causes a 422 error; the correct API is `search_contacts`. Both rollout traces hit this error, and the entry was assessed as 'harmful' in iter 6."
+        }
+      ]
+    }
+  ]
+}

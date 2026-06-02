@@ -1,0 +1,382 @@
+{
+  "task_id": "tied:42",
+  "pass_pct": 0.4725274725274725,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "4abe1be4",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c8698dee",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "71f11566",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "3008aa9b",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task tied:42\nPass percentage: 47.3%\nTask completed: False\n### Unified Reflection\n## Root Cause: Detection-Without-Recovery in Perception Gate [4abe1be4]\n\nBoth rollouts are deterministically identical (47.3% pairwise accuracy \u2014 below random chance) on a Ties subset task with 7 equally correct candidates (1\u20137). The agent triggered 'PERCEPTION ERROR DETECTED' for candidates 1\u20135, 7, and 8, but never executed the prescribed recovery procedure (re-read input from the beginning and rebuild the receipt). Instead, the agent treated the error phrase as a terminal label and defaulted every flagged candidate to 0.0. Only candidate 6 (Bucatini) was substantively evaluated and received 10.0. This means 6 of 7 correct answers scored 0.0 while some incorrect answers (Lasagna: 1.0, Ravioli: 1.0, candidate 19: 0.5) scored above them \u2014 a catastrophic rank inversion.\n\n## Why [4abe1be4] Is Harmful\n\nAll three reflections unanimously identify entry 4abe1be4 as the primary cause. The entry defines 'PERCEPTION ERROR DETECTED' as a hard-stop trigger with instructions to 're-read the full raw input from the very beginning and rebuild the receipt from scratch.' In practice, the agent outputs the phrase and immediately moves to the next candidate or to scoring \u2014 treating detection as the entire procedure rather than as the start of recovery. The entry creates a dangerous partial-compliance mode: the agent 'follows' the rule by emitting the prescribed phrase, but skips re-reading, and the implicit consequence is a 0.0 score for each flagged candidate.\n\nCritically, this failure mode is strictly worse than having no perception gate at all. Without the entry, the agent would likely have read and evaluated all candidates normally, scoring the 7 correct pasta types above the incorrect ones. The entry converts a task the agent could handle into one producing below-chance performance. The deterministic reproduction across both rollouts confirms this is a structural flaw in the entry's design, not stochastic variance.\n\n## The Missing Piece: Fallback and Finalization\n\nThe entry specifies detection and a recovery attempt, but has no explicit fallback when recovery doesn't complete. The agent interprets 'STOP IMMEDIATELY' as 'cease processing this item,' which implicitly produces a zero score. The generalizable principle (identified independently by all three reflections): any error-detection rule that halts normal evaluation MUST specify mandatory fallback behavior when recovery fails. An unresolved error means 'unknown quality,' not 'zero quality.' The fallback should be a neutral mid-range score (e.g., 5.0 on a 0\u201310 scale).\n\nAdditionally, the agent needs a finalization check: before emitting the final ratings array, scan all reasoning entries for any that consist solely of an error phrase. Any such candidate must be re-evaluated or given the neutral default. This gate would have caught all 7 unprocessed candidates and prevented the catastrophic output.\n\n## Secondary Observations\n\n1. Credit attribution identified that entry 295257e2's clause (c) \u2014 designed to catch candidates scored 0.0 with perception-error reasoning \u2014 lists trigger phrases ('no input,' 'nothing to evaluate,' 'cannot see') that do not include 'PERCEPTION ERROR DETECTED,' the actual phrase produced by 4abe1be4. This inter-entry coordination gap neutralized the safety net. While a valid observation, this is secondary: fixing 4abe1be4 eliminates the failure at its source, making the 295257e2 coordination fix a lower-priority defensive measure.\n\n2. Credit attribution also flags 005004a4 (factuality) as harmful because the agent scored Lasagna and Ravioli at 1.0 despite neither being long thin pasta. However, the factuality entry itself isn't causing this \u2014 the perception errors consumed the agent's reasoning capacity. This is collateral damage, not an independent entry defect.\n\n3. Entry 93b0e8f9 was marked helpful by credit attribution because it structured the sequential evaluation, but it did not prevent the core failure. Neutral is more accurate given the outcome.\n\n## Recommended Mutation\n\nUpdate entry 4abe1be4 to add three concrete mechanisms:\n1. **Explicit fallback**: If perception error recovery (re-reading) fails or is not completed, assign a neutral mid-range score (5.0), never 0.0. The entry must state: 'You may NEVER assign a final score to a candidate whose sole reasoning is an error flag.'\n2. **Finalization gate clause**: Before emitting the final JSON, scan all candidate reasoning for any instance of 'PERCEPTION ERROR DETECTED' or related error phrases. Any such candidate triggers mandatory re-evaluation or neutral default application.\n3. **Recovery completion marker**: After re-reading, the agent must produce a fresh content quote for the flagged candidate to prove recovery succeeded. If no quote is produced, the recovery failed and the fallback applies.\n\nThis is a single update to the entry that caused the failure, addressing the structural gap (detection without enforceable recovery) identified by all three reflections.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"Entry 4abe1be4's perception error hard-stop trigger causes the agent to output 'PERCEPTION ERROR DETECTED' as a terminal label rather than executing recovery, defaulting flagged candidates to 0.0. This is deterministic, confirmed across both rollouts, and is strictly worse than having no perception gate \u2014 the entry converts a handleable task into below-chance performance.\",\n  \"important_disagreements\": [\n    \"295257e2 assessed as harmful (credit_attribution) vs. neutral (anchor, principle_extraction). Resolved as neutral: the inter-entry phrase mismatch in clause (c) is a valid finding but the entry isn't independently causing harm \u2014 it's failing to catch harm caused by 4abe1be4. Fixing 4abe1be4 at the source is the higher-leverage change; the 295257e2 coordination fix can be addressed in a separate pass.\",\n    \"005004a4 assessed as harmful (credit_attribution) vs. neutral (anchor, principle_extraction). Resolved as neutral: the factuality entry wasn't applied, but the non-application was caused by the perception error cascade, not by the entry's content being wrong or misleading.\",\n    \"Pre-scoring classification table proposed as new entry (anchor, credit_attribution) vs. folded into 295257e2 update (principle_extraction). Resolved by deferring: this is a reasonable idea but is secondary to the 4abe1be4 fix, and introducing it from a single trace violates conservatism. If the perception gate works correctly, the existing 295257e2 post-audit should catch remaining inversions.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"All three reflections unanimously identify 4abe1be4 as harmful and agree on the same structural defect (detection without enforceable recovery/fallback). The fix is a targeted update to the existing entry \u2014 adding fallback behavior, a finalization check, and a recovery completion marker \u2014 not a new entry or deletion. This addresses the root cause directly.\",\n  \"conservatism_rationale\": \"A single high-confidence update to 4abe1be4 addresses the unanimous, evidence-backed root cause. Additional changes (295257e2 phrase alignment, pre-scoring classification table, reasoning completeness check) are either secondary defensive measures or overlap with existing entries. Introducing them from a single deterministic trace risks over-fitting. The 4abe1be4 update alone eliminates the catastrophic failure mode; further refinements can be evaluated after observing whether the fix resolves the class of failures.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"4abe1be4\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"71f11566\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"3008aa9b\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 47.3%, rollout_2: 47.3%.\n\n## rollout_1 \u2014 pass_pct: 47.3%\n\n## Prompt\nName a type of long, thin pasta.\n\n## Candidate Responses\n\n[1]\nSpaghetti\n\n[2]\nLinguine\n\n[3]\nFettuccine\n\n[4]\nCapellini\n\n[5]\nVermicelli\n\n[6]\nBucatini\n\n[7]\nTagliatelle\n\n[8]\nPenne\n\n[9]\nFarfalle\n\n[10]\nFusilli\n\n[11]\nRigatoni\n\n[12]\nLasagna\n\n[13]\nMacaroni\n\n[14]\nOrzo\n\n[15]\nRavioli\n\n[16]\nTortellini\n\n[17]\nPasta comes in hundreds of shapes and varieties, each suited to different sauces and dishes.\n\n[18]\nThe shape of pasta affects how it holds sauce and contributes to the overall texture of a dish.\n\n[19]\nCertainly, I would be happy to help you with that.\n\n[20]\nI'm not sure I understand, can you rephrase your question?\n\n## Judge Reasoning\n[1] PERCEPTION ERROR DETECTED.\n[2] PERCEPTION ERROR DETECTED.\n[3] PERCEPTION ERROR DETECTED.\n[4] PERCEPTION ERROR DETECTED.\n[5] PERCEPTION ERROR DETECTED.\n[6] The prompt asks for a type of long, thin pasta, and \u201cBucatini\u201d is a correct choice. There are no factual or constraint issues.\n[7] PERCEPTION ERROR DETECTED.\n[8] PERCEPTION ERROR DETECTED.\n\n## Judge Output JSON\n{\n  \"ratings\": [\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    10.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    1.0,\n    0.0,\n    0.0,\n    1.0,\n    0.0,\n    0.0,\n    0.0,\n    0.5,\n    0.0\n  ],\n  \"best_response_ids\": [\n    \"6\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 47.3%\n\n## Prompt\nName a type of long, thin pasta.\n\n## Candidate Responses\n\n[1]\nSpaghetti\n\n[2]\nLinguine\n\n[3]\nFettuccine\n\n[4]\nCapellini\n\n[5]\nVermicelli\n\n[6]\nBucatini\n\n[7]\nTagliatelle\n\n[8]\nPenne\n\n[9]\nFarfalle\n\n[10]\nFusilli\n\n[11]\nRigatoni\n\n[12]\nLasagna\n\n[13]\nMacaroni\n\n[14]\nOrzo\n\n[15]\nRavioli\n\n[16]\nTortellini\n\n[17]\nPasta comes in hundreds of shapes and varieties, each suited to different sauces and dishes.\n\n[18]\nThe shape of pasta affects how it holds sauce and contributes to the overall texture of a dish.\n\n[19]\nCertainly, I would be happy to help you with that.\n\n[20]\nI'm not sure I understand, can you rephrase your question?\n\n## Judge Reasoning\n[1] PERCEPTION ERROR DETECTED.\n[2] PERCEPTION ERROR DETECTED.\n[3] PERCEPTION ERROR DETECTED.\n[4] PERCEPTION ERROR DETECTED.\n[5] PERCEPTION ERROR DETECTED.\n[6] The prompt asks for a type of long, thin pasta, and \u201cBucatini\u201d is a correct choice. There are no factual or constraint issues.\n[7] PERCEPTION ERROR DETECTED.\n[8] PERCEPTION ERROR DETECTED.\n\n## Judge Output JSON\n{\n  \"ratings\": [\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    10.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    0.0,\n    1.0,\n    0.0,\n    0.0,\n    1.0,\n    0.0,\n    0.0,\n    0.0,\n    0.5,\n    0.0\n  ],\n  \"best_response_ids\": [\n    \"6\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Ties\nPairwise preference accuracy: 47.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 1.000\nCorrect candidate ids: 1, 2, 3, 4, 5, 6, 7\nTop-rated candidate ids: 6\n\nCandidate scores:\n  [1] CORRECT score=0.000\n  [2] CORRECT score=0.000\n  [3] CORRECT score=0.000\n  [4] CORRECT score=0.000\n  [5] CORRECT score=0.000\n  [6] CORRECT score=10.000\n  [7] CORRECT score=0.000\n  [8] INCORRECT score=0.000\n  [9] INCORRECT score=0.000\n  [10] INCORRECT score=0.000\n  [11] INCORRECT score=0.000\n  [12] INCORRECT score=1.000\n  [13] INCORRECT score=0.000\n  [14] INCORRECT score=0.000\n  [15] INCORRECT score=1.000\n  [16] INCORRECT score=0.000\n  [17] INCORRECT score=0.000\n  [18] INCORRECT score=0.000\n  [19] INCORRECT score=0.500\n  [20] INCORRECT score=0.000\n\n## rollout_2 Evaluation\n\nSubset: Ties\nPairwise preference accuracy: 47.3%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 1.000\nCorrect candidate ids: 1, 2, 3, 4, 5, 6, 7\nTop-rated candidate ids: 6\n\nCandidate scores:\n  [1] CORRECT score=0.000\n  [2] CORRECT score=0.000\n  [3] CORRECT score=0.000\n  [4] CORRECT score=0.000\n  [5] CORRECT score=0.000\n  [6] CORRECT score=10.000\n  [7] CORRECT score=0.000\n  [8] INCORRECT score=0.000\n  [9] INCORRECT score=0.000\n  [10] INCORRECT score=0.000\n  [11] INCORRECT score=0.000\n  [12] INCORRECT score=1.000\n  [13] INCORRECT score=0.000\n  [14] INCORRECT score=0.000\n  [15] INCORRECT score=1.000\n  [16] INCORRECT score=0.000\n  [17] INCORRECT score=0.000\n  [18] INCORRECT score=0.000\n  [19] INCORRECT score=0.500\n  [20] INCORRECT score=0.000",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause: Perception Error Detection Triggers Without Successful Recovery\n\nBoth rollouts are deterministically identical (same scores, same reasoning), producing 47.3% pairwise accuracy\u2014*worse* than random chance\u2014on a Ties subset task with 7 equally correct answers (candidates 1-7). The fundamental failure: the agent detected 'PERCEPTION ERROR' for 7 of the 8 reasoning entries shown (candidates 1-5, 7, 8), but never completed the prescribed recovery loop. Instead, it scored every perception-error candidate 0.0 and moved on. Only candidate 6 (Bucatini) was actually evaluated and scored 10.0. This means 6 of 7 correct answers received 0.0 while some incorrect answers (Lasagna: 1.0, Ravioli: 1.0, candidate 19: 0.5) received non-zero scores\u2014a catastrophic inversion.\n\n## Why Entry [4abe1be4] is Assessed as Harmful\n\nThe perception gate entry correctly defines 'PERCEPTION ERROR DETECTED' as a hard-stop trigger requiring re-reading from scratch. But in practice, the agent printed 'PERCEPTION ERROR DETECTED' as its *reasoning output* for each affected candidate, then immediately moved to the next candidate or to scoring\u2014treating the detection phrase as a label rather than an instruction to halt and recover. The entry's design creates a dangerous partial compliance mode: the agent 'follows' the rule by outputting the phrase but skips the actual re-read-and-rebuild procedure. The entry thus gives the appearance of a safeguard while enabling worse outcomes than having no perception gate at all (because the agent defaults flagged candidates to 0.0 instead of using best-effort evaluation).\n\n## Critical Missing Procedure: Post-Detection Recovery Enforcement\n\nThe playbook lacks a mechanism to prevent the agent from finalizing scores when perception errors remain unresolved. Needed: a **finalization gate** that checks\u2014after all reasoning is complete but before outputting scores\u2014whether any candidate's reasoning contains the phrase 'PERCEPTION ERROR DETECTED.' If so, those candidates MUST be re-evaluated with fresh, candidate-specific reading before any scores are emitted. The agent must NEVER assign a score of 0.0 to a candidate whose sole justification is a perception error flag. This is procedurally distinct from the existing perception gate (which fires at the start) and must fire at the end.\n\n## Critical Missing Procedure: Multi-Valid-Answer Pre-Scoring Classification\n\nThis task is in the Ties subset. Entry [295257e2] says to keep correct answers' scores close together, but it operates only as a post-scoring audit. The agent needs an *earlier* procedure: before scoring begins, explicitly classify each candidate as 'answers the prompt' or 'does not answer the prompt.' For a question like 'Name a type of long, thin pasta,' the agent should produce a written artifact:\n\n| Candidate | Content | Is it long & thin pasta? | Classification |\n|-----------|---------|-------------------------|----------------|\n| 1 | Spaghetti | Yes | CORRECT |\n| 2 | Linguine | Yes | CORRECT |\n| ... | ... | ... | ... |\n| 8 | Penne | No (short tube) | INCORRECT |\n\nThis artifact must be constructed BEFORE any numerical scores are assigned. It serves as both a perception verification (forces the agent to read each response) and a correctness classification that prevents inversions.\n\n## Why Existing Entries Were Ineffective\n\nEntry [93b0e8f9] requires enumerating all candidate IDs and scoring each independently, but the agent's perception failures occurred *during* that sequential processing\u2014the entry doesn't address what to do when the agent can't perceive content. Entry [295257e2]'s post-scoring audit (check that all 'yes' candidates score above all 'no' candidates) would have caught the inversion IF the agent reached that step, but the perception failures prevented correct classification. Both entries are conceptually sound but operate downstream of the actual failure point.\n\n## Actionable Insights for Curator\n\n1. **Refine [4abe1be4]**: Add explicit prohibition: 'You may NEVER output a final score for a candidate whose reasoning contains PERCEPTION ERROR DETECTED. If you cannot resolve the perception error after re-reading, assign a neutral mid-range score (e.g., 5.0) rather than 0.0.' This converts a catastrophic failure mode (false 0.0) into a merely uninformative one.\n\n2. **New entry (finalization gate)**: Before outputting the JSON, scan your own reasoning for any instance of 'PERCEPTION ERROR DETECTED.' If found, you must re-evaluate those candidates. The ratings array is invalid until all perception errors are resolved.\n\n3. **New entry (pre-scoring classification artifact)**: For prompts with simple factual questions or enumerable answers, construct a written classification table (candidate | content summary | meets prompt criteria: yes/no) BEFORE assigning any scores. Verify the table covers all N candidates. This forces perception of each candidate's content and enables the [295257e2] post-audit to work correctly.\n\n4. **Strengthen [295257e2]**: Add: 'When 3+ candidates provide equally valid answers, they should receive scores within 1 point of each other. A spread where one correct answer gets 10.0 and another gets 0.0 is always an error requiring re-evaluation.'\n\n5. The identical failure across all three traces (both rollouts + PP trace) confirms this is a deterministic failure mode, not stochastic variance. The playbook structure itself is producing the failure by having the perception gate emit a label that the agent treats as terminal rather than as a recovery trigger."
+    },
+    "credit_attribution": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "helpful"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "coverage_gaps": [
+        {
+          "situation": "The agent detected perception errors for 7 candidates, output the error phrase, but never executed the prescribed recovery (re-read from scratch and rebuild). The detection-as-label pattern repeated deterministically, producing catastrophic score inversions.",
+          "gap_type": "procedure",
+          "suggested_content": "PERCEPTION ERROR RECOVERY PROTOCOL: When 'PERCEPTION ERROR DETECTED' is output during candidate evaluation, the agent MUST (1) immediately pause all scoring, (2) re-read the FULL raw input from the beginning, (3) produce a fresh PERCEPTION RECEIPT listing every candidate's first 10+ words, (4) only then resume evaluation from the candidate that triggered the error. If after one recovery attempt the same candidate still triggers a perception error, assign a DEFAULT NEUTRAL SCORE of 5.0 (not 0.0) and log the unresolved error. The agent may NEVER assign 0.0 to a candidate whose sole reasoning is 'PERCEPTION ERROR DETECTED.'",
+          "trigger": "Fires whenever the agent writes 'PERCEPTION ERROR DETECTED' for any candidate's reasoning during the evaluation loop."
+        },
+        {
+          "situation": "Entry 295257e2 clause (c) was designed to catch zero-scored candidates with perception-error reasoning, but its listed trigger phrases ('no input,' 'nothing to evaluate,' 'cannot see') do not include the actual perception error output phrase ('PERCEPTION ERROR DETECTED') from entry 4abe1be4. This inter-entry misalignment neutralized the safety net.",
+          "gap_type": "verification_gate",
+          "suggested_content": "FINALIZATION GATE \u2014 Before outputting the final JSON, scan ALL candidate reasoning for ANY of: 'PERCEPTION ERROR,' 'no text provided,' 'content missing,' 'cannot see,' 'nothing to evaluate,' 'no input,' 'no candidate response.' Any candidate whose reasoning contains these phrases AND has a score of 0.0 MUST be re-evaluated. The ratings array is INVALID until all flagged candidates have substantive reasoning replacing the error phrase. This gate supersedes all other scoring procedures.",
+          "trigger": "Fires after all candidate reasoning is complete and before the final JSON output is produced."
+        },
+        {
+          "situation": "For a simple factual prompt ('Name a type of long thin pasta') with 7 equally correct answers, the agent had no pre-scoring step to classify each candidate's content as correct/incorrect before assigning numerical scores. Without this artifact, perception errors cascaded directly into score assignments.",
+          "gap_type": "artifact",
+          "suggested_content": "PRE-SCORING CLASSIFICATION TABLE: For prompts with simple factual or enumerable answers, BEFORE assigning any numerical scores, construct a written table: (Candidate ID | Content Summary | Meets Prompt Criteria: YES/NO | Justification). This table must cover ALL N candidates and forces the agent to perceive and classify each candidate's actual content. Any candidate left blank or marked 'PERCEPTION ERROR' in this table triggers the recovery protocol. The table becomes the input for numerical scoring\u2014scores must be consistent with the YES/NO classification.",
+          "trigger": "Fires when the user prompt asks a factual question with a definite correct answer set (e.g., 'Name a type of X,' 'What is Y?', 'List examples of Z')."
+        },
+        {
+          "situation": "The agent showed visible reasoning for only 8 of 20 candidates, yet assigned scores to all 20. Candidates 9-20 received scores (ranging from 0.0 to 1.0) with no documented reasoning, making it impossible to verify correctness of those scores.",
+          "gap_type": "checklist",
+          "suggested_content": "REASONING COMPLETENESS CHECK: Every candidate must have explicit written reasoning before a score is assigned. If the visible reasoning section covers fewer candidates than the total count N, the agent must add reasoning for all missing candidates before producing the ratings array. A score without documented reasoning is invalid.",
+          "trigger": "Fires after the reasoning phase and before the JSON output phase, when the count of reasoned candidates is less than N."
+        }
+      ],
+      "analysis": "## Credit Attribution Summary\n\n**Agreement with anchor:** I agree with the anchor's core diagnosis: entry 4abe1be4 (perception gate) is the primary driver of this failure, and the failure mode is deterministic across all traces. The agent treats 'PERCEPTION ERROR DETECTED' as a terminal label rather than a recovery trigger, defaulting flagged candidates to 0.0. I also agree that the failure is structural in the playbook rather than stochastic agent variance.\n\n**Refinement of anchor:** The anchor marks 295257e2 as neutral. I assess it as harmful by omission. Its clause (c) was specifically designed to catch zero-scored candidates with perception-error reasoning\u2014exactly this failure\u2014but its trigger phrases ('no input,' 'nothing to evaluate,' 'cannot see') don't include 'PERCEPTION ERROR DETECTED,' the actual phrase produced by entry 4abe1be4. This is a critical inter-entry coordination failure: two entries designed to work together use mismatched language, creating a gap where the safety net never fires. The most actionable fix for this specific failure may be aligning these phrases in 295257e2 or creating a superseding finalization gate.\n\n**Additional finding:** Entry 005004a4 (factuality) also contributed negatively. The agent scored Lasagna and Ravioli at 1.0 despite neither being long thin pasta, without applying the factuality verification gate. While this is secondary to the perception error catastrophe, it shows the agent skipped factual verification entirely\u2014likely because the perception errors consumed the reasoning budget.\n\n**Key missing capability \u2014 recovery enforcement:** The playbook has a detection mechanism (4abe1be4) but no enforceable recovery procedure. The agent needs (1) a concrete recovery workflow that fires on perception error detection, (2) a prohibition on 0.0 scores with only error-phrase reasoning, and (3) a default neutral score (e.g., 5.0) for unresolvable perception errors. Entry 4abe1be4 should be refactored to separate detection from recovery, with the recovery being a mandatory multi-step procedure rather than a single instruction to 're-read.'\n\n**Key missing capability \u2014 pre-scoring artifact:** For factual/enumerable prompts, a classification table (candidate | content | correct/incorrect) constructed before any numerical scoring would have forced the agent to perceive each candidate's content and would have surfaced perception failures before they became score inversions. This is upstream of both the perception gate and the tie-handling entry.\n\n**Why the failure is worse than no playbook:** Without entry 4abe1be4, the agent would likely have evaluated all candidates normally and scored the 7 correct pasta types above the incorrect ones. The perception gate, by creating a failure mode that defaults to 0.0 without recovery, converts a task the agent could handle into one where it performs below chance. The entry needs fundamental restructuring: detection without enforced recovery is actively dangerous."
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "4abe1be4",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c8698dee",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "71f11566",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "3008aa9b",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "AGREE with anchor: Entry 4abe1be4 is the primary cause. Its HARD-STOP trigger phrase 'PERCEPTION ERROR DETECTED' was emitted for 7 of 8 reasoning entries (candidates 1-5, 7, 8), but the agent treated it as a terminal label rather than a recovery trigger. Each flagged candidate received 0.0, while the sole non-flagged correct answer (candidate 6, Bucatini) got 10.0. Some incorrect candidates (Lasagna 1.0, Ravioli 1.0, candidate 19 0.5) scored above 6 of 7 correct answers\u2014a catastrophic rank inversion producing 47.3% accuracy (below random chance).\n\nAGREE with anchor: This is deterministic\u2014identical across both rollouts and the PP trace\u2014confirming a structural flaw in the entry, not stochastic variance.\n\nREFINE anchor's causal model: The anchor frames this as a missing 'finalization gate' and a missing 'pre-scoring artifact.' These are valid but secondary. The deeper, more generalizable failure is a pattern I'd call 'detection-without-fallback': the entry defines an error-detection condition and says 'STOP IMMEDIATELY' + 're-read from the very beginning,' but specifies no behavior when re-reading also fails or isn't completed. The agent interprets 'STOP' as 'cease processing this item,' which implicitly produces a zero score. The entry thus converts a perception hiccup into a guaranteed worst-possible rating\u2014an outcome strictly worse than having no error detection at all. This pattern (error flag \u2192 implicit extreme default \u2192 rank inversion) generalizes beyond perception checks to any rule that halts processing without mandating a safe fallback.\n\nREFINE: The anchor proposes 5 separate playbook changes. For parsimony and generalizability, these consolidate into two core operational lessons: (1) any error-detection rule must include explicit fallback behavior when recovery fails, and (2) before emitting batch output, verify that every item received substantive evaluation.\n\nDISAGREE (mildly) with anchor's proposed pre-scoring classification table as a standalone new entry: while useful for this specific multi-valid-answer scenario, it overlaps significantly with entry 295257e2's post-scoring audit (candidate | score | answers-prompt: yes/no). Strengthening 295257e2 to run BEFORE scoring is more efficient than adding a separate artifact entry.",
+      "principles": [
+        {
+          "statement": "Any error-detection rule must specify a mandatory fallback when recovery fails: assign a neutral mid-range score, never 0 or max. An unresolved error means 'unknown quality,' not 'zero quality.'",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "4abe1be4",
+          "trigger": "Whenever a processing rule defines an error-detection condition (e.g., perception error, parsing failure, ambiguity flag) that halts normal evaluation of an item.",
+          "verification_or_artifact": "After all items are processed, verify: no item's final score was set by an error flag alone. Any item whose reasoning is only an error label must be re-evaluated or given a neutral default (e.g., 5.0 on a 0-10 scale).",
+          "evidence": "Entry 4abe1be4's HARD-STOP trigger caused 7 candidates to receive 0.0 with reasoning consisting solely of 'PERCEPTION ERROR DETECTED.' Six of those were correct answers, creating inversions with incorrect candidates that received 0.5-1.0. The entry's 're-read from scratch' recovery instruction was never executed; the agent treated the error label as terminal."
+        },
+        {
+          "statement": "Before emitting batch output, verify every item received substantive evaluation: if any item's reasoning is only an error flag or placeholder, re-process it or apply a neutral default. Never finalize output with unprocessed items.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "After all individual items have been processed but before the final JSON/output is assembled, whenever the task involves evaluating or scoring multiple items.",
+          "verification_or_artifact": "Scan all reasoning entries: for each item, confirm the reasoning contains substantive evaluation (not just an error label, empty text, or 'cannot evaluate'). List any items that lack substantive reasoning. Re-evaluate those items before finalizing.",
+          "evidence": "The agent's reasoning for candidates 1-5, 7, 8 consisted solely of 'PERCEPTION ERROR DETECTED'\u2014no substantive evaluation. Yet the agent proceeded to emit final scores including 0.0 for those items. A gate checking for substantive reasoning before output would have caught all 7 unprocessed candidates."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "4abe1be4",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c8698dee",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "71f11566",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "3008aa9b",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause: Detection-Without-Recovery in Perception Gate [4abe1be4]\n\nBoth rollouts are deterministically identical (47.3% pairwise accuracy \u2014 below random chance) on a Ties subset task with 7 equally correct candidates (1\u20137). The agent triggered 'PERCEPTION ERROR DETECTED' for candidates 1\u20135, 7, and 8, but never executed the prescribed recovery procedure (re-read input from the beginning and rebuild the receipt). Instead, the agent treated the error phrase as a terminal label and defaulted every flagged candidate to 0.0. Only candidate 6 (Bucatini) was substantively evaluated and received 10.0. This means 6 of 7 correct answers scored 0.0 while some incorrect answers (Lasagna: 1.0, Ravioli: 1.0, candidate 19: 0.5) scored above them \u2014 a catastrophic rank inversion.\n\n## Why [4abe1be4] Is Harmful\n\nAll three reflections unanimously identify entry 4abe1be4 as the primary cause. The entry defines 'PERCEPTION ERROR DETECTED' as a hard-stop trigger with instructions to 're-read the full raw input from the very beginning and rebuild the receipt from scratch.' In practice, the agent outputs the phrase and immediately moves to the next candidate or to scoring \u2014 treating detection as the entire procedure rather than as the start of recovery. The entry creates a dangerous partial-compliance mode: the agent 'follows' the rule by emitting the prescribed phrase, but skips re-reading, and the implicit consequence is a 0.0 score for each flagged candidate.\n\nCritically, this failure mode is strictly worse than having no perception gate at all. Without the entry, the agent would likely have read and evaluated all candidates normally, scoring the 7 correct pasta types above the incorrect ones. The entry converts a task the agent could handle into one producing below-chance performance. The deterministic reproduction across both rollouts confirms this is a structural flaw in the entry's design, not stochastic variance.\n\n## The Missing Piece: Fallback and Finalization\n\nThe entry specifies detection and a recovery attempt, but has no explicit fallback when recovery doesn't complete. The agent interprets 'STOP IMMEDIATELY' as 'cease processing this item,' which implicitly produces a zero score. The generalizable principle (identified independently by all three reflections): any error-detection rule that halts normal evaluation MUST specify mandatory fallback behavior when recovery fails. An unresolved error means 'unknown quality,' not 'zero quality.' The fallback should be a neutral mid-range score (e.g., 5.0 on a 0\u201310 scale).\n\nAdditionally, the agent needs a finalization check: before emitting the final ratings array, scan all reasoning entries for any that consist solely of an error phrase. Any such candidate must be re-evaluated or given the neutral default. This gate would have caught all 7 unprocessed candidates and prevented the catastrophic output.\n\n## Secondary Observations\n\n1. Credit attribution identified that entry 295257e2's clause (c) \u2014 designed to catch candidates scored 0.0 with perception-error reasoning \u2014 lists trigger phrases ('no input,' 'nothing to evaluate,' 'cannot see') that do not include 'PERCEPTION ERROR DETECTED,' the actual phrase produced by 4abe1be4. This inter-entry coordination gap neutralized the safety net. While a valid observation, this is secondary: fixing 4abe1be4 eliminates the failure at its source, making the 295257e2 coordination fix a lower-priority defensive measure.\n\n2. Credit attribution also flags 005004a4 (factuality) as harmful because the agent scored Lasagna and Ravioli at 1.0 despite neither being long thin pasta. However, the factuality entry itself isn't causing this \u2014 the perception errors consumed the agent's reasoning capacity. This is collateral damage, not an independent entry defect.\n\n3. Entry 93b0e8f9 was marked helpful by credit attribution because it structured the sequential evaluation, but it did not prevent the core failure. Neutral is more accurate given the outcome.\n\n## Recommended Mutation\n\nUpdate entry 4abe1be4 to add three concrete mechanisms:\n1. **Explicit fallback**: If perception error recovery (re-reading) fails or is not completed, assign a neutral mid-range score (5.0), never 0.0. The entry must state: 'You may NEVER assign a final score to a candidate whose sole reasoning is an error flag.'\n2. **Finalization gate clause**: Before emitting the final JSON, scan all candidate reasoning for any instance of 'PERCEPTION ERROR DETECTED' or related error phrases. Any such candidate triggers mandatory re-evaluation or neutral default application.\n3. **Recovery completion marker**: After re-reading, the agent must produce a fresh content quote for the flagged candidate to prove recovery succeeded. If no quote is produced, the recovery failed and the fallback applies.\n\nThis is a single update to the entry that caused the failure, addressing the structural gap (detection without enforceable recovery) identified by all three reflections.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "Entry 4abe1be4's perception error hard-stop trigger causes the agent to output 'PERCEPTION ERROR DETECTED' as a terminal label rather than executing recovery, defaulting flagged candidates to 0.0. This is deterministic, confirmed across both rollouts, and is strictly worse than having no perception gate \u2014 the entry converts a handleable task into below-chance performance.",
+      "important_disagreements": [
+        "295257e2 assessed as harmful (credit_attribution) vs. neutral (anchor, principle_extraction). Resolved as neutral: the inter-entry phrase mismatch in clause (c) is a valid finding but the entry isn't independently causing harm \u2014 it's failing to catch harm caused by 4abe1be4. Fixing 4abe1be4 at the source is the higher-leverage change; the 295257e2 coordination fix can be addressed in a separate pass.",
+        "005004a4 assessed as harmful (credit_attribution) vs. neutral (anchor, principle_extraction). Resolved as neutral: the factuality entry wasn't applied, but the non-application was caused by the perception error cascade, not by the entry's content being wrong or misleading.",
+        "Pre-scoring classification table proposed as new entry (anchor, credit_attribution) vs. folded into 295257e2 update (principle_extraction). Resolved by deferring: this is a reasonable idea but is secondary to the 4abe1be4 fix, and introducing it from a single trace violates conservatism. If the perception gate works correctly, the existing 295257e2 post-audit should catch remaining inversions."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "All three reflections unanimously identify 4abe1be4 as harmful and agree on the same structural defect (detection without enforceable recovery/fallback). The fix is a targeted update to the existing entry \u2014 adding fallback behavior, a finalization check, and a recovery completion marker \u2014 not a new entry or deletion. This addresses the root cause directly.",
+      "conservatism_rationale": "A single high-confidence update to 4abe1be4 addresses the unanimous, evidence-backed root cause. Additional changes (295257e2 phrase alignment, pre-scoring classification table, reasoning completeness check) are either secondary defensive measures or overlap with existing entries. Introducing them from a single deterministic trace risks over-fitting. The 4abe1be4 update alone eliminates the catastrophic failure mode; further refinements can be evaluated after observing whether the fix resolves the class of failures.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"4abe1be4\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c8698dee\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"71f11566\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"3008aa9b\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause: Detection-Without-Recovery in Perception Gate [4abe1be4]\\n\\nBoth rollouts are deterministically identical (47.3% pairwise accuracy \u2014 below random chance) on a Ties subset task with 7 equally correct candidates (1\u20137). The agent triggered 'PERCEPTION ERROR DETECTED' for candidates 1\u20135, 7, and 8, but never executed the prescribed recovery procedure (re-read input from the beginning and rebuild the receipt). Instead, the agent treated the error phrase as a terminal label and defaulted every flagged candidate to 0.0. Only candidate 6 (Bucatini) was substantively evaluated and received 10.0. This means 6 of 7 correct answers scored 0.0 while some incorrect answers (Lasagna: 1.0, Ravioli: 1.0, candidate 19: 0.5) scored above them \u2014 a catastrophic rank inversion.\\n\\n## Why [4abe1be4] Is Harmful\\n\\nAll three reflections unanimously identify entry 4abe1be4 as the primary cause. The entry defines 'PERCEPTION ERROR DETECTED' as a hard-stop trigger with instructions to 're-read the full raw input from the very beginning and rebuild the receipt from scratch.' In practice, the agent outputs the phrase and immediately moves to the next candidate or to scoring \u2014 treating detection as the entire procedure rather than as the start of recovery. The entry creates a dangerous partial-compliance mode: the agent 'follows' the rule by emitting the prescribed phrase, but skips re-reading, and the implicit consequence is a 0.0 score for each flagged candidate.\\n\\nCritically, this failure mode is strictly worse than having no perception gate at all. Without the entry, the agent would likely have read and evaluated all candidates normally, scoring the 7 correct pasta types above the incorrect ones. The entry converts a task the agent could handle into one producing below-chance performance. The deterministic reproduction across both rollouts confirms this is a structural flaw in the entry's design, not stochastic variance.\\n\\n## The Missing Piece: Fallback and Finalization\\n\\nThe entry specifies detection and a recovery attempt, but has no explicit fallback when recovery doesn't complete. The agent interprets 'STOP IMMEDIATELY' as 'cease processing this item,' which implicitly produces a zero score. The generalizable principle (identified independently by all three reflections): any error-detection rule that halts normal evaluation MUST specify mandatory fallback behavior when recovery fails. An unresolved error means 'unknown quality,' not 'zero quality.' The fallback should be a neutral mid-range score (e.g., 5.0 on a 0\u201310 scale).\\n\\nAdditionally, the agent needs a finalization check: before emitting the final ratings array, scan all reasoning entries for any that consist solely of an error phrase. Any such candidate must be re-evaluated or given the neutral default. This gate would have caught all 7 unprocessed candidates and prevented the catastrophic output.\\n\\n## Secondary Observations\\n\\n1. Credit attribution identified that entry 295257e2's clause (c) \u2014 designed to catch candidates scored 0.0 with perception-error reasoning \u2014 lists trigger phrases ('no input,' 'nothing to evaluate,' 'cannot see') that do not include 'PERCEPTION ERROR DETECTED,' the actual phrase produced by 4abe1be4. This inter-entry coordination gap neutralized the safety net. While a valid observation, this is secondary: fixing 4abe1be4 eliminates the failure at its source, making the 295257e2 coordination fix a lower-priority defensive measure.\\n\\n2. Credit attribution also flags 005004a4 (factuality) as harmful because the agent scored Lasagna and Ravioli at 1.0 despite neither being long thin pasta. However, the factuality entry itself isn't causing this \u2014 the perception errors consumed the agent's reasoning capacity. This is collateral damage, not an independent entry defect.\\n\\n3. Entry 93b0e8f9 was marked helpful by credit attribution because it structured the sequential evaluation, but it did not prevent the core failure. Neutral is more accurate given the outcome.\\n\\n## Recommended Mutation\\n\\nUpdate entry 4abe1be4 to add three concrete mechanisms:\\n1. **Explicit fallback**: If perception error recovery (re-reading) fails or is not completed, assign a neutral mid-range score (5.0), never 0.0. The entry must state: 'You may NEVER assign a final score to a candidate whose sole reasoning is an error flag.'\\n2. **Finalization gate clause**: Before emitting the final JSON, scan all candidate reasoning for any instance of 'PERCEPTION ERROR DETECTED' or related error phrases. Any such candidate triggers mandatory re-evaluation or neutral default application.\\n3. **Recovery completion marker**: After re-reading, the agent must produce a fresh content quote for the flagged candidate to prove recovery succeeded. If no quote is produced, the recovery failed and the fallback applies.\\n\\nThis is a single update to the entry that caused the failure, addressing the structural gap (detection without enforceable recovery) identified by all three reflections.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"Entry 4abe1be4's perception error hard-stop trigger causes the agent to output 'PERCEPTION ERROR DETECTED' as a terminal label rather than executing recovery, defaulting flagged candidates to 0.0. This is deterministic, confirmed across both rollouts, and is strictly worse than having no perception gate \u2014 the entry converts a handleable task into below-chance performance.\",\n    \"important_disagreements\": [\n      \"295257e2 assessed as harmful (credit_attribution) vs. neutral (anchor, principle_extraction). Resolved as neutral: the inter-entry phrase mismatch in clause (c) is a valid finding but the entry isn't independently causing harm \u2014 it's failing to catch harm caused by 4abe1be4. Fixing 4abe1be4 at the source is the higher-leverage change; the 295257e2 coordination fix can be addressed in a separate pass.\",\n      \"005004a4 assessed as harmful (credit_attribution) vs. neutral (anchor, principle_extraction). Resolved as neutral: the factuality entry wasn't applied, but the non-application was caused by the perception error cascade, not by the entry's content being wrong or misleading.\",\n      \"Pre-scoring classification table proposed as new entry (anchor, credit_attribution) vs. folded into 295257e2 update (principle_extraction). Resolved by deferring: this is a reasonable idea but is secondary to the 4abe1be4 fix, and introducing it from a single trace violates conservatism. If the perception gate works correctly, the existing 295257e2 post-audit should catch remaining inversions.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"All three reflections unanimously identify 4abe1be4 as harmful and agree on the same structural defect (detection without enforceable recovery/fallback). The fix is a targeted update to the existing entry \u2014 adding fallback behavior, a finalization check, and a recovery completion marker \u2014 not a new entry or deletion. This addresses the root cause directly.\",\n    \"conservatism_rationale\": \"A single high-confidence update to 4abe1be4 addresses the unanimous, evidence-backed root cause. Additional changes (295257e2 phrase alignment, pre-scoring classification table, reasoning completeness check) are either secondary defensive measures or overlap with existing entries. Introducing them from a single deterministic trace risks over-fitting. The 4abe1be4 update alone eliminates the catastrophic failure mode; further refinements can be evaluated after observing whether the fix resolves the class of failures.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2,
+        "harmful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "3008aa9b",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "4abe1be4",
+      "vote_counts": {
+        "harmful": 3
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "71f11566",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2,
+        "helpful": 1
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 3
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "credit_attribution",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    }
+  ]
+}

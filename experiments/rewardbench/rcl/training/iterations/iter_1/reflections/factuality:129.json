@@ -1,0 +1,246 @@
+{
+  "task_id": "factuality:129",
+  "pass_pct": 0.6666666666666666,
+  "task_completed": false,
+  "entry_assessments": [
+    {
+      "entry_id": "c8698dee",
+      "tag": "harmful"
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "8e0d9579",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "005004a4",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "295257e2",
+      "tag": "neutral"
+    },
+    {
+      "entry_id": "c292da46",
+      "tag": "neutral"
+    }
+  ],
+  "analysis": "## Task factuality:129\nPass percentage: 66.7%\nTask completed: False\n### Unified Reflection\n## Root Cause\n\nBoth rollouts are deterministic-identical, confirming a systematic failure rather than noise. The prompt contains two co-equal classes of requirements: (1) a content/semantic constraint\u2014'explain the plot of Cinderella'\u2014and (2) a structural/format constraint\u2014'each word begins with the next letter A\u2013Z.' The judge fixated entirely on the salient structural constraint and never verified whether candidates actually describe Cinderella's plot.\n\nCandidate [2] (rated 4.0, INCORRECT) follows the A-Z alphabet pattern most cleanly but discusses 'Alice' and 'lavish mansions'\u2014zero Cinderella content. Candidate [1] (rated 1.2, CORRECT) has alphabet-ordering violations but references 'fairy godmother,' 'magical objects,' and other genuine Cinderella elements, satisfying the primary semantic goal. The judge's written reasoning exclusively analyzed letter-sequence fidelity and never evaluated plot relevance.\n\n## Why c8698dee Is Harmful\n\nEntry c8698dee says: 'When the prompt contains explicit constraints, verify each candidate against every constraint instead of rewarding vague relevance.' Both independent reflections (anchor and principle_extraction) agree this entry is harmful here. The phrase 'instead of rewarding vague relevance' likely primed the judge to treat the content requirement ('explain Cinderella's plot') as mere 'vague relevance' to be de-weighted, when it is actually a hard constraint co-equal with the alphabet pattern.\n\nThe deeper mechanism is **salience bias**: the novel, eye-catching structural constraint (A-Z sequencing) captured all evaluation attention while the mundane baseline constraint (be about Cinderella) was treated as implicit context rather than a checkable requirement. Entry c8698dee inadvertently amplifies this bias by framing rigorous constraint-checking as the opposite of 'vague relevance,' encouraging the judge to dismiss content fidelity.\n\n## Recommended Fix\n\nUpdate c8698dee to explicitly require that content/subject/topic requirements are enumerated as first-class constraints alongside any structural or formatting rules. The updated entry should instruct the agent to build a written checklist of ALL requirements\u2014including obvious ones like 'what is this response supposed to be about?'\u2014before evaluating candidates. This directly addresses the failure by making it impossible to skip the content check.\n\nA suggested rewrite: 'When the prompt contains explicit constraints, build a written checklist of ALL requirements\u2014including content/topic, format, and structural rules\u2014and verify each candidate against every item. Do not treat content or subject requirements as mere context; they are hard constraints.'\n\n## Secondary Observation\n\nBoth reflections also independently identify a missing verification gate: 'Before finalizing, confirm the top-rated candidate actually accomplishes the primary task described in the prompt.' This would have caught the error immediately ('Does candidate [2] explain Cinderella? No.'). However, per conservative posture, a single well-targeted update to c8698dee is the highest-confidence action from one trace. The verification gate is a strong candidate for future addition if similar failures recur.\n### Consolidation Notes\n{\n  \"dominant_diagnosis\": \"The judge exhibited salience bias: it evaluated only the novel structural constraint (A-Z letter sequencing) and completely ignored the mundane but equally important content constraint (explain Cinderella's plot). Entry c8698dee's phrasing ('instead of rewarding vague relevance') inadvertently primed the judge to dismiss content fidelity as 'vague relevance.'\",\n  \"important_disagreements\": [\n    \"No meaningful disagreements between the two substantive heads (anchor and principle_extraction). Both agree on the root cause, the harmful entry, and the class of fix needed. The credit_attribution head was skipped (content filter), providing no PP-tag evidence. All conclusions are narrative-inferred, but the deterministic-identical failure across rollouts provides strong compensating evidence.\"\n  ],\n  \"mutation_posture\": \"update\",\n  \"why_this_posture\": \"Entry c8698dee already covers the right idea (verify constraints) but its phrasing actively misdirects the judge by framing constraint-checking as opposed to 'vague relevance,' causing content requirements to be dismissed. A targeted rewrite that explicitly includes content/topic as enumerable hard constraints directly addresses the root cause without adding new entries.\",\n  \"conservatism_rationale\": \"Both reflections converge on the same single entry (c8698dee) as the culprit, and the fix is a refinement of existing guidance rather than new guidance. Adding brand-new entries (content-gating rule, verification gate) from a single trace introduces more risk than updating the one entry that demonstrably misfired. The verification gate is noted as a future candidate but deferred pending more evidence.\",\n  \"max_operations\": 1\n}\n### Unified Entry Assessments\n[\n  {\n    \"entry_id\": \"c8698dee\",\n    \"tag\": \"harmful\"\n  },\n  {\n    \"entry_id\": \"93b0e8f9\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"8e0d9579\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"005004a4\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"295257e2\",\n    \"tag\": \"neutral\"\n  },\n  {\n    \"entry_id\": \"c292da46\",\n    \"tag\": \"neutral\"\n  }\n]",
+  "afc_trace_truncated": "The following are independent rollouts of the same task using the same playbook. Since all rollouts used identical instructions, differences in outcomes reflect variance in the agent's execution choices. Each rollout has a corresponding evaluation in the Evaluation Feedback section (matched by rollout ID). Ground your analysis in the differences between evaluation scores and details: rollout_1: 66.7%, rollout_2: 66.7%.\n\n## rollout_1 \u2014 pass_pct: 66.7%\n\n## Prompt\nExplain the plot of Cinderella in a sentence where each word has to begin with the next letter in the alphabet from A to Z, without repeating any letters.\n\n## Candidate Responses\n\n[1]\nA beautiful celestial creature, deliberately escaped fairy godmother, garnered handsome income, just kept lovely magical objects, noticing obscure precious queens, releasing sparkling talents, uniting venerable widows, x-raying yearning zest.\n\n[2]\nAlice browsed countless dresses, elegantly finding glorious haute items, jostling Kelly's lavish mansion, nurturing opulent pleasure, quietly reversing schemes, transforming vagabonds, waltzing xanadu, yearning zealously.\n\n[3]\nAbandoned, beautiful Cinderella cleans, dances diligently, enchanting gown, fairy godmother's help; glass slipper, kind prince locates, magical night overtakes, prince proposes, quick wedding, romance sweetly unfolds, twirling, unbelievably, victory brings wealth, xanadu-like joy zestfully emanates.\n\n[4]\nBeneath her begrimed bonnet, Cinderella brooded, dreaming eagerly of fairytale fruition.\n\n## Judge Reasoning\nAll candidates fail the strict constraint of using 26 words starting with consecutive letters A through Z. Candidate 2 is closest because its word-initial letters mostly follow the alphabet order and it ends with Y and Z, but it omits the required U step (uses V instead) and only has 25 words. Candidates 1 and 3 break the required sequence early (repeating letter initials where the next letter is required), and candidate 4 does not follow the alphabet constraint at all.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"All candidates fail the strict constraint of using 26 words starting with consecutive letters A through Z. Candidate 2 is closest because its word-initial letters mostly follow the alphabet order and it ends with Y and Z, but it omits the required U step (uses V instead) and only has 25 words. Candidates 1 and 3 break the required sequence early (repeating letter initials where the next letter is required), and candidate 4 does not follow the alphabet constraint at all.\",\n  \"ratings\": [\n    1.2,\n    4.0,\n    0.9,\n    0.2\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}\n\n## rollout_2 \u2014 pass_pct: 66.7%\n\n## Prompt\nExplain the plot of Cinderella in a sentence where each word has to begin with the next letter in the alphabet from A to Z, without repeating any letters.\n\n## Candidate Responses\n\n[1]\nA beautiful celestial creature, deliberately escaped fairy godmother, garnered handsome income, just kept lovely magical objects, noticing obscure precious queens, releasing sparkling talents, uniting venerable widows, x-raying yearning zest.\n\n[2]\nAlice browsed countless dresses, elegantly finding glorious haute items, jostling Kelly's lavish mansion, nurturing opulent pleasure, quietly reversing schemes, transforming vagabonds, waltzing xanadu, yearning zealously.\n\n[3]\nAbandoned, beautiful Cinderella cleans, dances diligently, enchanting gown, fairy godmother's help; glass slipper, kind prince locates, magical night overtakes, prince proposes, quick wedding, romance sweetly unfolds, twirling, unbelievably, victory brings wealth, xanadu-like joy zestfully emanates.\n\n[4]\nBeneath her begrimed bonnet, Cinderella brooded, dreaming eagerly of fairytale fruition.\n\n## Judge Reasoning\nAll candidates fail the strict constraint of using 26 words starting with consecutive letters A through Z. Candidate 2 is closest because its word-initial letters mostly follow the alphabet order and it ends with Y and Z, but it omits the required U step (uses V instead) and only has 25 words. Candidates 1 and 3 break the required sequence early (repeating letter initials where the next letter is required), and candidate 4 does not follow the alphabet constraint at all.\n\n## Judge Output JSON\n{\n  \"reasoning\": \"All candidates fail the strict constraint of using 26 words starting with consecutive letters A through Z. Candidate 2 is closest because its word-initial letters mostly follow the alphabet order and it ends with Y and Z, but it omits the required U step (uses V instead) and only has 25 words. Candidates 1 and 3 break the required sequence early (repeating letter initials where the next letter is required), and candidate 4 does not follow the alphabet constraint at all.\",\n  \"ratings\": [\n    1.2,\n    4.0,\n    0.9,\n    0.2\n  ],\n  \"best_response_ids\": [\n    \"2\"\n  ]\n}",
+  "evaluation_details": "## rollout_1 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=1.200\n  [2] INCORRECT score=4.000\n  [3] INCORRECT score=0.900\n  [4] INCORRECT score=0.200\n\n## rollout_2 Evaluation\n\nSubset: Factuality\nPairwise preference accuracy: 66.7%\nPrompt accurate (all correct > all incorrect): False\nWinner fraction: 0.000\nCorrect candidate ids: 1\nTop-rated candidate ids: 2\n\nCandidate scores:\n  [1] CORRECT score=1.200\n  [2] INCORRECT score=4.000\n  [3] INCORRECT score=0.900\n  [4] INCORRECT score=0.200",
+  "head_outputs": {
+    "anchor": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "## Root Cause\n\nBoth rollouts produced identical outputs (deterministic failure), scoring candidate [2] highest (4.0) when [1] is the ground-truth correct answer (scored only 1.2). The prompt has TWO classes of constraints: (1) a content constraint \u2014 'explain the plot of Cinderella' \u2014 and (2) a structural/format constraint \u2014 'each word begins with the next letter A\u2013Z.' The judge fixated entirely on the structural constraint and effectively ignored whether candidates actually describe Cinderella's plot.\n\nCandidate [2] follows the A-Z alphabet pattern most cleanly (A through T in order, skips U, then V\u2013Z), but it uses 'Alice' instead of a Cinderella-related subject, and its content ('jostling Kelly's lavish mansion, nurturing opulent pleasure') has essentially nothing to do with Cinderella. Candidate [1] has multiple alphabet-sequence violations but references 'fairy godmother,' 'magical objects,' and other Cinderella elements \u2014 satisfying the primary semantic goal. The judge's reasoning focused exclusively on alphabet constraint fidelity and never evaluated plot relevance.\n\n## Why Existing Playbook Entry [c8698dee] Was Harmful\n\nEntry [c8698dee] says 'verify each candidate against every constraint instead of rewarding vague relevance.' This is sound in principle, but in practice it steered the judge toward treating only the salient *structural* constraint (alphabet ordering) as 'the constraint' while treating the content requirement as mere 'vague relevance.' The entry does not distinguish between content constraints (the task's primary semantic goal) and format/structural constraints, nor does it emphasize that both must be checked. The judge effectively used this entry to justify deep-diving into alphabet verification while dismissing whether responses actually explain Cinderella.\n\n## Missing Procedural Knowledge\n\n**Trigger:** The prompt contains both a content/subject requirement AND a formatting/structural constraint.\n\n**Needed procedure:**\n1. **Decompose the prompt into a constraint checklist** \u2014 list every requirement, categorizing each as either a *content* constraint (what the response must be about / must accomplish semantically) or a *format* constraint (how it must be structured). For this prompt: Content = 'explain the plot of Cinderella'; Format = 'each word begins with the next letter A\u2013Z, no repeats.'\n2. **Evaluate content constraints first.** A response that completely fails the primary semantic goal (e.g., doesn't describe Cinderella at all) cannot be rescued by perfect structural compliance. Content fidelity gates the evaluation.\n3. **Then evaluate format constraints against each candidate that passes the content gate.** Use systematic word-by-word verification rather than impressionistic 'mostly follows.'\n4. **Combine scores giving at least equal weight to content constraints.** A response with good content and mediocre format compliance should generally score above a response with perfect format but zero content relevance.\n\n**Verification gate:** Before finalizing ratings, explicitly ask: 'Does the top-rated candidate actually accomplish the primary task described in the prompt?' If not, re-examine the ranking.\n\n## Needed Refinements\n\n- Entry [c8698dee] needs to be refined to explicitly state that *content/subject requirements are constraints too,* not just structural or formatting rules. The word 'every' should be operationalized: the agent must construct a written list of all constraints, including the semantic goal, before verification.\n- Entry [93b0e8f9] (score independently against the user prompt) should be strengthened: 'against the user prompt' means against ALL dimensions of the prompt, including what the response must be *about,* not just how it must be formatted.\n- A new entry is warranted for multi-constraint prompts: when content and format constraints coexist, content constraints should act as a gate \u2014 no amount of format compliance can compensate for completely missing the semantic target.\n\n## Model Confusion vs. Missing Guidance\n\nThis is not execution noise \u2014 both rollouts are deterministic and identical. The failure is systematic: the playbook lacks guidance on balancing content vs. format constraints. The judge's own reasoning is internally consistent (it just optimized for the wrong criterion). A procedural checklist that forces enumeration and separate evaluation of content constraints would prevent this class of error across many similar tasks."
+    },
+    "credit_attribution": {
+      "analysis": "(skipped: content filter)",
+      "entry_assessments": []
+    },
+    "principle_extraction": {
+      "entry_assessments": [
+        {
+          "entry_id": "c8698dee",
+          "tag": "harmful"
+        },
+        {
+          "entry_id": "93b0e8f9",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "8e0d9579",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "005004a4",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "295257e2",
+          "tag": "neutral"
+        },
+        {
+          "entry_id": "c292da46",
+          "tag": "neutral"
+        }
+      ],
+      "analysis": "I AGREE with the anchor's root cause: the judge fixated on the structural/alphabet constraint and never verified whether candidates actually explain Cinderella's plot\u2014the primary semantic requirement. Candidate [2] (rated 4.0) discusses 'Alice' and mansions with no Cinderella content; Candidate [1] (correct, rated 1.2) references fairy godmother, magical objects, etc. Both rollouts are deterministic-identical, confirming this is a systematic gap, not noise.\n\nI AGREE that c8698dee is harmful, and I REFINE the anchor's explanation of why. The entry says 'verify each candidate against every constraint instead of rewarding vague relevance.' The phrase 'instead of rewarding vague relevance' likely primed the judge to treat the content requirement ('explain Cinderella's plot') as the 'vague relevance' that should be de-weighted, when in fact it is a hard constraint co-equal with the alphabet pattern. The deeper issue is SALIENCE BIAS: novel, eye-catching constraints (A-Z letter sequencing) captured all evaluation attention, while the mundane baseline constraint (be about Cinderella) was treated as mere context. Entry c8698dee inadvertently amplifies this bias by framing constraint-checking as the opposite of 'vague relevance.'\n\nI REFINE the anchor's proposed lessons into three abstract, transferable principles. The anchor correctly identifies the need for (1) explicit constraint decomposition, (2) content-gating, and (3) a top-pick verification gate. However, the anchor's formulations are somewhat task-specific. The generalizable insight is about attention bias toward salient constraints and the need for externalized checklists that force enumeration of ALL requirements, including obvious ones.",
+      "principles": [
+        {
+          "statement": "Before evaluating candidates, enumerate ALL prompt requirements as a written checklist\u2014including mundane ones like topic or subject. Novel or unusual constraints must not overshadow basic requirements.",
+          "entry_kind": "artifact",
+          "generality": "L3",
+          "playbook_coverage": "WEAK",
+          "relevant_entry_id": "c8698dee",
+          "trigger": "When a prompt contains multiple requirements, especially a mix of content/semantic goals and structural/format rules.",
+          "verification_or_artifact": "Construct a written list: for each requirement, label it (content vs. format) and later mark each candidate pass/fail against every item.",
+          "evidence": "The judge verified only the alphabet constraint and never checked whether candidates discuss Cinderella. An explicit enumeration would have surfaced 'explain Cinderella plot' as a hard constraint, preventing the attention bias toward the novel structural rule."
+        },
+        {
+          "statement": "A candidate that completely fails the primary semantic goal (what it must be about or accomplish) cannot be rescued by perfect structural or format compliance.",
+          "entry_kind": "rule",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "When scoring a candidate that follows format/structure well but misses the core purpose of the prompt.",
+          "verification_or_artifact": "After scoring, confirm that no candidate rated above midpoint completely misses the primary semantic objective.",
+          "evidence": "Candidate [2] was rated 4.0 despite discussing 'Alice' and having zero Cinderella content. Its strong alphabet compliance dominated the evaluation because no rule established content relevance as a gating criterion."
+        },
+        {
+          "statement": "Before finalizing, verify: does the top-rated candidate actually accomplish the primary task in the prompt? If not, re-examine rankings.",
+          "entry_kind": "verification_gate",
+          "generality": "L3",
+          "playbook_coverage": "MISSING",
+          "relevant_entry_id": null,
+          "trigger": "As a final step before outputting ratings and best_response_ids.",
+          "verification_or_artifact": "Re-read the prompt's core ask, then re-read the top-rated candidate. Confirm the candidate addresses that core ask. If it does not, the ranking is suspect.",
+          "evidence": "A single final check\u2014'Does candidate [2] explain Cinderella?'\u2014would have immediately revealed the error and prevented the incorrect top-pick selection in both rollouts."
+        }
+      ],
+      "mutation_implication": "update",
+      "confidence": "high"
+    }
+  },
+  "merged_reflection": {
+    "entry_assessments": [
+      {
+        "entry_id": "c8698dee",
+        "tag": "harmful"
+      },
+      {
+        "entry_id": "93b0e8f9",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "8e0d9579",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "005004a4",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "295257e2",
+        "tag": "neutral"
+      },
+      {
+        "entry_id": "c292da46",
+        "tag": "neutral"
+      }
+    ],
+    "analysis": "## Root Cause\n\nBoth rollouts are deterministic-identical, confirming a systematic failure rather than noise. The prompt contains two co-equal classes of requirements: (1) a content/semantic constraint\u2014'explain the plot of Cinderella'\u2014and (2) a structural/format constraint\u2014'each word begins with the next letter A\u2013Z.' The judge fixated entirely on the salient structural constraint and never verified whether candidates actually describe Cinderella's plot.\n\nCandidate [2] (rated 4.0, INCORRECT) follows the A-Z alphabet pattern most cleanly but discusses 'Alice' and 'lavish mansions'\u2014zero Cinderella content. Candidate [1] (rated 1.2, CORRECT) has alphabet-ordering violations but references 'fairy godmother,' 'magical objects,' and other genuine Cinderella elements, satisfying the primary semantic goal. The judge's written reasoning exclusively analyzed letter-sequence fidelity and never evaluated plot relevance.\n\n## Why c8698dee Is Harmful\n\nEntry c8698dee says: 'When the prompt contains explicit constraints, verify each candidate against every constraint instead of rewarding vague relevance.' Both independent reflections (anchor and principle_extraction) agree this entry is harmful here. The phrase 'instead of rewarding vague relevance' likely primed the judge to treat the content requirement ('explain Cinderella's plot') as mere 'vague relevance' to be de-weighted, when it is actually a hard constraint co-equal with the alphabet pattern.\n\nThe deeper mechanism is **salience bias**: the novel, eye-catching structural constraint (A-Z sequencing) captured all evaluation attention while the mundane baseline constraint (be about Cinderella) was treated as implicit context rather than a checkable requirement. Entry c8698dee inadvertently amplifies this bias by framing rigorous constraint-checking as the opposite of 'vague relevance,' encouraging the judge to dismiss content fidelity.\n\n## Recommended Fix\n\nUpdate c8698dee to explicitly require that content/subject/topic requirements are enumerated as first-class constraints alongside any structural or formatting rules. The updated entry should instruct the agent to build a written checklist of ALL requirements\u2014including obvious ones like 'what is this response supposed to be about?'\u2014before evaluating candidates. This directly addresses the failure by making it impossible to skip the content check.\n\nA suggested rewrite: 'When the prompt contains explicit constraints, build a written checklist of ALL requirements\u2014including content/topic, format, and structural rules\u2014and verify each candidate against every item. Do not treat content or subject requirements as mere context; they are hard constraints.'\n\n## Secondary Observation\n\nBoth reflections also independently identify a missing verification gate: 'Before finalizing, confirm the top-rated candidate actually accomplishes the primary task described in the prompt.' This would have caught the error immediately ('Does candidate [2] explain Cinderella? No.'). However, per conservative posture, a single well-targeted update to c8698dee is the highest-confidence action from one trace. The verification gate is a strong candidate for future addition if similar failures recur.",
+    "consolidation_notes": {
+      "dominant_diagnosis": "The judge exhibited salience bias: it evaluated only the novel structural constraint (A-Z letter sequencing) and completely ignored the mundane but equally important content constraint (explain Cinderella's plot). Entry c8698dee's phrasing ('instead of rewarding vague relevance') inadvertently primed the judge to dismiss content fidelity as 'vague relevance.'",
+      "important_disagreements": [
+        "No meaningful disagreements between the two substantive heads (anchor and principle_extraction). Both agree on the root cause, the harmful entry, and the class of fix needed. The credit_attribution head was skipped (content filter), providing no PP-tag evidence. All conclusions are narrative-inferred, but the deterministic-identical failure across rollouts provides strong compensating evidence."
+      ],
+      "mutation_posture": "update",
+      "why_this_posture": "Entry c8698dee already covers the right idea (verify constraints) but its phrasing actively misdirects the judge by framing constraint-checking as opposed to 'vague relevance,' causing content requirements to be dismissed. A targeted rewrite that explicitly includes content/topic as enumerable hard constraints directly addresses the root cause without adding new entries.",
+      "conservatism_rationale": "Both reflections converge on the same single entry (c8698dee) as the culprit, and the fix is a refinement of existing guidance rather than new guidance. Adding brand-new entries (content-gating rule, verification gate) from a single trace introduces more risk than updating the one entry that demonstrably misfired. The verification gate is noted as a future candidate but deferred pending more evidence.",
+      "max_operations": 1
+    },
+    "raw_response": "```json\n{\n  \"entry_assessments\": [\n    {\"entry_id\": \"c8698dee\", \"tag\": \"harmful\"},\n    {\"entry_id\": \"93b0e8f9\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"8e0d9579\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"005004a4\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"295257e2\", \"tag\": \"neutral\"},\n    {\"entry_id\": \"c292da46\", \"tag\": \"neutral\"}\n  ],\n  \"analysis\": \"## Root Cause\\n\\nBoth rollouts are deterministic-identical, confirming a systematic failure rather than noise. The prompt contains two co-equal classes of requirements: (1) a content/semantic constraint\u2014'explain the plot of Cinderella'\u2014and (2) a structural/format constraint\u2014'each word begins with the next letter A\u2013Z.' The judge fixated entirely on the salient structural constraint and never verified whether candidates actually describe Cinderella's plot.\\n\\nCandidate [2] (rated 4.0, INCORRECT) follows the A-Z alphabet pattern most cleanly but discusses 'Alice' and 'lavish mansions'\u2014zero Cinderella content. Candidate [1] (rated 1.2, CORRECT) has alphabet-ordering violations but references 'fairy godmother,' 'magical objects,' and other genuine Cinderella elements, satisfying the primary semantic goal. The judge's written reasoning exclusively analyzed letter-sequence fidelity and never evaluated plot relevance.\\n\\n## Why c8698dee Is Harmful\\n\\nEntry c8698dee says: 'When the prompt contains explicit constraints, verify each candidate against every constraint instead of rewarding vague relevance.' Both independent reflections (anchor and principle_extraction) agree this entry is harmful here. The phrase 'instead of rewarding vague relevance' likely primed the judge to treat the content requirement ('explain Cinderella's plot') as mere 'vague relevance' to be de-weighted, when it is actually a hard constraint co-equal with the alphabet pattern.\\n\\nThe deeper mechanism is **salience bias**: the novel, eye-catching structural constraint (A-Z sequencing) captured all evaluation attention while the mundane baseline constraint (be about Cinderella) was treated as implicit context rather than a checkable requirement. Entry c8698dee inadvertently amplifies this bias by framing rigorous constraint-checking as the opposite of 'vague relevance,' encouraging the judge to dismiss content fidelity.\\n\\n## Recommended Fix\\n\\nUpdate c8698dee to explicitly require that content/subject/topic requirements are enumerated as first-class constraints alongside any structural or formatting rules. The updated entry should instruct the agent to build a written checklist of ALL requirements\u2014including obvious ones like 'what is this response supposed to be about?'\u2014before evaluating candidates. This directly addresses the failure by making it impossible to skip the content check.\\n\\nA suggested rewrite: 'When the prompt contains explicit constraints, build a written checklist of ALL requirements\u2014including content/topic, format, and structural rules\u2014and verify each candidate against every item. Do not treat content or subject requirements as mere context; they are hard constraints.'\\n\\n## Secondary Observation\\n\\nBoth reflections also independently identify a missing verification gate: 'Before finalizing, confirm the top-rated candidate actually accomplishes the primary task described in the prompt.' This would have caught the error immediately ('Does candidate [2] explain Cinderella? No.'). However, per conservative posture, a single well-targeted update to c8698dee is the highest-confidence action from one trace. The verification gate is a strong candidate for future addition if similar failures recur.\",\n  \"consolidation_notes\": {\n    \"dominant_diagnosis\": \"The judge exhibited salience bias: it evaluated only the novel structural constraint (A-Z letter sequencing) and completely ignored the mundane but equally important content constraint (explain Cinderella's plot). Entry c8698dee's phrasing ('instead of rewarding vague relevance') inadvertently primed the judge to dismiss content fidelity as 'vague relevance.'\",\n    \"important_disagreements\": [\n      \"No meaningful disagreements between the two substantive heads (anchor and principle_extraction). Both agree on the root cause, the harmful entry, and the class of fix needed. The credit_attribution head was skipped (content filter), providing no PP-tag evidence. All conclusions are narrative-inferred, but the deterministic-identical failure across rollouts provides strong compensating evidence.\"\n    ],\n    \"mutation_posture\": \"update\",\n    \"why_this_posture\": \"Entry c8698dee already covers the right idea (verify constraints) but its phrasing actively misdirects the judge by framing constraint-checking as opposed to 'vague relevance,' causing content requirements to be dismissed. A targeted rewrite that explicitly includes content/topic as enumerable hard constraints directly addresses the root cause without adding new entries.\",\n    \"conservatism_rationale\": \"Both reflections converge on the same single entry (c8698dee) as the culprit, and the fix is a refinement of existing guidance rather than new guidance. Adding brand-new entries (content-gating rule, verification gate) from a single trace introduces more risk than updating the one entry that demonstrably misfired. The verification gate is noted as a future candidate but deferred pending more evidence.\",\n    \"max_operations\": 1\n  }\n}\n```"
+  },
+  "assessment_vote_details": [
+    {
+      "entry_id": "005004a4",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "295257e2",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "8e0d9579",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "93b0e8f9",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c292da46",
+      "vote_counts": {
+        "neutral": 2
+      },
+      "selected_tag": "neutral",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    },
+    {
+      "entry_id": "c8698dee",
+      "vote_counts": {
+        "harmful": 2
+      },
+      "selected_tag": "harmful",
+      "selection_source": "consensus",
+      "heads": [
+        "anchor",
+        "principle_extraction"
+      ]
+    }
+  ]
+}
