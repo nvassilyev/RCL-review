@@ -10,6 +10,9 @@ The raw logs, playbooks, and traces in this folder were captured during active d
 
 To prepare the project for public release, the codebase was refactored to improve code quality, modularity, and readability (e.g., consolidating files and removing legacy debug hooks). The underlying optimization loop, primitives, and prompts remain identical to the implementation in this repository. Due to these refactorings, there may be some minor terminology, variable, or configuration parameter mismatches between the raw developmental logs/config files and the finalized codebase.
 
+> [!NOTE]
+> **Scope of Included Logs:** The complete developmental database—containing every intermediate LLM rollout, dual-trace contrastive assessment, and raw prompt template across all active training iterations—exceeds **30 GB** in size. To keep this anonymous review repository lightweight and fast to clone for peer reviewers, we have included a curated, representative subset of the primary training iterations and key evaluation traces.
+
 ---
 
 ### 📁 Directory Structure Overview
